@@ -44,7 +44,7 @@ internal val tokenizationContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.TokenStripPlayer,
     applications = listOf(
         ApplicationCard("book", 0xFF818CF8, "LLM Input Prep", "Every prompt to a language model is tokenized first; token count drives cost and context limits."),
         ApplicationCard("search", 0xFF60A5FA, "Search & Indexing", "Splitting documents into tokens underlies inverted indexes and matching."),

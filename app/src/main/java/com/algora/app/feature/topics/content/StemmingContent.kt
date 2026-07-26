@@ -45,7 +45,7 @@ internal val stemmingContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.TokenStripPlayer,
     applications = listOf(
         ApplicationCard("search", 0xFF818CF8, "Search Engines", "Matching queries to documents regardless of word form boosts recall."),
         ApplicationCard("chart", 0xFF60A5FA, "Classic Text Mining", "Shrinking the vocabulary helps bag-of-words and TF-IDF pipelines."),

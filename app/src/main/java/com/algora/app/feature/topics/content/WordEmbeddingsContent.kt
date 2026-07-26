@@ -44,7 +44,7 @@ internal val wordEmbeddingsContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.TokenStripPlayer,
     applications = listOf(
         ApplicationCard("search", 0xFF818CF8, "Semantic Search", "Retrieving by meaning, not exact words, via nearest embeddings."),
         ApplicationCard("target", 0xFF60A5FA, "Recommendation", "Item and user embeddings place similar things nearby for matching."),

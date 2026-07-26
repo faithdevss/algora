@@ -45,7 +45,7 @@ internal val lemmatizationContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.TokenStripPlayer,
     applications = listOf(
         ApplicationCard("book", 0xFF818CF8, "Semantic Search", "Matching by meaning-preserving base forms improves relevance over raw stems."),
         ApplicationCard("flask", 0xFF60A5FA, "Linguistic Analysis", "Corpus and grammar studies need accurate, valid base forms."),

@@ -198,6 +198,7 @@ fun TopicDetailScreen(topicId: String, onBack: () -> Unit, onTopicClick: (String
                         SimulationType.GraphAlgorithmPlayer -> GraphAlgorithmSection(topicId)
                         SimulationType.ArrayWalkPlayer -> ArrayWalkSection(topicId)
                         SimulationType.PointCloudPlayer -> PointCloudSection(topicId)
+                        SimulationType.TokenStripPlayer -> TokenStripSection(topicId)
                         SimulationType.RegressionExplorer -> RegressionSimulationSection()
                         SimulationType.PerceptronVisualizer -> PerceptronSimulationSection()
                         SimulationType.ClassifierPlayground -> ClassifierPlaygroundSection(classifierConfigFor(topicId))

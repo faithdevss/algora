@@ -45,7 +45,7 @@ internal val llmsContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.TokenStripPlayer,
     applications = listOf(
         ApplicationCard("robot", 0xFF818CF8, "Assistants & Chatbots", "Conversational AI, coding copilots, and writing tools are LLM-powered."),
         ApplicationCard("search", 0xFF60A5FA, "RAG & Search", "Retrieval-augmented generation grounds LLM answers in external documents."),

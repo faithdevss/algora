@@ -1,6 +1,6 @@
 # Phase 3 — Interactive Simulation Library
 
-Status: DONE — data-structure sims + gate solver + ClassifierPlayground + PlaybackTransport + recursion-tree (factorial/fibonacci/hanoi/n-queens) + DP grid (8 problems) + sorting visualizer (8 algorithms) + search visualizer (5 algorithms) + tree visualizer (7) + pathfinding grid (3) + hashing visualizer (3) + RL grid-world (4) + bandit explorer (4) + graph algorithm player (6) + array walk player (11) + point cloud player (7); slider-explorer subsumed. 81 of 176 authored topics now ship a lab.
+Status: DONE — data-structure sims + gate solver + ClassifierPlayground + PlaybackTransport + recursion-tree (factorial/fibonacci/hanoi/n-queens) + DP grid (8 problems) + sorting visualizer (8 algorithms) + search visualizer (5 algorithms) + tree visualizer (7) + pathfinding grid (3) + hashing visualizer (3) + RL grid-world (4) + bandit explorer (4) + graph algorithm player (6) + array walk player (11) + point cloud player (7) + token strip player (9); slider-explorer subsumed. 90 of 176 authored topics now ship a lab.
 Depends on: Phase 2
 
 ## Goal
@@ -349,16 +349,41 @@ decision-tree set is hand-placed instead: the LCG's jitter is too correlated to 
 layout where neither a single x cut nor a single y cut suffices, and without that the depth-2 story
 would be a lie — the first version separated the classes in one cut.
 
-**Remaining (audited 2026-07-26):** **95 of 176** topics resolve to `SimulationComingSoonCard`;
-81 ship a lab. Interview Prep and Machine Learning are fully covered. By category:
+## Sub-phase M — token strip player (`TokenStripSection.kt`)
+
+`SimulationType.TokenStripPlayer`, wired to all 8 remaining NLP topics plus `transformers` (which
+the registry resolves to its Deep Learning listing). Four shared building blocks — a chip row for
+tokens with an optional sub-label, a signed bar chart for any vector, a token×token heat grid, and
+label/value rows for the arithmetic — and each frame picks the ones it needs.
+
+| Topic | What the frames walk |
+|---|---|
+| `tokenization` | string → whitespace words → subword pieces for the two OOV words → vocabulary ids (4 words → 9 tokens) |
+| `stemming` | suffix rules in order; "studies" → "studi" is not a word, and "better" never reaches "good" |
+| `lemmatization` | POS tag + dictionary; final frame puts stem and lemma side by side |
+| `bow_tfidf` | counts → df → idf → tf-idf; "the" is in every document so its idf is 0 |
+| `word_embeddings` | cosine king·queen 0.72 vs king·apple −0.74, then king − man + woman landing on queen at 1.00 |
+| `rnn_lstm` | h = tanh(x + 0.6h) token by token, then 0.6⁵ = 0.08 decay against an LSTM forget gate's 0.77 |
+| `attention` | q·k/√d scores → softmax (sat puts 71% on cat) → the full n² matrix as the architecture's cost |
+| `transformers` | attention + FFN + residual, block 2 running on block 1's output with a sharper pattern |
+| `llms` | logits → softmax (94% Paris) → temperature 0.5 vs 1.8 → append and repeat |
+
+Every number in the narration is computed from the vectors on screen, which caught two frames that
+would otherwise have lied: the attention softmax came out nearly uniform (29% on "cat") until the
+q/k dot products were scaled — readable toy vectors have far smaller magnitudes than trained ones —
+and "apple" scored a *higher* cosine with "king" than "queen" did, because every component of the
+hand-set royalty vectors was positive. Apple now points away on two dimensions.
+
+**Remaining (audited 2026-07-26):** **86 of 176** topics resolve to `SimulationComingSoonCard`;
+90 ship a lab. Interview Prep, Machine Learning and NLP are fully covered. By category:
 
 | Category | pending | wired |
 |---|---|---|
 | Reinforcement Learning | 51 | 8 |
 | Algorithms | 14 | 42 |
 | Data Structures | 12 | 15 |
-| Deep Learning | 10 | 1 |
-| NLP | 8 | 0 |
+| Deep Learning | 9 | 2 |
+| NLP | 0 | 8 |
 | Machine Learning | 0 | 10 |
 | Interview Prep | 0 | 5 |
 
@@ -367,5 +392,5 @@ RL is still the bulk (51) — the grid-world/bandit widgets cover tabular method
 loop that does not exist yet. Cheapest remaining wins reuse existing renderers: `subset_sum` → DP
 grid; `doubly_linked_list` → LinkedListVisualizer; `priority_queue_adt` → TreeVisualizer heap;
 `quickselect` / `median_of_medians` / `mos_algorithm` / `reservoir_sampling` → array walk player.
-A token/attention strip would cover most of NLP, and a shared training-curve widget
-(loss over epochs, with the per-topic knob) would cover much of Deep Learning.
+A shared training-curve widget (loss over epochs with a per-topic knob) would cover much of
+Deep Learning; RL's 51 remain the real work.

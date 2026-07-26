@@ -45,7 +45,7 @@ internal val bowTfidfContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.TokenStripPlayer,
     applications = listOf(
         ApplicationCard("search", 0xFF818CF8, "Search Ranking", "TF-IDF (and BM25) scores how well a document matches a query."),
         ApplicationCard("chart", 0xFF60A5FA, "Text Classification", "Sparse TF-IDF features feed Naive Bayes and linear SVMs effectively."),

@@ -45,7 +45,7 @@ internal val rnnLstmContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.TokenStripPlayer,
     applications = listOf(
         ApplicationCard("book", 0xFF818CF8, "Language Modeling", "Predicting the next word powered early text generation and autocomplete."),
         ApplicationCard("globe", 0xFF60A5FA, "Machine Translation", "Encoder–decoder LSTMs were the pre-Transformer translation standard."),

@@ -45,7 +45,7 @@ internal val attentionContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.TokenStripPlayer,
     applications = listOf(
         ApplicationCard("book", 0xFF818CF8, "Transformers & LLMs", "Self-attention is the engine of every modern language model."),
         ApplicationCard("globe", 0xFF60A5FA, "Translation Alignment", "Attention weights show which source words align to each translated word."),

@@ -46,7 +46,7 @@ internal val transformersContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.TokenStripPlayer,
     applications = listOf(
         ApplicationCard("book", 0xFF818CF8, "Large Language Models", "GPT, BERT, and every modern LLM are Transformer stacks."),
         ApplicationCard("image", 0xFF60A5FA, "Vision & Multimodal", "Vision Transformers and CLIP apply attention to images and image-text pairs."),
