@@ -60,7 +60,7 @@ internal val aStarSearchContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.PathfindingGrid,
     applications = listOf(
         ApplicationCard("game", 0xFF10B981, "Game Pathfinding", "NPCs navigate tile and nav-mesh maps with A* using distance-to-goal heuristics."),
         ApplicationCard("map", 0xFF3B82F6, "Route Planning", "Map services guide road-network search toward the destination to prune the frontier."),

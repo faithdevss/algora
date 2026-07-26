@@ -55,7 +55,7 @@ internal val heapContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.TreeVisualizer,
     applications = listOf(
         ApplicationCard("target", 0xFF10B981, "Priority Queues", "A heap is the standard backing for a priority queue — always serve the highest-priority item next."),
         ApplicationCard("map", 0xFF3B82F6, "Dijkstra & A*", "Shortest-path search pulls the closest unvisited node from a min-heap each step."),

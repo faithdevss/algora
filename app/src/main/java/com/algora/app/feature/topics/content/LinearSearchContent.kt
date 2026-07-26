@@ -45,7 +45,7 @@ internal val linearSearchContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.SearchVisualizer,
     applications = listOf(
         ApplicationCard("search", 0xFF10B981, "Unsorted Data", "When data has no order or index, scanning every element is the only correct option."),
         ApplicationCard("chip", 0xFF3B82F6, "Small Collections", "For a handful of elements its zero setup cost beats building a hash table or sorting first."),

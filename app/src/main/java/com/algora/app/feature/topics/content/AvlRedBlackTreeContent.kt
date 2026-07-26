@@ -48,7 +48,7 @@ internal val avlRedBlackTreeContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.TreeVisualizer,
     applications = listOf(
         ApplicationCard("chip", 0xFF10B981, "Language Ordered Maps", "Red-black trees back Java's TreeMap and C++'s std::map for sorted key-value storage."),
         ApplicationCard("history", 0xFF3B82F6, "Kernel Schedulers", "The Linux CFS scheduler tracks runnable tasks in a red-black tree."),

@@ -57,7 +57,7 @@ internal val kruskalsMstContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.GraphAlgorithmPlayer,
     applications = listOf(
         ApplicationCard("share", 0xFF10B981, "Network Design", "Lay cable, pipe, or road between sites at minimum total cost while keeping everything connected."),
         ApplicationCard("chip", 0xFF3B82F6, "Clustering", "Cutting the most expensive MST edges partitions data into natural clusters."),

@@ -252,6 +252,92 @@ private fun knapsackFrames(): List<DpFrame> {
     return bld.frames
 }
 
+private val rodPrices = intArrayOf(1, 5, 8, 9, 10)
+private const val ROD_LENGTH = 5
+
+// dp[i][l] = best revenue for a rod of length l cutting only pieces of length <= i.
+private fun rodCuttingFrames(): List<DpFrame> {
+    val rows = rodPrices.size + 1
+    val cols = ROD_LENGTH + 1
+    val bld = DpBuilder(rows, cols)
+    val dp = Array(rows) { IntArray(cols) }
+    for (i in 0 until rows) {
+        for (l in 0 until cols) {
+            val status: String
+            dp[i][l] = when {
+                i == 0 || l == 0 -> { status = "dp[$i][$l] = 0  (no piece length, or no rod left)"; 0 }
+                i <= l -> {
+                    val skip = dp[i - 1][l]
+                    val cut = dp[i][l - i] + rodPrices[i - 1]
+                    val v = maxOf(skip, cut)
+                    status = "length $i (price ${rodPrices[i - 1]}): max(skip $skip, cut $cut) = $v"
+                    v
+                }
+                else -> { status = "piece $i longer than rod $l → carry dp[${i - 1}][$l] = ${dp[i - 1][l]}"; dp[i - 1][l] }
+            }
+            bld.fill(i, l, dp[i][l].toString(), status)
+        }
+    }
+    var i = rows - 1
+    var l = cols - 1
+    val path = mutableListOf(bld.key(i, l))
+    while (i > 0 && l > 0) {
+        if (dp[i][l] == dp[i - 1][l]) i-- else l -= i
+        path.add(bld.key(i, l))
+    }
+    bld.trace(path.reversed()) { "Traceback — the cuts chosen. Best revenue = ${dp[rows - 1][cols - 1]}." }
+    return bld.frames
+}
+
+private val lisInput = intArrayOf(3, 1, 4, 2, 6, 5)
+
+// 1-D O(n^2) LIS: dp[i] = longest increasing subsequence ending at i.
+private fun lisFrames(): List<DpFrame> {
+    val n = lisInput.size
+    val bld = DpBuilder(rows = 1, cols = n)
+    val dp = IntArray(n) { 1 }
+    for (i in 0 until n) {
+        var best = 1
+        var from = -1
+        for (j in 0 until i) {
+            if (lisInput[j] < lisInput[i] && dp[j] + 1 > best) {
+                best = dp[j] + 1
+                from = j
+            }
+        }
+        dp[i] = best
+        val status = if (from < 0) "dp[$i] = 1  (${lisInput[i]} starts its own subsequence)"
+        else "dp[$i] = dp[$from] + 1 = $best  (extend the run ending at ${lisInput[from]})"
+        bld.fill(0, i, dp[i].toString(), status)
+    }
+    return bld.frames
+}
+
+private val chainDims = intArrayOf(10, 30, 5, 60)
+
+// dp[i][j] = fewest scalar multiplications to multiply matrices i..j. Filled by chain length,
+// so the table populates diagonally rather than row by row.
+private fun matrixChainFrames(): List<DpFrame> {
+    val n = chainDims.size - 1
+    val bld = DpBuilder(rows = n, cols = n)
+    val dp = Array(n) { IntArray(n) }
+    for (i in 0 until n) bld.fill(i, i, "0", "dp[$i][$i] = 0  (a single matrix needs no multiplication)")
+    for (len in 2..n) {
+        for (i in 0..n - len) {
+            val j = i + len - 1
+            var best = Int.MAX_VALUE
+            var split = i
+            for (k in i until j) {
+                val cost = dp[i][k] + dp[k + 1][j] + chainDims[i] * chainDims[k + 1] * chainDims[j + 1]
+                if (cost < best) { best = cost; split = k }
+            }
+            dp[i][j] = best
+            bld.fill(i, j, best.toString(), "dp[$i][$j] = $best  (best split after matrix $split)")
+        }
+    }
+    return bld.frames
+}
+
 private val dpConfigs = mapOf(
     "fibonacci_dp" to DpConfig(
         rows = 1, cols = 10,
@@ -283,6 +369,30 @@ private val dpConfigs = mapOf(
         intro = "Fewest coins to make each amount, using denominations {1, 3, 4}. Each row adds a coin type; ∞ means unreachable. Traceback shows which coins make the target.",
         build = ::coinChangeFrames,
     ),
+    "rod_cutting" to DpConfig(
+        rows = rodPrices.size + 1, cols = ROD_LENGTH + 1,
+        rowHeader = { if (it == 0) "ε" else it.toString() },
+        colHeader = { it.toString() },
+        corner = "len",
+        intro = "Rod cutting — prices (1,5,8,9,10) for lengths 1..5. Each row allows one more piece length; the traceback shows which cuts produce the best revenue.",
+        build = ::rodCuttingFrames,
+    ),
+    "longest_increasing_subsequence" to DpConfig(
+        rows = 1, cols = lisInput.size,
+        rowHeader = { "dp" },
+        colHeader = { lisInput[it].toString() },
+        corner = "a[i]",
+        intro = "Longest increasing subsequence of (3,1,4,2,6,5). Each cell is the longest run ending at that element — the answer is the largest cell, not the last one.",
+        build = ::lisFrames,
+    ),
+    "matrix_chain_multiplication" to DpConfig(
+        rows = chainDims.size - 1, cols = chainDims.size - 1,
+        rowHeader = { "A${it + 1}" },
+        colHeader = { "A${it + 1}" },
+        corner = "i\\j",
+        intro = "Matrix chain with dimensions 10×30, 30×5, 5×60. The table fills along diagonals — by chain length — so every sub-chain is solved before the chains that contain it. Cells below the diagonal stay empty.",
+        build = ::matrixChainFrames,
+    ),
     "knapsack_01" to DpConfig(
         rows = knapWeights.size + 1, cols = KNAP_CAPACITY + 1,
         rowHeader = { if (it == 0) "ε" else knapWeights[it - 1].toString() },
@@ -300,6 +410,9 @@ private fun dpConfigFor(topicId: String): DpConfig =
 fun DpGridSection(topicId: String) {
     val config = remember(topicId) { dpConfigFor(topicId) }
     val frames = remember(config) { config.build() }
+    // Not every table has a traceback pass (1-D tables, and interval DP like matrix chain), so the
+    // legend follows what the frames actually contain rather than the table's shape.
+    val hasTraceback = remember(frames) { frames.any { it.traced.isNotEmpty() } }
     val playback = rememberPlaybackState(key = config, stepCount = frames.size)
     val frame = frames[playback.index.coerceIn(0, frames.lastIndex)]
 
@@ -332,7 +445,7 @@ fun DpGridSection(topicId: String) {
             ) {
                 DpLegend(ActiveCell, "Current")
                 DpLegend(FilledCell, "Filled")
-                if (config.rows > 1) DpLegend(TracedCell, "Traceback")
+                if (hasTraceback) DpLegend(TracedCell, "Traceback")
             }
 
             PlaybackTransport(playback)

@@ -61,5 +61,7 @@ internal val mctsContent = TopicContent(
     crossLinks = listOf(
         CrossLink("alphazero", "AlphaZero"),
         CrossLink("ucb", "UCB"),
+        // DSA ↔ AI bridge: the search tree is explored with graph-traversal machinery.
+        CrossLink("graph", "Graph (Traversal)"),
     ),
 )

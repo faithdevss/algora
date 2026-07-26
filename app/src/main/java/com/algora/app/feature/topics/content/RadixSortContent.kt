@@ -57,7 +57,7 @@ internal val radixSortContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.SortingVisualizer,
     applications = listOf(
         ApplicationCard("chip", 0xFF10B981, "Fixed-Width Keys", "Integers, fixed-length IDs, and dates sort in linear time when their digit count is bounded."),
         ApplicationCard("link", 0xFF3B82F6, "String Sorting", "MSD radix sort orders strings and is used in suffix-array construction."),

@@ -52,7 +52,7 @@ internal val dStarAlgorithmContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.PathfindingGrid,
     applications = listOf(
         ApplicationCard("robot", 0xFF10B981, "Autonomous Robots", "Mars rovers and mobile robots replan around newly-seen obstacles without stopping to recompute everything."),
         ApplicationCard("game", 0xFF3B82F6, "Dynamic Game Maps", "Units repath efficiently when terrain, doors, or hazards change mid-move."),

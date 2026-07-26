@@ -55,7 +55,7 @@ internal val primsMstContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.GraphAlgorithmPlayer,
     applications = listOf(
         ApplicationCard("share", 0xFF10B981, "Utility & Network Layout", "Connect all sites at minimum cost when the graph is dense and given as adjacency lists."),
         ApplicationCard("map", 0xFF3B82F6, "Maze Generation", "Randomized-weight Prim's carves connected, loop-free mazes."),

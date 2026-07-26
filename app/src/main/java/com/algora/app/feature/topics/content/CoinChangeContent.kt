@@ -64,5 +64,7 @@ internal val coinChangeContent = TopicContent(
     crossLinks = listOf(
         CrossLink("fibonacci_dp", "Fibonacci (Dynamic Programming)"),
         CrossLink("rod_cutting", "Rod Cutting"),
+        // DSA ↔ AI bridge: the same optimal-substructure DP powers value iteration over an MDP.
+        CrossLink("mdp", "Markov Decision Process"),
     ),
 )

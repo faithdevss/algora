@@ -43,7 +43,7 @@ internal val qLearningContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.RlGridWorld,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "Game Playing", "Learns optimal play in small games and gridworlds from trial and error."),
         ApplicationCard("robot", 0xFF60A5FA, "Control Tasks", "Discrete-action control where dynamics are unknown."),

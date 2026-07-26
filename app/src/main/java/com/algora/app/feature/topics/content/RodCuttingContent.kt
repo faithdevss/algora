@@ -51,7 +51,7 @@ internal val rodCuttingContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.DpGridVisualizer,
     applications = listOf(
         ApplicationCard("finance", 0xFF10B981, "Cutting Stock", "Slicing raw material — rods, rolls, boards — into pieces that maximize sale value."),
         ApplicationCard("chip", 0xFF3B82F6, "Resource Splitting", "Dividing a fixed budget of a divisible unit into value-optimal chunks."),

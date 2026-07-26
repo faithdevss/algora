@@ -47,7 +47,7 @@ internal val segmentTreeContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.TreeVisualizer,
     applications = listOf(
         ApplicationCard("chart", 0xFF10B981, "Range Statistics", "Live sums, minimums, or maximums over changing array ranges — the segment tree's core job."),
         ApplicationCard("game", 0xFF3B82F6, "Interval Problems", "Range assignment, coloring, and collision intervals use lazy-propagation segment trees."),

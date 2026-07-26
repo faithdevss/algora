@@ -51,7 +51,7 @@ internal val floydWarshallContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.GraphAlgorithmPlayer,
     applications = listOf(
         ApplicationCard("map", 0xFF10B981, "All-Pairs Routing", "Precompute every source-destination distance in dense networks or small maps."),
         ApplicationCard("share", 0xFF3B82F6, "Transitive Closure", "The same loop with boolean OR answers 'is j reachable from i?' for all pairs (Warshall's algorithm)."),

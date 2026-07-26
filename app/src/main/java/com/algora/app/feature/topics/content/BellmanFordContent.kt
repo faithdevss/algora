@@ -53,7 +53,7 @@ internal val bellmanFordContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.GraphAlgorithmPlayer,
     applications = listOf(
         ApplicationCard("finance", 0xFF10B981, "Currency Arbitrage", "Modeling exchange rates as negative log weights turns arbitrage detection into a negative-cycle search."),
         ApplicationCard("share", 0xFF3B82F6, "Distance-Vector Routing", "RIP and similar protocols relax neighbor distances the Bellman-Ford way."),

@@ -20,6 +20,7 @@ import com.algora.app.feature.nlp.NlpScreen
 import com.algora.app.feature.progress.ProgressScreen
 import com.algora.app.feature.reinforcementlearning.ReinforcementLearningScreen
 import com.algora.app.feature.review.ReviewScreen
+import com.algora.app.feature.settings.SettingsScreen
 import com.algora.app.feature.simulations.SimulationsScreen
 import com.algora.app.feature.topics.TopicDetailScreen
 
@@ -31,19 +32,21 @@ fun NavGraph(
     modifier: Modifier = Modifier,
 ) {
     val openTopic: (String) -> Unit = { topicId -> navController.navigate(TopicDetailRoute.route(topicId)) }
+    // Category browsers are entered from Home (or the Practice tab), which stays on the back stack.
+    val goBack: () -> Unit = { navController.popBackStack() }
 
     NavHost(navController = navController, startDestination = Screen.Home.route, modifier = modifier) {
         // DSA mode
-        composable(Screen.InterviewPrep.route) { InterviewPrepScreen(onTopicClick = openTopic) }
-        composable(Screen.DataStructures.route) { DataStructuresScreen(onTopicClick = openTopic) }
-        composable(Screen.Algorithms.route) { AlgorithmsScreen(onTopicClick = openTopic) }
-        composable(Screen.Analysis.route) { AnalysisScreen(onTopicClick = openTopic) }
+        composable(Screen.InterviewPrep.route) { InterviewPrepScreen(onTopicClick = openTopic, onBack = goBack) }
+        composable(Screen.DataStructures.route) { DataStructuresScreen(onTopicClick = openTopic, onBack = goBack) }
+        composable(Screen.Algorithms.route) { AlgorithmsScreen(onTopicClick = openTopic, onBack = goBack) }
+        composable(Screen.Analysis.route) { AnalysisScreen(onTopicClick = openTopic, onBack = goBack) }
 
         // AI mode
-        composable(Screen.MachineLearning.route) { MachineLearningScreen(onTopicClick = openTopic) }
-        composable(Screen.DeepLearning.route) { DeepLearningScreen(onTopicClick = openTopic) }
-        composable(Screen.Nlp.route) { NlpScreen(onTopicClick = openTopic) }
-        composable(Screen.ReinforcementLearning.route) { ReinforcementLearningScreen(onTopicClick = openTopic) }
+        composable(Screen.MachineLearning.route) { MachineLearningScreen(onTopicClick = openTopic, onBack = goBack) }
+        composable(Screen.DeepLearning.route) { DeepLearningScreen(onTopicClick = openTopic, onBack = goBack) }
+        composable(Screen.Nlp.route) { NlpScreen(onTopicClick = openTopic, onBack = goBack) }
+        composable(Screen.ReinforcementLearning.route) { ReinforcementLearningScreen(onTopicClick = openTopic, onBack = goBack) }
 
         // Shared dashboard — hosts the DSA/AI mode switch
         composable(Screen.Home.route) {
@@ -63,6 +66,10 @@ fun NavGraph(
 
         composable(FlashcardsRoute.ROUTE) {
             FlashcardScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(SettingsRoute.ROUTE) {
+            SettingsScreen(onBack = { navController.popBackStack() })
         }
 
         composable(ReviewRoute.ROUTE) {

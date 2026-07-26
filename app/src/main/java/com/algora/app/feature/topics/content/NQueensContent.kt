@@ -72,5 +72,7 @@ internal val nQueensContent = TopicContent(
     crossLinks = listOf(
         CrossLink("sudoku_solver", "Sudoku Solver"),
         CrossLink("subset_sum", "Subset Sum"),
+        // DSA ↔ AI bridge: backtracking over a search tree is exactly game-tree minimax's shape.
+        CrossLink("minimax", "Minimax (game-tree search)"),
     ),
 )

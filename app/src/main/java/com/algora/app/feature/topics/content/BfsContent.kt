@@ -2,6 +2,7 @@ package com.algora.app.feature.topics.content
 
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
+import com.algora.app.core.data.model.CrossLink
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -63,5 +64,9 @@ internal val bfsContent = TopicContent(
         "In an unweighted graph, BFS is guaranteed to find the shortest path in terms of edge count.",
         "Marking nodes visited at enqueue time, not dequeue time, is essential to avoid processing a node twice.",
         "DFS explores deep first with a stack; BFS explores wide first with a queue — same graph, opposite traversal shape.",
+    ),
+    crossLinks = listOf(
+        // DSA ↔ AI bridge: breadth-first expansion mirrors tree-search node expansion in planning.
+        CrossLink("mcts", "Monte Carlo Tree Search"),
     ),
 )

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Palette from docs/design/Algora.dc.html; kept in sync with core/ui/theme/Color.kt. -->
+<resources>
+    <color name="brand_indigo">#FF4F46E5</color>
+    <color name="brand_violet">#FF7C3AED</color>
+    <color name="brand_fuchsia">#FFC026D3</color>
+
+    <color name="light_background">#FFF7F8FA</color>
+    <color name="light_surface">#FFFFFFFF</color>
+    <color name="light_text">#FF161A22</color>
+
+    <color name="dark_background">#FF161A22</color>
+    <color name="dark_surface">#FF1C212B</color>
+    <color name="dark_text">#FFFFFFFF</color>
+</resources>

@@ -54,7 +54,7 @@ internal val mergeSortContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.SortingVisualizer,
     applications = listOf(
         ApplicationCard("stack", 0xFF3B82F6, "External Sorting", "Sorting data too large for memory reads/merges chunks from disk — the same merge step scales up."),
         ApplicationCard("chip", 0xFF8B5CF6, "Stable Sort Requirements", "Merge sort preserves the relative order of equal elements, which matters for multi-key sorts."),

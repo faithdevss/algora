@@ -58,7 +58,7 @@ internal val tarjansAlgorithmContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.GraphAlgorithmPlayer,
     applications = listOf(
         ApplicationCard("share", 0xFF10B981, "Cycle & Dependency Analysis", "Collapsing SCCs reveals cyclic module or package dependencies that block a clean build order."),
         ApplicationCard("chip", 0xFF3B82F6, "2-SAT Solving", "Boolean satisfiability with two literals per clause is decided by SCCs of an implication graph."),

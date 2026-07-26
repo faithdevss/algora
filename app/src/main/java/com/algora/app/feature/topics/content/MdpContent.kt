@@ -50,7 +50,7 @@ internal val mdpContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.RlGridWorld,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "RL Foundation", "Every RL algorithm — Q-learning to PPO — is defined over an MDP."),
         ApplicationCard("robot", 0xFF60A5FA, "Robotics & Control", "Sequential decision problems in navigation and manipulation are modeled as MDPs."),
@@ -65,5 +65,7 @@ internal val mdpContent = TopicContent(
     crossLinks = listOf(
         CrossLink("q_learning", "Q-Learning (off-policy)"),
         CrossLink("grid_world", "Grid World"),
+        // DSA ↔ AI bridge: value iteration is dynamic programming — the same idea as coin change.
+        CrossLink("coin_change", "Coin Change (DP)"),
     ),
 )

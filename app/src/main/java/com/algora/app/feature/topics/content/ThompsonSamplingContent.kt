@@ -46,7 +46,7 @@ internal val thompsonSamplingContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.BanditExplorer,
     applications = listOf(
         ApplicationCard("globe", 0xFF818CF8, "Online A/B Testing", "Allocates traffic to variants in proportion to their probability of being best."),
         ApplicationCard("target", 0xFF60A5FA, "Ad & Content Selection", "Widely used in production recommendation and ad-serving bandits."),

@@ -50,7 +50,7 @@ internal val countingSortContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.SortingVisualizer,
     applications = listOf(
         ApplicationCard("chart", 0xFF10B981, "Sorting Small-Range Keys", "Ages, exam scores, or byte values — anything with a bounded integer range sorts in linear time."),
         ApplicationCard("chip", 0xFF3B82F6, "Radix Sort Subroutine", "Radix sort runs counting sort on each digit, relying on its stability."),

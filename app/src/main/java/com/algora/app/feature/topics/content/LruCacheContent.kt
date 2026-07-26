@@ -46,7 +46,7 @@ internal val lruCacheContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.HashingVisualizer,
     applications = listOf(
         ApplicationCard("chip", 0xFF10B981, "CPU & Page Caches", "Hardware caches and OS page replacement approximate LRU to keep hot data resident."),
         ApplicationCard("globe", 0xFF3B82F6, "Web & App Caches", "Memcached-style layers and browser caches evict stale entries by recency."),

@@ -71,5 +71,7 @@ internal val minimaxContent = TopicContent(
     crossLinks = listOf(
         CrossLink("mcts", "MCTS"),
         CrossLink("self_play", "Self-Play"),
+        // DSA ↔ AI bridge: the game tree is walked by the same backtracking as N-Queens.
+        CrossLink("n_queens", "N-Queens (backtracking)"),
     ),
 )

@@ -1,4 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Algora" parent="android:Theme.Material.Light.NoActionBar" />
+    <!--
+      Pre-Compose window theme: only the launch window matters here (background + bar colors),
+      the in-app palette lives in core/ui/theme/Theme.kt.
+    -->
+    <style name="Theme.Algora" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/light_background</item>
+        <item name="android:colorAccent">@color/brand_indigo</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
 </resources>

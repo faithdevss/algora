@@ -26,6 +26,14 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         }
     }
 
+    val accent: Flow<AccentColor> = dataStore.data.map { prefs ->
+        AccentColor.fromId(prefs[SettingsKeys.ACCENT])
+    }
+
+    suspend fun setAccent(accent: AccentColor) {
+        dataStore.edit { prefs -> prefs[SettingsKeys.ACCENT] = accent.id }
+    }
+
     val bookmarks: Flow<Set<String>> =
         dataStore.data.map { prefs -> prefs[SettingsKeys.BOOKMARKS] ?: emptySet() }
 

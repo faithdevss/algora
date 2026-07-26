@@ -66,5 +66,7 @@ internal val kdTreeContent = TopicContent(
     crossLinks = listOf(
         CrossLink("closest_pair_of_points", "Closest Pair of Points"),
         CrossLink("binary_search_tree", "Binary Search Tree"),
+        // DSA ↔ AI bridge: k-d trees are what make k-NN's nearest-neighbour queries fast.
+        CrossLink("knn", "k-Nearest Neighbors"),
     ),
 )

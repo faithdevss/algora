@@ -55,7 +55,7 @@ internal val matrixChainMultiplicationContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.DpGridVisualizer,
     applications = listOf(
         ApplicationCard("chip", 0xFF10B981, "Query & Expression Optimization", "Databases and compilers reorder chained operations to minimize intermediate cost, the same idea."),
         ApplicationCard("flask", 0xFF3B82F6, "Scientific Computing", "Ordering large matrix products cuts runtime in ML and physics pipelines dramatically."),

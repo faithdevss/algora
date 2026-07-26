@@ -48,7 +48,7 @@ internal val selectionSortContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.SortingVisualizer,
     applications = listOf(
         ApplicationCard("chip", 0xFF10B981, "Minimizing Writes", "When a swap is far more expensive than a comparison (e.g. flash memory), selection sort's ≤ n swaps win."),
         ApplicationCard("book", 0xFF3B82F6, "Teaching Baseline", "Its simple 'find the smallest, put it first' loop makes it a classic first sorting algorithm."),

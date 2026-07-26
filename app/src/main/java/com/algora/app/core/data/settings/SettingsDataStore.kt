@@ -16,6 +16,7 @@ enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
 object SettingsKeys {
     val THEME_MODE = stringPreferencesKey("theme_mode")
+    val ACCENT = stringPreferencesKey("accent_color")
     val BOOKMARKS = stringSetPreferencesKey("bookmarks")
     val LAST_OPENED = stringPreferencesKey("last_opened_topic")
     val STREAK_COUNT = intPreferencesKey("streak_count")

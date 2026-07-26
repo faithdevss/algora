@@ -11,7 +11,7 @@ import com.algora.app.core.ui.components.BrowserSection
 import com.algora.app.core.ui.components.CategoryBrowserScreen
 
 @Composable
-fun InterviewPrepScreen(onTopicClick: (String) -> Unit) {
+fun InterviewPrepScreen(onTopicClick: (String) -> Unit, onBack: () -> Unit) {
     val context = LocalContext.current
     val repository = remember { ProgressRepository(context.progressDataStore) }
     val completedIds by repository.completedTopicIds.collectAsState(initial = emptySet())
@@ -27,5 +27,6 @@ fun InterviewPrepScreen(onTopicClick: (String) -> Unit) {
         sections = sections,
         completedIds = completedIds,
         onTopicClick = onTopicClick,
+        onBack = onBack,
     )
 }

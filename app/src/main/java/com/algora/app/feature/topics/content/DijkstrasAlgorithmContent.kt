@@ -60,7 +60,7 @@ internal val dijkstrasAlgorithmContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.PathfindingGrid,
     applications = listOf(
         ApplicationCard("map", 0xFF10B981, "GPS & Routing", "Navigation apps compute fastest routes over road networks with Dijkstra and its heuristic cousin A*."),
         ApplicationCard("share", 0xFF3B82F6, "Network Routing", "Link-state protocols like OSPF run Dijkstra to build shortest-path routing tables."),

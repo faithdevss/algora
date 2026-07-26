@@ -48,7 +48,7 @@ internal val dynaQContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.RlGridWorld,
     applications = listOf(
         ApplicationCard("chart", 0xFF818CF8, "Sample Efficiency", "Extracts far more learning per real interaction, vital when data is costly."),
         ApplicationCard("map", 0xFF60A5FA, "Navigation & Mazes", "Classic gridworld planning where a learned model speeds route-finding."),

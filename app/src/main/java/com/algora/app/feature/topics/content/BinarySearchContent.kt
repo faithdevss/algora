@@ -51,7 +51,7 @@ internal val binarySearchContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.SearchVisualizer,
     applications = listOf(
         ApplicationCard("search", 0xFF06B6D4, "Dictionary/Index Lookups", "Any sorted lookup table — word lists, sorted database indexes — searches in logarithmic time."),
         ApplicationCard("trend", 0xFF3B82F6, "Version Bisection", "`git bisect` binary-searches commit history to find the commit that introduced a bug."),

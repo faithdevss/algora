@@ -51,7 +51,7 @@ internal val bubbleSortContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.SortingVisualizer,
     applications = listOf(
         ApplicationCard("stack", 0xFF3B82F6, "Teaching Sorting Concepts", "Its simplicity makes bubble sort the standard first example for comparison-based sorting."),
         ApplicationCard("chip", 0xFF8B5CF6, "Nearly-Sorted Data", "With the early-exit check, bubble sort runs in near-linear time on data that's already almost sorted."),

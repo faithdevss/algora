@@ -1,6 +1,6 @@
 # Phase 3 — Interactive Simulation Library
 
-Status: DONE — data-structure sims + gate solver + ClassifierPlayground + PlaybackTransport + recursion-tree (factorial/fibonacci/hanoi/n-queens) + DP grid (fibonacci_dp/edit_distance/LCS/coin_change/knapsack_01); slider-explorer subsumed
+Status: DONE — data-structure sims + gate solver + ClassifierPlayground + PlaybackTransport + recursion-tree (factorial/fibonacci/hanoi/n-queens) + DP grid (8 problems) + sorting visualizer (8 algorithms) + search visualizer (5 algorithms) + tree visualizer (7) + pathfinding grid (3) + hashing visualizer (3) + RL grid-world (4) + bandit explorer (4) + graph algorithm player (6); slider-explorer subsumed. 63 of 176 authored topics now ship a lab.
 Depends on: Phase 2
 
 ## Goal
@@ -176,3 +176,145 @@ build a fourth near-duplicate.
 - `./gradlew assembleDebug`.
 - Emulator: factorial recursion plays through with working transport (reset / step / play / speed);
   edit_distance grid fills cell-by-cell then highlights the traceback.
+
+## Sub-phase D/E/F — sorting + search visualizers, DP completion (this session)
+
+Coverage pass: the widgets above only reached ~20 topics, leaving the two largest
+Algorithms families (sorting, searching) on `NotYetAvailable` despite being the most
+visual algorithms in the taxonomy. Both follow the established conventions —
+precomputed frames + `PlaybackTransport`, config resolved by `topicId`.
+
+- **`SortingVisualizerSection.kt`** (`SimulationType.SortingVisualizer`) — bar chart over 8 values;
+  each frame carries the array plus role sets (compared / moved / sorted / range). Bar colours read
+  those roles, so one renderer serves every algorithm. Configs: `bubble_sort`, `selection_sort`,
+  `insertion_sort`, `merge_sort`, `quick_sort`, `heap_sort`, `counting_sort`, `radix_sort`. The
+  `range` role is per-algorithm (merge window, quicksort partition, heap region, sorted prefix,
+  digit-pass result) and its legend label comes from the config, so it is omitted where meaningless.
+  Counting/radix use their own small-value inputs since their cost model is value-range driven.
+- **`SearchVisualizerSection.kt`** (`SimulationType.SearchVisualizer`) — index-labelled cell strip;
+  frames carry probe / live window / eliminated / found. Configs: `linear_search` (unsorted input,
+  the one algorithm with no ordering precondition), `binary_search`, `jump_search`,
+  `interpolation_search`, `exponential_search`.
+- **DP grid completed** — added `rod_cutting`, `longest_increasing_subsequence` (1-D, no traceback),
+  and `matrix_chain_multiplication` (interval DP: fills along diagonals, cells below the diagonal
+  stay empty). All 8 DP topics listed in the build plan above now have a config.
+- The DP legend previously showed "Traceback" for any 2-D table; it now derives from whether the
+  frames actually contain traced cells (matrix chain has none).
+
+Verified on-device: bubble sort plays through 51 frames with correct swap highlighting; binary
+search plays to "Found 50 at index 6 — 4 probes"; matrix chain fills diagonally to dp[0][2] = 4500
+(10·30·5 + 10·5·60).
+
+**Remaining after this pass:** see sub-phase G below.
+
+## Sub-phase G — tree visualizer (this session)
+
+`TreeVisualizerSection.kt` (`SimulationType.TreeVisualizer`) covers every tree-shaped structure with
+one player. The key difference from `RecursionTreeSection` (fixed node set, only states animate) is
+that **each frame carries its own node list**, so insertions, AVL rotations and B-tree splits are
+just different parent links between consecutive frames. A `TreeBuilder` mutates a live tree and
+snapshots it per `frame()` call.
+
+Layout reuses the recursion tree's leaf-slot algorithm (leaves take sequential x slots, parents
+centre over their children), with two additions: siblings sort by an explicit `order` field so a
+BST's left child stays left even when inserted after the right one, and row spacing is **fixed**
+(capped to fit) rather than stretched to the canvas — otherwise a 2-level frame and a 4-level frame
+of the same tree rendered at wildly different scales as nodes appeared. Nodes draw as rounded pills
+sized to their text, so multi-key B-tree labels ("5 · 10") fit the same renderer as a single digit.
+
+Configs: `binary_search_tree` (7 inserts + a search walk), `tree` (DFS then BFS over a directory
+hierarchy), `heap` (array-backed insert with sift-up swaps), `trie` (three words sharing prefixes,
+then a lookup), `avl_red_black_tree` (ascending inserts → left rotation), `segment_tree` (bottom-up
+sum build → range query touching two nodes), `b_tree` (order-3 inserts through a median split).
+
+`fenwick_tree` is deliberately **not** wired: its tree is implicit in index arithmetic, not in
+parent links, so this widget would misrepresent it. It needs its own array-with-jump-arcs view.
+
+Verified on-device: BST builds the correct shape and reports "Found 60 — 3 comparisons"; trie ends
+with c→a→{t∎, r∎} plus d→o→g∎ and highlights "car"; B-tree splits to root 20 over leaves "5 · 10"
+and "30 · 40".
+
+**Remaining after that pass:** see sub-phase H below.
+
+## Sub-phase H — pathfinding grid + hashing visualizer (this session)
+
+- **`PathfindingGridSection.kt`** (`SimulationType.PathfindingGrid`) — a 6×8 walled grid with a
+  single best-first search loop parameterised by heuristic: zero heuristic = Dijkstra, Manhattan
+  distance = A*. One frame per expansion, then the path walk-back. The wall column has one gap, so
+  Dijkstra visibly wastes expansions on the wrong side of it while A* aims straight at the goal —
+  the frame counts in the closing status line are the comparison. `d_star_algorithm` chains three
+  searches: plan, obstacle discovered on the committed path, repair.
+- **`HashingVisualizerSection.kt`** (`SimulationType.HashingVisualizer`) — "array of slots plus a
+  rule for which slot a key lands in" covers all three targets. `hash_table` (7 buckets, separate
+  chaining, a real collision, a hit and a miss), `bloom_filter` (12 bits, two hashes per key,
+  built so a never-added word lands on bits other keys already set — a genuine false positive), and
+  `lru_cache` (capacity 4 by recency: promotion on hit, eviction on insert). Chained entries render
+  as `a → b` in one row.
+- Slot layout is configurable: chains and recency lists get one row each (they have contents to
+  show), a bit array gets a single horizontal strip. The first build rendered the bloom filter as 12
+  stacked rows, which ate the whole viewport for one bit of information each.
+
+Also fixed: grid cells were sized `weight(1f).fillMaxWidth()`, giving them no height, so the first
+build rendered an invisible grid — only the S/G text pills showed. Cells now `fillMaxHeight()` and
+take their height from the grid's aspect ratio.
+
+Verified on-device: Dijkstra expands 37 cells for a 9-step path with the wall gap correctly forcing
+the detour; the bloom filter ends on "probably present" with the false-positive bits highlighted.
+
+**Remaining after that pass:** 127 topics still resolved to `SimulationComingSoonCard`.
+
+## Sub-phase I — RL grid-world + bandit explorer (`RlGridWorldSection.kt`)
+
+`SimulationType.RlGridWorld` wired to `grid_world`, `mdp`, `q_learning`, `dyna_q` — an environment
+loop rather than a data-structure animation, which is what the AI remainder needs.
+`SimulationType.BanditExplorer` wired to `epsilon_greedy`, `ucb`, `thompson_sampling`,
+`boltzmann_exploration` — arm pulls, running value estimates, exploration/exploitation split.
+Both render via `RlGridWorldSection(topicId)` / `BanditSection(topicId)` from `TopicDetailScreen`.
+
+## Sub-phase J — graph algorithm player (`GraphAlgorithmSection.kt`)
+
+`SimulationType.GraphAlgorithmPlayer`, wired to six topics that all animate over a node-link diagram
+but needed weights, direction, per-node badges and edge states that the Phase-3 `GraphVisualizer`
+(an unweighted BFS/DFS *builder*) has no room for. One renderer, four fixed graphs, six frame
+builders:
+
+| Topic | Graph | What the frames show |
+|---|---|---|
+| `bellman_ford` | 5-node directed, negative edges | distance badges per node; only edges that actually relax get a frame; final sweep is the negative-cycle test (14 frames) |
+| `floyd_warshall` | 4-node directed | the dist matrix under the graph, one round per intermediate node, improved cell in green with the k row/col tinted (17) |
+| `kruskals_mst` | 6-node undirected weighted | edges in sorted order, accept vs. cycle-reject, nodes coloured by union-find component (8) |
+| `prims_mst` | same graph as Kruskal | cut edges as candidates, then the cheapest one absorbed — ends at weight 17, same tree Kruskal builds (12) |
+| `tarjans_algorithm` | 7-node directed, 3 SCCs | index/low-link badges, stack contents in the status line, component pops (16) |
+| `kosarajus_algorithm` | same graph | finish-order badges, then the renderer flips every arrow for the transpose pass (13) |
+
+Renderer details worth keeping: anti-parallel edge pairs (A→B alongside B→A) are nudged off the
+centre line or their arrowheads and weights land on top of each other; `GroupColors[0]` is sky blue
+rather than indigo so a node's first component assignment reads as a change against the idle violet;
+Floyd is the only config that draws a matrix, which the frame carries as an optional field rather
+than the section branching on topic id.
+
+Verified on-device: Prim reaches weight 17 in 12 steps, Floyd's initial matrix matches the edge list
+and `B→D via A = 15` highlights correctly, Kosaraju's second pass flips the arrows and pulls
+{A, B, C} out as one component.
+
+**Remaining (audited 2026-07-26):** **113 of 176** topics resolve to `SimulationComingSoonCard`;
+63 ship a lab. By category:
+
+| Category | pending | wired |
+|---|---|---|
+| Reinforcement Learning | 51 | 8 |
+| Algorithms | 20 | 36 |
+| Data Structures | 12 | 15 |
+| Deep Learning | 10 | 1 |
+| NLP | 8 | 0 |
+| Machine Learning | 7 | 3 |
+| Interview Prep | 5 | 0 |
+
+RL is still the bulk (51) — the grid-world/bandit widgets cover tabular methods, but deep-RL topics
+(DQN family, policy gradients, model-based, multi-agent) each want a training-curve or environment
+loop that does not exist yet. Cheapest remaining wins reuse existing renderers: array-walk topics
+(`prefix_sum`, `difference_array`,
+`sliding_window`, `two_pointer`, `kadanes_algorithm`) plus all 5 Interview Prep pattern topics →
+ArrayVisualizer; `subset_sum` → DP grid; `doubly_linked_list` → LinkedListVisualizer;
+`priority_queue_adt` → TreeVisualizer heap. One new 2D-points clustering widget would cover
+`kmeans` / `dbscan` / `knn` / `hierarchical_clustering` at once.

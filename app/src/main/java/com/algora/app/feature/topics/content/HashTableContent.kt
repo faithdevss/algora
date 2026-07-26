@@ -53,7 +53,7 @@ internal val hashTableContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.HashingVisualizer,
     applications = listOf(
         ApplicationCard("chip", 0xFF10B981, "Language Dictionaries/Maps", "The built-in map, dict, and object types in most languages are hash tables under the hood."),
         ApplicationCard("search", 0xFF3B82F6, "Database Indexing & Caches", "Hash indexes and in-memory caches like memcached use hashing for near-instant key lookup."),

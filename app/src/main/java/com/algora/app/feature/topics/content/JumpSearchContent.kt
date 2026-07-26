@@ -56,7 +56,7 @@ internal val jumpSearchContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.SearchVisualizer,
     applications = listOf(
         ApplicationCard("history", 0xFF10B981, "Costly Backward Seeks", "On media where jumping back is expensive (tape, some disk layouts), forward-only jumps beat binary search's back-and-forth."),
         ApplicationCard("search", 0xFF3B82F6, "Sorted Block Storage", "Indexes stored in fixed-size blocks map naturally onto jump search's block stride."),

@@ -56,7 +56,7 @@ internal val binarySearchTreeContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.TreeVisualizer,
     applications = listOf(
         ApplicationCard("stack", 0xFF3B82F6, "Ordered Sets & Maps", "TreeSet/TreeMap-style structures use a balanced BST to keep keys sorted while staying O(log n)."),
         ApplicationCard("chip", 0xFF8B5CF6, "Database Indexes", "B-Trees (BST cousins) back most database indexes for fast range and equality lookups."),

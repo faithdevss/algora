@@ -51,7 +51,7 @@ internal val bloomFilterContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.HashingVisualizer,
     applications = listOf(
         ApplicationCard("chip", 0xFF10B981, "Database Read Skipping", "LSM-tree stores (Cassandra, RocksDB) use Bloom filters to skip disk lookups for absent keys."),
         ApplicationCard("globe", 0xFF3B82F6, "Caches & CDNs", "Web caches check a Bloom filter before an expensive origin fetch to avoid one-hit-wonders."),

@@ -65,10 +65,18 @@ sealed interface SimulationType {
     data object StackVisualizer : SimulationType
     data object QueueVisualizer : SimulationType
     data object GraphVisualizer : SimulationType
+    data object GraphAlgorithmPlayer : SimulationType
     data object RegressionExplorer : SimulationType
     data object PerceptronVisualizer : SimulationType
     data object ClassifierPlayground : SimulationType
     data object RecursionTreeVisualizer : SimulationType
     data object DpGridVisualizer : SimulationType
+    data object SortingVisualizer : SimulationType
+    data object SearchVisualizer : SimulationType
+    data object TreeVisualizer : SimulationType
+    data object PathfindingGrid : SimulationType
+    data object HashingVisualizer : SimulationType
+    data object RlGridWorld : SimulationType
+    data object BanditExplorer : SimulationType
     data object NotYetAvailable : SimulationType
 }

@@ -44,7 +44,7 @@ internal val ucbContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.BanditExplorer,
     applications = listOf(
         ApplicationCard("target", 0xFF818CF8, "Multi-Armed Bandits", "The canonical optimism-based bandit strategy with strong guarantees."),
         ApplicationCard("game", 0xFF60A5FA, "MCTS (UCT)", "The UCB rule chooses which tree branches to explore in MCTS."),

@@ -3,7 +3,6 @@ package com.algora.app.feature.topics
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,6 +49,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.horizontalScroll
 import com.algora.app.core.data.PrerequisiteGraph
 import com.algora.app.core.data.TopicRegistry
+import com.algora.app.core.ui.theme.LocalDarkTheme
 import com.algora.app.core.ui.theme.SimColors
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CrossLink
@@ -195,11 +195,19 @@ fun TopicDetailScreen(topicId: String, onBack: () -> Unit, onTopicClick: (String
                         SimulationType.StackVisualizer -> StackSimulationSection()
                         SimulationType.QueueVisualizer -> QueueSimulationSection()
                         SimulationType.GraphVisualizer -> GraphSimulationSection()
+                        SimulationType.GraphAlgorithmPlayer -> GraphAlgorithmSection(topicId)
                         SimulationType.RegressionExplorer -> RegressionSimulationSection()
                         SimulationType.PerceptronVisualizer -> PerceptronSimulationSection()
                         SimulationType.ClassifierPlayground -> ClassifierPlaygroundSection(classifierConfigFor(topicId))
                         SimulationType.RecursionTreeVisualizer -> RecursionTreeSection(topicId)
                         SimulationType.DpGridVisualizer -> DpGridSection(topicId)
+                        SimulationType.SortingVisualizer -> SortingVisualizerSection(topicId)
+                        SimulationType.SearchVisualizer -> SearchVisualizerSection(topicId)
+                        SimulationType.TreeVisualizer -> TreeVisualizerSection(topicId)
+                        SimulationType.PathfindingGrid -> PathfindingGridSection(topicId)
+                        SimulationType.HashingVisualizer -> HashingVisualizerSection(topicId)
+                        SimulationType.RlGridWorld -> RlGridWorldSection(topicId)
+                        SimulationType.BanditExplorer -> BanditSection(topicId)
                         SimulationType.NotYetAvailable -> SimulationComingSoonCard()
                     }
                 }
@@ -283,7 +291,7 @@ private fun SectionTitle(title: String) {
 @Composable
 private fun ComingSoonBody(topic: Topic) {
     val accent = Color(topic.accentColor)
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalDarkTheme.current
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Surface(
@@ -437,7 +445,7 @@ private fun RelatedTopicsSection(links: List<CrossLink>, onTopicClick: (String) 
 @Composable
 private fun HeroSection(topic: Topic, content: TopicContent) {
     val accent = Color(topic.accentColor)
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalDarkTheme.current
 
     Surface(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
@@ -597,7 +605,7 @@ private val TakeawayGreenBgLight = Color(0xFFE9F9EE)
 
 @Composable
 private fun TakeawaysSection(takeaways: List<String>) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalDarkTheme.current
     Surface(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 22.dp),
         shape = RoundedCornerShape(20.dp),

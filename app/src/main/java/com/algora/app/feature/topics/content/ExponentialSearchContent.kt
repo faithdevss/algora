@@ -61,7 +61,7 @@ internal val exponentialSearchContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.SearchVisualizer,
     applications = listOf(
         ApplicationCard("trend", 0xFF10B981, "Unbounded / Streaming Data", "When the array length is unknown, doubling finds a valid range without needing the size up front."),
         ApplicationCard("search", 0xFF3B82F6, "Front-Loaded Targets", "If matches usually sit near the start, it beats plain binary search by bounding the range quickly."),

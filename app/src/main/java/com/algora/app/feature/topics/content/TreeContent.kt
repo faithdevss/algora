@@ -49,7 +49,7 @@ internal val treeContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.TreeVisualizer,
     applications = listOf(
         ApplicationCard("map", 0xFF10B981, "File Systems", "Folders and files form a tree: each directory is a node whose children are its contents."),
         ApplicationCard("browser", 0xFF3B82F6, "DOM & UI Trees", "An HTML page is a tree of nested elements; UI frameworks render and diff that hierarchy."),

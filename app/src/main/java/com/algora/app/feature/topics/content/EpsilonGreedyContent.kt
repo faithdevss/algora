@@ -45,7 +45,7 @@ internal val epsilonGreedyContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.BanditExplorer,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "Q-Learning & DQN", "The standard exploration mechanism for value-based agents."),
         ApplicationCard("target", 0xFF60A5FA, "A/B & Bandits", "A simple baseline for balancing exploration in online experiments."),

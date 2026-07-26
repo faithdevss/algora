@@ -58,7 +58,7 @@ internal val trieContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.TreeVisualizer,
     applications = listOf(
         ApplicationCard("search", 0xFF10B981, "Autocomplete", "Type-ahead suggestions walk to the prefix node, then list every word beneath it."),
         ApplicationCard("check", 0xFF3B82F6, "Spell Check & Dictionaries", "Membership tests and prefix validation run in time proportional to word length."),

@@ -50,7 +50,7 @@ internal val insertionSortContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.SortingVisualizer,
     applications = listOf(
         ApplicationCard("trend", 0xFF10B981, "Nearly-Sorted Data", "On almost-sorted input it runs in near-linear time, ideal for keeping a live list ordered as items trickle in."),
         ApplicationCard("chip", 0xFF3B82F6, "Small Subarrays", "Fast sorts like quicksort switch to insertion sort for tiny partitions where its low overhead wins."),

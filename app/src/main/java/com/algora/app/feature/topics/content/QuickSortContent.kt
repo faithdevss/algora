@@ -53,7 +53,7 @@ internal val quickSortContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.SortingVisualizer,
     applications = listOf(
         ApplicationCard("chip", 0xFF10B981, "Standard Library Sorts", "Many language runtimes use quicksort variants (introsort) as their default in-memory sort."),
         ApplicationCard("target", 0xFF3B82F6, "Quickselect", "The same partition step finds the k-th smallest element in expected linear time without full sorting."),

@@ -53,7 +53,7 @@ internal val interpolationSearchContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.SearchVisualizer,
     applications = listOf(
         ApplicationCard("book", 0xFF10B981, "Phone Book / Dictionary Lookup", "On evenly spread keys, jumping straight to the estimated spot beats halving repeatedly."),
         ApplicationCard("chart", 0xFF3B82F6, "Uniform Numeric Indexes", "Sorted sensor readings or timestamps spaced regularly are ideal for value-guided probing."),

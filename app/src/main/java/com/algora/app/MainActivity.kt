@@ -1,18 +1,23 @@
 package com.algora.app
 
+import android.graphics.Color.TRANSPARENT
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,6 +29,7 @@ import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.algora.app.core.data.settings.AccentColor
 import com.algora.app.core.data.settings.SettingsRepository
 import com.algora.app.core.data.settings.ThemeMode
 import com.algora.app.core.data.settings.settingsDataStore
@@ -45,6 +51,7 @@ class MainActivity : ComponentActivity() {
             val context = LocalContext.current
             val settings = remember { SettingsRepository(context.settingsDataStore) }
             val themeMode by settings.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
+            val accent by settings.accent.collectAsState(initial = AccentColor.DEFAULT)
             LaunchedEffect(Unit) { settings.recordActivityToday() }
 
             val dark = when (themeMode) {
@@ -52,7 +59,16 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
             }
-            AlgoraTheme(darkTheme = dark) {
+            // Re-applied on every theme change so status/nav bar icon contrast follows the in-app
+            // toggle, not just the system setting.
+            SideEffect {
+                enableEdgeToEdge(
+                    statusBarStyle = SystemBarStyle.auto(TRANSPARENT, TRANSPARENT) { dark },
+                    navigationBarStyle = SystemBarStyle.auto(TRANSPARENT, TRANSPARENT) { dark },
+                )
+            }
+
+            AlgoraTheme(darkTheme = dark, accent = accent) {
                 AlgoraApp()
             }
         }
@@ -83,7 +99,7 @@ fun AlgoraApp() {
     Scaffold(
         bottomBar = {
             if (!onFullScreen) {
-                NavigationBar {
+                NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                     NavTab.entries.forEach { tab ->
                         val selected = when (tab) {
                             NavTab.LEARNING -> onRoute(Screen.Home.route)
@@ -106,6 +122,14 @@ fun AlgoraApp() {
                             },
                             icon = { Icon(resolveIcon(tab.iconName), contentDescription = tab.label) },
                             label = { Text(tab.label) },
+                            // Default M3 baseline colors ignore the accent; bind them to it.
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary,
+                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            ),
                         )
                     }
                 }

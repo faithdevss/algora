@@ -60,6 +60,11 @@ object ProgressRoute {
     const val ROUTE = "progress"
 }
 
+// Appearance preferences (theme mode + accent), reached from the home topbar gear.
+object SettingsRoute {
+    const val ROUTE = "settings"
+}
+
 // Simulations tab lands on a catalog of every topic that ships a runnable interactive lab.
 object SimulationsRoute {
     const val ROUTE = "simulations"

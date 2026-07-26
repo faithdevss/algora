@@ -46,7 +46,7 @@ internal val gridWorldContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.RlGridWorld,
     applications = listOf(
         ApplicationCard("book", 0xFF818CF8, "Teaching RL", "The standard first environment for MDPs and tabular methods."),
         ApplicationCard("map", 0xFF60A5FA, "Algorithm Debugging", "Small enough to inspect value tables and policies by eye."),

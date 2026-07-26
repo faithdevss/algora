@@ -46,7 +46,7 @@ internal val boltzmannExplorationContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.BanditExplorer,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "Value-Based Exploration", "A smoother alternative to ε-greedy that respects value differences."),
         ApplicationCard("bulb", 0xFF60A5FA, "Max-Entropy Link", "The softmax policy is the optimal form under maximum-entropy RL."),

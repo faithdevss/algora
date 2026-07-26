@@ -52,7 +52,7 @@ internal val longestIncreasingSubsequenceContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.DpGridVisualizer,
     applications = listOf(
         ApplicationCard("trend", 0xFF10B981, "Trend Analysis", "Finding the longest upward run in prices, scores, or metrics over time."),
         ApplicationCard("chip", 0xFF3B82F6, "Version & Patch Ordering", "Longest compatible ordered chain of items shows up in scheduling and diffing."),

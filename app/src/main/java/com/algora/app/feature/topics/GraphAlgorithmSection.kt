@@ -1,0 +1,912 @@
+package com.algora.app.feature.topics
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.algora.app.core.ui.theme.SimColors
+import kotlin.math.cos
+import kotlin.math.hypot
+import kotlin.math.sin
+
+// ── Graph algorithm player ───────────────────────────────────────────────────
+// Shortest-path / MST / SCC algorithms over a small fixed graph, one precomputed frame per
+// interesting event (same snapshot model as the pathfinding and sorting players). What differs per
+// topic is the graph, the frame builder, and which annotations each frame carries — the renderer is
+// shared: node fill + badge under the node, edge colour, arrowheads for directed graphs, and an
+// optional distance matrix for Floyd–Warshall.
+//
+// Frames deliberately skip the no-op steps (an edge that relaxes nothing, a k that improves
+// nothing); a viewer learns from the updates, not from watching 40 comparisons decline to fire.
+
+private const val GRAPH_INF = Int.MAX_VALUE / 4
+
+private class GNode(val id: String, val x: Float, val y: Float)
+
+private class GEdge(val from: String, val to: String, val weight: Int? = null, val directed: Boolean = false)
+
+private class GraphDef(val nodes: List<GNode>, val edges: List<GEdge>) {
+    val ids: List<String> = nodes.map { it.id }
+}
+
+private enum class NodeMark { IDLE, FRONTIER, ACTIVE, UPDATED, DONE }
+
+private enum class EdgeMark { IDLE, ACTIVE, ACCEPTED, REJECTED }
+
+private val NodeMarkColors = mapOf(
+    NodeMark.IDLE to Color(0xFF7C3AED),
+    NodeMark.FRONTIER to Color(0xFF3B82F6),
+    NodeMark.ACTIVE to Color(0xFFFACC15),
+    NodeMark.UPDATED to SimColors.Green,
+    NodeMark.DONE to Color(0xFFF97316),
+)
+
+private val EdgeMarkColors = mapOf(
+    EdgeMark.IDLE to Color(0xFFCBD0DA),
+    EdgeMark.ACTIVE to Color(0xFFFACC15),
+    EdgeMark.ACCEPTED to SimColors.Green,
+    EdgeMark.REJECTED to SimColors.Red,
+)
+
+// Component / SCC colours — used when a frame groups nodes rather than marking them individually.
+// Deliberately starts far from the idle violet: an assigned first component has to read as a change.
+private val GroupColors = listOf(
+    Color(0xFF0EA5E9), Color(0xFFF97316), Color(0xFF10B981),
+    Color(0xFFEC4899), Color(0xFF6366F1), Color(0xFFA855F7),
+)
+
+private class GraphAlgoFrame(
+    val status: String,
+    val nodeMarks: Map<String, NodeMark> = emptyMap(),
+    val badges: Map<String, String> = emptyMap(),
+    val groups: Map<String, Int> = emptyMap(),
+    val edgeMarks: Map<Int, EdgeMark> = emptyMap(),
+    // Kosaraju's second pass runs on the transpose; the renderer flips every arrow instead of the
+    // frame carrying a whole second edge list.
+    val reversed: Boolean = false,
+    val matrix: List<List<Int>>? = null,
+    val matrixFocus: Pair<Int, Int>? = null,
+    val matrixVia: Int? = null,
+)
+
+private class GraphAlgoConfig(
+    val intro: String,
+    val def: GraphDef,
+    val legend: List<Pair<Color, String>>,
+    val build: () -> List<GraphAlgoFrame>,
+)
+
+// ── Graphs ───────────────────────────────────────────────────────────────────
+
+// Directed, weighted, with negative edges — the case Dijkstra cannot handle.
+private val negativeWeightGraph = GraphDef(
+    nodes = listOf(
+        GNode("A", 0.06f, 0.50f),
+        GNode("B", 0.40f, 0.12f),
+        GNode("C", 0.80f, 0.12f),
+        GNode("D", 0.40f, 0.88f),
+        GNode("E", 0.80f, 0.88f),
+    ),
+    edges = listOf(
+        GEdge("A", "B", 6, directed = true),
+        GEdge("A", "D", 7, directed = true),
+        GEdge("B", "C", 5, directed = true),
+        GEdge("B", "D", 8, directed = true),
+        GEdge("B", "E", -4, directed = true),
+        GEdge("C", "B", -2, directed = true),
+        GEdge("D", "C", -3, directed = true),
+        GEdge("D", "E", 9, directed = true),
+        GEdge("E", "C", 7, directed = true),
+        GEdge("E", "A", 2, directed = true),
+    ),
+)
+
+// Small directed graph, kept to 4 nodes so the whole distance matrix fits on a phone.
+private val allPairsGraph = GraphDef(
+    nodes = listOf(
+        GNode("A", 0.15f, 0.15f),
+        GNode("B", 0.85f, 0.15f),
+        GNode("C", 0.85f, 0.85f),
+        GNode("D", 0.15f, 0.85f),
+    ),
+    edges = listOf(
+        GEdge("A", "B", 3, directed = true),
+        GEdge("A", "D", 7, directed = true),
+        GEdge("B", "A", 8, directed = true),
+        GEdge("B", "C", 2, directed = true),
+        GEdge("C", "A", 5, directed = true),
+        GEdge("C", "D", 1, directed = true),
+        GEdge("D", "A", 2, directed = true),
+    ),
+)
+
+// Undirected, weighted, connected — shared by both MST builders so their outputs can be compared.
+private val mstGraph = GraphDef(
+    nodes = listOf(
+        GNode("A", 0.10f, 0.22f),
+        GNode("B", 0.50f, 0.05f),
+        GNode("C", 0.90f, 0.24f),
+        GNode("D", 0.14f, 0.80f),
+        GNode("E", 0.54f, 0.95f),
+        GNode("F", 0.92f, 0.74f),
+    ),
+    edges = listOf(
+        GEdge("A", "B", 4),
+        GEdge("A", "D", 3),
+        GEdge("B", "C", 5),
+        GEdge("B", "D", 6),
+        GEdge("B", "E", 2),
+        GEdge("C", "E", 7),
+        GEdge("C", "F", 4),
+        GEdge("D", "E", 3),
+        GEdge("E", "F", 5),
+    ),
+)
+
+// Directed, unweighted, with three strongly connected components: {A,B,C}, {D,E,F}, {G}.
+private val sccGraph = GraphDef(
+    nodes = listOf(
+        GNode("A", 0.08f, 0.20f),
+        GNode("B", 0.40f, 0.05f),
+        GNode("C", 0.36f, 0.48f),
+        GNode("D", 0.72f, 0.16f),
+        GNode("E", 0.94f, 0.56f),
+        GNode("F", 0.62f, 0.84f),
+        GNode("G", 0.14f, 0.86f),
+    ),
+    edges = listOf(
+        GEdge("A", "B", directed = true),
+        GEdge("B", "C", directed = true),
+        GEdge("C", "A", directed = true),
+        GEdge("C", "D", directed = true),
+        GEdge("D", "E", directed = true),
+        GEdge("E", "F", directed = true),
+        GEdge("F", "D", directed = true),
+        GEdge("F", "G", directed = true),
+    ),
+)
+
+private fun neighboursOf(def: GraphDef, id: String, reversed: Boolean = false): List<String> =
+    def.edges.mapNotNull { e ->
+        val from = if (reversed) e.to else e.from
+        val to = if (reversed) e.from else e.to
+        when {
+            from == id -> to
+            !e.directed && to == id -> from
+            else -> null
+        }
+    }.sorted()
+
+private fun dist(value: Int): String = if (value >= GRAPH_INF) "∞" else value.toString()
+
+// ── Bellman–Ford ─────────────────────────────────────────────────────────────
+
+private fun bellmanFordFrames(): List<GraphAlgoFrame> {
+    val def = negativeWeightGraph
+    val source = "A"
+    val distances = def.ids.associateWith { if (it == source) 0 else GRAPH_INF }.toMutableMap()
+    val frames = mutableListOf<GraphAlgoFrame>()
+    fun badges() = distances.mapValues { (_, d) -> dist(d) }
+
+    frames += GraphAlgoFrame(
+        status = "Source $source starts at 0, everything else at ∞. Bellman–Ford makes no assumption " +
+            "about edge signs, so it cannot commit to a node early the way Dijkstra does.",
+        badges = badges(),
+        nodeMarks = mapOf(source to NodeMark.ACTIVE),
+    )
+
+    var pass = 0
+    var relaxedThisPass = true
+    while (pass < def.ids.size - 1 && relaxedThisPass) {
+        pass++
+        relaxedThisPass = false
+        frames += GraphAlgoFrame(
+            status = "Pass $pass of ${def.ids.size - 1}: sweep all ${def.edges.size} edges once, in a fixed order.",
+            badges = badges(),
+        )
+        def.edges.forEachIndexed { index, edge ->
+            val from = distances.getValue(edge.from)
+            val weight = edge.weight ?: 0
+            val candidate = from + weight
+            if (from < GRAPH_INF && candidate < distances.getValue(edge.to)) {
+                val previous = distances.getValue(edge.to)
+                distances[edge.to] = candidate
+                relaxedThisPass = true
+                frames += GraphAlgoFrame(
+                    status = "Relax ${edge.from}→${edge.to} (w = $weight): ${edge.to} improves from " +
+                        "${dist(previous)} to $candidate.",
+                    badges = badges(),
+                    nodeMarks = mapOf(edge.from to NodeMark.ACTIVE, edge.to to NodeMark.UPDATED),
+                    edgeMarks = mapOf(index to EdgeMark.ACCEPTED),
+                )
+            }
+        }
+        if (!relaxedThisPass) {
+            frames += GraphAlgoFrame(
+                status = "Pass $pass changed nothing, so nothing can change again — the remaining passes are skipped.",
+                badges = badges(),
+                nodeMarks = def.ids.associateWith { NodeMark.DONE },
+            )
+        }
+    }
+
+    val violating = def.edges.withIndex().firstOrNull { (_, edge) ->
+        val from = distances.getValue(edge.from)
+        from < GRAPH_INF && from + (edge.weight ?: 0) < distances.getValue(edge.to)
+    }
+    frames += if (violating == null) {
+        GraphAlgoFrame(
+            status = "One extra sweep relaxes no edge, which is the negative-cycle test: none is reachable from " +
+                "$source, so these distances are final.",
+            badges = badges(),
+            nodeMarks = def.ids.associateWith { NodeMark.DONE },
+        )
+    } else {
+        GraphAlgoFrame(
+            status = "An extra sweep still relaxes ${violating.value.from}→${violating.value.to}. After " +
+                "${def.ids.size - 1} passes that is only possible inside a negative cycle — report it, do not " +
+                "return distances.",
+            badges = badges(),
+            edgeMarks = mapOf(violating.index to EdgeMark.REJECTED),
+        )
+    }
+    return frames
+}
+
+// ── Floyd–Warshall ───────────────────────────────────────────────────────────
+
+private fun floydWarshallFrames(): List<GraphAlgoFrame> {
+    val def = allPairsGraph
+    val n = def.ids.size
+    val d = MutableList(n) { i -> MutableList(n) { j -> if (i == j) 0 else GRAPH_INF } }
+    def.edges.forEach { edge ->
+        val i = def.ids.indexOf(edge.from)
+        val j = def.ids.indexOf(edge.to)
+        d[i][j] = minOf(d[i][j], edge.weight ?: 0)
+    }
+    fun snapshot() = d.map { it.toList() }
+
+    val frames = mutableListOf<GraphAlgoFrame>()
+    frames += GraphAlgoFrame(
+        status = "The matrix starts as the edge list itself: dist[i][j] is the direct edge, 0 on the diagonal, " +
+            "∞ where no edge exists.",
+        matrix = snapshot(),
+    )
+
+    for (k in 0 until n) {
+        frames += GraphAlgoFrame(
+            status = "Round ${k + 1}: allow ${def.ids[k]} as an intermediate node. Every pair now asks " +
+                "\"is going through ${def.ids[k]} cheaper?\"",
+            matrix = snapshot(),
+            matrixVia = k,
+            nodeMarks = mapOf(def.ids[k] to NodeMark.ACTIVE),
+        )
+        for (i in 0 until n) {
+            for (j in 0 until n) {
+                if (i == j || i == k || j == k) continue
+                val through = d[i][k] + d[k][j]
+                if (d[i][k] < GRAPH_INF && d[k][j] < GRAPH_INF && through < d[i][j]) {
+                    val previous = d[i][j]
+                    d[i][j] = through
+                    frames += GraphAlgoFrame(
+                        status = "${def.ids[i]}→${def.ids[j]} via ${def.ids[k]} costs ${d[i][k]} + ${d[k][j]} = " +
+                            "$through, better than ${dist(previous)}.",
+                        matrix = snapshot(),
+                        matrixFocus = i to j,
+                        matrixVia = k,
+                        nodeMarks = mapOf(
+                            def.ids[k] to NodeMark.ACTIVE,
+                            def.ids[i] to NodeMark.FRONTIER,
+                            def.ids[j] to NodeMark.UPDATED,
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    frames += GraphAlgoFrame(
+        status = "After all $n rounds every entry is a true shortest path — ${n * n} answers from three nested " +
+            "loops, no per-source reruns.",
+        matrix = snapshot(),
+        nodeMarks = def.ids.associateWith { NodeMark.DONE },
+    )
+    return frames
+}
+
+// ── Kruskal ──────────────────────────────────────────────────────────────────
+
+/** Component colours only make sense once a component has more than one node. */
+private fun groupsFrom(def: GraphDef, root: (String) -> String): Map<String, Int> {
+    val sizes = def.ids.groupingBy { root(it) }.eachCount()
+    val order = def.ids.map(root).distinct()
+    return def.ids.filter { sizes.getValue(root(it)) > 1 }
+        .associateWith { order.indexOf(root(it)) }
+}
+
+private fun kruskalFrames(): List<GraphAlgoFrame> {
+    val def = mstGraph
+    val parent = def.ids.associateWith { it }.toMutableMap()
+    fun find(id: String): String {
+        var node = id
+        while (parent.getValue(node) != node) node = parent.getValue(node)
+        return node
+    }
+
+    val frames = mutableListOf<GraphAlgoFrame>()
+    val marks = mutableMapOf<Int, EdgeMark>()
+    var total = 0
+    var accepted = 0
+
+    val sorted = def.edges.withIndex().sortedBy { it.value.weight ?: 0 }
+    frames += GraphAlgoFrame(
+        status = "Sort every edge by weight: ${sorted.joinToString(", ") { "${it.value.from}${it.value.to}(${it.value.weight})" }}. " +
+            "Kruskal then walks that list once.",
+    )
+
+    for ((index, edge) in sorted) {
+        val rootFrom = find(edge.from)
+        val rootTo = find(edge.to)
+        if (rootFrom == rootTo) {
+            marks[index] = EdgeMark.REJECTED
+            frames += GraphAlgoFrame(
+                status = "${edge.from}–${edge.to} (w = ${edge.weight}) is skipped: both ends already sit in the " +
+                    "same component, so this edge would close a cycle.",
+                edgeMarks = marks.toMap(),
+                groups = groupsFrom(def) { find(it) },
+                nodeMarks = mapOf(edge.from to NodeMark.ACTIVE, edge.to to NodeMark.ACTIVE),
+            )
+        } else {
+            parent[rootFrom] = rootTo
+            marks[index] = EdgeMark.ACCEPTED
+            total += edge.weight ?: 0
+            accepted++
+            frames += GraphAlgoFrame(
+                status = "Take ${edge.from}–${edge.to} (w = ${edge.weight}): the ends were in different components, " +
+                    "so union them. Tree weight $total, $accepted of ${def.ids.size - 1} edges.",
+                edgeMarks = marks.toMap(),
+                groups = groupsFrom(def) { find(it) },
+                nodeMarks = mapOf(edge.from to NodeMark.UPDATED, edge.to to NodeMark.UPDATED),
+            )
+        }
+        if (accepted == def.ids.size - 1) break
+    }
+
+    frames += GraphAlgoFrame(
+        status = "${def.ids.size - 1} edges accepted and every node is in one component: minimum spanning tree, " +
+            "total weight $total.",
+        edgeMarks = marks.toMap(),
+        nodeMarks = def.ids.associateWith { NodeMark.DONE },
+    )
+    return frames
+}
+
+// ── Prim ─────────────────────────────────────────────────────────────────────
+
+private fun primFrames(): List<GraphAlgoFrame> {
+    val def = mstGraph
+    val start = "A"
+    val inTree = mutableSetOf(start)
+    val marks = mutableMapOf<Int, EdgeMark>()
+    val frames = mutableListOf<GraphAlgoFrame>()
+    var total = 0
+
+    frames += GraphAlgoFrame(
+        status = "Prim grows one tree instead of collecting edges globally. Seed it with $start.",
+        nodeMarks = mapOf(start to NodeMark.DONE),
+    )
+
+    while (inTree.size < def.ids.size) {
+        val crossing = def.edges.withIndex().filter { (_, e) ->
+            (e.from in inTree) != (e.to in inTree)
+        }
+        val candidateMarks = marks.toMutableMap()
+        crossing.forEach { (index, _) -> candidateMarks[index] = EdgeMark.ACTIVE }
+        frames += GraphAlgoFrame(
+            status = "Edges crossing the cut: ${crossing.joinToString(", ") { "${it.value.from}–${it.value.to}(${it.value.weight})" }}.",
+            edgeMarks = candidateMarks,
+            nodeMarks = inTree.associateWith { NodeMark.DONE } +
+                crossing.flatMap { listOf(it.value.from, it.value.to) }.filter { it !in inTree }
+                    .associateWith { NodeMark.FRONTIER },
+        )
+
+        val (index, edge) = crossing.minByOrNull { it.value.weight ?: 0 } ?: break
+        val added = if (edge.from in inTree) edge.to else edge.from
+        inTree += added
+        marks[index] = EdgeMark.ACCEPTED
+        total += edge.weight ?: 0
+        frames += GraphAlgoFrame(
+            status = "Cheapest crossing edge is ${edge.from}–${edge.to} (w = ${edge.weight}) — pull $added into the " +
+                "tree. Weight so far $total.",
+            edgeMarks = marks.toMap(),
+            nodeMarks = inTree.associateWith { NodeMark.DONE } + mapOf(added to NodeMark.UPDATED),
+        )
+    }
+
+    frames += GraphAlgoFrame(
+        status = "All ${def.ids.size} nodes absorbed, total weight $total — the same tree Kruskal builds, reached by " +
+            "growing a cut instead of sorting edges.",
+        edgeMarks = marks.toMap(),
+        nodeMarks = def.ids.associateWith { NodeMark.DONE },
+    )
+    return frames
+}
+
+// ── Tarjan ───────────────────────────────────────────────────────────────────
+
+private fun tarjanFrames(): List<GraphAlgoFrame> {
+    val def = sccGraph
+    val discovery = mutableMapOf<String, Int>()
+    val low = mutableMapOf<String, Int>()
+    val onStack = mutableSetOf<String>()
+    val stack = ArrayDeque<String>()
+    val groups = mutableMapOf<String, Int>()
+    val frames = mutableListOf<GraphAlgoFrame>()
+    var counter = 0
+    var componentCount = 0
+
+    fun badges() = def.ids.filter { it in discovery }
+        .associateWith { "${discovery.getValue(it)}/${low.getValue(it)}" }
+
+    fun stackText() = if (stack.isEmpty()) "empty" else stack.joinToString("", limit = 8)
+
+    frames += GraphAlgoFrame(
+        status = "Tarjan finds strongly connected components in one DFS. Each node gets a discovery index and a " +
+            "low-link: the smallest index reachable from its subtree.",
+    )
+
+    fun strongConnect(node: String) {
+        discovery[node] = counter
+        low[node] = counter
+        counter++
+        stack.addLast(node)
+        onStack += node
+        frames += GraphAlgoFrame(
+            status = "Visit $node — index ${discovery.getValue(node)}, low-link starts equal to it. Stack: ${stackText()}.",
+            badges = badges(),
+            nodeMarks = mapOf(node to NodeMark.ACTIVE) + onStack.filter { it != node }.associateWith { NodeMark.FRONTIER },
+            groups = groups.toMap(),
+        )
+
+        for (next in neighboursOf(def, node)) {
+            if (next !in discovery) {
+                strongConnect(next)
+                if (low.getValue(next) < low.getValue(node)) {
+                    low[node] = low.getValue(next)
+                    frames += GraphAlgoFrame(
+                        status = "$node inherits low-link ${low.getValue(node)} from $next: whatever $next can reach, " +
+                            "$node can reach.",
+                        badges = badges(),
+                        nodeMarks = mapOf(node to NodeMark.UPDATED, next to NodeMark.FRONTIER),
+                        groups = groups.toMap(),
+                    )
+                }
+            } else if (next in onStack && discovery.getValue(next) < low.getValue(node)) {
+                low[node] = discovery.getValue(next)
+                frames += GraphAlgoFrame(
+                    status = "$node→$next is a back edge to a node still on the stack, so $node's low-link drops to " +
+                        "${discovery.getValue(next)} — they are on a cycle together.",
+                    badges = badges(),
+                    nodeMarks = mapOf(node to NodeMark.UPDATED, next to NodeMark.ACTIVE),
+                    groups = groups.toMap(),
+                )
+            }
+        }
+
+        if (low.getValue(node) == discovery.getValue(node)) {
+            val members = mutableListOf<String>()
+            do {
+                val popped = stack.removeLast()
+                onStack -= popped
+                groups[popped] = componentCount
+                members += popped
+            } while (popped != node)
+            componentCount++
+            frames += GraphAlgoFrame(
+                status = "$node's low-link equals its own index, so it is the root of a component: pop " +
+                    "{${members.sorted().joinToString(", ")}} off the stack.",
+                badges = badges(),
+                groups = groups.toMap(),
+            )
+        }
+    }
+
+    def.ids.forEach { if (it !in discovery) strongConnect(it) }
+
+    frames += GraphAlgoFrame(
+        status = "$componentCount strongly connected components in a single DFS — no second pass and no transpose, " +
+            "which is what separates Tarjan from Kosaraju.",
+        groups = groups.toMap(),
+        badges = badges(),
+    )
+    return frames
+}
+
+// ── Kosaraju ─────────────────────────────────────────────────────────────────
+
+private fun kosarajuFrames(): List<GraphAlgoFrame> {
+    val def = sccGraph
+    val visited = mutableSetOf<String>()
+    val order = mutableListOf<String>()
+    val finishBadges = mutableMapOf<String, String>()
+    val frames = mutableListOf<GraphAlgoFrame>()
+
+    frames += GraphAlgoFrame(
+        status = "Kosaraju uses two passes. First: a DFS over the graph as given, recording the order in which " +
+            "nodes finish.",
+    )
+
+    fun firstPass(node: String) {
+        visited += node
+        neighboursOf(def, node).forEach { if (it !in visited) firstPass(it) }
+        order += node
+        finishBadges[node] = "#${order.size}"
+        frames += GraphAlgoFrame(
+            status = "$node finishes (position ${order.size}). A node finishes only after everything it can reach.",
+            badges = finishBadges.toMap(),
+            nodeMarks = mapOf(node to NodeMark.UPDATED) + visited.filter { it != node }.associateWith { NodeMark.DONE },
+        )
+    }
+    def.ids.forEach { if (it !in visited) firstPass(it) }
+
+    frames += GraphAlgoFrame(
+        status = "Finish order: ${order.joinToString(" ")}. Now reverse every edge — components survive reversal, " +
+            "but the paths between them do not.",
+        badges = finishBadges.toMap(),
+        reversed = true,
+        nodeMarks = def.ids.associateWith { NodeMark.DONE },
+    )
+
+    val groups = mutableMapOf<String, Int>()
+    var componentCount = 0
+    fun secondPass(node: String, component: Int, members: MutableList<String>) {
+        groups[node] = component
+        members += node
+        neighboursOf(def, node, reversed = true).forEach { if (it !in groups) secondPass(it, component, members) }
+    }
+
+    for (node in order.reversed()) {
+        if (node in groups) continue
+        val members = mutableListOf<String>()
+        secondPass(node, componentCount, members)
+        frames += GraphAlgoFrame(
+            status = "Start the reverse DFS at $node (latest unassigned finish) — it reaches exactly " +
+                "{${members.sorted().joinToString(", ")}}, which is one component.",
+            reversed = true,
+            groups = groups.toMap(),
+            nodeMarks = mapOf(node to NodeMark.ACTIVE),
+            badges = finishBadges.toMap(),
+        )
+        componentCount++
+    }
+
+    frames += GraphAlgoFrame(
+        status = "$componentCount components, two linear passes: O(V + E) overall, at the cost of storing the " +
+            "transpose that Tarjan never builds.",
+        groups = groups.toMap(),
+    )
+    return frames
+}
+
+// ── Config ───────────────────────────────────────────────────────────────────
+
+private val shortestPathLegend = listOf(
+    NodeMarkColors.getValue(NodeMark.ACTIVE) to "Relaxing from",
+    NodeMarkColors.getValue(NodeMark.UPDATED) to "Improved",
+    NodeMarkColors.getValue(NodeMark.DONE) to "Final",
+)
+
+private val allPairsLegend = listOf(
+    NodeMarkColors.getValue(NodeMark.ACTIVE) to "Via node",
+    NodeMarkColors.getValue(NodeMark.FRONTIER) to "Row",
+    NodeMarkColors.getValue(NodeMark.UPDATED) to "Improved",
+)
+
+private val mstLegend = listOf(
+    EdgeMarkColors.getValue(EdgeMark.ACTIVE) to "Candidate",
+    EdgeMarkColors.getValue(EdgeMark.ACCEPTED) to "In tree",
+    EdgeMarkColors.getValue(EdgeMark.REJECTED) to "Cycle",
+)
+
+private val sccLegend = listOf(
+    NodeMarkColors.getValue(NodeMark.ACTIVE) to "Current",
+    NodeMarkColors.getValue(NodeMark.FRONTIER) to "On stack",
+    GroupColors[0] to "Component",
+)
+
+private val graphAlgoConfigs = mapOf(
+    "bellman_ford" to GraphAlgoConfig(
+        intro = "Bellman–Ford on a directed graph with negative edges. Badges show the current distance from A; " +
+            "watch a node that already looks settled get corrected later — the reason Dijkstra breaks here.",
+        def = negativeWeightGraph,
+        legend = shortestPathLegend,
+        build = ::bellmanFordFrames,
+    ),
+    "floyd_warshall" to GraphAlgoConfig(
+        intro = "Floyd–Warshall fills in every pair at once. The matrix is dist[row][col]; each round opens one more " +
+            "node as a legal intermediate stop.",
+        def = allPairsGraph,
+        legend = allPairsLegend,
+        build = ::floydWarshallFrames,
+    ),
+    "kruskals_mst" to GraphAlgoConfig(
+        intro = "Kruskal sorts every edge by weight and takes each one unless it closes a cycle — the cycle test is " +
+            "a union-find lookup, shown here as node colouring by component.",
+        def = mstGraph,
+        legend = mstLegend,
+        build = ::kruskalFrames,
+    ),
+    "prims_mst" to GraphAlgoConfig(
+        intro = "Prim on the same graph as Kruskal. It never sorts: it grows one tree, repeatedly taking the " +
+            "cheapest edge that crosses out of it. Same total weight, different order of discovery.",
+        def = mstGraph,
+        legend = mstLegend,
+        build = ::primFrames,
+    ),
+    "tarjans_algorithm" to GraphAlgoConfig(
+        intro = "Tarjan's SCC algorithm. Badges read index/low-link; a component pops off the stack the moment a " +
+            "node's low-link equals its own index.",
+        def = sccGraph,
+        legend = sccLegend,
+        build = ::tarjanFrames,
+    ),
+    "kosarajus_algorithm" to GraphAlgoConfig(
+        intro = "Kosaraju's two-pass SCC algorithm: finish times on the original graph, then DFS the transpose in " +
+            "reverse finish order. Arrows flip when the second pass starts.",
+        def = sccGraph,
+        legend = sccLegend,
+        build = ::kosarajuFrames,
+    ),
+)
+
+private fun graphAlgoConfigFor(topicId: String): GraphAlgoConfig =
+    graphAlgoConfigs[topicId] ?: graphAlgoConfigs.getValue("bellman_ford")
+
+// ── UI ───────────────────────────────────────────────────────────────────────
+
+@Composable
+fun GraphAlgorithmSection(topicId: String) {
+    val config = remember(topicId) { graphAlgoConfigFor(topicId) }
+    val frames = remember(config) { config.build() }
+    val playback = rememberPlaybackState(key = config, stepCount = frames.size, initialSpeedMs = 700f)
+    val frame = frames[playback.index.coerceIn(0, frames.lastIndex)]
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                config.intro,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            GraphAlgoCanvas(def = config.def, frame = frame)
+
+            if (frame.matrix != null) {
+                DistanceMatrix(ids = config.def.ids, frame = frame)
+            }
+
+            Text(
+                frame.status,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 12.dp),
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                config.legend.forEach { (color, label) -> GraphAlgoLegend(color, label) }
+            }
+
+            PlaybackTransport(playback)
+        }
+    }
+}
+
+@Composable
+private fun GraphAlgoLegend(color: Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(modifier = Modifier.size(10.dp).background(color, CircleShape))
+        Text(
+            label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 4.dp),
+        )
+    }
+}
+
+@Composable
+private fun GraphAlgoCanvas(def: GraphDef, frame: GraphAlgoFrame) {
+    val textMeasurer = rememberTextMeasurer()
+    val nodeLabelStyle = TextStyle(color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+    val weightStyle = TextStyle(color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+    val badgeStyle = TextStyle(color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+    val surfaceTint = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+    val nodeStroke = MaterialTheme.colorScheme.surface
+
+    // Anti-parallel pairs (A→B alongside B→A) would draw on top of each other; the second one is
+    // nudged off the centre line so both arrowheads and both weights stay readable.
+    val hasReverse = remember(def) {
+        def.edges.map { e -> def.edges.any { it !== e && it.from == e.to && it.to == e.from } }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 14.dp)
+            .background(surfaceTint, RoundedCornerShape(14.dp))
+            .padding(6.dp),
+    ) {
+        Canvas(modifier = Modifier.fillMaxWidth().height(250.dp)) {
+            val radius = 17.dp.toPx()
+            val padX = 26.dp.toPx()
+            val padY = 26.dp.toPx()
+            val positions = def.nodes.associate { node ->
+                node.id to Offset(
+                    padX + node.x * (size.width - 2 * padX),
+                    padY + node.y * (size.height - 2 * padY),
+                )
+            }
+
+            def.edges.forEachIndexed { index, edge ->
+                val flip = frame.reversed && edge.directed
+                val from = positions.getValue(if (flip) edge.to else edge.from)
+                val to = positions.getValue(if (flip) edge.from else edge.to)
+                val length = hypot(to.x - from.x, to.y - from.y).coerceAtLeast(1f)
+                val unit = Offset((to.x - from.x) / length, (to.y - from.y) / length)
+                val shift = if (hasReverse[index]) 7.dp.toPx() else 0f
+                val offset = Offset(-unit.y * shift, unit.x * shift)
+                val start = Offset(from.x + unit.x * radius, from.y + unit.y * radius) + offset
+                val end = Offset(to.x - unit.x * radius, to.y - unit.y * radius) + offset
+                val mark = frame.edgeMarks[index] ?: EdgeMark.IDLE
+                val color = EdgeMarkColors.getValue(mark)
+                val width = if (mark == EdgeMark.IDLE) 2f else 5f
+
+                drawLine(color = color, start = start, end = end, strokeWidth = width)
+
+                if (edge.directed) {
+                    val head = 9.dp.toPx()
+                    listOf(2.6, -2.6).forEach { spread ->
+                        val angle = kotlin.math.atan2(unit.y, unit.x) + spread
+                        drawLine(
+                            color = color,
+                            start = end,
+                            end = Offset(end.x + head * cos(angle).toFloat(), end.y + head * sin(angle).toFloat()),
+                            strokeWidth = width,
+                        )
+                    }
+                }
+
+                edge.weight?.let { weight ->
+                    val layout = textMeasurer.measure(weight.toString(), weightStyle)
+                    val mid = Offset((start.x + end.x) / 2f, (start.y + end.y) / 2f) + offset
+                    drawText(
+                        layout,
+                        topLeft = Offset(mid.x - layout.size.width / 2f, mid.y - layout.size.height / 2f),
+                    )
+                }
+            }
+
+            def.nodes.forEach { node ->
+                val center = positions.getValue(node.id)
+                val group = frame.groups[node.id]
+                val color = when {
+                    frame.nodeMarks[node.id] != null -> NodeMarkColors.getValue(frame.nodeMarks.getValue(node.id))
+                    group != null -> GroupColors[group % GroupColors.size]
+                    else -> NodeMarkColors.getValue(NodeMark.IDLE)
+                }
+                drawCircle(color = color, radius = radius, center = center)
+                drawCircle(color = nodeStroke, radius = radius, center = center, style = Stroke(width = 2.5f))
+
+                val label = textMeasurer.measure(node.id, nodeLabelStyle)
+                drawText(
+                    label,
+                    topLeft = Offset(center.x - label.size.width / 2f, center.y - label.size.height / 2f),
+                )
+
+                frame.badges[node.id]?.let { badge ->
+                    val layout = textMeasurer.measure(badge, badgeStyle)
+                    drawText(
+                        layout,
+                        topLeft = Offset(center.x - layout.size.width / 2f, center.y + radius + 2.dp.toPx()),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DistanceMatrix(ids: List<String>, frame: GraphAlgoFrame) {
+    val matrix = frame.matrix ?: return
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            MatrixCell("", Modifier.weight(1f))
+            ids.forEach { id ->
+                MatrixCell(
+                    id,
+                    Modifier.weight(1f),
+                    header = true,
+                    tinted = frame.matrixVia == ids.indexOf(id),
+                )
+            }
+        }
+        matrix.forEachIndexed { i, row ->
+            Row(modifier = Modifier.fillMaxWidth()) {
+                MatrixCell(ids[i], Modifier.weight(1f), header = true, tinted = frame.matrixVia == i)
+                row.forEachIndexed { j, value ->
+                    MatrixCell(
+                        dist(value),
+                        Modifier.weight(1f),
+                        focused = frame.matrixFocus == i to j,
+                        tinted = frame.matrixVia == i || frame.matrixVia == j,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MatrixCell(
+    text: String,
+    modifier: Modifier = Modifier,
+    header: Boolean = false,
+    focused: Boolean = false,
+    tinted: Boolean = false,
+) {
+    val background = when {
+        focused -> NodeMarkColors.getValue(NodeMark.UPDATED)
+        header -> MaterialTheme.colorScheme.surfaceVariant
+        tinted -> NodeMarkColors.getValue(NodeMark.ACTIVE).copy(alpha = 0.25f)
+        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+    }
+    Box(
+        modifier = modifier
+            .padding(2.dp)
+            .background(background, RoundedCornerShape(6.dp))
+            .padding(vertical = 6.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = if (header || focused) FontWeight.Bold else FontWeight.Normal,
+            color = if (focused) Color.White else MaterialTheme.colorScheme.onSurface,
+        )
+    }
+}

@@ -46,7 +46,7 @@ internal val bTreeContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.TreeVisualizer,
     applications = listOf(
         ApplicationCard("chip", 0xFF10B981, "Database Indexes", "B+ trees are the default index structure in MySQL, PostgreSQL, and most RDBMSs."),
         ApplicationCard("map", 0xFF3B82F6, "Filesystems", "NTFS, HFS+, and ext4 store directory and file metadata in B-tree variants."),

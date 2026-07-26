@@ -65,7 +65,7 @@ internal val kosarajusAlgorithmContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.GraphAlgorithmPlayer,
     applications = listOf(
         ApplicationCard("share", 0xFF10B981, "Dependency Condensation", "Grouping mutually dependent modules into SCCs exposes the underlying build DAG."),
         ApplicationCard("users", 0xFF3B82F6, "Social & Web Clusters", "Mutually reachable users or pages form SCCs used in community and link analysis."),

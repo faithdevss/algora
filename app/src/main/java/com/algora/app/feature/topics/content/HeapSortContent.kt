@@ -60,7 +60,7 @@ internal val heapSortContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.SortingVisualizer,
     applications = listOf(
         ApplicationCard("check", 0xFF10B981, "Guaranteed Worst Case", "When O(n log n) must hold even on adversarial input, heap sort avoids quicksort's O(n²) risk."),
         ApplicationCard("chip", 0xFF3B82F6, "Memory-Constrained Systems", "Its O(1) extra space suits embedded and kernel code that can't allocate a merge buffer."),

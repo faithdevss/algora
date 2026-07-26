@@ -19,10 +19,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Style
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -32,7 +31,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -43,15 +41,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.algora.app.core.data.TopicRegistry
 import com.algora.app.core.data.settings.SettingsRepository
-import com.algora.app.core.data.settings.ThemeMode
 import com.algora.app.core.data.settings.settingsDataStore
 import com.algora.app.core.nav.AppMode
 import com.algora.app.core.nav.FlashcardsRoute
 import com.algora.app.core.nav.ReviewRoute
 import com.algora.app.core.nav.Screen
+import com.algora.app.core.nav.SettingsRoute
 import com.algora.app.core.ui.components.resolveIcon
+import com.algora.app.core.ui.theme.Gradients
 import com.algora.app.core.ui.theme.SpaceGrotesk
-import kotlinx.coroutines.launch
 
 private data class QuickCard(
     val route: String,
@@ -80,19 +78,16 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val settings = remember { SettingsRepository(context.settingsDataStore) }
-    val scope = rememberCoroutineScope()
-    val themeMode by settings.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
     val streak by settings.streak.collectAsState(initial = 0)
     val bookmarks by settings.bookmarks.collectAsState(initial = emptySet())
     val lastOpened by settings.lastOpened.collectAsState(initial = null)
-    val isDark = themeMode == ThemeMode.DARK
 
     val cards = if (mode == AppMode.DSA) dsaCards else aiCards
     val featured = if (mode == AppMode.DSA) dsaFeatured else aiFeatured
     val topbar = if (mode == AppMode.DSA) {
-        listOf(Color(0xFF4F46E5), Color(0xFF6D28D9))
+        Gradients.TopbarDsa
     } else {
-        listOf(Color(0xFFDB2777), Color(0xFFF97316))
+        Gradients.TopbarAi
     }
 
     Column(
@@ -126,14 +121,12 @@ fun HomeScreen(
                     modifier = Modifier
                         .size(38.dp)
                         .background(Color.White.copy(alpha = 0.16f), RoundedCornerShape(12.dp))
-                        .clickable {
-                            scope.launch { settings.setThemeMode(if (isDark) ThemeMode.LIGHT else ThemeMode.DARK) }
-                        },
+                        .clickable { onNavigate(SettingsRoute.ROUTE) },
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        if (isDark) Icons.Filled.LightMode else Icons.Filled.DarkMode,
-                        contentDescription = "Toggle theme",
+                        Icons.Filled.Settings,
+                        contentDescription = "Settings",
                         tint = Color.White,
                         modifier = Modifier.size(18.dp),
                     )
@@ -175,8 +168,8 @@ fun HomeScreen(
                 .padding(top = 14.dp)
                 .background(
                     Brush.linearGradient(
-                        if (mode == AppMode.DSA) listOf(Color(0xFF7C3AED), Color(0xFF4338CA))
-                        else listOf(Color(0xFF4F46E5), Color(0xFF0EA5E9)),
+                        if (mode == AppMode.DSA) Gradients.FeaturedDsa
+                        else Gradients.FeaturedAi,
                     ),
                     RoundedCornerShape(22.dp),
                 )
@@ -402,17 +395,17 @@ private fun QuickAccessCard(card: QuickCard, modifier: Modifier = Modifier, onCl
 }
 
 private val dsaCards = listOf(
-    QuickCard(Screen.DataStructures.route, "Data Structures", "Build your foundation", "stack", listOf(Color(0xFF34D399), Color(0xFF059669))),
-    QuickCard(Screen.Algorithms.route, "Algorithms", "Master problem solving", "chip", listOf(Color(0xFF60A5FA), Color(0xFF2563EB))),
-    QuickCard(Screen.InterviewPrep.route, "Interview Prep", "Practice for interviews", "help", listOf(Color(0xFFFBBF24), Color(0xFFF97316))),
-    QuickCard(Screen.Analysis.route, "Analysis", "Time & Space efficiency", "trend", listOf(Color(0xFFC084FC), Color(0xFF7C3AED))),
+    QuickCard(Screen.DataStructures.route, "Data Structures", "Build your foundation", "stack", Gradients.Green),
+    QuickCard(Screen.Algorithms.route, "Algorithms", "Master problem solving", "chip", Gradients.Blue),
+    QuickCard(Screen.InterviewPrep.route, "Interview Prep", "Practice for interviews", "help", Gradients.Amber),
+    QuickCard(Screen.Analysis.route, "Analysis", "Time & Space efficiency", "trend", Gradients.Violet),
 )
 
 private val aiCards = listOf(
-    QuickCard(Screen.MachineLearning.route, "Machine Learning", "Learn from data", "robot", listOf(Color(0xFF818CF8), Color(0xFF4F46E5))),
-    QuickCard(Screen.DeepLearning.route, "Deep Learning", "Neural networks", "network", listOf(Color(0xFFF472B6), Color(0xFFDB2777))),
-    QuickCard(Screen.Nlp.route, "NLP", "Language & text", "globe", listOf(Color(0xFF5EEAD4), Color(0xFF0D9488))),
-    QuickCard(Screen.ReinforcementLearning.route, "Reinforcement Learning", "Trial & error", "game", listOf(Color(0xFFFDBA74), Color(0xFFEA580C))),
+    QuickCard(Screen.MachineLearning.route, "Machine Learning", "Learn from data", "robot", Gradients.Indigo),
+    QuickCard(Screen.DeepLearning.route, "Deep Learning", "Neural networks", "network", Gradients.Pink),
+    QuickCard(Screen.Nlp.route, "NLP", "Language & text", "globe", Gradients.Teal),
+    QuickCard(Screen.ReinforcementLearning.route, "Reinforcement Learning", "Trial & error", "game", Gradients.Orange),
 )
 
 private val dsaFeatured = Featured("singly_linked_list", "Singly Linked List", "Chains of Data", "link")
