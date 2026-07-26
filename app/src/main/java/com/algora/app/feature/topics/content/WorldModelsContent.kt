@@ -43,7 +43,7 @@ internal val worldModelsContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.GameSearchPlayer,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "Learning in Imagination", "Trained agents that solved tasks largely inside their own dreamed environment."),
         ApplicationCard("robot", 0xFF60A5FA, "Sample-Efficient RL", "Reduces costly real interaction by planning in a learned model."),

@@ -1,6 +1,6 @@
 # Phase 3 — Interactive Simulation Library
 
-Status: DONE — data-structure sims + gate solver + ClassifierPlayground + PlaybackTransport + recursion-tree (factorial/fibonacci/hanoi/n-queens) + DP grid (8 problems) + sorting visualizer (8 algorithms) + search visualizer (5 algorithms) + tree visualizer (7) + pathfinding grid (3) + hashing visualizer (3) + RL grid-world (4) + bandit explorer (4) + graph algorithm player (6) + array walk player (11) + point cloud player (7) + token strip player (9) + neural net player (9) + RL training player (9) + policy gradient player (12); slider-explorer subsumed. 120 of 176 authored topics now ship a lab.
+Status: DONE — data-structure sims + gate solver + ClassifierPlayground + PlaybackTransport + recursion-tree (factorial/fibonacci/hanoi/n-queens) + DP grid (8 problems) + sorting visualizer (8 algorithms) + search visualizer (5 algorithms) + tree visualizer (7) + pathfinding grid (3) + hashing visualizer (3) + RL grid-world (4) + bandit explorer (4) + graph algorithm player (6) + array walk player (11) + point cloud player (7) + token strip player (9) + neural net player (9) + RL training player (9) + policy gradient player (12) + game search player (9); slider-explorer subsumed. 129 of 176 authored topics now ship a lab.
 Depends on: Phase 2
 
 ## Goal
@@ -472,12 +472,45 @@ Three narrations were rewritten after the experiments disagreed with them:
 - **Baseline unbiasedness.** "The mean is unchanged" became a statement about the expected gradient
   plus the measured 0.03 difference, explicitly labelled sampling noise over 300 rollouts.
 
-**Remaining (audited 2026-07-27):** **56 of 176** topics resolve to `SimulationComingSoonCard`;
-120 ship a lab.
+## Sub-phase Q — game search player (`GameSearchSection.kt`)
+
+`SimulationType.GameSearchPlayer`, wired to the 9 search and model-based topics. The search labs run
+a real tic-tac-toe engine — minimax and alpha-beta count their own nodes, MCTS actually plays
+rollouts — and the model-based labs learn a tabular model of the six-state chain from a limited
+number of real transitions, so its errors are real errors.
+
+| Topic | Measured |
+|---|---|
+| `minimax` | 186 nodes → 88 with alpha-beta → 28 with tactical ordering (and 120 with a *bad* ordering) |
+| `mcts` | 30 / 120 / 600 simulations put 47% / 68% / 88% of the search on the move minimax proves best |
+| `alphago` | plain 70% → +value net 72% → +policy prior 82% of the budget on the best move |
+| `alphazero` | a 22% prior comes back out of search as a 91% visit distribution — search as policy improvement |
+| `muzero` | corrupting 0/20/40/60/80% of evaluations → 100/100/97/90/80% correct move |
+| `self_play` | fictitious play on RPS: latest strategy stays maximally exploitable, the average converges to Nash |
+| `world_models` | 8 → 120 real steps take model coverage 50% → 100%; a sparse model is 3 states wrong after 5 imagined steps |
+| `dreamer` | 20 imagined updates per real step: 11 → 2 episodes to converge |
+| `mbpo` | compounding error by rollout length, and what more planning volume actually buys |
+
+Three claims were corrected against the measurements:
+
+- **Move ordering.** The draft assumed centre-first ordering would help. It makes pruning *worse*
+  here — 120 nodes against 88 unordered — while ordering by immediate wins and blocks drops it to
+  28. Both numbers are now in the lab, because "a wrong guess delays the cutoff instead of causing
+  it" is the more useful lesson.
+- **AlphaGo's value network.** On a 3×3 board it barely helps (70% → 72%), because random playouts
+  are already a decent estimate at that size. The lab says so and points at where the gain actually
+  comes from at full board size.
+- **MuZero's model error.** At the drafted 120-simulation budget, search picked the right move 100%
+  of the time at *every* corruption level — the degradation claim was unsupported. Corrupting
+  terminal evaluations too and dropping to 30 simulations produces a real curve, and the frame now
+  also states the honest surprise: search tolerates a lot of model noise before it breaks.
+
+**Remaining (audited 2026-07-27):** **47 of 176** topics resolve to `SimulationComingSoonCard`;
+129 ship a lab.
 
 | Category | pending | wired |
 |---|---|---|
-| Reinforcement Learning | 30 | 29 |
+| Reinforcement Learning | 21 | 38 |
 | Algorithms | 14 | 42 |
 | Data Structures | 12 | 15 |
 | Deep Learning | 0 | 11 |
@@ -485,12 +518,12 @@ Three narrations were rewritten after the experiments disagreed with them:
 | Machine Learning | 0 | 10 |
 | Interview Prep | 0 | 5 |
 
-RL's remaining 30: model-based and search (`mcts`, `alphago`, `alphazero`, `muzero`, `minimax`,
-`self_play`, `dreamer`, `mbpo`, `world_models`), multi-agent (`maddpg`, `qmix`, `vdn`), offline and
-imitation (`cql`, `iql`, `offline_rl`, `decision_transformer`, `gail`, `irl`, `imitation_learning`,
-`rlhf`), exploration and meta (`icm`, `rnd`, `intrinsic_motivation`, `meta_rl`), and the six
-environment topics (`cartpole`, `mountain_car`, `atari`, `mujoco`, `dota2`, `starcraft`). Search is
-the natural next batch — minimax, MCTS and the AlphaZero line all run on the same small game tree.
+RL's remaining 21: multi-agent (`maddpg`, `qmix`, `vdn`), offline and imitation (`cql`, `iql`,
+`offline_rl`, `decision_transformer`, `gail`, `irl`, `imitation_learning`, `rlhf`), exploration and
+meta (`icm`, `rnd`, `intrinsic_motivation`, `meta_rl`), and the six environment topics (`cartpole`,
+`mountain_car`, `atari`, `mujoco`, `dota2`, `starcraft`). Offline/imitation is the natural next
+batch: distribution shift, behaviour cloning's compounding error and a conservative penalty are all
+measurable on the chain the other RL players already use.
 
 RL's remaining 42 split into policy-gradient/actor-critic (≈12), model-based and search (≈9),
 multi-agent + offline + imitation (≈12), exploration and meta (≈5), and the environment topics
@@ -503,8 +536,8 @@ RL is still the bulk (51) — the grid-world/bandit widgets cover tabular method
 loop that does not exist yet. Cheapest remaining wins reuse existing renderers: `subset_sum` → DP
 grid; `doubly_linked_list` → LinkedListVisualizer; `priority_queue_adt` → TreeVisualizer heap;
 `quickselect` / `median_of_medians` / `mos_algorithm` / `reservoir_sampling` → array walk player.
-RL's 30 are still the bulk of what is left: grid-world, bandit, the DQN-family player and the
-policy-gradient player cover tabular methods, value-based deep RL and continuous control, leaving
-search, model-based, multi-agent, offline/imitation and the environment topics. The 14 Algorithms and 12 Data
+RL's 21 are still the bulk of what is left: grid-world, bandit, DQN-family, policy-gradient and
+game-search players now cover tabular methods, value-based deep RL, continuous control, search and
+model-based, leaving multi-agent, offline/imitation, exploration and the environment topics. The 14 Algorithms and 12 Data
 Structures stragglers are mostly one-off structures (`skip_list`, `suffix_tree`, `kd_tree`,
 `fenwick_tree`) that each need their own renderer.

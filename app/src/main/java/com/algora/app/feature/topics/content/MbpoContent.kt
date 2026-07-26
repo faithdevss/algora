@@ -46,7 +46,7 @@ internal val mbpoContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.GameSearchPlayer,
     applications = listOf(
         ApplicationCard("robot", 0xFF818CF8, "Sample-Efficient Control", "Reaches strong continuous-control performance in far fewer real steps."),
         ApplicationCard("chart", 0xFF60A5FA, "Data-Limited RL", "Valuable where each real interaction is expensive or slow."),

@@ -45,7 +45,7 @@ internal val selfPlayContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.GameSearchPlayer,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "AlphaZero & OpenAI Five", "Superhuman Go, chess, and Dota 2 emerged largely from self-play."),
         ApplicationCard("users", 0xFF60A5FA, "Competitive MARL", "Trains robust strategies in adversarial multi-agent games."),

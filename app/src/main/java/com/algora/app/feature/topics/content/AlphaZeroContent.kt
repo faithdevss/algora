@@ -43,7 +43,7 @@ internal val alphaZeroContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.GameSearchPlayer,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "Multi-Game Mastery", "One algorithm reached superhuman Go, chess, and shogi from scratch."),
         ApplicationCard("bulb", 0xFF60A5FA, "Tabula Rasa Learning", "Proved strong play needs no human data — only self-play."),

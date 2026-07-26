@@ -43,7 +43,7 @@ internal val muZeroContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.GameSearchPlayer,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "Games + Atari", "Mastered Go, chess, shogi, and Atari with one algorithm, no rules given."),
         ApplicationCard("chip", 0xFF60A5FA, "Real-World Control", "Applied to video compression and other systems where dynamics are unknown."),

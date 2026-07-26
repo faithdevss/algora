@@ -56,7 +56,7 @@ internal val minimaxContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.GameSearchPlayer,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "Classic Game AI", "Chess, checkers, and tic-tac-toe engines search with minimax + alpha-beta."),
         ApplicationCard("target", 0xFF60A5FA, "Adversarial Planning", "Any two-party zero-sum decision with an opposing optimizer."),

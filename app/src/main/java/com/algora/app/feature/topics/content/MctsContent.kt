@@ -46,7 +46,7 @@ internal val mctsContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.GameSearchPlayer,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "Board Games", "The planning core of Go, chess, and general game-playing engines."),
         ApplicationCard("robot", 0xFF60A5FA, "AlphaGo/AlphaZero", "MCTS guided by neural networks powered superhuman game play."),

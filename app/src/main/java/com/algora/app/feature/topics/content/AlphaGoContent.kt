@@ -44,7 +44,7 @@ internal val alphaGoContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.GameSearchPlayer,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "Superhuman Go", "Defeated Lee Sedol in 2016, a landmark AI milestone."),
         ApplicationCard("bulb", 0xFF60A5FA, "Neural-Guided Search", "Showed how deep nets can tame enormous search spaces."),

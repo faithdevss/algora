@@ -51,6 +51,7 @@ private fun simLabel(type: SimulationType): String = when (type) {
     SimulationType.NeuralNetPlayer -> "Network · training player"
     SimulationType.RlTrainingPlayer -> "RL training · measured runs"
     SimulationType.PolicyGradientPlayer -> "Policy gradient · variance"
+    SimulationType.GameSearchPlayer -> "Search · planning player"
     SimulationType.RegressionExplorer -> "Regression explorer"
     SimulationType.PerceptronVisualizer -> "Perceptron playground"
     SimulationType.ClassifierPlayground -> "Classifier playground"

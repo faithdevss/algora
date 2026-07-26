@@ -44,7 +44,7 @@ internal val dreamerContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.GameSearchPlayer,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "Broad Benchmarks", "Dreamer V3 solved Atari, control, and even Minecraft with one configuration."),
         ApplicationCard("robot", 0xFF60A5FA, "Sample-Efficient Control", "Learns from limited real interaction by training in imagination."),
