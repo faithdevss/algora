@@ -43,7 +43,7 @@ internal val targetNetworksContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.RlTrainingPlayer,
     applications = listOf(
         ApplicationCard("chip", 0xFF818CF8, "Stable Deep RL", "Target networks are standard in DQN, DDPG, TD3, and SAC."),
         ApplicationCard("bulb", 0xFF60A5FA, "Divergence Prevention", "They tame the 'deadly triad' of bootstrapping, function approximation, and off-policy learning."),

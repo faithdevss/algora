@@ -44,7 +44,7 @@ internal val noisyNetsContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.RlTrainingPlayer,
     applications = listOf(
         ApplicationCard("bulb", 0xFF818CF8, "Learned Exploration", "Removes the need to hand-design ε-greedy schedules."),
         ApplicationCard("chip", 0xFF60A5FA, "Rainbow Component", "Supplies the exploration mechanism in Rainbow DQN."),

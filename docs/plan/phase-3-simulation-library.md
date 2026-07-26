@@ -1,6 +1,6 @@
 # Phase 3 — Interactive Simulation Library
 
-Status: DONE — data-structure sims + gate solver + ClassifierPlayground + PlaybackTransport + recursion-tree (factorial/fibonacci/hanoi/n-queens) + DP grid (8 problems) + sorting visualizer (8 algorithms) + search visualizer (5 algorithms) + tree visualizer (7) + pathfinding grid (3) + hashing visualizer (3) + RL grid-world (4) + bandit explorer (4) + graph algorithm player (6) + array walk player (11) + point cloud player (7) + token strip player (9) + neural net player (9); slider-explorer subsumed. 99 of 176 authored topics now ship a lab.
+Status: DONE — data-structure sims + gate solver + ClassifierPlayground + PlaybackTransport + recursion-tree (factorial/fibonacci/hanoi/n-queens) + DP grid (8 problems) + sorting visualizer (8 algorithms) + search visualizer (5 algorithms) + tree visualizer (7) + pathfinding grid (3) + hashing visualizer (3) + RL grid-world (4) + bandit explorer (4) + graph algorithm player (6) + array walk player (11) + point cloud player (7) + token strip player (9) + neural net player (9) + RL training player (9); slider-explorer subsumed. 108 of 176 authored topics now ship a lab.
 Depends on: Phase 2
 
 ## Goal
@@ -400,12 +400,48 @@ limit; momentum 0.012, because accumulation multiplies the effective step by 1/(
 Adam does not, and Adam's advantage lies in noisy, badly scaled, or untuned settings this problem
 does not have.
 
-**Remaining (audited 2026-07-26):** **77 of 176** topics resolve to `SimulationComingSoonCard`;
-99 ship a lab. Only Reinforcement Learning, Algorithms and Data Structures have gaps left:
+## Sub-phase O — RL training player (`RlTrainingSection.kt`)
+
+`SimulationType.RlTrainingPlayer`, wired to the 9 DQN-family topics. Every curve is produced by an
+experiment run when the frames are built — tabular Q-learning on a six-state chain (sparse reward at
+the far end), the classic overestimation MDP averaged over 40 runs, and replay buffers sampled
+uniformly or by TD error.
+
+| Topic | Measured result |
+|---|---|
+| `dqn` | online 12 episodes to converge → 4 with replay |
+| `experience_replay` | same interactions, 4× the updates: 12 → 3 episodes |
+| `target_networks` | see below — the honest result is that it *costs* speed here |
+| `double_dqn` | peak overestimate 0.095 → 0.002; worthless action taken 45% → 7% of episodes |
+| `dueling_dqn` | V spans 0.81–1.00 while |A| tops out at 0.049, and A must be zero-mean to be identifiable |
+| `prioritized_replay` | uniform 5 → prioritized 3 episodes |
+| `noisy_nets` | see below |
+| `c51` | two actions, near-equal means, completely different return distributions |
+| `rainbow_dqn` | components measured one at a time: 11 → 4 → 3 episodes |
+
+Two labs were rewritten after the experiments contradicted the draft narration:
+
+- **Target networks.** The first version claimed a moving target oscillates and a frozen one
+  converges. It does not: the scalar bootstrap contracts, and every small linear variant tried
+  (including an aliased two-state one) converges to the TD fixed point. What the chain actually
+  shows is that a target network is *pure cost* on a tabular problem — 12 episodes with no target
+  network, 18 at lag 20, 31 at lag 50. So the lab now says that, then demonstrates the real reason
+  DQN needs one: give the chain a single shared weight and one update at s4 moves the predicted
+  value of all six states, including its own target. It closes by naming the target network what it
+  is — an empirical stabiliser for nonlinear approximation, not a convergence guarantee.
+- **Noisy nets.** The draft claimed per-episode parameter noise explores deeper. Measured, it does
+  not: ε-greedy reaches the goal in 60/60 episodes, parameter noise in 51/60 — but when it does
+  reach, it takes 5.0 steps against ε-greedy's 6.9, and its start-state visit count balloons from 91
+  to 411. The lab now tells that story (commitment is a bet: straighter runs, and whole episodes
+  wasted on a bad draw) and puts the real argument where it belongs — the noise scale is learned,
+  so there is no ε schedule to tune.
+
+**Remaining (audited 2026-07-27):** **68 of 176** topics resolve to `SimulationComingSoonCard`;
+108 ship a lab.
 
 | Category | pending | wired |
 |---|---|---|
-| Reinforcement Learning | 51 | 8 |
+| Reinforcement Learning | 42 | 17 |
 | Algorithms | 14 | 42 |
 | Data Structures | 12 | 15 |
 | Deep Learning | 0 | 11 |
@@ -413,13 +449,19 @@ does not have.
 | Machine Learning | 0 | 10 |
 | Interview Prep | 0 | 5 |
 
+RL's remaining 42 split into policy-gradient/actor-critic (≈12), model-based and search (≈9),
+multi-agent + offline + imitation (≈12), exploration and meta (≈5), and the environment topics
+(cartpole, mountain_car, atari, mujoco, dota2, starcraft). The policy-gradient family is the natural
+next batch: REINFORCE's variance, a baseline, GAE, and PPO's clipped ratio are all measurable on the
+same kind of toy MDP this player already runs.
+
 RL is still the bulk (51) — the grid-world/bandit widgets cover tabular methods, but deep-RL topics
 (DQN family, policy gradients, model-based, multi-agent) each want a training-curve or environment
 loop that does not exist yet. Cheapest remaining wins reuse existing renderers: `subset_sum` → DP
 grid; `doubly_linked_list` → LinkedListVisualizer; `priority_queue_adt` → TreeVisualizer heap;
 `quickselect` / `median_of_medians` / `mos_algorithm` / `reservoir_sampling` → array walk player.
-RL's 51 are now the bulk of what is left: the grid-world and bandit widgets cover the tabular
-methods, but the deep-RL families (DQN variants, policy gradients, actor-critic, model-based,
-multi-agent, offline) want a training-curve-plus-environment widget. The 14 Algorithms and 12 Data
+RL's 42 are still the bulk of what is left: grid-world, bandit and the DQN-family player cover the
+tabular methods and value-based deep RL, but policy gradients, model-based, multi-agent and offline
+each want their own measured experiments. The 14 Algorithms and 12 Data
 Structures stragglers are mostly one-off structures (`skip_list`, `suffix_tree`, `kd_tree`,
 `fenwick_tree`) that each need their own renderer.

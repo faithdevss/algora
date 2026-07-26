@@ -44,7 +44,7 @@ internal val dqnContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.RlTrainingPlayer,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "Atari from Pixels", "DQN reached human-level play on many Atari 2600 games from raw frames."),
         ApplicationCard("robot", 0xFF60A5FA, "Discrete Control", "Any discrete-action task with high-dimensional observations."),

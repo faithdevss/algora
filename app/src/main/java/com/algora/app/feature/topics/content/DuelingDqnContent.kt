@@ -43,7 +43,7 @@ internal val duelingDqnContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.RlTrainingPlayer,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "Atari Gains", "Improved performance especially where many actions have similar value."),
         ApplicationCard("chip", 0xFF60A5FA, "Rainbow Component", "One of the architectural improvements folded into Rainbow DQN."),

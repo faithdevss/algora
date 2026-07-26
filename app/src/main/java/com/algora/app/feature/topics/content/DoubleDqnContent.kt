@@ -43,7 +43,7 @@ internal val doubleDqnContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.RlTrainingPlayer,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "Atari Improvements", "Double DQN raised scores over vanilla DQN across the Atari suite."),
         ApplicationCard("chip", 0xFF60A5FA, "Rainbow Component", "One of the six improvements combined in Rainbow DQN."),

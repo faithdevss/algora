@@ -46,7 +46,7 @@ internal val rainbowDqnContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.RlTrainingPlayer,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "Atari Benchmark", "Rainbow set a strong value-based standard on Atari-57."),
         ApplicationCard("chip", 0xFF60A5FA, "Strong Baseline", "A common reference agent for evaluating new value-based methods."),

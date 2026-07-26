@@ -43,7 +43,7 @@ internal val c51Content = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.RlTrainingPlayer,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "Atari SOTA", "C51 beat prior value-based methods across the Atari benchmark."),
         ApplicationCard("chip", 0xFF60A5FA, "Rainbow Component", "The distributional ingredient in Rainbow DQN."),

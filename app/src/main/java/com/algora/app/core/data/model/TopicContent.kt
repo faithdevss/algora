@@ -70,6 +70,7 @@ sealed interface SimulationType {
     data object PointCloudPlayer : SimulationType
     data object TokenStripPlayer : SimulationType
     data object NeuralNetPlayer : SimulationType
+    data object RlTrainingPlayer : SimulationType
     data object RegressionExplorer : SimulationType
     data object PerceptronVisualizer : SimulationType
     data object ClassifierPlayground : SimulationType

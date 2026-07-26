@@ -42,7 +42,7 @@ internal val prioritizedReplayContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.RlTrainingPlayer,
     applications = listOf(
         ApplicationCard("chart", 0xFF818CF8, "Faster Learning", "Focusing on informative transitions cuts the samples needed to learn."),
         ApplicationCard("chip", 0xFF60A5FA, "Rainbow Component", "One of the six ingredients combined in Rainbow DQN."),

@@ -49,7 +49,7 @@ internal val experienceReplayContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.RlTrainingPlayer,
     applications = listOf(
         ApplicationCard("chip", 0xFF818CF8, "Off-Policy Deep RL", "DQN, DDPG, TD3, and SAC all rely on a replay buffer to train stably."),
         ApplicationCard("chart", 0xFF60A5FA, "Sample Efficiency", "Reusing experience matters when environment interaction is expensive."),
