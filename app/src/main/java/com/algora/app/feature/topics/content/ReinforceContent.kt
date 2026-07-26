@@ -43,7 +43,7 @@ internal val reinforceContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.PolicyGradientPlayer,
     applications = listOf(
         ApplicationCard("robot", 0xFF818CF8, "Continuous & Discrete Control", "Directly optimizes any differentiable policy, discrete or continuous."),
         ApplicationCard("book", 0xFF60A5FA, "Policy-Gradient Foundation", "Every actor-critic and PPO method builds on its core theorem."),

@@ -42,7 +42,7 @@ internal val ddpgContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.PolicyGradientPlayer,
     applications = listOf(
         ApplicationCard("robot", 0xFF818CF8, "Robotic Control", "Continuous joint control for locomotion and manipulation."),
         ApplicationCard("game", 0xFF60A5FA, "Continuous Environments", "MuJoCo and other continuous-action benchmarks."),

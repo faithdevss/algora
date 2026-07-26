@@ -1,6 +1,6 @@
 # Phase 3 — Interactive Simulation Library
 
-Status: DONE — data-structure sims + gate solver + ClassifierPlayground + PlaybackTransport + recursion-tree (factorial/fibonacci/hanoi/n-queens) + DP grid (8 problems) + sorting visualizer (8 algorithms) + search visualizer (5 algorithms) + tree visualizer (7) + pathfinding grid (3) + hashing visualizer (3) + RL grid-world (4) + bandit explorer (4) + graph algorithm player (6) + array walk player (11) + point cloud player (7) + token strip player (9) + neural net player (9) + RL training player (9); slider-explorer subsumed. 108 of 176 authored topics now ship a lab.
+Status: DONE — data-structure sims + gate solver + ClassifierPlayground + PlaybackTransport + recursion-tree (factorial/fibonacci/hanoi/n-queens) + DP grid (8 problems) + sorting visualizer (8 algorithms) + search visualizer (5 algorithms) + tree visualizer (7) + pathfinding grid (3) + hashing visualizer (3) + RL grid-world (4) + bandit explorer (4) + graph algorithm player (6) + array walk player (11) + point cloud player (7) + token strip player (9) + neural net player (9) + RL training player (9) + policy gradient player (12); slider-explorer subsumed. 120 of 176 authored topics now ship a lab.
 Depends on: Phase 2
 
 ## Goal
@@ -436,18 +436,61 @@ Two labs were rewritten after the experiments contradicted the draft narration:
   wasted on a bad draw) and puts the real argument where it belongs — the noise scale is learned,
   so there is no ε schedule to tune.
 
-**Remaining (audited 2026-07-27):** **68 of 176** topics resolve to `SimulationComingSoonCard`;
-108 ship a lab.
+## Sub-phase P — policy gradient player (`PolicyGradientSection.kt`)
+
+`SimulationType.PolicyGradientPlayer`, wired to the 12 policy-gradient and continuous-control
+topics. The recurring measurement is the standard deviation of **one** gradient component across 300
+independent rollouts of an unchanged policy — the quantity this entire family exists to shrink.
+Continuous control runs on a 1-D action with a known reward curve, so the true optimum is available
+to compare against.
+
+| Topic | Measured |
+|---|---|
+| `reinforce` | sd 0.303 around a mean of 0.214 — the noise is 1.4× the signal |
+| `actor_critic` | return 0.303 → baseline 0.249 → TD critic 0.120 |
+| `a2c` | 1 / 8 / 16 actors → sd 0.298 / 0.112 / 0.080, against √8's predicted 0.105 |
+| `a3c` | same reduction as A2C (it comes from averaging, not asynchrony) plus the staleness cost |
+| `gae` | λ = 0 · 0.5 · 0.9 · 0.95 · 1 → sd 0.12 / 0.09 / 0.15 / 0.19 / 0.25 |
+| `trpo` | lr 0.4 → max KL 0.03; lr 20 → max KL 5.45 and the return collapses to −0.26 |
+| `ppo` | clipping holds max KL to 0.004 at lr 20 and still finishes at 0.63 |
+| `dpg` | ∂Q/∂a climbs from a = −0.80 to the optimum with no action sampling at all |
+| `ddpg` | the actor selects for critic noise: +0.16 bias at the chosen action |
+| `td3` | min of twin critics cuts that bias to ≈0, deliberately erring low |
+| `sac` | optimal σ per temperature solved exactly for a Gaussian policy |
+| `max_entropy_rl` | Boltzmann policy at several α, and the reward each one gives up |
+
+Three narrations were rewritten after the experiments disagreed with them:
+
+- **GAE.** The draft said variance rises monotonically with λ. It does not here: λ = 0.5 has the
+  *lowest* spread, below λ = 0. The textbook picture assumes an accurate critic, and this one is a
+  Monte-Carlo estimate whose own error goes straight into the gradient at λ = 0. The lab now shows
+  the measured curve and explains the discrepancy instead of hiding it.
+- **TRPO / PPO.** With noise-free advantages, an over-large step did not hurt at all on this chain —
+  it converged *faster* than the safe one, which would have made the whole trust-region argument a
+  fiction. Advantage estimates are now noisy (as the earlier labs measured them to be), and at lr 20
+  the policy genuinely collapses to −0.26 while clipping keeps it at 0.63.
+- **Baseline unbiasedness.** "The mean is unchanged" became a statement about the expected gradient
+  plus the measured 0.03 difference, explicitly labelled sampling noise over 300 rollouts.
+
+**Remaining (audited 2026-07-27):** **56 of 176** topics resolve to `SimulationComingSoonCard`;
+120 ship a lab.
 
 | Category | pending | wired |
 |---|---|---|
-| Reinforcement Learning | 42 | 17 |
+| Reinforcement Learning | 30 | 29 |
 | Algorithms | 14 | 42 |
 | Data Structures | 12 | 15 |
 | Deep Learning | 0 | 11 |
 | NLP | 0 | 8 |
 | Machine Learning | 0 | 10 |
 | Interview Prep | 0 | 5 |
+
+RL's remaining 30: model-based and search (`mcts`, `alphago`, `alphazero`, `muzero`, `minimax`,
+`self_play`, `dreamer`, `mbpo`, `world_models`), multi-agent (`maddpg`, `qmix`, `vdn`), offline and
+imitation (`cql`, `iql`, `offline_rl`, `decision_transformer`, `gail`, `irl`, `imitation_learning`,
+`rlhf`), exploration and meta (`icm`, `rnd`, `intrinsic_motivation`, `meta_rl`), and the six
+environment topics (`cartpole`, `mountain_car`, `atari`, `mujoco`, `dota2`, `starcraft`). Search is
+the natural next batch — minimax, MCTS and the AlphaZero line all run on the same small game tree.
 
 RL's remaining 42 split into policy-gradient/actor-critic (≈12), model-based and search (≈9),
 multi-agent + offline + imitation (≈12), exploration and meta (≈5), and the environment topics
@@ -460,8 +503,8 @@ RL is still the bulk (51) — the grid-world/bandit widgets cover tabular method
 loop that does not exist yet. Cheapest remaining wins reuse existing renderers: `subset_sum` → DP
 grid; `doubly_linked_list` → LinkedListVisualizer; `priority_queue_adt` → TreeVisualizer heap;
 `quickselect` / `median_of_medians` / `mos_algorithm` / `reservoir_sampling` → array walk player.
-RL's 42 are still the bulk of what is left: grid-world, bandit and the DQN-family player cover the
-tabular methods and value-based deep RL, but policy gradients, model-based, multi-agent and offline
-each want their own measured experiments. The 14 Algorithms and 12 Data
+RL's 30 are still the bulk of what is left: grid-world, bandit, the DQN-family player and the
+policy-gradient player cover tabular methods, value-based deep RL and continuous control, leaving
+search, model-based, multi-agent, offline/imitation and the environment topics. The 14 Algorithms and 12 Data
 Structures stragglers are mostly one-off structures (`skip_list`, `suffix_tree`, `kd_tree`,
 `fenwick_tree`) that each need their own renderer.

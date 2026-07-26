@@ -44,7 +44,7 @@ internal val trpoContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.PolicyGradientPlayer,
     applications = listOf(
         ApplicationCard("robot", 0xFF818CF8, "Continuous Control", "TRPO delivered stable locomotion policies on MuJoCo benchmarks."),
         ApplicationCard("bulb", 0xFF60A5FA, "Monotonic Improvement", "Its theory guarantees updates don't collapse the policy."),

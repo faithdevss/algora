@@ -43,7 +43,7 @@ internal val a2cContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.PolicyGradientPlayer,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "Atari & Control", "A solid on-policy baseline across discrete and continuous benchmarks."),
         ApplicationCard("chip", 0xFF60A5FA, "GPU-Efficient RL", "Synchronous batching maps cleanly onto GPU training."),

@@ -45,7 +45,7 @@ internal val gaeContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.PolicyGradientPlayer,
     applications = listOf(
         ApplicationCard("robot", 0xFF818CF8, "PPO / TRPO", "GAE is the default advantage estimator in these leading policy-gradient methods."),
         ApplicationCard("bulb", 0xFF60A5FA, "Bias–Variance Control", "One λ dial replaces choosing a fixed n-step horizon."),

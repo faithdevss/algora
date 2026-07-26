@@ -42,7 +42,7 @@ internal val sacContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.PolicyGradientPlayer,
     applications = listOf(
         ApplicationCard("robot", 0xFF818CF8, "Real-World Robotics", "Its sample efficiency and stability suit learning on physical robots."),
         ApplicationCard("game", 0xFF60A5FA, "Continuous Benchmarks", "State-of-the-art on MuJoCo continuous-control suites."),

@@ -42,7 +42,7 @@ internal val dpgContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.PolicyGradientPlayer,
     applications = listOf(
         ApplicationCard("robot", 0xFF818CF8, "Continuous Control", "Enables policy gradients for robot joints and continuous actuators."),
         ApplicationCard("chip", 0xFF60A5FA, "Basis for DDPG", "DDPG is DPG made deep, with replay and target networks."),

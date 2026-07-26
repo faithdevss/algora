@@ -43,7 +43,7 @@ internal val actorCriticContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.PolicyGradientPlayer,
     applications = listOf(
         ApplicationCard("robot", 0xFF818CF8, "Continuous Control", "The actor-critic template underlies DDPG, TD3, SAC, and PPO."),
         ApplicationCard("game", 0xFF60A5FA, "Game Agents", "A2C/A3C and PPO agents master complex games with this structure."),

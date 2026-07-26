@@ -44,7 +44,7 @@ internal val a3cContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.PolicyGradientPlayer,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "Atari (CPU era)", "A3C reached strong Atari results using CPU workers, no GPU or replay."),
         ApplicationCard("chip", 0xFF60A5FA, "Distributed RL", "An early template for scaling RL across many parallel actors."),

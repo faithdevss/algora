@@ -42,7 +42,7 @@ internal val maxEntropyRlContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.PolicyGradientPlayer,
     applications = listOf(
         ApplicationCard("robot", 0xFF818CF8, "Robust Policies", "Entropy keeps behaviors flexible and resilient to perturbations."),
         ApplicationCard("bulb", 0xFF60A5FA, "Better Exploration", "The framework that motivates SAC and soft Q-learning."),

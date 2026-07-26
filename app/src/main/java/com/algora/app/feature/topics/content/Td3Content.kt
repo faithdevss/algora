@@ -42,7 +42,7 @@ internal val td3Content = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.PolicyGradientPlayer,
     applications = listOf(
         ApplicationCard("robot", 0xFF818CF8, "Robust Continuous Control", "A dependable default for MuJoCo-style locomotion tasks."),
         ApplicationCard("chip", 0xFF60A5FA, "DDPG Replacement", "Preferred over DDPG wherever its instability bit."),

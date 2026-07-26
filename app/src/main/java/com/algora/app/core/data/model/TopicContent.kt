@@ -71,6 +71,7 @@ sealed interface SimulationType {
     data object TokenStripPlayer : SimulationType
     data object NeuralNetPlayer : SimulationType
     data object RlTrainingPlayer : SimulationType
+    data object PolicyGradientPlayer : SimulationType
     data object RegressionExplorer : SimulationType
     data object PerceptronVisualizer : SimulationType
     data object ClassifierPlayground : SimulationType

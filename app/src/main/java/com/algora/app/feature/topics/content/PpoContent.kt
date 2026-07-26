@@ -42,7 +42,7 @@ internal val ppoContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.PolicyGradientPlayer,
     applications = listOf(
         ApplicationCard("robot", 0xFF818CF8, "Robotics & Control", "The workhorse for locomotion, manipulation, and continuous control."),
         ApplicationCard("book", 0xFF60A5FA, "RLHF for LLMs", "PPO is the classic optimizer that aligns language models to human feedback."),
