@@ -45,7 +45,7 @@ internal val lstmGruContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.NeuralNetPlayer,
     applications = listOf(
         ApplicationCard("book", 0xFF818CF8, "Language & Translation", "Powered machine translation and text generation before Transformers."),
         ApplicationCard("chart", 0xFF60A5FA, "Long Time Series", "Modeling dependencies spanning many steps in forecasting and monitoring."),

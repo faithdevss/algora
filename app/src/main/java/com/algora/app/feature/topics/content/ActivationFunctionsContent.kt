@@ -44,7 +44,7 @@ internal val activationFunctionsContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.NeuralNetPlayer,
     applications = listOf(
         ApplicationCard("robot", 0xFF818CF8, "Hidden Layers", "ReLU and its variants are the workhorse non-linearities in nearly every deep net."),
         ApplicationCard("chart", 0xFF60A5FA, "Output Heads", "Softmax for multi-class, sigmoid for multi-label or binary outputs."),

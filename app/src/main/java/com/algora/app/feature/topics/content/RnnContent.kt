@@ -43,7 +43,7 @@ internal val rnnContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.NeuralNetPlayer,
     applications = listOf(
         ApplicationCard("book", 0xFF818CF8, "Sequence Modeling", "Language modeling, handwriting, and speech before Transformers took over."),
         ApplicationCard("chart", 0xFF60A5FA, "Time Series", "Forecasting sensor, financial, and demand data where order matters."),

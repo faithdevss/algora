@@ -1,6 +1,6 @@
 # Phase 3 — Interactive Simulation Library
 
-Status: DONE — data-structure sims + gate solver + ClassifierPlayground + PlaybackTransport + recursion-tree (factorial/fibonacci/hanoi/n-queens) + DP grid (8 problems) + sorting visualizer (8 algorithms) + search visualizer (5 algorithms) + tree visualizer (7) + pathfinding grid (3) + hashing visualizer (3) + RL grid-world (4) + bandit explorer (4) + graph algorithm player (6) + array walk player (11) + point cloud player (7) + token strip player (9); slider-explorer subsumed. 90 of 176 authored topics now ship a lab.
+Status: DONE — data-structure sims + gate solver + ClassifierPlayground + PlaybackTransport + recursion-tree (factorial/fibonacci/hanoi/n-queens) + DP grid (8 problems) + sorting visualizer (8 algorithms) + search visualizer (5 algorithms) + tree visualizer (7) + pathfinding grid (3) + hashing visualizer (3) + RL grid-world (4) + bandit explorer (4) + graph algorithm player (6) + array walk player (11) + point cloud player (7) + token strip player (9) + neural net player (9); slider-explorer subsumed. 99 of 176 authored topics now ship a lab.
 Depends on: Phase 2
 
 ## Goal
@@ -374,15 +374,41 @@ q/k dot products were scaled — readable toy vectors have far smaller magnitude
 and "apple" scored a *higher* cosine with "king" than "queen" did, because every component of the
 hand-set royalty vectors was positive. Apple now points away on two dimensions.
 
-**Remaining (audited 2026-07-26):** **86 of 176** topics resolve to `SimulationComingSoonCard`;
-90 ship a lab. Interview Prep, Machine Learning and NLP are fully covered. By category:
+## Sub-phase N — neural net player (`NeuralNetSection.kt`)
+
+`SimulationType.NeuralNetPlayer`, wired to the 9 remaining Deep Learning topics. Four render parts
+mixed per frame: a layered node diagram, labelled curve plots on shared axes, small matrices with a
+highlighted window, and signed bar vectors.
+
+| Topic | What actually runs |
+|---|---|
+| `neural_network_basics` | a real 2-3-1 forward pass, unit by unit — one hidden unit lands negative and ReLU silences it |
+| `backpropagation` | δ at the output, chain rule back through ReLU, one weight step, then a re-run showing loss 0.0346 → 0.0335 |
+| `activation_functions` | σ, σ', ReLU, tanh, GELU sampled; the vanishing-gradient frame is 0.25¹⁰ |
+| `gradient_descent_variants` | SGD / momentum / Adam run for 40 steps on a 50:1 ill-conditioned quadratic |
+| `cnn` | a Sobel kernel convolved over a 6×6 edge image, then 2×2 max pooling |
+| `autoencoders` | 6 → 2 → 6 through an orthonormal basis (a linear autoencoder's optimum *is* the PCA subspace), reconstruction error 0.076 |
+| `gans` | generated histogram closing on the real one, with D and G losses crossing as it does |
+| `rnn` | one shared weight over 4 timesteps, then u⁸ as the BPTT decay, vs u > 1 exploding |
+| `lstm_gru` | gate values per step including one deliberate wipe, then 0.92ⁿ retention vs the RNN's 0.6ⁿ |
+
+The optimizer lab was rewritten after the numbers came back: with a shared learning rate, plain SGD
+*beat* both momentum and Adam, which is the opposite of what the first draft's narration claimed.
+Each optimizer now runs at a rate it can actually use (SGD 0.09, just under its 2/L = 0.1 stability
+limit; momentum 0.012, because accumulation multiplies the effective step by 1/(1−β) ≈ 10; Adam
+0.2), and the closing frame states the honest outcome — tuned momentum wins on a clean quadratic,
+Adam does not, and Adam's advantage lies in noisy, badly scaled, or untuned settings this problem
+does not have.
+
+**Remaining (audited 2026-07-26):** **77 of 176** topics resolve to `SimulationComingSoonCard`;
+99 ship a lab. Only Reinforcement Learning, Algorithms and Data Structures have gaps left:
 
 | Category | pending | wired |
 |---|---|---|
 | Reinforcement Learning | 51 | 8 |
 | Algorithms | 14 | 42 |
 | Data Structures | 12 | 15 |
-| Deep Learning | 9 | 2 |
+| Deep Learning | 0 | 11 |
 | NLP | 0 | 8 |
 | Machine Learning | 0 | 10 |
 | Interview Prep | 0 | 5 |
@@ -392,5 +418,8 @@ RL is still the bulk (51) — the grid-world/bandit widgets cover tabular method
 loop that does not exist yet. Cheapest remaining wins reuse existing renderers: `subset_sum` → DP
 grid; `doubly_linked_list` → LinkedListVisualizer; `priority_queue_adt` → TreeVisualizer heap;
 `quickselect` / `median_of_medians` / `mos_algorithm` / `reservoir_sampling` → array walk player.
-A shared training-curve widget (loss over epochs with a per-topic knob) would cover much of
-Deep Learning; RL's 51 remain the real work.
+RL's 51 are now the bulk of what is left: the grid-world and bandit widgets cover the tabular
+methods, but the deep-RL families (DQN variants, policy gradients, actor-critic, model-based,
+multi-agent, offline) want a training-curve-plus-environment widget. The 14 Algorithms and 12 Data
+Structures stragglers are mostly one-off structures (`skip_list`, `suffix_tree`, `kd_tree`,
+`fenwick_tree`) that each need their own renderer.

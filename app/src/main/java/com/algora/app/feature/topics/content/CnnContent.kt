@@ -46,7 +46,7 @@ internal val cnnContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.NeuralNetPlayer,
     applications = listOf(
         ApplicationCard("image", 0xFF818CF8, "Computer Vision", "Image classification, detection, and segmentation are CNN territory."),
         ApplicationCard("flask", 0xFF60A5FA, "Medical Imaging", "Detecting tumors and anomalies in scans from local visual patterns."),

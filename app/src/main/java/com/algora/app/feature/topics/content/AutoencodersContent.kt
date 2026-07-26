@@ -46,7 +46,7 @@ internal val autoencodersContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.NeuralNetPlayer,
     applications = listOf(
         ApplicationCard("chip", 0xFF818CF8, "Dimensionality Reduction", "A non-linear alternative to PCA for compressing and visualizing data."),
         ApplicationCard("target", 0xFF60A5FA, "Anomaly Detection", "Inputs that reconstruct poorly are flagged as anomalies."),

@@ -44,7 +44,7 @@ internal val backpropagationContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.NeuralNetPlayer,
     applications = listOf(
         ApplicationCard("robot", 0xFF818CF8, "Training Every Deep Net", "Backprop is the universal engine behind training CNNs, RNNs, and Transformers."),
         ApplicationCard("chip", 0xFF60A5FA, "Automatic Differentiation", "Frameworks generalize it to autograd, differentiating arbitrary computation graphs."),

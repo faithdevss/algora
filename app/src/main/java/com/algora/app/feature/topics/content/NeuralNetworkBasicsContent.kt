@@ -47,7 +47,7 @@ internal val neuralNetworkBasicsContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.NeuralNetPlayer,
     applications = listOf(
         ApplicationCard("image", 0xFF818CF8, "Perception", "Vision, speech, and language systems are all built on layered neural networks."),
         ApplicationCard("robot", 0xFF60A5FA, "Function Approximation", "Networks stand in for unknown functions in control, forecasting, and simulation."),

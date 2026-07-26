@@ -48,6 +48,7 @@ private fun simLabel(type: SimulationType): String = when (type) {
     SimulationType.ArrayWalkPlayer -> "Array walk · pointer player"
     SimulationType.PointCloudPlayer -> "2D feature space player"
     SimulationType.TokenStripPlayer -> "Token strip · attention"
+    SimulationType.NeuralNetPlayer -> "Network · training player"
     SimulationType.RegressionExplorer -> "Regression explorer"
     SimulationType.PerceptronVisualizer -> "Perceptron playground"
     SimulationType.ClassifierPlayground -> "Classifier playground"

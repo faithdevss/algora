@@ -46,7 +46,7 @@ internal val gansContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.NeuralNetPlayer,
     applications = listOf(
         ApplicationCard("image", 0xFF818CF8, "Image Synthesis", "Photorealistic faces, art, and textures from StyleGAN-style generators."),
         ApplicationCard("flask", 0xFF60A5FA, "Data Augmentation", "Generating synthetic training data where real samples are scarce."),

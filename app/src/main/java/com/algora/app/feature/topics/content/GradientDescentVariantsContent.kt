@@ -43,7 +43,7 @@ internal val gradientDescentVariantsContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.NeuralNetPlayer,
     applications = listOf(
         ApplicationCard("robot", 0xFF818CF8, "Training Deep Nets", "Optimizer choice is a core lever on convergence speed and final accuracy."),
         ApplicationCard("chart", 0xFF60A5FA, "Large-Scale Learning", "Mini-batch SGD makes training on massive datasets tractable and GPU-friendly."),
