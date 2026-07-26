@@ -45,7 +45,7 @@ internal val pcaContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.PointCloudPlayer,
     applications = listOf(
         ApplicationCard("chart", 0xFF818CF8, "Visualization", "Squeezing high-dimensional data to 2–3 components makes it plottable."),
         ApplicationCard("chip", 0xFF60A5FA, "Compression & Denoising", "Dropping low-variance components shrinks data and filters noise."),

@@ -67,6 +67,7 @@ sealed interface SimulationType {
     data object GraphVisualizer : SimulationType
     data object GraphAlgorithmPlayer : SimulationType
     data object ArrayWalkPlayer : SimulationType
+    data object PointCloudPlayer : SimulationType
     data object RegressionExplorer : SimulationType
     data object PerceptronVisualizer : SimulationType
     data object ClassifierPlayground : SimulationType

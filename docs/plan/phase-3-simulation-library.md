@@ -1,6 +1,6 @@
 # Phase 3 — Interactive Simulation Library
 
-Status: DONE — data-structure sims + gate solver + ClassifierPlayground + PlaybackTransport + recursion-tree (factorial/fibonacci/hanoi/n-queens) + DP grid (8 problems) + sorting visualizer (8 algorithms) + search visualizer (5 algorithms) + tree visualizer (7) + pathfinding grid (3) + hashing visualizer (3) + RL grid-world (4) + bandit explorer (4) + graph algorithm player (6) + array walk player (11); slider-explorer subsumed. 74 of 176 authored topics now ship a lab.
+Status: DONE — data-structure sims + gate solver + ClassifierPlayground + PlaybackTransport + recursion-tree (factorial/fibonacci/hanoi/n-queens) + DP grid (8 problems) + sorting visualizer (8 algorithms) + search visualizer (5 algorithms) + tree visualizer (7) + pathfinding grid (3) + hashing visualizer (3) + RL grid-world (4) + bandit explorer (4) + graph algorithm player (6) + array walk player (11) + point cloud player (7); slider-explorer subsumed. 81 of 176 authored topics now ship a lab.
 Depends on: Phase 2
 
 ## Goal
@@ -327,8 +327,30 @@ Verified on-device: the prefix-sum query frame reads `a[2..5] = P[5] − P[1] = 
 two aux cells highlighted, and the fast/slow list meets at F then walks back to D, the true cycle
 entry.
 
-**Remaining (audited 2026-07-26):** **102 of 176** topics resolve to `SimulationComingSoonCard`;
-74 ship a lab. Interview Prep is fully covered. By category:
+## Sub-phase L — point cloud player (`PointCloudSection.kt`)
+
+`SimulationType.PointCloudPlayer`, wired to the 7 remaining ML topics, which are all "points on a
+plane plus one overlay": clustering, the two geometric classifiers, the tree's axis-aligned splits,
+and PCA's principal axis. Shared scatter renderer; each frame carries only the overlay it needs
+(centroids, ε rings, split lines, shaded leaf regions, projection residuals).
+
+| Topic | What the frames walk |
+|---|---|
+| `kmeans` | deliberately lopsided seeding, then assign/update until movement stops — converges in 4 iterations and recovers the 7/7/7 blobs |
+| `dbscan` | ε = 0.22, minPts = 3: core vs border vs noise, cluster expansion by chaining — ends 2 clusters, 2 noise points |
+| `hierarchical_clustering` | single-linkage merges, closest pair each step, merge order as the dendrogram |
+| `knn` | k = 5, radius grows to the k-th neighbour, running vote tally |
+| `naive_bayes` | per-class mean/variance, then a near-boundary query scored as log prior + log p(x) + log p(y) → 74%, not 100% |
+| `decision_trees` | greedy gini splits to depth 2 → 3 leaves, with the chosen threshold and impurity drop in the status |
+| `pca` | centre, covariance matrix, top eigenvector by the 2×2 closed form, projections and residuals — PC1 keeps 98% |
+
+Datasets come from a fixed-seed LCG so the narration in each frame stays true across launches. The
+decision-tree set is hand-placed instead: the LCG's jitter is too correlated to reliably produce a
+layout where neither a single x cut nor a single y cut suffices, and without that the depth-2 story
+would be a lie — the first version separated the classes in one cut.
+
+**Remaining (audited 2026-07-26):** **95 of 176** topics resolve to `SimulationComingSoonCard`;
+81 ship a lab. Interview Prep and Machine Learning are fully covered. By category:
 
 | Category | pending | wired |
 |---|---|---|
@@ -337,7 +359,7 @@ entry.
 | Data Structures | 12 | 15 |
 | Deep Learning | 10 | 1 |
 | NLP | 8 | 0 |
-| Machine Learning | 7 | 3 |
+| Machine Learning | 0 | 10 |
 | Interview Prep | 0 | 5 |
 
 RL is still the bulk (51) — the grid-world/bandit widgets cover tabular methods, but deep-RL topics
@@ -345,5 +367,5 @@ RL is still the bulk (51) — the grid-world/bandit widgets cover tabular method
 loop that does not exist yet. Cheapest remaining wins reuse existing renderers: `subset_sum` → DP
 grid; `doubly_linked_list` → LinkedListVisualizer; `priority_queue_adt` → TreeVisualizer heap;
 `quickselect` / `median_of_medians` / `mos_algorithm` / `reservoir_sampling` → array walk player.
-One new 2D-points clustering widget would cover `kmeans` / `dbscan` / `knn` /
-`hierarchical_clustering` at once, and a token/attention strip would cover most of NLP.
+A token/attention strip would cover most of NLP, and a shared training-curve widget
+(loss over epochs, with the per-topic knob) would cover much of Deep Learning.

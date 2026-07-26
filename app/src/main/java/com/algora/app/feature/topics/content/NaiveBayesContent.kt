@@ -45,7 +45,7 @@ internal val naiveBayesContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.PointCloudPlayer,
     applications = listOf(
         ApplicationCard("search", 0xFF818CF8, "Spam Filtering", "The classic use — scoring emails as spam/ham from word frequencies."),
         ApplicationCard("book", 0xFF60A5FA, "Text Classification", "Topic labeling and sentiment analysis where bag-of-words features are near-independent."),

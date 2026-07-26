@@ -44,7 +44,7 @@ internal val hierarchicalClusteringContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.PointCloudPlayer,
     applications = listOf(
         ApplicationCard("flask", 0xFF818CF8, "Phylogenetics", "Building evolutionary trees from genetic distance is hierarchical clustering."),
         ApplicationCard("chart", 0xFF60A5FA, "Exploratory Analysis", "The dendrogram reveals structure and natural cluster counts without fixing k first."),

@@ -17,7 +17,7 @@ Each phase gets planned in detail in its own session: `/clear`, load this file +
 | 0 | Foundation & App Shell | Done |
 | 1 | Vertical Slice | Done |
 | 2 | Topic Browser & Content Scale-out | Done — all 81 DSA topics authored, nothing falls through to ComingSoon |
-| 3 | Interactive Simulation Library | Widgets done — DS sims + ClassifierPlayground + recursion-tree + DP grid (8) + sorting (8) + search (5) + tree (7) + pathfinding (3) + hashing (3) + RL grid-world (4) + bandit explorer (4) + graph algorithm player (6) + array walk player (11) + shared PlaybackTransport. 74 of 176 topics wired; 102 still ComingSoon (RL 51, Algorithms 14, Data Structures 12, DL 10, NLP 8, ML 7 — Interview Prep fully covered) |
+| 3 | Interactive Simulation Library | Widgets done — DS sims + ClassifierPlayground + recursion-tree + DP grid (8) + sorting (8) + search (5) + tree (7) + pathfinding (3) + hashing (3) + RL grid-world (4) + bandit explorer (4) + graph algorithm player (6) + array walk player (11) + point cloud player (7) + shared PlaybackTransport. 81 of 176 topics wired; 95 still ComingSoon (RL 51, Algorithms 14, Data Structures 12, DL 10, NLP 8 — Interview Prep and ML fully covered) |
 | 4 | Algorithm Analysis Module | Done — all 17 Analysis tool ids built (11 distinct tools; see phase-4 doc) |
 | 5 | AI Mode | Done — mode switch, AI nav, and full 7-section content for all 87 ML/DL/NLP/RL topics. Remaining: multi-layer perceptron sim + per-mode theming of the whole shell |
 | 6 | Interview Prep Module | Done — timed quiz mode + 4 quizzes + all 5 pattern guides + behavioral bank (STAR) + system design primer; all 11 topics have content |

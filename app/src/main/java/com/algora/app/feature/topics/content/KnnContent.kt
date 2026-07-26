@@ -45,7 +45,7 @@ internal val knnContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.PointCloudPlayer,
     applications = listOf(
         ApplicationCard("target", 0xFF818CF8, "Recommendation", "Suggesting items liked by the most similar users is neighbor voting in disguise."),
         ApplicationCard("image", 0xFF60A5FA, "Image & Pattern Matching", "Nearest-neighbor search over feature vectors powers reverse image and similarity lookup."),

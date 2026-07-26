@@ -46,7 +46,7 @@ internal val decisionTreesContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.PointCloudPlayer,
     applications = listOf(
         ApplicationCard("book", 0xFF818CF8, "Interpretable Rules", "Their if/then paths make decisions auditable — valued in medicine, credit, and policy."),
         ApplicationCard("chart", 0xFF60A5FA, "Feature Importance", "Split frequency and gain reveal which features drive predictions."),

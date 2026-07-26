@@ -44,7 +44,7 @@ internal val dbscanContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.PointCloudPlayer,
     applications = listOf(
         ApplicationCard("map", 0xFF818CF8, "Geospatial Clustering", "Grouping GPS points into places of interest, ignoring stray readings."),
         ApplicationCard("target", 0xFF60A5FA, "Anomaly Detection", "Its noise label naturally flags fraud, defects, or outliers."),

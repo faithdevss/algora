@@ -46,7 +46,7 @@ internal val kmeansContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.PointCloudPlayer,
     applications = listOf(
         ApplicationCard("users", 0xFF818CF8, "Customer Segmentation", "Grouping users by behavior for targeted marketing is K-Means' flagship use."),
         ApplicationCard("image", 0xFF60A5FA, "Color Quantization", "Reducing an image to k representative colors clusters its pixels."),
