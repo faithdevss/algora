@@ -39,6 +39,12 @@ Ported from the mock's `isHome` block: gradient topbar (DSA gradient / AI pink�
 ## Deferred
 Full 7-section content for the remaining AI topics; perceptron multi-layer / backprop sim; per-mode theming of the whole shell (only the Home topbar gradient switches today).
 
+> **Status update (2026-07-27).** Content is complete for all 87 AI topics, and the multi-layer /
+> backprop sim shipped in Phase 3 sub-phase N as `NeuralNetPlayer` — `neural_network_basics` runs a
+> real 2-3-1 forward pass and `backpropagation` runs the chain rule back through it. Per-mode
+> theming is the only Phase 5 item still open: `AppMode` reaches the nav graph, Home and Progress,
+> but `Theme.kt` still builds one scheme, so the shell does not recolour with the mode.
+
 Progress: the whole Machine Learning family is now authored — Linear Regression, Logistic
 Regression, Decision Trees, SVM, k-NN, Naive Bayes, K-Means, Hierarchical Clustering, PCA, DBSCAN
 (plus the Perceptron). Content follows the same `content/<Topic>Content.kt` + `TopicContentProvider`
@@ -69,4 +75,5 @@ CartPole, Mountain Car, Atari, MuJoCo, StarCraft II, Dota 2.
 Reinforcement Learning topic across all four taxonomies has full 7-section content, verified
 registered in `TopicContentProvider` (87 AI rows).** Nothing in the AI browser falls through to
 ComingSoon. The remaining Phase 5 items are non-content: the perceptron multi-layer / backprop sim,
-and per-mode theming of the whole shell.
+and per-mode theming of the whole shell. (The first of those is now done — see the status update
+above; per-mode theming remains.)

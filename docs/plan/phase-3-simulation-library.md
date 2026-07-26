@@ -1,7 +1,63 @@
 # Phase 3 — Interactive Simulation Library
 
-Status: DONE — data-structure sims + gate solver + ClassifierPlayground + PlaybackTransport + recursion-tree (factorial/fibonacci/hanoi/n-queens) + DP grid (8 problems) + sorting visualizer (8 algorithms) + search visualizer (5 algorithms) + tree visualizer (7) + pathfinding grid (3) + hashing visualizer (3) + RL grid-world (4) + bandit explorer (4) + graph algorithm player (6) + array walk player (11) + point cloud player (7) + token strip player (9) + neural net player (9) + RL training player (9) + policy gradient player (12) + game search player (9); slider-explorer subsumed. 129 of 176 authored topics now ship a lab.
+Status: **Widgets done, wiring ongoing.** 25 simulation widgets built; 129 of 176 authored topics
+ship a runnable lab, 47 still show the ComingSoon card. Full inventory and remaining work in
+"Current state" below.
+
 Depends on: Phase 2
+
+---
+
+## Current state (audited 2026-07-27)
+
+**129 of 176 topics ship a runnable lab; 47 still resolve to `SimulationComingSoonCard`.** Recount
+it at any time by walking `TopicContentProvider`'s id→content map and reading each content file's
+`simulation =` field — every number in this file comes from that walk, not from memory.
+
+25 widget types, resolved by `topicId` inside each section file:
+
+| Widget | Topics | What it covers |
+|---|---|---|
+| `PolicyGradientPlayer` | 12 | REINFORCE → PPO, plus continuous control (DPG/DDPG/TD3/SAC) |
+| `ArrayWalkPlayer` | 11 | prefix/difference/window/two-pointer walks + all 5 Interview Prep patterns |
+| `NeuralNetPlayer` | 9 | forward pass, backprop, activations, optimizers, CNN, autoencoder, GAN, RNN, LSTM |
+| `GameSearchPlayer` | 9 | minimax/alpha-beta, MCTS, AlphaGo/Zero, MuZero, self-play, model-based RL |
+| `TokenStripPlayer` | 9 | tokenization → attention → transformers → LLM decoding |
+| `RlTrainingPlayer` | 9 | the DQN family, measured on a chain MDP |
+| `SortingVisualizer` / `DpGridVisualizer` | 8 each | 8 sorts; 8 DP problems |
+| `TreeVisualizer` | 7 | BST, heap, trie, AVL/red-black, B-tree, segment tree |
+| `PointCloudPlayer` | 7 | k-means, DBSCAN, hierarchical, k-NN, naive Bayes, trees, PCA |
+| `GraphAlgorithmPlayer` | 6 | Bellman-Ford, Floyd-Warshall, MSTs, Tarjan, Kosaraju |
+| `SearchVisualizer` | 5 | linear → exponential search |
+| `RecursionTreeVisualizer` / `BanditExplorer` / `RlGridWorld` | 4 each | recursion; bandits; tabular RL |
+| `PathfindingGrid` / `GraphVisualizer` / `HashingVisualizer` | 3 each | Dijkstra/A*/D*; graph builder + BFS/DFS; hashing |
+| `ClassifierPlayground` | 2 | logistic regression, SVM |
+| Array / LinkedList / Stack / Queue / Regression / Perceptron | 1 each | the Phase 1–5 originals |
+
+**Remaining 47, by category:**
+
+| Category | pending | wired | What is left |
+|---|---|---|---|
+| Reinforcement Learning | 21 | 38 | multi-agent (3), offline + imitation (8), exploration + meta (4), environments (6) |
+| Algorithms | 14 | 42 | selection/randomised (`quickselect`, `median_of_medians`, `reservoir_sampling`, `monte_carlo_method`, `mos_algorithm`), greedy (`huffman_coding`, `fractional_knapsack`, `job_sequencing`), divide-and-conquer (`karatsubas_algorithm`, `strassens_algorithm`, `closest_pair_of_points`), backtracking (`sudoku_solver`, `permutation_generation`, `subset_sum`) |
+| Data Structures | 12 | 15 | `disjoint_set`, `doubly_linked_list`, `fenwick_tree`, `graph_variants`, `kd_tree`, `list_adt`, `map_adt`, `priority_queue_adt`, `set_adt`, `skip_list`, `string`, `suffix_tree` |
+| Deep Learning / NLP / ML / Interview Prep | 0 | 34 | complete |
+
+**How these labs are built.** Since sub-phase J the rule has been that a frame's narration may only
+state numbers the frame's own experiment produced — the search runs, the optimizers step, the
+gradients are sampled, the models are learned. That has caught a wrong claim in most batches
+(centre-first move ordering, Adam beating tuned momentum, target networks "fixing" oscillation,
+noisy nets exploring deeper, monotone GAE variance, MuZero degrading under model error). The
+corrections are recorded in each sub-phase below rather than quietly patched.
+
+**Next batch.** Offline + imitation RL (`offline_rl`, `cql`, `iql`, `decision_transformer`, `gail`,
+`irl`, `imitation_learning`, `rlhf`): distribution shift, behaviour cloning's compounding error and
+a conservative Q penalty are all measurable on the same chain MDP the other RL players use.
+
+> Everything below this line is the historical record: the original scope, the sub-phases in the
+> order they were built, and the reasoning (including the corrections) behind each one.
+
+---
 
 ## Goal
 Build the reusable simulation widget types referenced across the taxonomy, then attach them to the topics that need them.
