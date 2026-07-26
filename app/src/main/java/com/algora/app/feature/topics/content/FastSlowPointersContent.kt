@@ -46,7 +46,7 @@ internal val fastSlowPointersContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.ArrayWalkPlayer,
     applications = listOf(
         ApplicationCard("link", 0xFF8B5CF6, "Linked-List Cycles", "Detect loops and find where the cycle begins in O(1) space."),
         ApplicationCard("search", 0xFF3B82F6, "Middle of a List", "Split a list for merge sort or find the median node in one pass."),

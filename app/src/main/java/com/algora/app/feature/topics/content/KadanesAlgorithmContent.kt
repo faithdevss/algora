@@ -48,7 +48,7 @@ internal val kadanesAlgorithmContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.ArrayWalkPlayer,
     applications = listOf(
         ApplicationCard("finance", 0xFF10B981, "Max Profit Windows", "Finding the best contiguous run of gains in a series of daily changes is Kadane's directly."),
         ApplicationCard("image", 0xFF3B82F6, "Image Processing", "Extended to 2D, it locates the brightest/highest-value rectangular region in a grid."),

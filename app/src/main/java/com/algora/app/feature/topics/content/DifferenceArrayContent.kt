@@ -50,7 +50,7 @@ internal val differenceArrayContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.ArrayWalkPlayer,
     applications = listOf(
         ApplicationCard("chart", 0xFF10B981, "Interval Booking", "Adding +1 over each reservation's time range, then summing, gives per-slot occupancy counts."),
         ApplicationCard("map", 0xFF3B82F6, "Range Increment Problems", "'Add a value to every element in many ranges' problems collapse to one difference array."),

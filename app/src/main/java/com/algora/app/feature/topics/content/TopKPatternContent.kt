@@ -50,7 +50,7 @@ internal val topKPatternContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.ArrayWalkPlayer,
     applications = listOf(
         ApplicationCard("trend", 0xFF10B981, "Leaderboards & Trending", "Top-K scores, hottest search terms, or most-active users from a huge stream."),
         ApplicationCard("search", 0xFF3B82F6, "K Nearest Neighbours", "Keeping the K closest points/vectors while scanning a large dataset once."),

@@ -52,7 +52,7 @@ internal val twoPointerContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.ArrayWalkPlayer,
     applications = listOf(
         ApplicationCard("target", 0xFF10B981, "Pair & Triplet Sums", "Two-sum, three-sum, and container-with-most-water all collapse to converging pointers."),
         ApplicationCard("link", 0xFF3B82F6, "In-Place Array Edits", "Removing duplicates or partitioning uses a slow write pointer and a fast read pointer."),

@@ -49,7 +49,7 @@ internal val slidingWindowContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.ArrayWalkPlayer,
     applications = listOf(
         ApplicationCard("chart", 0xFF10B981, "Moving Averages", "Streaming metrics and stock indicators recompute rolling stats in O(1) per step."),
         ApplicationCard("link", 0xFF3B82F6, "Substring Problems", "Longest-substring-without-repeats and minimum-window-substring are classic variable windows."),

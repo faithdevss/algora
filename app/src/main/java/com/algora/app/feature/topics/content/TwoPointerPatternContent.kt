@@ -49,7 +49,7 @@ internal val twoPointerPatternContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.ArrayWalkPlayer,
     applications = listOf(
         ApplicationCard("search", 0xFF3B82F6, "Pair & Triplet Sums", "Two-sum / three-sum on sorted data, container-with-most-water."),
         ApplicationCard("share", 0xFF8B5CF6, "In-Place Rearrangement", "Move zeros, remove duplicates, partition around a pivot without extra memory."),

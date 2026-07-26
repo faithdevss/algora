@@ -47,7 +47,7 @@ internal val topKElementsContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.ArrayWalkPlayer,
     applications = listOf(
         ApplicationCard("trend", 0xFF10B981, "Leaderboards & Trending", "Top scores, trending hashtags, and most-viewed items are streaming top-K queries."),
         ApplicationCard("search", 0xFF3B82F6, "Search Ranking", "Returning the k best-matching results keeps only a heap of candidates, not a full sort."),

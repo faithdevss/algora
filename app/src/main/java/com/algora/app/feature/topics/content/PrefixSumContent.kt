@@ -48,7 +48,7 @@ internal val prefixSumContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.ArrayWalkPlayer,
     applications = listOf(
         ApplicationCard("chart", 0xFF10B981, "Range Aggregates", "Dashboards answer 'total between these dates' instantly over precomputed cumulative sums."),
         ApplicationCard("image", 0xFF3B82F6, "2D Integral Images", "Summed-area tables extend prefix sums to O(1) rectangle sums in image and vision code."),

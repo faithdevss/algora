@@ -1,6 +1,6 @@
 # Phase 3 — Interactive Simulation Library
 
-Status: DONE — data-structure sims + gate solver + ClassifierPlayground + PlaybackTransport + recursion-tree (factorial/fibonacci/hanoi/n-queens) + DP grid (8 problems) + sorting visualizer (8 algorithms) + search visualizer (5 algorithms) + tree visualizer (7) + pathfinding grid (3) + hashing visualizer (3) + RL grid-world (4) + bandit explorer (4) + graph algorithm player (6); slider-explorer subsumed. 63 of 176 authored topics now ship a lab.
+Status: DONE — data-structure sims + gate solver + ClassifierPlayground + PlaybackTransport + recursion-tree (factorial/fibonacci/hanoi/n-queens) + DP grid (8 problems) + sorting visualizer (8 algorithms) + search visualizer (5 algorithms) + tree visualizer (7) + pathfinding grid (3) + hashing visualizer (3) + RL grid-world (4) + bandit explorer (4) + graph algorithm player (6) + array walk player (11); slider-explorer subsumed. 74 of 176 authored topics now ship a lab.
 Depends on: Phase 2
 
 ## Goal
@@ -297,24 +297,53 @@ Verified on-device: Prim reaches weight 17 in 12 steps, Floyd's initial matrix m
 and `B→D via A = 15` highlights correctly, Kosaraju's second pass flips the arrows and pulls
 {A, B, C} out as one component.
 
-**Remaining (audited 2026-07-26):** **113 of 176** topics resolve to `SimulationComingSoonCard`;
-63 ship a lab. By category:
+## Sub-phase K — array walk player (`ArrayWalkSection.kt`)
+
+`SimulationType.ArrayWalkPlayer`, wired to 11 topics: six one-dimensional algorithms and the five
+Interview Prep pattern guides, which are the same walks under interview names. One row-of-cells
+renderer plus the extras individual algorithms need — a second row (the prefix / difference / heap
+being maintained), pointer labels under the cells, a back-edge arc that turns the row into a linked
+list with a cycle, and an interval track for merge-intervals. Each frame carries only the parts it
+uses.
+
+| Topic | Problem the frames walk |
+|---|---|
+| `prefix_sum` | build inclusive P, then answer a[2..5] as P[5] − P[1] |
+| `difference_array` | three range updates as two writes each, then one prefix pass to rebuild |
+| `sliding_window` | fixed k = 3 max sum; each slide subtracts what leaves, adds what enters |
+| `two_pointer` | all pairs summing to 14 in a sorted array |
+| `kadanes_algorithm` | running "best ending here", restarting when extending is worse |
+| `top_k_elements` | top-3 over a stream via a size-3 min-heap |
+| `sliding_window_pattern` | variable window: longest substring with no repeat |
+| `two_pointer_pattern` | same-direction read/write pointers deduping in place |
+| `fast_slow_pointers` | cycle detection, then the second walk that finds the entry node |
+| `merge_intervals_pattern` | sort by start, extend or close the open interval |
+| `top_k_pattern` | count first, then a size-k min-heap over the counts |
+
+Pointer labels are one per cell, so two pointers landing on the same index collapse to `both` — the
+first build wrapped `slow+fast` onto two lines and pushed the loop-back arc into the row above.
+
+Verified on-device: the prefix-sum query frame reads `a[2..5] = P[5] − P[1] = 23 − 4 = 19` with the
+two aux cells highlighted, and the fast/slow list meets at F then walks back to D, the true cycle
+entry.
+
+**Remaining (audited 2026-07-26):** **102 of 176** topics resolve to `SimulationComingSoonCard`;
+74 ship a lab. Interview Prep is fully covered. By category:
 
 | Category | pending | wired |
 |---|---|---|
 | Reinforcement Learning | 51 | 8 |
-| Algorithms | 20 | 36 |
+| Algorithms | 14 | 42 |
 | Data Structures | 12 | 15 |
 | Deep Learning | 10 | 1 |
 | NLP | 8 | 0 |
 | Machine Learning | 7 | 3 |
-| Interview Prep | 5 | 0 |
+| Interview Prep | 0 | 5 |
 
 RL is still the bulk (51) — the grid-world/bandit widgets cover tabular methods, but deep-RL topics
 (DQN family, policy gradients, model-based, multi-agent) each want a training-curve or environment
-loop that does not exist yet. Cheapest remaining wins reuse existing renderers: array-walk topics
-(`prefix_sum`, `difference_array`,
-`sliding_window`, `two_pointer`, `kadanes_algorithm`) plus all 5 Interview Prep pattern topics →
-ArrayVisualizer; `subset_sum` → DP grid; `doubly_linked_list` → LinkedListVisualizer;
-`priority_queue_adt` → TreeVisualizer heap. One new 2D-points clustering widget would cover
-`kmeans` / `dbscan` / `knn` / `hierarchical_clustering` at once.
+loop that does not exist yet. Cheapest remaining wins reuse existing renderers: `subset_sum` → DP
+grid; `doubly_linked_list` → LinkedListVisualizer; `priority_queue_adt` → TreeVisualizer heap;
+`quickselect` / `median_of_medians` / `mos_algorithm` / `reservoir_sampling` → array walk player.
+One new 2D-points clustering widget would cover `kmeans` / `dbscan` / `knn` /
+`hierarchical_clustering` at once, and a token/attention strip would cover most of NLP.

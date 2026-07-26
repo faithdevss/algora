@@ -50,7 +50,7 @@ internal val slidingWindowPatternContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.ArrayWalkPlayer,
     applications = listOf(
         ApplicationCard("search", 0xFF3B82F6, "Longest / Shortest Substring", "Longest substring without repeats, smallest window containing all targets."),
         ApplicationCard("trend", 0xFF10B981, "Rolling Aggregates", "Maximum sum or average of any k consecutive readings in a stream."),

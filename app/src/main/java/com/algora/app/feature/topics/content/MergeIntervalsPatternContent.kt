@@ -50,7 +50,7 @@ internal val mergeIntervalsPatternContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.ArrayWalkPlayer,
     applications = listOf(
         ApplicationCard("chip", 0xFF3B82F6, "Calendar Scheduling", "Collapsing busy blocks to find free slots or double-bookings across meetings."),
         ApplicationCard("trend", 0xFF10B981, "Range Consolidation", "Merging IP ranges, byte offsets, or version spans into canonical form."),
