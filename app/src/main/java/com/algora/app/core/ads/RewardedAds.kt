@@ -2,13 +2,14 @@ package com.algora.app.core.ads
 
 import android.app.Activity
 import android.content.Context
+import com.algora.app.BuildConfig
 import kotlinx.coroutines.flow.StateFlow
 
-// Google's public test ids. Swap both for the real AdMob unit alongside the app id in
-// AndroidManifest.xml when the account exists — nothing else in the app hardcodes an ad id.
+// Configured in app/build.gradle.kts from local.properties / -P / the environment, never hardcoded
+// here — debug always gets Google's test unit, release gets the real one when it is set. The app id
+// travels the same way, as a manifest placeholder. See docs/admob-setup.md.
 object AdIds {
-    const val TEST_REWARDED_UNIT = "ca-app-pub-3940256099942544/5224354917"
-    val rewardedUnit: String = TEST_REWARDED_UNIT
+    val rewardedUnit: String = BuildConfig.ADMOB_REWARDED_UNIT_ID
 }
 
 // Rewarded video is the only ad surface in the app: it appears when a free user chooses to unlock a

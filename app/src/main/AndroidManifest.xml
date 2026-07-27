@@ -18,11 +18,11 @@
             </intent-filter>
         </activity>
 
-        <!-- AdMob requires this or MobileAds.initialize() crashes at startup. Currently Google's
-             public sample app id — swap for the real one alongside core/ads/AdIds.kt. -->
+        <!-- AdMob requires this or MobileAds.initialize() crashes at startup. Injected by
+             app/build.gradle.kts: the test id for debug, the configured one for release. -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713" />
+            android:value="${admobAppId}" />
 
     </application>
 

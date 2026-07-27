@@ -163,9 +163,10 @@ the 7-inch and 10-inch tablet slots, which accept the same aspect ratio.
 Open items that are not copy problems but will block or damage the release:
 
 - **Ad and billing ids are still fakes.** Phase 8 shipped billing and rewarded ads against debug
-  stubs (`docs/plan/ROADMAP.md`). Real AdMob unit ids and the Play Console product id for the
-  lifetime purchase have to be swapped in before upload, or the paywall and unlock paths will not
-  work in production.
+  stubs (`docs/plan/ROADMAP.md`). AdMob ids are now configured out of git — put the real pair in
+  `local.properties` per `docs/admob-setup.md`; a release built without them ships Google's test
+  ads and earns nothing. The Play Console product id for the lifetime purchase is still hardcoded
+  and has to be swapped in before upload, or the paywall will not work in production.
 - **Data safety form.** The app itself collects nothing — progress lives in local DataStore, there
   is no account and no network call of our own. The ads SDK does collect data, so the form must
   declare whatever AdMob's current disclosure requires once the real ids are in.

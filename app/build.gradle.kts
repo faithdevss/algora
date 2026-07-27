@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -18,6 +20,36 @@ val gitCommitCount: Int = runCatching {
     }.standardOutput.asText.get().trim().toInt()
 }.getOrDefault(1)
 
+// --- AdMob ids -------------------------------------------------------------------------------
+// Google's public test ids. Debug always uses these, and release falls back to them when no real
+// id is configured, so a build never silently ships a half-configured ad setup — it ships an
+// obviously-fake one instead. See docs/admob-setup.md.
+val testAdMobAppId = "ca-app-pub-3940256099942544~3347511713"
+val testAdMobRewardedUnitId = "ca-app-pub-3940256099942544/5224354917"
+
+// Real ids stay out of git. Looked up in order: local.properties (untracked), then -P gradle
+// properties, then the environment — so a workstation uses the file and CI uses secrets.
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
+fun adMobId(propertyKey: String, environmentKey: String, fallback: String): String =
+    localProperties.getProperty(propertyKey)
+        ?: providers.gradleProperty(propertyKey).orNull
+        ?: System.getenv(environmentKey)
+        ?: fallback
+
+val admobAppId = adMobId("admob.appId", "ADMOB_APP_ID", testAdMobAppId)
+val admobRewardedUnitId = adMobId("admob.rewardedUnitId", "ADMOB_REWARDED_UNIT_ID", testAdMobRewardedUnitId)
+
+if (admobAppId == testAdMobAppId || admobRewardedUnitId == testAdMobRewardedUnitId) {
+    logger.lifecycle(
+        "AdMob: using Google test ids for release builds — set admob.appId and " +
+            "admob.rewardedUnitId in local.properties before uploading (docs/admob-setup.md).",
+    )
+}
+
 android {
     namespace = "com.algora.app"
     compileSdk = 37
@@ -30,11 +62,20 @@ android {
         versionName = "$versionMajor.$versionMinor.$gitCommitCount"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Debug keeps the test ids regardless of what is configured: AdsProvider swaps in
+        // FakeRewardedAds for debug anyway, and a debug build must never be able to touch the real
+        // account — self-clicked impressions are what gets AdMob accounts suspended.
+        manifestPlaceholders["admobAppId"] = testAdMobAppId
+        buildConfigField("String", "ADMOB_REWARDED_UNIT_ID", "\"$testAdMobRewardedUnitId\"")
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+
+            manifestPlaceholders["admobAppId"] = admobAppId
+            buildConfigField("String", "ADMOB_REWARDED_UNIT_ID", "\"$admobRewardedUnitId\"")
         }
     }
 
