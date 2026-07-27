@@ -75,6 +75,7 @@ sealed interface SimulationType {
     data object GameSearchPlayer : SimulationType
     data object OfflineRlPlayer : SimulationType
     data object MultiAgentPlayer : SimulationType
+    data object ExplorationPlayer : SimulationType
     data object RegressionExplorer : SimulationType
     data object PerceptronVisualizer : SimulationType
     data object ClassifierPlayground : SimulationType

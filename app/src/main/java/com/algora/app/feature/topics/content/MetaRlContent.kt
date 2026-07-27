@@ -44,7 +44,7 @@ internal val metaRlContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.ExplorationPlayer,
     applications = listOf(
         ApplicationCard("robot", 0xFF818CF8, "Fast Robot Adaptation", "Adapting to new terrains or payloads in a few trials."),
         ApplicationCard("flask", 0xFF60A5FA, "Few-Shot Learning", "MAML also underpins few-shot supervised learning."),

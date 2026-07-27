@@ -1,7 +1,7 @@
 # Phase 3 — Interactive Simulation Library
 
-Status: **Widgets done, wiring ongoing.** 27 simulation widgets built; 154 of 176 authored topics
-ship a runnable lab, 22 still show the ComingSoon card. Full inventory and remaining work in
+Status: **Widgets done, wiring ongoing.** 28 simulation widgets built; 158 of 176 authored topics
+ship a runnable lab, 18 still show the ComingSoon card. Full inventory and remaining work in
 "Current state" below.
 
 Depends on: Phase 2
@@ -10,17 +10,18 @@ Depends on: Phase 2
 
 ## Current state (audited 2026-07-27)
 
-**154 of 176 topics ship a runnable lab; 22 still resolve to `SimulationComingSoonCard`.** Recount
+**158 of 176 topics ship a runnable lab; 18 still resolve to `SimulationComingSoonCard`.** Recount
 it at any time by walking `TopicContentProvider`'s id→content map and reading each content file's
 `simulation =` field — every number in this file comes from that walk, not from memory.
 
-27 widget types, resolved by `topicId` inside each section file:
+28 widget types, resolved by `topicId` inside each section file:
 
 | Widget | Topics | What it covers |
 |---|---|---|
 | `PolicyGradientPlayer` | 12 | REINFORCE → PPO, plus continuous control (DPG/DDPG/TD3/SAC) |
 | `OfflineRlPlayer` | 7 | offline RL + CQL, Decision Transformer, BC/DAgger, GAIL, IRL, RLHF |
 | `MultiAgentPlayer` | 4 | IQL, VDN, QMIX, MADDPG |
+| `ExplorationPlayer` | 4 | intrinsic motivation, ICM, RND, meta-RL |
 | `ArrayWalkPlayer` | 15 | prefix/difference/window/two-pointer walks, all 5 Interview Prep patterns, selection + randomised (quickselect, median of medians, Mo's, reservoir) |
 | `NeuralNetPlayer` | 9 | forward pass, backprop, activations, optimizers, CNN, autoencoder, GAN, RNN, LSTM |
 | `GameSearchPlayer` | 9 | minimax/alpha-beta, MCTS, AlphaGo/Zero, MuZero, self-play, model-based RL |
@@ -39,11 +40,11 @@ it at any time by walking `TopicContentProvider`'s id→content map and reading 
 | `ClassifierPlayground` | 2 | logistic regression, SVM |
 | Array / LinkedList / Stack / Queue / Regression / Perceptron | 1 each | the Phase 1–5 originals |
 
-**Remaining 22, by category:**
+**Remaining 18, by category:**
 
 | Category | pending | wired | What is left |
 |---|---|---|---|
-| Reinforcement Learning | 10 | 49 | exploration + meta (4), environments (6) |
+| Reinforcement Learning | 6 | 53 | the six environment topics only |
 | Algorithms | 4 | 52 | greedy (`fractional_knapsack`, `job_sequencing`), divide-and-conquer (`karatsubas_algorithm`, `strassens_algorithm`) |
 | Data Structures | 8 | 19 | `disjoint_set`, `doubly_linked_list`, `fenwick_tree`, `graph_variants`, `list_adt`, `skip_list`, `string`, `suffix_tree` |
 | Deep Learning / NLP / ML / Interview Prep | 0 | 34 | complete |
@@ -55,11 +56,13 @@ gradients are sampled, the models are learned. That has caught a wrong claim in 
 noisy nets exploring deeper, monotone GAE variance, MuZero degrading under model error). The
 corrections are recorded in each sub-phase below rather than quietly patched.
 
-**Next batch.** Exploration + meta (`icm`, `rnd`, `intrinsic_motivation`, `meta_rl`) — all four can
-reuse `RlGridWorld` with an intrinsic-reward overlay on a sparse-reward maze, where the count of
-states ever reached is the measurement. The six environment topics (`cartpole`, `mountain_car`,
-`atari`, `mujoco`, `dota2`, `starcraft`) are the awkward remainder: only the first two have
-dynamics simple enough to simulate honestly.
+**Next batch.** What is left splits three ways. The **six environment topics** need a decision
+rather than a batch: `cartpole` and `mountain_car` have dynamics simple enough to integrate and
+animate honestly, while `atari`, `mujoco`, `dota2` and `starcraft` do not — a "lab" for those would
+have to fake its numbers, which breaks the rule the whole phase runs on, so they should get a
+benchmark/spec card instead. The **4 Algorithms** and **8 Data Structures** stragglers are one-off
+renderers, except `doubly_linked_list` and `graph_variants`, which first need their sections made
+`topicId`-driven (both currently take no arguments).
 
 > Everything below this line is the historical record: the original scope, the sub-phases in the
 > order they were built, and the reasoning (including the corrections) behind each one.
@@ -712,12 +715,51 @@ expressiveness advantage over the plain sum is measured rather than asserted.
 Verified by compiling the section on the JVM with Compose stripped, then an emulator check of the
 QMIX payoff matrix. `assembleDebug` passes.
 
-**Remaining (audited 2026-07-27, after sub-phase U):** **22 of 176** topics resolve to
-`SimulationComingSoonCard`; 154 ship a lab.
+## Sub-phase V — exploration and meta-RL player (`ExplorationSection.kt`)
+
+`SimulationType.ExplorationPlayer`, wired to the four exploration/meta topics. The phase-3 note said
+these could reuse `RlGridWorld` with an overlay; that was **wrong** on inspection — that section
+hardcodes a 4×4 geometry with a fixed goal/pit/wall as top-level constants and has no field for a
+curve plot, and exploration needs a large sparse maze plus discovery curves. New section instead.
+
+The environment is a **comb maze**: a top corridor with four dead-end branches, one reward at the
+bottom of the last branch 11 steps away, and one cell marked `?` whose outcome is random.
+
+| Topic | Measured |
+|---|---|
+| `intrinsic_motivation` | ε-greedy reaches the goal in 0 of 30 runs having seen 9.3 of 24 cells; a 1/√N bonus reaches it in 27 of 30 and covers 23.8 |
+| `icm` | forward-model error reaches the goal 30 of 30; add the stochastic cell and it drops to 11 of 30, with visits to that cell going 137.8 → 3773.3 per run |
+| `rnd` | 28 of 30 clean; at the stochastic cell RND's bonus decays to 0.000 in 40 visits while ICM's is still 0.667, so on the noisy maze RND scores 30 of 30 against ICM's 11 |
+| `meta_rl` | random walk 299 steps, systematic sweep 112, meta-learned prior 20 — and on an out-of-distribution goal, 37 against the sweep's 1 |
+
+Three corrections, all forced by the measurements:
+
+- **The meta-RL lab was comparing against the wrong baseline.** Measured against a random walk the
+  prior looked like a 17× win, but a random walk is a straw man — most of that gap is just the value
+  of searching in *some* order. Adding a systematic nearest-first sweep as the honest baseline
+  showed the prior's real contribution, and the out-of-distribution frame had been asserting the
+  prior "slows it down" while its own numbers showed the opposite. Both now state what was measured:
+  5.7× faster in-distribution, 37× slower out of it.
+- **The maze had to be rebuilt for the meta-RL claim to mean anything.** In the original corridor
+  layout a nearest-first sweep and a direct run to the goal cost identically (22 vs 22 steps) —
+  a corridor offers no choice of where to search, so no prior can help. The comb's branches are what
+  give a prior something to be right or wrong about.
+- **The ICM lab contradicted its own topic page**, which states that ICM "ignores uncontrollable
+  noise". Published ICM predicts in a learned feature space (an inverse model restricts the features
+  to what the agent can control) and that is designed to filter exactly this noise; the lab's
+  version predicts raw next states. Rather than change the measurement, the frame now names the
+  simplification and says the real mitigation is partial — noise the agent can influence still
+  leaks through, which is the reason RND exists.
+
+Verified by compiling the section on the JVM with Compose stripped and an emulator check of the ICM
+lab. `assembleDebug` passes.
+
+**Remaining (audited 2026-07-27, after sub-phase V):** **18 of 176** topics resolve to
+`SimulationComingSoonCard`; 158 ship a lab.
 
 | Category | pending | wired |
 |---|---|---|
-| Reinforcement Learning | 10 | 49 |
+| Reinforcement Learning | 6 | 53 |
 | Algorithms | 4 | 52 |
 | Data Structures | 8 | 19 |
 | Deep Learning | 0 | 11 |

@@ -43,7 +43,7 @@ internal val icmContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.ExplorationPlayer,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "Sparse-Reward Games", "Enabled progress on exploration-hard games from curiosity alone."),
         ApplicationCard("robot", 0xFF60A5FA, "Skill Acquisition", "Drives agents to interact with controllable parts of their world."),

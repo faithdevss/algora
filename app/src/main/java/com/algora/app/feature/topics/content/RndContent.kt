@@ -44,7 +44,7 @@ internal val rndContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.ExplorationPlayer,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "Montezuma's Revenge", "RND achieved breakthrough scores on this notorious hard-exploration game."),
         ApplicationCard("robot", 0xFF60A5FA, "Sparse-Reward Control", "A drop-in novelty bonus for exploration-starved tasks."),

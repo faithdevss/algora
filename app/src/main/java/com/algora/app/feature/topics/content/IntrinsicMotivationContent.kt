@@ -42,7 +42,7 @@ internal val intrinsicMotivationContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.ExplorationPlayer,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "Sparse-Reward Games", "Cracked hard-exploration Atari games like Montezuma's Revenge."),
         ApplicationCard("robot", 0xFF60A5FA, "Open-Ended Learning", "Robots acquire skills before any task reward exists."),
