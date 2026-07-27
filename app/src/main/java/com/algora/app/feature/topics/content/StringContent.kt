@@ -46,7 +46,7 @@ internal val stringContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.ArrayWalkPlayer,
     applications = listOf(
         ApplicationCard("search", 0xFF10B981, "Text Search", "Find/replace, autocomplete, and log grepping all reduce to substring and pattern matching over strings."),
         ApplicationCard("link", 0xFF3B82F6, "Parsing & Tokenizing", "Compilers, URL routers, and CSV readers slice strings into meaningful tokens."),

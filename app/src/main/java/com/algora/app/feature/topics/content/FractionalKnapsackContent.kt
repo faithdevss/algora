@@ -51,7 +51,7 @@ internal val fractionalKnapsackContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.ArrayWalkPlayer,
     applications = listOf(
         ApplicationCard("finance", 0xFF10B981, "Resource Allocation", "Divisible budgets — spread money across investments by best return per dollar."),
         ApplicationCard("chip", 0xFF3B82F6, "Bandwidth & Cargo", "Allocating continuous resources like bandwidth or bulk cargo to maximize value fits directly."),

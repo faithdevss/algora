@@ -49,7 +49,7 @@ internal val graphVariantsContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.GraphAlgorithmPlayer,
     applications = listOf(
         ApplicationCard("map", 0xFF10B981, "Road & Transit Networks", "Weighted directed graphs model one-way streets and travel costs for routing."),
         ApplicationCard("users", 0xFF3B82F6, "Social Networks", "Undirected graphs capture mutual friendships; directed ones model follows."),

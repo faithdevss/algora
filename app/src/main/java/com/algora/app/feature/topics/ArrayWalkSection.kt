@@ -1123,6 +1123,535 @@ private fun reservoirSamplingFrames(): List<WalkFrame> {
     return frames
 }
 
+// A Fenwick tree is an array whose index arithmetic is the whole data structure, so the walk player
+// is the honest renderer for it: the cells are tree[], and the algorithm is which cells you step to.
+private fun lowbit(i: Int): Int = i and (-i)
+
+private fun fenwickFrames(): List<WalkFrame> {
+    val a = intArrayOf(3, 1, 4, 1, 5, 9, 2, 6)
+    val n = a.size
+    val tree = IntArray(n + 1)
+
+    fun updatePath(pos: Int): List<Int> {
+        val path = mutableListOf<Int>()
+        var i = pos
+        while (i <= n) { path += i; i += lowbit(i) }
+        return path
+    }
+
+    fun queryPath(pos: Int): List<Int> {
+        val path = mutableListOf<Int>()
+        var i = pos
+        while (i > 0) { path += i; i -= lowbit(i) }
+        return path
+    }
+
+    a.forEachIndexed { idx, v -> updatePath(idx + 1).forEach { tree[it] += v } }
+
+    val frames = mutableListOf<WalkFrame>()
+    fun treeRow(active: Set<Int> = emptySet(), done: Set<Int> = emptySet()) =
+        (1..n).map { i ->
+            CellView(
+                tree[i].toString(),
+                when {
+                    i in active -> CellMark.ACTIVE
+                    i in done -> CellMark.DONE
+                    else -> CellMark.IDLE
+                },
+            )
+        }
+
+    fun sourceRow(range: IntRange? = null) = a.mapIndexed { idx, v ->
+        CellView(v.toString(), if (range != null && idx + 1 in range) CellMark.WINDOW else CellMark.DIM)
+    }
+
+    frames += WalkFrame(
+        status = "tree[i] holds the sum of a[i − lowbit(i) + 1 .. i], where lowbit(i) is the lowest set bit of i. " +
+            "So tree[4] covers four cells (${a.take(4).joinToString("+")} = ${tree[4]}) and tree[8] covers all " +
+            "eight, while every odd index covers exactly one.",
+        cells = treeRow(active = setOf(4, 8)),
+        aux = sourceRow(1..8),
+        auxLabel = "a (the array being summed)",
+    )
+
+    val qPath = queryPath(7)
+    var running = 0
+    qPath.forEachIndexed { step, i ->
+        running += tree[i]
+        frames += WalkFrame(
+            status = "prefix(7): read tree[$i] = ${tree[i]}, which covers a[${i - lowbit(i) + 1}..$i]. " +
+                "Strip the lowest set bit: $i − ${lowbit(i)} = ${i - lowbit(i)}" +
+                if (i - lowbit(i) == 0) ", which ends the walk." else ", so that is the next index.",
+            cells = treeRow(active = setOf(i), done = qPath.take(step).toSet()),
+            pointers = mapOf(i - 1 to "i"),
+            aux = sourceRow((i - lowbit(i) + 1)..i),
+            auxLabel = "range this node covers",
+            readout = "running sum = $running",
+        )
+    }
+    frames += WalkFrame(
+        status = "prefix(7) = $running in ${qPath.size} reads — the indices ${qPath.joinToString(" → ")}, which are " +
+            "the set bits of 7 written as 4 + 2 + 1. A plain loop over a[0..6] would have read 7 cells.",
+        cells = treeRow(done = qPath.toSet()),
+        aux = sourceRow(1..7),
+        auxLabel = "a[1..7] — the same sum the loop would compute",
+        readout = "prefix(7) = $running",
+    )
+
+    val pos = 3
+    val delta = 5
+    val uPath = updatePath(pos)
+    uPath.forEachIndexed { step, i ->
+        tree[i] += delta
+        frames += WalkFrame(
+            status = "a[$pos] += $delta. tree[$i] covers a[$pos], so it moves to ${tree[i]}. Add the lowest set bit: " +
+                "$i + ${lowbit(i)} = ${i + lowbit(i)}" +
+                if (i + lowbit(i) > n) ", which is past the end — done." else ", the next node that also covers a[$pos].",
+            cells = treeRow(active = setOf(i), done = uPath.take(step).toSet()),
+            pointers = mapOf(i - 1 to "i"),
+            readout = "${step + 1} of ${uPath.size} nodes rewritten",
+        )
+    }
+    frames += WalkFrame(
+        status = "One element changed and exactly ${uPath.size} nodes moved (${uPath.joinToString(" → ")}). Every " +
+            "other node's range excludes a[$pos], so leaving them alone is correct, not lazy.",
+        cells = treeRow(done = uPath.toSet()),
+        readout = "update cost = ${uPath.size} writes",
+    )
+
+    var fenQuery = 0
+    var loopQuery = 0
+    var fenUpdate = 0
+    var prefixUpdate = 0
+    for (i in 1..n) {
+        fenQuery += queryPath(i).size
+        loopQuery += i
+        fenUpdate += updatePath(i).size
+        prefixUpdate += n - i + 1
+    }
+    frames += WalkFrame(
+        status = "Summed over all $n prefixes and all $n single-element updates: Fenwick pays $fenQuery reads and " +
+            "$fenUpdate writes. A raw array pays $loopQuery reads but only 1 write; a precomputed prefix array " +
+            "pays $n reads but $prefixUpdate writes. Fenwick is the structure that refuses to be terrible at " +
+            "either one.",
+        cells = treeRow(),
+        aux = (1..n).map { CellView(Integer.bitCount(it).toString(), CellMark.WINDOW) },
+        auxLabel = "reads per prefix(i) — the popcount of i, never above log₂ $n = 3",
+        readout = "queries $fenQuery vs $loopQuery · updates $fenUpdate vs $prefixUpdate",
+    )
+    return frames
+}
+
+// The string lab is about the array underneath: contiguous storage buys O(1) indexing, and
+// immutability turns "s = s + x" in a loop into a quadratic copy.
+private fun stringFrames(): List<WalkFrame> {
+    val s = "algora"
+    val other = "algebra"
+    val frames = mutableListOf<WalkFrame>()
+
+    fun charRow(text: String, active: Int? = null, done: IntRange? = null, dimFrom: Int = text.length) =
+        text.mapIndexed { i, c ->
+            CellView(
+                c.toString(),
+                when {
+                    i == active -> CellMark.ACTIVE
+                    done != null && i in done -> CellMark.DONE
+                    i >= dimFrom -> CellMark.DIM
+                    else -> CellMark.IDLE
+                },
+            )
+        }
+
+    frames += WalkFrame(
+        status = "A string is a contiguous block of code units. s[3] is one multiply-and-add on the base address — " +
+            "the same cost as a[3] on any array, and the reason indexing never appears in a complexity analysis.",
+        cells = charRow(s, active = 3),
+        pointers = mapOf(3 to "s[3]"),
+        readout = "s[3] = '${s[3]}'",
+    )
+
+    val mismatch = s.zip(other).indexOfFirst { (x, y) -> x != y }
+    frames += WalkFrame(
+        status = "Comparing \"$s\" with \"$other\" stops at index $mismatch ('${s[mismatch]}' vs " +
+            "'${other[mismatch]}'), after ${mismatch + 1} character comparisons rather than ${s.length}. " +
+            "Equality is worst-case O(n) but usually leaves early; sorting strings is why that worst case matters.",
+        cells = charRow(s, active = mismatch, done = 0 until mismatch),
+        aux = charRow(other, active = mismatch, done = 0 until mismatch),
+        auxLabel = "the string being compared against",
+        readout = "${mismatch + 1} comparisons, verdict: \"$s\" > \"$other\"",
+    )
+
+    var copies = 0
+    var built = ""
+    s.forEach { c ->
+        copies += built.length + 1
+        built += c
+        val existing = built.length - 1
+        frames += WalkFrame(
+            status = "s = s + '$c'. The result is a new string, so the " +
+                (if (existing == 1) "1 character" else "$existing characters") +
+                " already there must be copied into fresh storage before '$c' is written. " +
+                "Total copied so far: $copies.",
+            cells = charRow(built + "·".repeat(s.length - built.length), active = built.length - 1, dimFrom = built.length),
+            readout = "characters copied: $copies",
+        )
+    }
+
+    fun builderWrites(count: Int, startCapacity: Int): Int {
+        var capacity = startCapacity
+        var size = 0
+        var growthCopies = 0
+        repeat(count) {
+            if (size == capacity) { growthCopies += size; capacity *= 2 }
+            size++
+        }
+        return size + growthCopies
+    }
+
+    val builderSmall = builderWrites(s.length, 4)
+    frames += WalkFrame(
+        status = "Six characters cost $copies character writes that way. A mutable builder writes each character " +
+            "once into a buffer it owns and only copies when the buffer fills — $builderSmall writes for the same " +
+            "result. At this size the difference is a rounding error, which is exactly why the bug survives review.",
+        cells = charRow(built, done = built.indices),
+        readout = "concat $copies writes · builder $builderSmall writes",
+    )
+
+    val big = 1000
+    val naiveBig = big.toLong() * (big + 1) / 2
+    val builderBig = builderWrites(big, 16)
+    frames += WalkFrame(
+        status = "Run the same loop to length $big and the gap is the whole point: concatenation writes " +
+            "$naiveBig characters because step i copies i of them — 1 + 2 + … + $big. The builder writes " +
+            "$builderBig, since doubling makes the copies a geometric series that sums to under 2n. " +
+            "Quadratic against linear, from one operator.",
+        cells = charRow(built, done = built.indices),
+        readout = "n = $big → $naiveBig vs $builderBig writes (${naiveBig / builderBig}×)",
+    )
+    frames += WalkFrame(
+        status = "Immutability is not the mistake — it is what makes strings safe to share, hash once, and use as " +
+            "map keys. Building them in a loop with + is the mistake. Use a builder while assembling, freeze to a " +
+            "string when done.",
+        cells = charRow(s, done = s.indices),
+    )
+    return frames
+}
+
+// The list ADT is a contract, so the lab runs one script of operations against two implementations and
+// counts what each actually pays.
+private fun listAdtFrames(): List<WalkFrame> {
+    val start = listOf(10, 20, 30, 40, 50)
+    val array = start.toMutableList()
+    val linked = start.toMutableList()
+    var shifts = 0
+    var indexReads = 0
+    var hops = 0
+    var pointerWrites = 0
+    val frames = mutableListOf<WalkFrame>()
+
+    fun row(list: List<Int>, marked: Set<Int>, mark: CellMark) =
+        list.mapIndexed { i, v -> CellView(v.toString(), if (i in marked) mark else CellMark.IDLE) }
+
+    frames += WalkFrame(
+        status = "The contract is the same for both rows: ordered, indexed, duplicates allowed, get / insert / " +
+            "remove at any position. Nothing below changes what the list means — only what each call costs.",
+        cells = row(array, emptySet(), CellMark.IDLE),
+        aux = row(linked, emptySet(), CellMark.IDLE),
+        auxLabel = "linked implementation",
+    )
+
+    val getIndex = 3
+    indexReads++
+    hops += getIndex + 1
+    frames += WalkFrame(
+        status = "get($getIndex): the array computes base + $getIndex × width and reads once. The linked list has " +
+            "no address arithmetic to do — it follows ${getIndex + 1} next pointers to reach the same value.",
+        cells = row(array, setOf(getIndex), CellMark.ACTIVE),
+        pointers = mapOf(getIndex to "read"),
+        aux = row(linked, (0..getIndex).toSet(), CellMark.WINDOW),
+        auxLabel = "linked implementation — ${getIndex + 1} hops",
+        readout = "array 1 read · linked ${getIndex + 1} hops",
+    )
+
+    val shiftCount = array.size
+    shifts += shiftCount
+    array.add(0, 5)
+    linked.add(0, 5)
+    pointerWrites += 2
+    frames += WalkFrame(
+        status = "insert(0, 5): the array must move every one of $shiftCount elements up a slot before the new " +
+            "head has anywhere to live. The linked list allocates a node and writes 2 pointers — position 0 " +
+            "costs it nothing.",
+        cells = row(array, setOf(0), CellMark.RESULT),
+        aux = row(linked, setOf(0), CellMark.RESULT),
+        auxLabel = "linked implementation — 2 pointer writes",
+        readout = "array $shiftCount shifts · linked 2 pointer writes",
+    )
+
+    array.add(60)
+    linked.add(60)
+    pointerWrites += 2
+    frames += WalkFrame(
+        status = "append(60): both are cheap. The array writes into spare capacity (and occasionally pays a " +
+            "doubling copy, amortised to O(1)); the linked list splices at a tail pointer it already keeps.",
+        cells = row(array, setOf(array.lastIndex), CellMark.RESULT),
+        aux = row(linked, setOf(linked.lastIndex), CellMark.RESULT),
+        auxLabel = "linked implementation",
+        readout = "array ~1 write · linked 2 pointer writes",
+    )
+
+    val removeIndex = 2
+    array.removeAt(removeIndex)
+    val removeShifts = array.size - removeIndex
+    shifts += removeShifts
+    hops += removeIndex
+    pointerWrites += 1
+    linked.removeAt(removeIndex)
+    frames += WalkFrame(
+        status = "remove($removeIndex): the array closes the hole by shifting $removeShifts elements down. The " +
+            "linked list hops $removeIndex nodes to find the predecessor, then unlinks with a single pointer " +
+            "write — the traversal, not the removal, is what it pays for.",
+        cells = row(array, setOf(removeIndex), CellMark.DONE),
+        aux = row(linked, (0 until removeIndex).toSet(), CellMark.WINDOW),
+        auxLabel = "linked implementation — $removeIndex hops + 1 write",
+        readout = "array $removeShifts shifts · linked $removeIndex hops",
+    )
+
+    val lastGet = 4
+    indexReads++
+    hops += lastGet + 1
+    frames += WalkFrame(
+        status = "One more get($lastGet) to close the script. Both lists hold ${array.joinToString(", ")} — " +
+            "identical contents, identical answers to every query the interface exposes.",
+        cells = row(array, setOf(lastGet), CellMark.ACTIVE),
+        aux = row(linked, (0..lastGet).toSet(), CellMark.WINDOW),
+        auxLabel = "linked implementation — ${lastGet + 1} hops",
+        readout = "array 1 read · linked ${lastGet + 1} hops",
+    )
+
+    frames += WalkFrame(
+        status = "Whole script: the array moved $shifts elements and did $indexReads O(1) index reads; the linked " +
+            "list walked $hops nodes and wrote $pointerWrites pointers. Pick by the mix you actually run — " +
+            "index-heavy work wants the array, splice-heavy work with a node already in hand wants the links. " +
+            "\"Linked lists are faster at inserts\" is only true once you are standing at the insertion point.",
+        cells = row(array, array.indices.toSet(), CellMark.DONE),
+        aux = row(linked, linked.indices.toSet(), CellMark.DONE),
+        auxLabel = "linked implementation — same contents",
+        readout = "array: $shifts shifts · linked: $hops hops, $pointerWrites pointer writes",
+    )
+    return frames
+}
+
+private class Job(val id: String, val deadline: Int, val profit: Int)
+
+private class Schedule(val profit: Int, val slots: Array<String?>, val log: List<Pair<Job, Int?>>)
+
+private fun runSchedule(jobs: List<Job>, slotCount: Int): Schedule {
+    val slots = arrayOfNulls<String>(slotCount + 1)
+    var profit = 0
+    val log = mutableListOf<Pair<Job, Int?>>()
+    jobs.forEach { job ->
+        var placed: Int? = null
+        for (s in minOf(job.deadline, slotCount) downTo 1) {
+            if (slots[s] == null) { slots[s] = job.id; profit += job.profit; placed = s; break }
+        }
+        log += job to placed
+    }
+    return Schedule(profit, slots, log)
+}
+
+private fun jobSequencingFrames(): List<WalkFrame> {
+    val jobs = listOf(
+        Job("J1", 2, 100),
+        Job("J2", 1, 19),
+        Job("J3", 2, 27),
+        Job("J4", 1, 25),
+        Job("J5", 3, 15),
+    )
+    val slotCount = jobs.maxOf { it.deadline }
+    val byProfit = jobs.sortedByDescending { it.profit }
+    val frames = mutableListOf<WalkFrame>()
+
+    fun jobRow(current: Int, taken: Set<String>, rejected: Set<String>) =
+        byProfit.mapIndexed { i, job ->
+            CellView(
+                job.profit.toString(),
+                when {
+                    i == current -> CellMark.ACTIVE
+                    job.id in taken -> CellMark.DONE
+                    job.id in rejected -> CellMark.DIM
+                    else -> CellMark.IDLE
+                },
+            )
+        }
+
+    fun slotRow(slots: Array<String?>, active: Int? = null) =
+        (1..slotCount).map { s ->
+            CellView(slots[s] ?: "·", if (s == active) CellMark.ACTIVE else if (slots[s] != null) CellMark.RESULT else CellMark.DIM)
+        }
+
+    frames += WalkFrame(
+        status = "Five jobs, each with a deadline and a profit; one unit of time per job and $slotCount slots. " +
+            "Sorted by profit, highest first — the greedy claim is that considering them in this order is enough.",
+        cells = jobRow(-1, emptySet(), emptySet()),
+        pointers = byProfit.indices.associateWith { "d${byProfit[it].deadline}" },
+        aux = slotRow(arrayOfNulls(slotCount + 1)),
+        auxLabel = "slots 1..$slotCount",
+    )
+
+    val slots = arrayOfNulls<String>(slotCount + 1)
+    val taken = mutableSetOf<String>()
+    val rejected = mutableSetOf<String>()
+    var profit = 0
+    byProfit.forEachIndexed { i, job ->
+        var placed: Int? = null
+        for (s in minOf(job.deadline, slotCount) downTo 1) {
+            if (slots[s] == null) { slots[s] = job.id; profit += job.profit; placed = s; break }
+        }
+        if (placed != null) taken += job.id else rejected += job.id
+        frames += WalkFrame(
+            status = if (placed != null) {
+                "${job.id} (profit ${job.profit}, deadline ${job.deadline}) goes in slot $placed — the latest free " +
+                    "slot at or before its deadline. Taking the latest one keeps the early slots open for jobs " +
+                    "that have no other option."
+            } else {
+                "${job.id} (profit ${job.profit}, deadline ${job.deadline}) is dropped: every slot up to " +
+                    "${job.deadline} is already held by a job worth more. Nothing later can rescue it, so the " +
+                    "decision is final."
+            },
+            cells = jobRow(i, taken, rejected),
+            pointers = mapOf(i to "d${job.deadline}"),
+            aux = slotRow(slots, placed),
+            auxLabel = "slots 1..$slotCount",
+            readout = "profit = $profit",
+        )
+    }
+
+    val deadlineFirst = runSchedule(jobs.sortedBy { it.deadline }, slotCount)
+    frames += WalkFrame(
+        status = "Greedy by profit finishes at $profit, running ${taken.sorted().joinToString(", ")}. The ordering " +
+            "is doing real work here — the same algorithm fed jobs sorted by deadline instead scores " +
+            "${deadlineFirst.profit}, because it spends slot 1 on ${deadlineFirst.slots[1]} before it has seen " +
+            "what else wants that slot.",
+        cells = jobRow(-1, taken, rejected),
+        aux = slotRow(deadlineFirst.slots),
+        auxLabel = "deadline-first schedule — profit ${deadlineFirst.profit}",
+        readout = "profit-first $profit vs deadline-first ${deadlineFirst.profit}",
+    )
+
+    var best = 0
+    val ids = jobs.indices.toList()
+    fun permute(chosen: List<Job>, remaining: List<Int>) {
+        val result = runSchedule(chosen, slotCount)
+        if (result.log.all { it.second != null }) best = maxOf(best, result.profit)
+        remaining.forEach { idx -> permute(chosen + jobs[idx], remaining - idx) }
+    }
+    permute(emptyList(), ids)
+    frames += WalkFrame(
+        status = "Checked against brute force — every subset in every order, keeping only the ones where each job " +
+            "lands in a slot: the optimum is $best. Greedy matched it. That is the exchange argument in action, " +
+            "and it holds for every instance, not just this one.",
+        cells = jobRow(-1, taken, rejected),
+        aux = slotRow(slots),
+        auxLabel = "greedy schedule — profit $profit",
+        readout = "greedy $profit · brute-force optimum $best",
+    )
+    return frames
+}
+
+private fun fractionalKnapsackFrames(): List<WalkFrame> {
+    val values = listOf(60, 100, 120)
+    val weights = listOf(10, 20, 30)
+    val capacity = 50
+    val order = values.indices.sortedByDescending { values[it].toDouble() / weights[it] }
+    val frames = mutableListOf<WalkFrame>()
+
+    fun itemRow(current: Int, taken: Set<Int>, partial: Int? = null) =
+        order.mapIndexed { pos, idx ->
+            CellView(
+                "${values[idx]}/${weights[idx]}",
+                when {
+                    pos == current -> CellMark.ACTIVE
+                    idx == partial -> CellMark.RESULT
+                    idx in taken -> CellMark.DONE
+                    else -> CellMark.IDLE
+                },
+            )
+        }
+
+    val ratioPointers = order.indices.associateWith { "%.0f".format(values[order[it]].toDouble() / weights[order[it]]) }
+
+    frames += WalkFrame(
+        status = "Three items and a sack that holds $capacity kg. Sorted by value per kg — " +
+            order.joinToString(", ") { "%.0f".format(values[it].toDouble() / weights[it]) } +
+            " — because when items divide, density is the only thing worth ranking on.",
+        cells = itemRow(-1, emptySet()),
+        pointers = ratioPointers,
+        readout = "capacity $capacity kg",
+    )
+
+    var left = capacity.toDouble()
+    var total = 0.0
+    val taken = mutableSetOf<Int>()
+    order.forEachIndexed { pos, idx ->
+        val take = minOf(weights[idx].toDouble(), left)
+        val gained = values[idx] * take / weights[idx]
+        total += gained
+        left -= take
+        val whole = take == weights[idx].toDouble()
+        if (whole) taken += idx
+        frames += WalkFrame(
+            status = if (whole) {
+                "Item ${idx + 1} is worth ${values[idx]} at ${weights[idx]} kg — take all of it. " +
+                    "Remaining capacity ${"%.0f".format(left)} kg."
+            } else {
+                "Only ${"%.0f".format(left + take)} kg of room is left and item ${idx + 1} weighs " +
+                    "${weights[idx]} kg, so take the fraction ${"%.0f".format(take)}/${weights[idx]} of it for " +
+                    "${"%.0f".format(gained)}. This step is the one 0/1 knapsack is not allowed to make."
+            },
+            cells = itemRow(pos, taken, partial = if (whole) null else idx),
+            pointers = ratioPointers,
+            readout = "value ${"%.0f".format(total)} · ${"%.0f".format(left)} kg left",
+        )
+    }
+
+    frames += WalkFrame(
+        status = "Total ${"%.0f".format(total)} with the sack exactly full. No exchange can improve it: swapping " +
+            "any kilogram for one from a lower-density item strictly loses value, and the sack is never left " +
+            "with unused room. That is the proof, not a spot check.",
+        cells = itemRow(-1, taken, partial = order.last()),
+        readout = "optimal value ${"%.0f".format(total)}",
+    )
+
+    var greedy01 = 0
+    var room = capacity
+    val taken01 = mutableSetOf<Int>()
+    order.forEach { idx ->
+        if (weights[idx] <= room) { greedy01 += values[idx]; room -= weights[idx]; taken01 += idx }
+    }
+    val dp = IntArray(capacity + 1)
+    values.indices.forEach { i ->
+        for (c in capacity downTo weights[i]) dp[c] = maxOf(dp[c], dp[c - weights[i]] + values[i])
+    }
+    frames += WalkFrame(
+        status = "Forbid the fraction and the same ordering breaks. Density-greedy takes items " +
+            taken01.sorted().joinToString(", ") { "${it + 1}" } +
+            " for $greedy01 and leaves $room kg unusable; the DP optimum is ${dp[capacity]}, from items 2 and 3. " +
+            "Greedy is not \"usually close\" here — it is wrong by ${dp[capacity] - greedy01}.",
+        cells = order.mapIndexed { pos, idx ->
+            CellView("${values[idx]}/${weights[idx]}", if (idx in taken01) CellMark.DONE else CellMark.DIM)
+        },
+        pointers = ratioPointers,
+        aux = listOf(
+            CellView(greedy01.toString(), CellMark.ACTIVE),
+            CellView(dp[capacity].toString(), CellMark.RESULT),
+        ),
+        auxLabel = "0/1 greedy vs 0/1 optimum",
+        readout = "divisible → greedy optimal · indivisible → greedy off by ${dp[capacity] - greedy01}",
+    )
+    return frames
+}
+
 // ── Config ───────────────────────────────────────────────────────────────────
 
 private val walkConfigs = mapOf(
@@ -1239,6 +1768,56 @@ private val walkConfigs = mapOf(
             DoneFill to "Within tolerance",
         ),
         build = ::reservoirSamplingFrames,
+    ),
+    "fenwick_tree" to WalkConfig(
+        intro = "The tree is an array and the algorithm is index arithmetic: add the lowest set bit to update, " +
+            "strip it to query. Both walks are counted against the alternatives at the end.",
+        legend = listOf(
+            ActiveFill to "Node being touched",
+            WindowFill to "Range it covers",
+            DoneFill to "Already visited",
+        ),
+        build = ::fenwickFrames,
+    ),
+    "string" to WalkConfig(
+        intro = "Characters in contiguous storage. Indexing and comparison are the easy half; the interesting half " +
+            "is what immutability does to a loop that builds a string with +.",
+        legend = listOf(
+            ActiveFill to "Current character",
+            DoneFill to "Settled",
+            ResultFill to "Result",
+        ),
+        build = ::stringFrames,
+    ),
+    "list_adt" to WalkConfig(
+        intro = "One script of list operations run against two implementations at once. The contract is identical " +
+            "at every step; the counters underneath are not.",
+        legend = listOf(
+            ActiveFill to "Touched",
+            WindowFill to "Traversed",
+            ResultFill to "Written",
+        ),
+        build = ::listAdtFrames,
+    ),
+    "job_sequencing" to WalkConfig(
+        intro = "Highest profit first, each job dropped into the latest slot that still meets its deadline. The " +
+            "final frames check the greedy answer against every other schedule.",
+        legend = listOf(
+            ActiveFill to "Considering",
+            DoneFill to "Scheduled",
+            ResultFill to "Slot filled",
+        ),
+        build = ::jobSequencingFrames,
+    ),
+    "fractional_knapsack" to WalkConfig(
+        intro = "Sort by value per kilogram, fill greedily, split the last item. Then the same greedy is turned " +
+            "loose on the indivisible version to show exactly where the argument breaks.",
+        legend = listOf(
+            ActiveFill to "Considering",
+            DoneFill to "Taken whole",
+            ResultFill to "Taken in part",
+        ),
+        build = ::fractionalKnapsackFrames,
     ),
 )
 

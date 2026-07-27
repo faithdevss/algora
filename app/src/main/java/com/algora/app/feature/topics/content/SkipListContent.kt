@@ -49,7 +49,7 @@ internal val skipListContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.LinkedStructurePlayer,
     applications = listOf(
         ApplicationCard("chip", 0xFF10B981, "In-Memory Databases", "Redis uses skip lists to implement its sorted-set (ZSET) type."),
         ApplicationCard("share", 0xFF3B82F6, "Concurrent Structures", "Lock-free skip lists back Java's ConcurrentSkipListMap for scalable ordered access."),

@@ -51,7 +51,7 @@ internal val doublyLinkedListContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.LinkedStructurePlayer,
     applications = listOf(
         ApplicationCard("history", 0xFF7C3AED, "Browser & Editor History", "Back/forward navigation walks a doubly linked list of visited states in either direction."),
         ApplicationCard("chip", 0xFF3B82F6, "LRU Cache", "An LRU cache pairs a hash map with a doubly linked list to move used entries and evict the tail in O(1)."),

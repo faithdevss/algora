@@ -47,7 +47,7 @@ internal val listAdtContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.ArrayWalkPlayer,
     applications = listOf(
         ApplicationCard("chip", 0xFF10B981, "Standard Collections", "ArrayList and LinkedList are two implementations of the same List ADT."),
         ApplicationCard("book", 0xFF3B82F6, "API Design", "Coding to the List interface lets you swap implementations without touching callers."),

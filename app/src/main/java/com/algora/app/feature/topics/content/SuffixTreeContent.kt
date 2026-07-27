@@ -44,7 +44,7 @@ internal val suffixTreeContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.TreeVisualizer,
     applications = listOf(
         ApplicationCard("flask", 0xFF10B981, "Bioinformatics", "Genome assembly and DNA substring search rely on suffix structures over huge sequences."),
         ApplicationCard("search", 0xFF3B82F6, "Full-Text Indexing", "Fast substring and phrase search in documents and code builds on suffix arrays."),

@@ -51,7 +51,7 @@ internal val karatsubasAlgorithmContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.RecursionTreeVisualizer,
     applications = listOf(
         ApplicationCard("finance", 0xFF10B981, "Big-Integer Libraries", "Arbitrary-precision arithmetic (crypto keys, GMP, Java BigInteger) uses Karatsuba for mid-size numbers."),
         ApplicationCard("lock", 0xFF3B82F6, "Cryptography", "RSA and other schemes multiply thousand-bit integers where the speedup matters."),

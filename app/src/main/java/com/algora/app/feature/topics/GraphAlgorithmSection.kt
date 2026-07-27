@@ -90,6 +90,11 @@ private class GraphAlgoFrame(
     // Kosaraju's second pass runs on the transpose; the renderer flips every arrow instead of the
     // frame carrying a whole second edge list.
     val reversed: Boolean = false,
+    // The graph-variants lab shows one node set under four readings, so a frame can suppress the
+    // arrowheads, the weights, or an edge entirely rather than carrying four separate graphs.
+    val undirected: Boolean = false,
+    val hideWeights: Boolean = false,
+    val hiddenEdges: Set<Int> = emptySet(),
     val matrix: List<List<Int>>? = null,
     val matrixFocus: Pair<Int, Int>? = null,
     val matrixVia: Int? = null,
@@ -191,6 +196,197 @@ private val sccGraph = GraphDef(
         GEdge("F", "G", directed = true),
     ),
 )
+
+// One node set read four ways. Directedness, weights and the single back edge are toggled per frame,
+// and each reading is followed by the measurement that reading changes.
+private val variantsGraph = GraphDef(
+    nodes = listOf(
+        GNode("A", 0.08f, 0.22f),
+        GNode("B", 0.42f, 0.06f),
+        GNode("C", 0.78f, 0.24f),
+        GNode("D", 0.30f, 0.60f),
+        GNode("E", 0.70f, 0.66f),
+        GNode("F", 0.44f, 0.96f),
+    ),
+    edges = listOf(
+        GEdge("A", "B", 7, directed = true),
+        GEdge("A", "D", 1, directed = true),
+        GEdge("B", "C", 1, directed = true),
+        GEdge("D", "B", 1, directed = true),
+        GEdge("D", "E", 9, directed = true),
+        GEdge("C", "E", 1, directed = true),
+        GEdge("E", "F", 2, directed = true),
+        GEdge("F", "D", 1, directed = true),
+    ),
+)
+
+private fun graphVariantsFrames(): List<GraphAlgoFrame> {
+    val def = variantsGraph
+    val frames = mutableListOf<GraphAlgoFrame>()
+    val backEdgeIndex = def.edges.indexOfFirst { it.from == "F" && it.to == "D" }
+
+    fun reachable(from: String, directed: Boolean, skip: Set<Int> = emptySet()): Set<String> {
+        val seen = mutableSetOf(from)
+        val queue = ArrayDeque(listOf(from))
+        while (queue.isNotEmpty()) {
+            val cur = queue.removeFirst()
+            def.edges.forEachIndexed { i, e ->
+                if (i in skip) return@forEachIndexed
+                val next = when {
+                    e.from == cur -> e.to
+                    !directed && e.to == cur -> e.from
+                    else -> null
+                }
+                if (next != null && seen.add(next)) queue += next
+            }
+        }
+        return seen
+    }
+
+    frames += GraphAlgoFrame(
+        status = "Six vertices, eight edges. Everything below is the same set of pairs — what changes is only " +
+            "what a pair is taken to mean, and every change costs an algorithm something.",
+        undirected = true,
+        hideWeights = true,
+    )
+
+    val undirectedFromC = reachable("C", directed = false)
+    frames += GraphAlgoFrame(
+        status = "Undirected: an edge is a mutual relation, so a walk from C reaches all " +
+            "${undirectedFromC.size} vertices. Degrees sum to ${def.edges.size * 2} = 2 × ${def.edges.size} " +
+            "edges — the handshake lemma, and the reason an undirected adjacency list stores every edge twice.",
+        groups = undirectedFromC.associateWith { 2 },
+        undirected = true,
+        hideWeights = true,
+    )
+
+    val directedFromC = reachable("C", directed = true)
+    val unreachable = def.ids - directedFromC
+    frames += GraphAlgoFrame(
+        status = "Directed: the same edges, now one-way. From C only ${directedFromC.sorted().joinToString(", ")} " +
+            "are reachable — ${unreachable.sorted().joinToString(", ")} " +
+            "${if (unreachable.size == 1) "is" else "are"} cut off, because nothing points back into " +
+            "${unreachable.sorted().joinToString(" or ")}. Reachability stops being symmetric, which is why " +
+            "directed graphs need SCCs rather than connected components.",
+        groups = directedFromC.associateWith { 1 },
+        nodeMarks = unreachable.associateWith { NodeMark.IDLE },
+        hideWeights = true,
+    )
+
+    fun bfsHops(from: String, to: String): List<String> {
+        val prev = mutableMapOf<String, String>()
+        val seen = mutableSetOf(from)
+        val queue = ArrayDeque(listOf(from))
+        while (queue.isNotEmpty()) {
+            val cur = queue.removeFirst()
+            def.edges.filter { it.from == cur }.forEach { e ->
+                if (seen.add(e.to)) { prev[e.to] = cur; queue += e.to }
+            }
+        }
+        if (to !in seen) return emptyList()
+        val path = mutableListOf(to)
+        while (path.last() != from) path += prev.getValue(path.last())
+        return path.reversed()
+    }
+
+    fun cheapestPath(from: String, to: String): Pair<List<String>, Int> {
+        val dist = def.ids.associateWith { GRAPH_INF }.toMutableMap()
+        val prev = mutableMapOf<String, String>()
+        dist[from] = 0
+        repeat(def.ids.size) {
+            def.edges.forEach { e ->
+                val d = dist.getValue(e.from)
+                val w = e.weight ?: 1
+                if (d + w < dist.getValue(e.to)) { dist[e.to] = d + w; prev[e.to] = e.from }
+            }
+        }
+        val path = mutableListOf(to)
+        while (path.last() != from) path += prev.getValue(path.last())
+        return path.reversed() to dist.getValue(to)
+    }
+
+    fun edgeIndicesOf(path: List<String>): Set<Int> =
+        path.zipWithNext().mapNotNull { (u, v) -> def.edges.indexOfFirst { it.from == u && it.to == v }.takeIf { it >= 0 } }.toSet()
+
+    val hopPath = bfsHops("A", "E")
+    val hopCost = hopPath.zipWithNext().sumOf { (u, v) -> def.edges.first { it.from == u && it.to == v }.weight ?: 0 }
+    frames += GraphAlgoFrame(
+        status = "Unweighted, A to E: BFS returns ${hopPath.joinToString("→")} — ${hopPath.size - 1} hops, and " +
+            "no shorter walk exists. Fewest edges is the only question an unweighted graph can answer.",
+        edgeMarks = edgeIndicesOf(hopPath).associateWith { EdgeMark.ACTIVE },
+        nodeMarks = hopPath.associateWith { NodeMark.DONE },
+        hideWeights = true,
+    )
+
+    val (costPath, cost) = cheapestPath("A", "E")
+    frames += GraphAlgoFrame(
+        status = "Put the weights back and that answer is wrong. ${hopPath.joinToString("→")} costs $hopCost; " +
+            "${costPath.joinToString("→")} costs $cost over ${costPath.size - 1} hops. More edges, less " +
+            "distance — a weighted graph makes hop count and cost different questions, which is exactly the gap " +
+            "Dijkstra fills and BFS cannot.",
+        edgeMarks = edgeIndicesOf(costPath).associateWith { EdgeMark.ACCEPTED } +
+            edgeIndicesOf(hopPath).filterNot { it in edgeIndicesOf(costPath) }.associateWith { EdgeMark.REJECTED },
+        nodeMarks = costPath.associateWith { NodeMark.UPDATED },
+    )
+
+    // Returns what Kahn's algorithm managed to place; a short list is itself the cycle evidence.
+    fun topoOrder(skip: Set<Int>): List<String> {
+        val indeg = def.ids.associateWith { 0 }.toMutableMap()
+        def.edges.forEachIndexed { i, e -> if (i !in skip) indeg[e.to] = indeg.getValue(e.to) + 1 }
+        val ready = ArrayDeque(def.ids.filter { indeg.getValue(it) == 0 }.sorted())
+        val order = mutableListOf<String>()
+        while (ready.isNotEmpty()) {
+            val cur = ready.removeFirst()
+            order += cur
+            def.edges.forEachIndexed { i, e ->
+                if (i !in skip && e.from == cur) {
+                    indeg[e.to] = indeg.getValue(e.to) - 1
+                    if (indeg.getValue(e.to) == 0) ready += e.to
+                }
+            }
+        }
+        return order
+    }
+
+    val partial = topoOrder(emptySet())
+    val stuck = def.ids - partial.toSet()
+    val cycle = listOf("D", "E", "F", "D")
+    frames += GraphAlgoFrame(
+        status = "Cyclic: D→E→F→D closes a loop. Kahn's algorithm places " +
+            "${if (partial.isEmpty()) "nothing" else partial.joinToString(", ")} and then stalls — " +
+            "${stuck.sorted().joinToString(", ")} never reach in-degree zero because each waits on another " +
+            "member of the cycle. There is no valid order, so any \"process dependencies first\" algorithm is " +
+            "undefined here.",
+        edgeMarks = edgeIndicesOf(cycle).associateWith { EdgeMark.REJECTED },
+        nodeMarks = cycle.toSet().associateWith { NodeMark.ACTIVE },
+        hideWeights = true,
+    )
+
+    val acyclic = topoOrder(setOf(backEdgeIndex))
+    frames += GraphAlgoFrame(
+        status = "Drop the single edge F→D and it is a DAG. Now every vertex places — " +
+            "${acyclic.joinToString(" → ")} — and with a topological order come longest-path in linear time, " +
+            "dynamic programming over vertices, and build/scheduling order. One edge is the whole difference.",
+        hiddenEdges = setOf(backEdgeIndex),
+        nodeMarks = acyclic.associateWith { NodeMark.DONE },
+        badges = acyclic.withIndex().associate { (i, id) -> id to "#${i + 1}" },
+        hideWeights = true,
+    )
+
+    val v = def.ids.size
+    val e = def.edges.size
+    val maxEdges = v * (v - 1)
+    frames += GraphAlgoFrame(
+        status = "Last variant, and it is about storage rather than meaning: $e edges out of a possible " +
+            "$maxEdges is sparse. An adjacency matrix costs ${v * v} cells whatever you do; adjacency lists " +
+            "cost $e entries. Matrices win on \"is A→B an edge\" in O(1); lists win on iterating neighbours " +
+            "and on memory, which is why almost every real graph library defaults to lists.",
+        undirected = false,
+        hideWeights = true,
+        groups = def.ids.associateWith { 0 },
+    )
+    return frames
+}
 
 private fun neighboursOf(def: GraphDef, id: String, reversed: Boolean = false): List<String> =
     def.edges.mapNotNull { e ->
@@ -683,6 +879,17 @@ private val graphAlgoConfigs = mapOf(
         legend = sccLegend,
         build = ::kosarajuFrames,
     ),
+    "graph_variants" to GraphAlgoConfig(
+        intro = "The same six vertices and eight edges, read as undirected, directed, unweighted, weighted, " +
+            "cyclic and acyclic in turn. Each frame states what that reading costs or buys, measured on this graph.",
+        def = variantsGraph,
+        legend = listOf(
+            Color(0xFF0EA5E9) to "Reachable",
+            SimColors.Green to "Cheapest route",
+            SimColors.Red to "Blocked / cycle",
+        ),
+        build = ::graphVariantsFrames,
+    ),
 )
 
 private fun graphAlgoConfigFor(topicId: String): GraphAlgoConfig =
@@ -783,6 +990,7 @@ private fun GraphAlgoCanvas(def: GraphDef, frame: GraphAlgoFrame) {
             }
 
             def.edges.forEachIndexed { index, edge ->
+                if (index in frame.hiddenEdges) return@forEachIndexed
                 val flip = frame.reversed && edge.directed
                 val from = positions.getValue(if (flip) edge.to else edge.from)
                 val to = positions.getValue(if (flip) edge.from else edge.to)
@@ -798,7 +1006,7 @@ private fun GraphAlgoCanvas(def: GraphDef, frame: GraphAlgoFrame) {
 
                 drawLine(color = color, start = start, end = end, strokeWidth = width)
 
-                if (edge.directed) {
+                if (edge.directed && !frame.undirected) {
                     val head = 9.dp.toPx()
                     listOf(2.6, -2.6).forEach { spread ->
                         val angle = kotlin.math.atan2(unit.y, unit.x) + spread
@@ -811,7 +1019,7 @@ private fun GraphAlgoCanvas(def: GraphDef, frame: GraphAlgoFrame) {
                     }
                 }
 
-                edge.weight?.let { weight ->
+                edge.weight?.takeUnless { frame.hideWeights }?.let { weight ->
                     val layout = textMeasurer.measure(weight.toString(), weightStyle)
                     val mid = Offset((start.x + end.x) / 2f, (start.y + end.y) / 2f) + offset
                     drawText(

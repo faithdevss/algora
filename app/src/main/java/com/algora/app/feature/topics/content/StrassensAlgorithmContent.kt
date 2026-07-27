@@ -53,7 +53,7 @@ internal val strassensAlgorithmContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.RecursionTreeVisualizer,
     applications = listOf(
         ApplicationCard("flask", 0xFF10B981, "Large Matrix Products", "Scientific computing and graphics libraries use Strassen for big dense multiplications."),
         ApplicationCard("robot", 0xFF3B82F6, "ML Linear Algebra", "Neural-network and simulation workloads are dominated by matrix multiplication cost."),

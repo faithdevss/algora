@@ -55,6 +55,7 @@ private fun simLabel(type: SimulationType): String = when (type) {
     SimulationType.OfflineRlPlayer -> "Offline · imitation player"
     SimulationType.MultiAgentPlayer -> "Multi-agent player"
     SimulationType.ExplorationPlayer -> "Exploration · meta-RL"
+    SimulationType.LinkedStructurePlayer -> "Linked structure player"
     SimulationType.RegressionExplorer -> "Regression explorer"
     SimulationType.PerceptronVisualizer -> "Perceptron playground"
     SimulationType.ClassifierPlayground -> "Classifier playground"

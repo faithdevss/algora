@@ -246,8 +246,133 @@ private fun sudokuTrace(size: Int): RecTrace {
     return RecTrace(t.nodes, t.frames)
 }
 
+// Karatsuba: three recursive products instead of four. The base case is a one-digit multiply, so the
+// leaf count IS the multiplication count — no separate instrumentation needed, just count leaves.
+private fun karatsubaTrace(digits: Int): RecTrace {
+    val t = Tracer()
+    val operands = mapOf(2 to (47L to 82L), 3 to (471L to 823L), 4 to (1234L to 5678L))
+    val (x, y) = operands[digits] ?: operands.getValue(4)
+    var oneDigitMults = 0
+
+    fun pow10(k: Int): Long {
+        var r = 1L
+        repeat(k) { r *= 10 }
+        return r
+    }
+
+    fun kara(parent: Int?, a: Long, b: Long, width: Int): Long {
+        val id = t.call(parent, "$a×$b")
+        if (a < 10 || b < 10) {
+            oneDigitMults++
+            val r = a * b
+            t.ret(id, "= $r")
+            return r
+        }
+        val half = width / 2
+        val p = pow10(half)
+        val a1 = a / p
+        val a0 = a % p
+        val b1 = b / p
+        val b0 = b % p
+        val z2 = kara(id, a1, b1, width - half)
+        val z0 = kara(id, a0, b0, half)
+        // The middle term is (a1+a0)(b1+b0) − z2 − z0: one product where the schoolbook split needs two.
+        val z1 = kara(id, a1 + a0, b1 + b0, maxOf(width - half, half) + 1) - z2 - z0
+        val r = z2 * p * p + z1 * p + z0
+        val schoolbook = width * width
+        t.ret(
+            id,
+            if (parent == null) {
+                "= $r · $oneDigitMults one-digit mults vs $schoolbook schoolbook" +
+                    if (oneDigitMults >= schoolbook) " — Karatsuba loses at this size" else ""
+            } else {
+                "= $r"
+            },
+        )
+        return r
+    }
+    kara(null, x, y, digits)
+    return RecTrace(t.nodes, t.frames)
+}
+
+// Strassen: seven block products instead of eight. Recursion stops at 2×2 blocks multiplied the plain
+// way, which keeps the tree eight nodes wide instead of fifty-seven.
+private fun strassenTrace(size: Int): RecTrace {
+    val t = Tracer()
+    val n = if (size >= 4) 4 else 2
+    val a = Array(n) { i -> IntArray(n) { j -> (i * n + j) % 7 + 1 } }
+    val b = Array(n) { i -> IntArray(n) { j -> (i + 2 * j) % 5 + 1 } }
+
+    fun addM(x: Array<IntArray>, y: Array<IntArray>, sign: Int): Array<IntArray> =
+        Array(x.size) { i -> IntArray(x.size) { j -> x[i][j] + sign * y[i][j] } }
+
+    fun naive(x: Array<IntArray>, y: Array<IntArray>, count: IntArray): Array<IntArray> {
+        val s = x.size
+        val c = Array(s) { IntArray(s) }
+        for (i in 0 until s) for (j in 0 until s) for (k in 0 until s) {
+            c[i][j] += x[i][k] * y[k][j]
+            count[0]++
+        }
+        return c
+    }
+
+    fun quad(m: Array<IntArray>, r: Int, c: Int): Array<IntArray> {
+        val h = m.size / 2
+        return Array(h) { i -> IntArray(h) { j -> m[r + i][c + j] } }
+    }
+
+    val strassenMults = IntArray(1)
+    val blockAdds = IntArray(1)
+
+    fun strassen(parent: Int?, x: Array<IntArray>, y: Array<IntArray>, label: String): Array<IntArray> {
+        val s = x.size
+        val id = t.call(parent, label)
+        if (s <= 2) {
+            val c = naive(x, y, strassenMults)
+            t.ret(id, "= 2×2 block, 8 scalar mults")
+            return c
+        }
+        val h = s / 2
+        val a11 = quad(x, 0, 0); val a12 = quad(x, 0, h); val a21 = quad(x, h, 0); val a22 = quad(x, h, h)
+        val b11 = quad(y, 0, 0); val b12 = quad(y, 0, h); val b21 = quad(y, h, 0); val b22 = quad(y, h, h)
+        blockAdds[0] += 10
+        val m1 = strassen(id, addM(a11, a22, 1), addM(b11, b22, 1), "M1")
+        val m2 = strassen(id, addM(a21, a22, 1), b11, "M2")
+        val m3 = strassen(id, a11, addM(b12, b22, -1), "M3")
+        val m4 = strassen(id, a22, addM(b21, b11, -1), "M4")
+        val m5 = strassen(id, addM(a11, a12, 1), b22, "M5")
+        val m6 = strassen(id, addM(a21, a11, -1), addM(b11, b12, 1), "M6")
+        val m7 = strassen(id, addM(a12, a22, -1), addM(b21, b22, 1), "M7")
+        blockAdds[0] += 8
+        val c11 = addM(addM(addM(m1, m4, 1), m5, -1), m7, 1)
+        val c12 = addM(m3, m5, 1)
+        val c21 = addM(m2, m4, 1)
+        val c22 = addM(addM(addM(m1, m3, 1), m2, -1), m6, 1)
+        val c = Array(s) { IntArray(s) }
+        for (i in 0 until h) for (j in 0 until h) {
+            c[i][j] = c11[i][j]
+            c[i][j + h] = c12[i][j]
+            c[i + h][j] = c21[i][j]
+            c[i + h][j + h] = c22[i][j]
+        }
+        val naiveCount = IntArray(1)
+        val reference = naive(x, y, naiveCount)
+        val matches = (0 until s).all { i -> (0 until s).all { j -> c[i][j] == reference[i][j] } }
+        t.ret(
+            id,
+            "= ${if (matches) "matches" else "DIFFERS from"} the plain product · ${strassenMults[0]} scalar mults " +
+                "vs ${naiveCount[0]}, paid for with ${blockAdds[0]} block additions",
+        )
+        return c
+    }
+    strassen(null, a, b, "${n}×$n")
+    return RecTrace(t.nodes, t.frames)
+}
+
 private val recursionConfigs = mapOf(
     "factorial" to RecursionConfig(1f..8f, 5, "n") { factorialTrace(it) },
+    "karatsubas_algorithm" to RecursionConfig(2f..4f, 4, "digits per operand") { karatsubaTrace(it) },
+    "strassens_algorithm" to RecursionConfig(4f..4f, 4, "matrix size") { strassenTrace(it) },
     "permutation_generation" to RecursionConfig(2f..4f, 3, "letters") { permutationTrace(it) },
     "sudoku_solver" to RecursionConfig(4f..4f, 4, "grid size") { sudokuTrace(it) },
     "fibonacci_recursive" to RecursionConfig(1f..6f, 4, "n") { fibonacciTrace(it) },
@@ -288,7 +413,8 @@ fun RecursionTreeSection(topicId: String) {
                 value = n,
                 onValueChange = { n = it },
                 valueRange = config.nRange,
-                steps = (config.nRange.endInclusive - config.nRange.start).toInt() - 1,
+                // Single-value ranges (sudoku, Strassen) would compute -1 here, which Slider rejects.
+                steps = ((config.nRange.endInclusive - config.nRange.start).toInt() - 1).coerceAtLeast(0),
             )
 
             RecursionCanvas(nodes = trace.nodes, stateById = frame.stateById)

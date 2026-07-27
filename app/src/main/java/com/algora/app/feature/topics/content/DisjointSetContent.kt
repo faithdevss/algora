@@ -58,7 +58,7 @@ internal val disjointSetContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.TreeVisualizer,
     applications = listOf(
         ApplicationCard("share", 0xFF10B981, "Kruskal's MST", "Union-find is the cycle-detection engine inside Kruskal's minimum-spanning-tree algorithm."),
         ApplicationCard("map", 0xFF3B82F6, "Connected Components", "Grouping connected cells, pixels, or network nodes is a sequence of unions."),

@@ -492,6 +492,206 @@ private fun huffmanFrames(): List<TreeFrame> {
     return b.frames
 }
 
+// ── Disjoint set: a forest whose only job is to answer "same set?" ───────────
+// Union by rank keeps the trees short; path compression rewrites the parents it walked past. Both
+// costs are counted against a naive implementation over the same operation script.
+private fun disjointSetFrames(): List<TreeFrame> {
+    val labels = listOf("A", "B", "C", "D", "E", "F", "G", "H")
+    val b = TreeBuilder()
+    val nodeId = labels.mapIndexed { i, label -> b.add(label, null, i) }
+    val parent = IntArray(labels.size) { it }
+    val rank = IntArray(labels.size)
+
+    b.frame("Eight elements, eight singleton sets. Each is its own root — the forest is the set " +
+        "partition, nothing else is stored.")
+
+    fun root(x: Int): Int {
+        var cur = x
+        while (parent[cur] != cur) cur = parent[cur]
+        return cur
+    }
+
+    // Ordered so both cases appear: equal ranks (which grows the forest) and unequal (which does not).
+    val unions = listOf(0 to 1, 2 to 3, 0 to 2, 4 to 5, 0 to 4, 6 to 7, 0 to 6)
+    unions.forEach { (x, y) ->
+        val rx = root(x)
+        val ry = root(y)
+        val tie = rank[rx] == rank[ry]
+        val (child, newRoot) = when {
+            rank[rx] < rank[ry] -> rx to ry
+            rank[ry] < rank[rx] -> ry to rx
+            else -> { rank[rx]++; ry to rx }
+        }
+        parent[child] = newRoot
+        b.reparent(nodeId[child], nodeId[newRoot], child)
+        b.frame(
+            "union(${labels[x]}, ${labels[y]}): the roots are ${labels[rx]} (rank ${if (tie) rank[rx] - 1 else rank[rx]}) " +
+                "and ${labels[ry]} (rank ${rank[ry]}). " +
+                if (tie) {
+                    "Equal ranks, so the choice is arbitrary — ${labels[child]} goes under ${labels[newRoot]} and " +
+                        "${labels[newRoot]}'s rank goes up to ${rank[newRoot]}. This is the only case where the " +
+                        "forest gets taller."
+                } else {
+                    "The shorter tree hangs under the taller one — ${labels[child]} now points at " +
+                        "${labels[newRoot]} and no depth is added, which is the whole point of tracking rank."
+                },
+            active = setOf(nodeId[child]),
+            marked = setOf(nodeId[newRoot]),
+        )
+    }
+
+    val deepest = labels.indices.maxBy { x ->
+        var d = 0
+        var cur = x
+        while (parent[cur] != cur) { cur = parent[cur]; d++ }
+        d
+    }
+    val walkPath = mutableListOf<Int>()
+    var cur = deepest
+    while (parent[cur] != cur) { walkPath += cur; cur = parent[cur] }
+    val theRoot = cur
+    b.frame(
+        "find(${labels[deepest]}) walks ${walkPath.size} pointers to reach ${labels[theRoot]}. Every node it " +
+            "passed is in the same set as the root, so pointing them straight at it loses no information.",
+        active = setOf(nodeId[deepest]),
+        path = walkPath.map { nodeId[it] }.toSet(),
+        marked = setOf(nodeId[theRoot]),
+    )
+
+    walkPath.forEach { node ->
+        parent[node] = theRoot
+        b.reparent(nodeId[node], nodeId[theRoot], node)
+    }
+    b.frame(
+        "Path compression: every node on that walk is re-hung directly under ${labels[theRoot]}. The answer " +
+            "is unchanged; the next find on any of them costs one hop.",
+        marked = walkPath.map { nodeId[it] }.toSet() + nodeId[theRoot],
+    )
+
+    // Same script, two implementations, hops counted — the claim about near-constant time is measured.
+    fun measure(useRank: Boolean, useCompression: Boolean): Int {
+        val p = IntArray(labels.size) { it }
+        val r = IntArray(labels.size)
+        var hops = 0
+        fun find(x: Int): Int {
+            var c = x
+            val seen = mutableListOf<Int>()
+            while (p[c] != c) { hops++; seen += c; c = p[c] }
+            if (useCompression) seen.forEach { p[it] = c }
+            return c
+        }
+        unions.forEach { (x, y) ->
+            val rx = find(x)
+            val ry = find(y)
+            if (rx == ry) return@forEach
+            if (!useRank) { p[rx] = ry } else when {
+                r[rx] < r[ry] -> p[rx] = ry
+                r[ry] < r[rx] -> p[ry] = rx
+                else -> { p[ry] = rx; r[rx]++ }
+            }
+        }
+        repeat(4) { labels.indices.forEach { find(it) } }
+        return hops
+    }
+    val naive = measure(useRank = false, useCompression = false)
+    val ranked = measure(useRank = true, useCompression = false)
+    val both = measure(useRank = true, useCompression = true)
+    b.frame(
+        "Over the same script — those ${unions.size} unions then 4 rounds of find on all 8 elements — a naive " +
+            "\"point one root at the other\" walks $naive pointers, union by rank alone walks $ranked, and rank " +
+            "plus compression walks $both. That is the inverse-Ackermann claim in miniature: the structure " +
+            "flattens itself as you use it.",
+        marked = nodeId.toSet(),
+    )
+    return b.frames
+}
+
+// ── Suffix tree: the suffix trie, then the same information with unary chains collapsed ──
+private fun suffixTreeFrames(): List<TreeFrame> {
+    val text = "aba$"
+    val b = TreeBuilder()
+    val root = b.add("•", null, 0)
+    val byPrefix = mutableMapOf("" to root)
+    val suffixes = text.indices.map { text.substring(it) }
+
+    b.frame(
+        "The text is \"$text\" with a terminator, which guarantees no suffix is a prefix of another. Its " +
+            "${suffixes.size} suffixes go into a trie: ${suffixes.joinToString(", ")}.",
+        marked = setOf(root),
+    )
+
+    suffixes.forEachIndexed { start, suffix ->
+        var prefix = ""
+        var parentNode = root
+        val path = mutableSetOf(root)
+        suffix.forEach { ch ->
+            val next = prefix + ch
+            val existing = byPrefix[next]
+            parentNode = existing ?: b.add(ch.toString(), parentNode, next.length).also { byPrefix[next] = it }
+            path += parentNode
+            b.frame(
+                if (existing != null) {
+                    "Suffix \"$suffix\": '$ch' is already on this path — shared prefixes cost nothing extra."
+                } else {
+                    "Suffix \"$suffix\" (starts at index $start): add '$ch' for path \"$next\"."
+                },
+                active = setOf(parentNode),
+                path = path,
+            )
+            prefix = next
+        }
+        b.relabel(parentNode, "[$start]")
+        b.frame("Leaf labelled with the start index $start — that label is what a search returns.", marked = setOf(parentNode), path = path)
+    }
+
+    val trieNodes = byPrefix.size
+    // Collapse every node that has exactly one child, which is what turns a trie into a suffix tree.
+    fun childCount(prefix: String) = byPrefix.keys.count { it.length == prefix.length + 1 && it.startsWith(prefix) }
+    val chains = byPrefix.keys.filter { it.isNotEmpty() && childCount(it) == 1 }
+    b.frame(
+        "The trie has $trieNodes nodes, and ${chains.size} of them have exactly one child — they carry no " +
+            "decision, only a character. A suffix tree stores the whole chain on one edge instead.",
+        active = chains.mapNotNull { byPrefix[it] }.toSet(),
+    )
+
+    // Rebuild as the compressed tree so the saving is shown, not just described.
+    val c = TreeBuilder()
+    val cRoot = c.add("•", null, 0)
+    fun edgesFrom(prefix: String): List<Char> =
+        byPrefix.keys.filter { it.length == prefix.length + 1 && it.startsWith(prefix) }
+            .map { it.last() }
+            .sorted()
+    var compressedNodes = 1
+    fun buildCompressed(prefix: String, parentId: Int, order: Int) {
+        edgesFrom(prefix).forEachIndexed { i, ch ->
+            var path = prefix + ch
+            while (childCount(path) == 1) path += edgesFrom(path).first()
+            val label = path.substring(prefix.length)
+            val id = c.add(label, parentId, order * 10 + i)
+            compressedNodes++
+            buildCompressed(path, id, i)
+        }
+    }
+    buildCompressed("", cRoot, 0)
+    c.frame(
+        "Same text, unary chains collapsed: $compressedNodes nodes instead of $trieNodes, and every edge now " +
+            "carries a substring. Leaves still correspond one-to-one with suffixes, which is why the node " +
+            "count is O(n) rather than O(n²) for a trie on a long text.",
+        marked = setOf(cRoot),
+    )
+    c.frame(
+        "Searching \"ba\" follows one edge and stops after comparing the pattern, not the text — a suffix " +
+            "tree answers \"does this pattern occur\" in time proportional to the pattern length, no matter " +
+            "how long the text is. Building it in O(n) (Ukkonen) is the hard part; using it is not.",
+        // Only the root's own "ba$" edge — the deeper one is reached through "a", not by this search.
+        active = c.frames.last().nodes
+            .filter { it.parent == cRoot && it.label.startsWith("ba") }
+            .map { it.id }
+            .toSet(),
+    )
+    return b.frames + c.frames
+}
+
 private val treeConfigs = mapOf(
     "binary_search_tree" to TreeConfig(
         intro = "Inserting 50, 30, 70, 20, 40, 60, 80, then searching for 60. Every operation walks one root-to-leaf path, comparing once per level.",
@@ -539,6 +739,19 @@ private val treeConfigs = mapOf(
             "symbols. The bit totals at the end are counted from the tree it actually built.",
         markedLabel = "Merged",
         build = ::huffmanFrames,
+    ),
+    "disjoint_set" to TreeConfig(
+        intro = "A forest where the only thing a tree means is \"these elements are in one set\". Union by rank " +
+            "keeps it shallow, path compression flattens what it walks, and the final frame counts both against " +
+            "the naive version.",
+        markedLabel = "Root / settled",
+        build = ::disjointSetFrames,
+    ),
+    "suffix_tree" to TreeConfig(
+        intro = "Every suffix of the text inserted into a trie, then the same information with one-child chains " +
+            "collapsed onto single edges — the step that makes the node count linear in the text length.",
+        markedLabel = "Leaf / suffix start",
+        build = ::suffixTreeFrames,
     ),
 )
 
@@ -627,7 +840,9 @@ private fun TreeCanvas(frame: TreeFrame) {
             xById[id] = kids.map { xById.getValue(it.id) }.average().toFloat()
         }
     }
-    frame.nodes.firstOrNull { it.parent == null }?.let { walk(it.id, 0) }
+    // Every parentless node is a root: a disjoint-set forest starts as eight of them and merges down
+    // to one, so the layout cannot assume a single tree.
+    frame.nodes.filter { it.parent == null }.sortedBy { it.order }.forEach { walk(it.id, 0) }
 
     val leafCount = leafCursor.coerceAtLeast(1f)
     val maxDepth = depthById.values.maxOrNull() ?: 0

@@ -53,7 +53,7 @@ internal val fenwickTreeContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.ArrayWalkPlayer,
     applications = listOf(
         ApplicationCard("chart", 0xFF10B981, "Cumulative Frequencies", "Running counts and rank queries over a changing multiset are the BIT's classic use."),
         ApplicationCard("trend", 0xFF3B82F6, "Counting Inversions", "Merge-sort-style inversion counting is a few lines with a Fenwick tree."),

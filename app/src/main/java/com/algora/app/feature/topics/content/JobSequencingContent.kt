@@ -53,7 +53,7 @@ internal val jobSequencingContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.ArrayWalkPlayer,
     applications = listOf(
         ApplicationCard("history", 0xFF10B981, "Deadline Scheduling", "Assign profitable tasks to a single worker or CPU where each must finish by a due time."),
         ApplicationCard("finance", 0xFF3B82F6, "Order Fulfillment", "Pick which time-sensitive orders to commit to when capacity is limited, maximizing revenue."),
