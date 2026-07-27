@@ -22,4 +22,7 @@ object SettingsKeys {
     val STREAK_COUNT = intPreferencesKey("streak_count")
     val STREAK_LAST_DAY = longPreferencesKey("streak_last_epoch_day")
     val SRS = stringSetPreferencesKey("srs_state")
+    // How many never-seen cards were introduced, and on which day — drives the daily new-card cap.
+    val NEW_CARDS_DAY = longPreferencesKey("new_cards_epoch_day")
+    val NEW_CARDS_COUNT = intPreferencesKey("new_cards_count")
 }

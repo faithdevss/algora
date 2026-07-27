@@ -12,15 +12,20 @@ import com.algora.app.feature.algorithms.AlgorithmsScreen
 import com.algora.app.feature.analysis.AnalysisScreen
 import com.algora.app.feature.datastructures.DataStructuresScreen
 import com.algora.app.feature.deeplearning.DeepLearningScreen
-import com.algora.app.feature.flashcards.FlashcardScreen
 import com.algora.app.feature.home.HomeScreen
 import com.algora.app.feature.interviewprep.InterviewPrepScreen
 import com.algora.app.feature.machinelearning.MachineLearningScreen
 import com.algora.app.feature.nlp.NlpScreen
+import com.algora.app.feature.practice.PracticeScreen
+import com.algora.app.feature.practice.QuizCatalogScreen
+import com.algora.app.feature.practice.problems.ProblemDetailScreen
+import com.algora.app.feature.practice.problems.ProblemListScreen
+import com.algora.app.feature.premium.PremiumScreen
 import com.algora.app.feature.progress.ProgressScreen
 import com.algora.app.feature.reinforcementlearning.ReinforcementLearningScreen
 import com.algora.app.feature.review.ReviewScreen
 import com.algora.app.feature.settings.SettingsScreen
+import com.algora.app.feature.simulations.SimulationDetailScreen
 import com.algora.app.feature.simulations.SimulationsScreen
 import com.algora.app.feature.topics.TopicDetailScreen
 
@@ -32,6 +37,7 @@ fun NavGraph(
     modifier: Modifier = Modifier,
 ) {
     val openTopic: (String) -> Unit = { topicId -> navController.navigate(TopicDetailRoute.route(topicId)) }
+    val openSimulation: (String) -> Unit = { topicId -> navController.navigate(SimulationDetailRoute.route(topicId)) }
     // Category browsers are entered from Home (or the Practice tab), which stays on the back stack.
     val goBack: () -> Unit = { navController.popBackStack() }
 
@@ -64,8 +70,28 @@ fun NavGraph(
             )
         }
 
-        composable(FlashcardsRoute.ROUTE) {
-            FlashcardScreen(onBack = { navController.popBackStack() })
+        // Practice hub — recall drills, quizzes, problem bank, interview prep.
+        composable(PracticeRoute.ROUTE) {
+            PracticeScreen(onNavigate = { route -> navController.navigate(route) })
+        }
+
+        composable(QuizCatalogRoute.ROUTE) {
+            QuizCatalogScreen(onQuizClick = openTopic, onBack = goBack)
+        }
+
+        composable(ProblemsRoute.ROUTE) {
+            ProblemListScreen(
+                onProblemClick = { problemId -> navController.navigate(ProblemDetailRoute.route(problemId)) },
+                onBack = goBack,
+            )
+        }
+
+        composable(
+            route = ProblemDetailRoute.PATTERN,
+            arguments = listOf(navArgument(ProblemDetailRoute.ARG) { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val problemId = backStackEntry.arguments?.getString(ProblemDetailRoute.ARG).orEmpty()
+            ProblemDetailScreen(problemId = problemId, onBack = goBack, onOpenTopic = openTopic)
         }
 
         composable(SettingsRoute.ROUTE) {
@@ -76,6 +102,10 @@ fun NavGraph(
             ReviewScreen(onBack = { navController.popBackStack() })
         }
 
+        composable(PremiumRoute.ROUTE) {
+            PremiumScreen(onBack = { navController.popBackStack() })
+        }
+
         // Progress dashboard — mock's fixed Progress nav destination (isProgress block).
         composable(ProgressRoute.ROUTE) {
             ProgressScreen(mode = mode)
@@ -83,7 +113,21 @@ fun NavGraph(
 
         // Simulations catalog — every topic with a runnable interactive lab.
         composable(SimulationsRoute.ROUTE) {
-            SimulationsScreen(onTopicClick = openTopic)
+            SimulationsScreen(onTopicClick = openSimulation)
+        }
+
+        // A lab on its own, without the surrounding topic write-up.
+        composable(
+            route = SimulationDetailRoute.PATTERN,
+            arguments = listOf(navArgument(SimulationDetailRoute.ARG) { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val topicId = backStackEntry.arguments?.getString(SimulationDetailRoute.ARG).orEmpty()
+            SimulationDetailScreen(
+                topicId = topicId,
+                onBack = { navController.popBackStack() },
+                onOpenTopic = openTopic,
+                onGoPremium = { navController.navigate(PremiumRoute.ROUTE) },
+            )
         }
 
         composable(
@@ -95,6 +139,7 @@ fun NavGraph(
                 topicId = topicId,
                 onBack = { navController.popBackStack() },
                 onTopicClick = openTopic,
+                onGoPremium = { navController.navigate(PremiumRoute.ROUTE) },
             )
         }
     }

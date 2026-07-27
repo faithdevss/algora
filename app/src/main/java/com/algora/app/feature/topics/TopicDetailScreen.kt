@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -55,10 +56,12 @@ import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CrossLink
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
-import com.algora.app.core.data.model.SimulationType
 import com.algora.app.core.data.model.StepCard
 import com.algora.app.core.data.model.Topic
 import com.algora.app.core.data.model.TopicContent
+import com.algora.app.core.data.entitlement.EntitlementRepository
+import com.algora.app.core.data.entitlement.TopicAccess
+import com.algora.app.core.data.entitlement.entitlementDataStore
 import com.algora.app.core.data.progress.ProgressRepository
 import com.algora.app.core.data.progress.progressDataStore
 import com.algora.app.core.data.settings.SettingsRepository
@@ -74,11 +77,82 @@ import com.algora.app.feature.interviewprep.systemdesign.SystemDesignRegistry
 import com.algora.app.feature.interviewprep.systemdesign.SystemDesignScreen
 import com.algora.app.feature.interviewprep.quiz.QuizRegistry
 import com.algora.app.feature.interviewprep.quiz.QuizScreen
+import com.algora.app.feature.premium.LockedTopicBody
 import com.algora.app.feature.topics.content.TopicContentProvider
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlinx.coroutines.launch
 
+// Same amber as the lock icon in core/ui/components/TopicRow.kt.
+private val RowLockAmber = Color(0xFFF59E0B)
+
+// Paywall gate (Phase 8). Every route into topic content funnels through here, so premium topics
+// stay closed no matter which branch below would have rendered them — quiz, behavioral bank, system
+// design primer, analysis tool or the standard 7-section page.
 @Composable
-fun TopicDetailScreen(topicId: String, onBack: () -> Unit, onTopicClick: (String) -> Unit = {}) {
+fun TopicDetailScreen(
+    topicId: String,
+    onBack: () -> Unit,
+    onTopicClick: (String) -> Unit = {},
+    onGoPremium: () -> Unit = {},
+) {
+    val topic = remember(topicId) { TopicRegistry.find(topicId) }
+    val context = LocalContext.current
+    val entitlements = remember { EntitlementRepository(context.entitlementDataStore) }
+    val access by entitlements
+        .accessFor(topicId, topic?.isPremium == true)
+        .collectAsState(initial = null)
+
+    // One frame of nothing while DataStore answers — better than flashing paid content.
+    val resolved = access ?: return
+
+    if (topic != null && resolved is TopicAccess.Locked) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            DetailHeader(title = topic.name, onBack = onBack)
+            LockedTopicBody(topic = topic, onGoPremium = onGoPremium)
+        }
+        return
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        if (resolved is TopicAccess.AdUnlocked) {
+            AdUnlockBanner(expiresAt = resolved.expiresAt)
+        }
+        TopicDetailContent(topicId = topicId, onBack = onBack, onTopicClick = onTopicClick)
+    }
+}
+
+// Reminder that this access came from a rewarded ad and will lapse.
+@Composable
+private fun AdUnlockBanner(expiresAt: Long) {
+    // Weekday included: a 24h unlock always lands on the same clock time, so the time alone reads
+    // like it expires within the minute.
+    val formatter = remember { SimpleDateFormat("EEE h:mm a", Locale.getDefault()) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(RowLockAmber.copy(alpha = 0.13f))
+            .padding(horizontal = 16.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Filled.LockOpen,
+            contentDescription = null,
+            tint = RowLockAmber,
+            modifier = Modifier.size(15.dp),
+        )
+        Text(
+            text = "Unlocked until ${formatter.format(Date(expiresAt))}",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 8.dp),
+        )
+    }
+}
+
+@Composable
+private fun TopicDetailContent(topicId: String, onBack: () -> Unit, onTopicClick: (String) -> Unit) {
     val topic = remember(topicId) { TopicRegistry.find(topicId) }
     val content = remember(topicId) { TopicContentProvider.get(topicId) }
 
@@ -189,39 +263,7 @@ fun TopicDetailScreen(topicId: String, onBack: () -> Unit, onTopicClick: (String
             item { SectionTitle("Interactive Simulation") }
             item {
                 Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    when (content.simulation) {
-                        SimulationType.ArrayVisualizer -> ArraySimulationSection()
-                        SimulationType.LinkedListVisualizer -> LinkedListSimulationSection()
-                        SimulationType.StackVisualizer -> StackSimulationSection()
-                        SimulationType.QueueVisualizer -> QueueSimulationSection()
-                        SimulationType.GraphVisualizer -> GraphSimulationSection()
-                        SimulationType.GraphAlgorithmPlayer -> GraphAlgorithmSection(topicId)
-                        SimulationType.ArrayWalkPlayer -> ArrayWalkSection(topicId)
-                        SimulationType.PointCloudPlayer -> PointCloudSection(topicId)
-                        SimulationType.TokenStripPlayer -> TokenStripSection(topicId)
-                        SimulationType.NeuralNetPlayer -> NeuralNetSection(topicId)
-                        SimulationType.RlTrainingPlayer -> RlTrainingSection(topicId)
-                        SimulationType.PolicyGradientPlayer -> PolicyGradientSection(topicId)
-                        SimulationType.GameSearchPlayer -> GameSearchSection(topicId)
-                        SimulationType.OfflineRlPlayer -> OfflineRlSection(topicId)
-                        SimulationType.MultiAgentPlayer -> MultiAgentSection(topicId)
-                        SimulationType.ExplorationPlayer -> ExplorationSection(topicId)
-                        SimulationType.LinkedStructurePlayer -> LinkedStructureSection(topicId)
-                        SimulationType.EnvironmentPlayer -> EnvironmentSection(topicId)
-                        SimulationType.RegressionExplorer -> RegressionSimulationSection()
-                        SimulationType.PerceptronVisualizer -> PerceptronSimulationSection()
-                        SimulationType.ClassifierPlayground -> ClassifierPlaygroundSection(classifierConfigFor(topicId))
-                        SimulationType.RecursionTreeVisualizer -> RecursionTreeSection(topicId)
-                        SimulationType.DpGridVisualizer -> DpGridSection(topicId)
-                        SimulationType.SortingVisualizer -> SortingVisualizerSection(topicId)
-                        SimulationType.SearchVisualizer -> SearchVisualizerSection(topicId)
-                        SimulationType.TreeVisualizer -> TreeVisualizerSection(topicId)
-                        SimulationType.PathfindingGrid -> PathfindingGridSection(topicId)
-                        SimulationType.HashingVisualizer -> HashingVisualizerSection(topicId)
-                        SimulationType.RlGridWorld -> RlGridWorldSection(topicId)
-                        SimulationType.BanditExplorer -> BanditSection(topicId)
-                        SimulationType.NotYetAvailable -> SimulationComingSoonCard()
-                    }
+                    SimulationHost(topicId = topicId, type = content.simulation)
                 }
             }
             item { SectionTitle("Real-World Applications") }
@@ -252,8 +294,9 @@ fun TopicDetailScreen(topicId: String, onBack: () -> Unit, onTopicClick: (String
     }
 }
 
+// Shared with the sim-only screen (feature/simulations) so both routes wear the same chrome.
 @Composable
-private fun DetailHeader(
+internal fun DetailHeader(
     title: String,
     onBack: () -> Unit,
     isBookmarked: Boolean? = null,
@@ -350,27 +393,6 @@ private fun ComingSoonBody(topic: Topic) {
                     textAlign = TextAlign.Center,
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun SimulationComingSoonCard() {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-    ) {
-        Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Simulation coming soon", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.size(6.dp))
-            Text(
-                "An interactive visualizer for this topic hasn't been built yet.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
         }
     }
 }

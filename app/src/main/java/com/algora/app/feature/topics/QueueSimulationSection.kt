@@ -36,13 +36,15 @@ import kotlinx.coroutines.launch
 private const val MAX_ITEMS = 8
 private val initialItems = listOf(10, 20, 30)
 private const val PEEK_FLASH_MS = 700L
+private const val DEFAULT_VALUE_INPUT = "40"
 
 @Composable
 fun QueueSimulationSection() {
     val items = remember { mutableStateListOf(*initialItems.toTypedArray()) }
     var peekedIndex by remember { mutableStateOf<Int?>(null) }
     var statusMessage by remember { mutableStateOf("") }
-    var valueInput by remember { mutableStateOf("") }
+    // Pre-filled so Enqueue works on first tap without typing.
+    var valueInput by remember { mutableStateOf(DEFAULT_VALUE_INPUT) }
     val scope = rememberCoroutineScope()
 
     Surface(

@@ -4,6 +4,7 @@ package com.algora.app.feature.interviewprep.systemdesign
 object SystemDesignRegistry {
     private val primers: Map<String, SystemDesignPrimer> = mapOf(
         "system_design_primer" to systemDesignPrimer,
+        "ml_system_design_primer" to mlSystemDesignPrimer,
     )
 
     fun get(topicId: String): SystemDesignPrimer? = primers[topicId]

@@ -45,6 +45,11 @@ object Gradients {
     val Teal = listOf(Color(0xFF5EEAD4), Color(0xFF0D9488))
     val Orange = listOf(Color(0xFFFDBA74), Color(0xFFEA580C))
 
+    // Paywall chrome from the mock's isPremium block: the CTA/upsell button uses the two-stop
+    // 100deg ramp, the hero card the three-stop 150deg one (#4f46e5 → #7c3aed 55% → #c026d3).
+    val PremiumCta = listOf(Color(0xFF4F46E5), Color(0xFF7C3AED))
+    val PremiumHero = listOf(Color(0xFF4F46E5), Color(0xFF7C3AED), Color(0xFFC026D3))
+
     val TopbarDsa = listOf(Color(0xFF4F46E5), Color(0xFF6D28D9))
     val TopbarAi = listOf(Color(0xFFDB2777), Color(0xFFF97316))
     val FeaturedDsa = listOf(Color(0xFF7C3AED), Color(0xFF4338CA))

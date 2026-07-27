@@ -29,14 +29,19 @@ import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.algora.app.core.billing.BillingProvider
 import com.algora.app.core.data.settings.AccentColor
 import com.algora.app.core.data.settings.SettingsRepository
 import com.algora.app.core.data.settings.ThemeMode
 import com.algora.app.core.data.settings.settingsDataStore
 import com.algora.app.core.nav.AppMode
-import com.algora.app.core.nav.FlashcardsRoute
 import com.algora.app.core.nav.NavGraph
 import com.algora.app.core.nav.NavTab
+import com.algora.app.core.nav.PracticeRoute
+import com.algora.app.core.nav.ProblemDetailRoute
+import com.algora.app.core.nav.ProblemsRoute
+import com.algora.app.core.nav.QuizCatalogRoute
+import com.algora.app.core.nav.ReviewRoute
 import com.algora.app.core.nav.ProgressRoute
 import com.algora.app.core.nav.Screen
 import com.algora.app.core.nav.SimulationsRoute
@@ -53,6 +58,9 @@ class MainActivity : ComponentActivity() {
             val themeMode by settings.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
             val accent by settings.accent.collectAsState(initial = AccentColor.DEFAULT)
             LaunchedEffect(Unit) { settings.recordActivityToday() }
+            // Connecting on launch re-syncs entitlement with Play, so a refund or account switch
+            // takes effect without the user opening the paywall.
+            LaunchedEffect(Unit) { BillingProvider.get(context).refresh() }
 
             val dark = when (themeMode) {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
@@ -80,9 +88,9 @@ fun AlgoraApp() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
-    // Topic/sim detail keeps the bottom bar (mock shows nav on topic pages). Only Flashcards, which
-    // owns its own back affordance, goes full-screen.
-    val onFullScreen = currentDestination?.hierarchy?.any { it.route == FlashcardsRoute.ROUTE } == true
+    // Topic/sim detail keeps the bottom bar (mock shows nav on topic pages). Only the flashcard
+    // review screen, which owns its own back affordance, goes full-screen.
+    val onFullScreen = currentDestination?.hierarchy?.any { it.route == ReviewRoute.ROUTE } == true
 
     var mode by remember { mutableStateOf(AppMode.DSA) }
 
@@ -104,7 +112,12 @@ fun AlgoraApp() {
                         val selected = when (tab) {
                             NavTab.LEARNING -> onRoute(Screen.Home.route)
                             NavTab.SIMULATIONS -> onRoute(SimulationsRoute.ROUTE)
-                            NavTab.PRACTICE -> onRoute(Screen.InterviewPrep.route)
+                            // Practice stays lit while inside any of its sub-surfaces.
+                            NavTab.PRACTICE -> onRoute(PracticeRoute.ROUTE) ||
+                                onRoute(ProblemsRoute.ROUTE) ||
+                                onRoute(ProblemDetailRoute.PATTERN) ||
+                                onRoute(QuizCatalogRoute.ROUTE) ||
+                                onRoute(Screen.InterviewPrep.route)
                             NavTab.PROGRESS -> onRoute(ProgressRoute.ROUTE)
                         }
                         NavigationBarItem(
@@ -115,7 +128,7 @@ fun AlgoraApp() {
                                     NavTab.SIMULATIONS -> navigate(SimulationsRoute.ROUTE)
                                     NavTab.PRACTICE -> {
                                         mode = AppMode.DSA
-                                        navigate(Screen.InterviewPrep.route)
+                                        navigate(PracticeRoute.ROUTE)
                                     }
                                     NavTab.PROGRESS -> navigate(ProgressRoute.ROUTE)
                                 }

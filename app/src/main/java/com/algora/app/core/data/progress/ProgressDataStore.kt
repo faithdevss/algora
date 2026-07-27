@@ -10,4 +10,6 @@ val Context.progressDataStore: DataStore<Preferences> by preferencesDataStore(na
 
 object ProgressKeys {
     val COMPLETED_TOPIC_IDS = stringSetPreferencesKey("completed_topic_ids")
+    // Practice-tab problem bank; kept separate from topic completion so the two never collide.
+    val SOLVED_PROBLEM_IDS = stringSetPreferencesKey("solved_problem_ids")
 }

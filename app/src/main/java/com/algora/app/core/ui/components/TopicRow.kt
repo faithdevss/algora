@@ -13,7 +13,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -29,13 +28,14 @@ import com.algora.app.core.data.model.Difficulty
 // Matches docs/design/Algora.dc.html's row.style/markStyle/endStyle exactly.
 // Rows never show a per-topic icon (only section headers do) — confirmed from the mock markup.
 private val RowCompleteGreen = Color(0xFF16A34A)
-private val RowLockAmber = Color(0xFFF59E0B)
 
 @Composable
 fun TopicRow(
     title: String,
     isCompleted: Boolean,
-    isPremium: Boolean,
+    // Premium topic the user cannot open yet. Premium owners (and topics with a live rewarded-ad
+    // unlock) see the normal chevron row instead.
+    isLocked: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     difficulty: Difficulty? = null,
@@ -43,7 +43,7 @@ fun TopicRow(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .alpha(if (isPremium) 0.72f else 1f)
+            .alpha(if (isLocked) 0.72f else 1f)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surface,
@@ -75,13 +75,8 @@ fun TopicRow(
             if (difficulty != null) {
                 DifficultyBadge(difficulty, modifier = Modifier.padding(end = 8.dp))
             }
-            if (isPremium) {
-                Icon(
-                    imageVector = Icons.Filled.Lock,
-                    contentDescription = "Premium",
-                    tint = RowLockAmber,
-                    modifier = Modifier.size(17.dp),
-                )
+            if (isLocked) {
+                AdUnlockableLockIcon(size = 18.dp)
             } else {
                 Icon(
                     imageVector = Icons.Filled.ChevronRight,

@@ -24,4 +24,14 @@ class ProgressRepository(private val dataStore: DataStore<Preferences>) {
             prefs[ProgressKeys.COMPLETED_TOPIC_IDS] = current - topicId
         }
     }
+
+    val solvedProblemIds: Flow<Set<String>> =
+        dataStore.data.map { prefs -> prefs[ProgressKeys.SOLVED_PROBLEM_IDS] ?: emptySet() }
+
+    suspend fun setProblemSolved(problemId: String, solved: Boolean) {
+        dataStore.edit { prefs ->
+            val current = prefs[ProgressKeys.SOLVED_PROBLEM_IDS] ?: emptySet()
+            prefs[ProgressKeys.SOLVED_PROBLEM_IDS] = if (solved) current + problemId else current - problemId
+        }
+    }
 }

@@ -10,5 +10,11 @@ object InterviewPrepCategories {
     val companySets = Category("interview_company_sets", "Company Sets", Section.INTERVIEW_PREP, 0xFF3B82F6, "browser")
     val mock = Category("interview_mock", "Mock", Section.INTERVIEW_PREP, 0xFF8B5CF6, "history")
 
-    val all = listOf(patterns, companySets, mock)
+    // Subject-by-subject quizzes, so a learner can drill one area instead of a mixed set.
+    val topicQuizzes = Category("interview_topic_quizzes", "Topic Quizzes", Section.INTERVIEW_PREP, 0xFF0EA5E9, "check")
+
+    // AI-mode interview prep — the ML counterpart of the DSA mock + system-design rounds.
+    val aiInterview = Category("interview_ai", "AI Interview", Section.INTERVIEW_PREP, 0xFF6366F1, "robot")
+
+    val all = listOf(patterns, companySets, mock, topicQuizzes, aiInterview)
 }

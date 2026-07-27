@@ -17,13 +17,17 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.algora.app.core.data.entitlement.EntitlementRepository
+import com.algora.app.core.data.entitlement.entitlementDataStore
 import com.algora.app.core.data.model.Category
 import com.algora.app.core.data.model.Topic
 
@@ -41,6 +45,13 @@ fun CategoryBrowserScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Entitlement is read here rather than threaded through all eight category screens: the lock
+    // icon must disappear the moment premium is bought or an ad unlock is granted.
+    val context = LocalContext.current
+    val entitlements = remember { EntitlementRepository(context.entitlementDataStore) }
+    val isPremium by entitlements.isPremium.collectAsState(initial = false)
+    val adUnlocks by entitlements.adUnlocks.collectAsState(initial = emptyMap())
+
     var query by remember { mutableStateOf("") }
     val allTopics = remember(sections) { sections.flatMap { it.topics } }
     val completedCount = allTopics.count { it.id in completedIds }
@@ -98,7 +109,7 @@ fun CategoryBrowserScreen(
                     TopicRow(
                         title = topic.name,
                         isCompleted = topic.id in completedIds,
-                        isPremium = topic.isPremium,
+                        isLocked = topic.isPremium && !isPremium && topic.id !in adUnlocks,
                         onClick = { onTopicClick(topic.id) },
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                         difficulty = topic.difficulty,

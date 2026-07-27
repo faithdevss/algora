@@ -69,8 +69,23 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             existingEntry?.let { set.remove(it) }
             set.add(sm2(prev, quality, today).serialize(cardKey))
             prefs[SettingsKeys.SRS] = set
+
+            // Grading a card with no prior state is what "introducing a new card" means; the counter
+            // resets whenever the stored day is not today.
+            if (prev == null) {
+                val storedDay = prefs[SettingsKeys.NEW_CARDS_DAY]
+                val introducedToday = if (storedDay == today) prefs[SettingsKeys.NEW_CARDS_COUNT] ?: 0 else 0
+                prefs[SettingsKeys.NEW_CARDS_DAY] = today
+                prefs[SettingsKeys.NEW_CARDS_COUNT] = introducedToday + 1
+            }
         }
     }
+
+    // New cards introduced on `today`. Any other stored day means the allowance has rolled over.
+    fun newCardsIntroduced(today: Long): Flow<Int> =
+        dataStore.data.map { prefs ->
+            if (prefs[SettingsKeys.NEW_CARDS_DAY] == today) prefs[SettingsKeys.NEW_CARDS_COUNT] ?: 0 else 0
+        }
 
     // Consecutive-day streak: same day → no change, yesterday → +1, any gap → reset to 1.
     suspend fun recordActivityToday() {

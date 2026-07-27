@@ -38,7 +38,7 @@ import com.algora.app.feature.topics.content.TopicContentProvider
 
 private data class SimEntry(val topic: Topic, val label: String)
 
-private fun simLabel(type: SimulationType): String = when (type) {
+internal fun simLabel(type: SimulationType): String = when (type) {
     SimulationType.ArrayVisualizer -> "Array visualizer"
     SimulationType.LinkedListVisualizer -> "Linked-list visualizer"
     SimulationType.StackVisualizer -> "Stack visualizer"

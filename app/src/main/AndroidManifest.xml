@@ -18,6 +18,12 @@
             </intent-filter>
         </activity>
 
+        <!-- AdMob requires this or MobileAds.initialize() crashes at startup. Currently Google's
+             public sample app id — swap for the real one alongside core/ads/AdIds.kt. -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-3940256099942544~3347511713" />
+
     </application>
 
 </manifest>

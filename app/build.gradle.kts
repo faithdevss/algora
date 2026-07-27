@@ -34,6 +34,8 @@ android {
 
     buildFeatures {
         compose = true
+        // BuildConfig.DEBUG selects the fake billing/ads implementations (core/billing, core/ads).
+        buildConfig = true
     }
 }
 
@@ -52,6 +54,10 @@ dependencies {
 
     implementation("androidx.navigation:navigation-compose:2.9.8")
     implementation("androidx.datastore:datastore-preferences:1.2.1")
+
+    // Monetization (Phase 8): one-time premium IAP + rewarded ads.
+    implementation("com.android.billingclient:billing-ktx:8.0.0")
+    implementation("com.google.android.gms:play-services-ads:24.6.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 

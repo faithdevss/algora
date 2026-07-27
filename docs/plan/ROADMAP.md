@@ -10,6 +10,8 @@ Each phase gets planned in detail in its own session: `/clear`, load this file +
 
 **Bottom-nav realignment (post-Phase-7):** Phases 0 and 5 originally shipped a *mode-dependent category* bottom bar (DSA: Interview Prep/Data Structures/Home/Algorithms/Analysis; AI: ML/DL/Home/NLP/RL). A design-fidelity pass replaced it with the mock's actual `navDefs` — a **fixed four-destination bar identical in both modes**: Learning (→ Home) · Simulations (→ mode's flagship sim topic: `graph`/`linear_regression`) · Practice (→ Interview Prep, forces DSA) · Progress. Icons use the mock's SVG names (`book`/`flask`/`target`/`chart`) via `resolveIcon()`. Category screens are now reached from Home's Quick Access grid, not the nav bar. The mock's **Progress** dashboard (`isProgress` block: overall completion ring + streak + per-category bars) was also built (`feature/progress/ProgressScreen.kt`). `resolveIcon()` now covers the full mock icon set so authored content never falls back to a generic circle.
 
+**Practice-tab restructure (post-Phase-8):** the Practice nav destination no longer jumps straight to Interview Prep. It now opens a hub (`feature/practice/PracticeScreen.kt`) listing the four things a learner *does*: Problem Solving · Quizzes · Flashcards · Interview Prep. Card review moved off Home (the Learning tab) — recall drills are practice, not reading — and the two duplicate decks were **merged into one**: the unscheduled `FlashcardScreen` (which looped every card forever) is deleted, and `ReviewRoute` is now the single flashcard surface, SM-2 scheduled so a card graded Good/Easy stops reappearing. Its queue is due cards then never-seen cards, with new cards capped at `DAILY_NEW_CARD_LIMIT` (20) per day so a first session cannot flood the schedule — the tally lives in `SettingsKeys.NEW_CARDS_DAY/COUNT` and rolls over daily (`NewCardCounterTest`). When nothing is due it offers "Study ahead" over the soonest-scheduled batch. The hub row shows live counts via `reviewCounts` (`ReviewCountsTest`). New surfaces: a quiz catalog over `QuizRegistry.all` (rows open the quiz topic, so premium gating stays in `TopicDetailScreen`), a **Topic Quizzes** Interview Prep category adding 14 subject quizzes — 9 DSA/analysis + 5 AI — plus an **AI Interview** category (AI/ML mock round + `mlSystemDesignPrimer`), for 19 quizzes / 111 questions total, guarded by `QuizBankTest`, and an authored **problem bank** (`feature/practice/problems/`) — 91 problems across 19 pattern groups (the five Interview Prep patterns plus binary search, prefix sums, hashing, monotonic stack, traversal, DP, backtracking, linked-list surgery, trees/BST, greedy, and four AI groups — ML foundations, neural networks, NLP pipeline and RL control), each with prompt, examples, constraints, a **"Knowledge you need"** block linking to the real `TopicRegistry` topics the problem depends on and why, progressively revealed hints, an approach + complexity reveal, and a collapsed Kotlin solution. Solved state persists via `ProgressKeys.SOLVED_PROBLEM_IDS`; `ProblemBankTest` guards that every prerequisite, cross-link and pattern id resolves to an existing topic. This intentionally departs from the mock's `navDefs`, whose Practice tap opens the Interview Prep browser directly.
+
 ## Phase Status
 
 | Phase | Name | Status |
@@ -22,6 +24,7 @@ Each phase gets planned in detail in its own session: `/clear`, load this file +
 | 5 | AI Mode | Done — mode switch, AI nav, and full 7-section content for all 87 ML/DL/NLP/RL topics. The multi-layer/backprop sim it deferred now ships via `NeuralNetPlayer` (`neural_network_basics`, `backpropagation`). Still open: per-mode theming of the whole shell — `AppMode` reaches nav/Home/Progress, but `Theme.kt` has no per-mode scheme, so only the Home topbar gradient switches |
 | 6 | Interview Prep Module | Done — timed quiz mode + 4 quizzes + all 5 pattern guides + behavioral bank (STAR) + system design primer; all 11 topics have content |
 | 7 | Engagement & Polish | Persisted dark mode + streaks + bookmarks/continue + flashcards + difficulty chips + multi-language code toggle + SM-2 spaced repetition + prerequisite-graph UI done; multi-language snippets for remaining topics deferred |
+| 8 | Monetization | Done — lifetime IAP (Play Billing 8) + rewarded-ad 24h per-topic unlock gate the 143 `isPremium` topics; paywall screen built from the mock's `isPremium` block. Real Play Console / AdMob ids still to be swapped in (fakes active in debug) |
 
 ## Phase Breakdown
 
@@ -49,7 +52,10 @@ Mock question sets, company tagging, pattern tagging (sliding window, two pointe
 **Phase 7 — Engagement & Polish**
 Dark mode, bookmarks + "continue where left off," spaced-repetition review scheduler, quiz/flashcard mode auto-generated from Key Takeaways, difficulty tags + prerequisite graph UI, multi-language code snippet toggle (Python/Java/JS/C++), local streaks.
 
-**Explicitly deferred (not a phase yet):** real auth/cloud sync/server-side paywall — only revisit if static/local turns out insufficient.
+**Phase 8 — Monetization**
+Premium gate over the existing `isPremium` topics: one-time lifetime IAP via Play Billing, or a rewarded ad for 24h access to a single topic. Entitlement lives in its own DataStore; paywall + locked-topic screens ported from the mock's `isPremium` block. Detail in `docs/plan/phase-8-monetization.md`.
+
+**Explicitly deferred (not a phase yet):** real auth/cloud sync/server-side receipt validation — entitlement stays device-local (spoofable on rooted devices, accepted). Only revisit if static/local turns out insufficient.
 
 ## Verification
 

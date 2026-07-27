@@ -20,9 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Style
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -43,8 +41,9 @@ import com.algora.app.core.data.TopicRegistry
 import com.algora.app.core.data.settings.SettingsRepository
 import com.algora.app.core.data.settings.settingsDataStore
 import com.algora.app.core.nav.AppMode
-import com.algora.app.core.nav.FlashcardsRoute
-import com.algora.app.core.nav.ReviewRoute
+import com.algora.app.core.data.entitlement.EntitlementRepository
+import com.algora.app.core.data.entitlement.entitlementDataStore
+import com.algora.app.core.nav.PremiumRoute
 import com.algora.app.core.nav.Screen
 import com.algora.app.core.nav.SettingsRoute
 import com.algora.app.core.ui.components.resolveIcon
@@ -78,6 +77,8 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val settings = remember { SettingsRepository(context.settingsDataStore) }
+    val entitlements = remember { EntitlementRepository(context.entitlementDataStore) }
+    val isPremium by entitlements.isPremium.collectAsState(initial = false)
     val streak by settings.streak.collectAsState(initial = 0)
     val bookmarks by settings.bookmarks.collectAsState(initial = emptySet())
     val lastOpened by settings.lastOpened.collectAsState(initial = null)
@@ -157,7 +158,7 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 ModeTab("DSA", selected = mode == AppMode.DSA, modifier = Modifier.weight(1f)) { onModeChange(AppMode.DSA) }
-                ModeTab("AI Simulation", selected = mode == AppMode.AI, modifier = Modifier.weight(1f)) { onModeChange(AppMode.AI) }
+                ModeTab("AI", selected = mode == AppMode.AI, modifier = Modifier.weight(1f)) { onModeChange(AppMode.AI) }
             }
         }
 
@@ -268,47 +269,51 @@ fun HomeScreen(
             }
         }
 
-        // Flashcard review entry
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 15.dp)
-                .clickable { onNavigate(FlashcardsRoute.ROUTE) },
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
-        ) {
-            Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Style, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Spacer(modifier = Modifier.size(13.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Review Flashcards", style = MaterialTheme.typography.titleMedium)
-                    Text("Auto-built from every topic's key takeaways", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // Premium upsell (mock's isHome openPremium button) — gone once premium is owned.
+        if (!isPremium) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 15.dp)
+                    .background(
+                        Brush.linearGradient(
+                            colorStops = arrayOf(
+                                0f to Gradients.PremiumHero[0],
+                                0.6f to Gradients.PremiumHero[1],
+                                1f to Gradients.PremiumHero[2],
+                            ),
+                        ),
+                        RoundedCornerShape(20.dp),
+                    )
+                    .clickable { onNavigate(PremiumRoute.ROUTE) }
+                    .padding(horizontal = 18.dp, vertical = 17.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(14.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(resolveIcon("crown"), contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
                 }
-                Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.size(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Unlock Premium",
+                        color = Color.White,
+                        fontFamily = SpaceGrotesk,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                    )
+                    Text("All topics, labs & offline access", color = Color.White.copy(alpha = 0.82f), fontSize = 12.5.sp)
+                }
+                Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
             }
         }
 
-        // Spaced-repetition review entry (Phase 7 SM-2 scheduler)
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 12.dp)
-                .clickable { onNavigate(ReviewRoute.ROUTE) },
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
-        ) {
-            Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Schedule, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Spacer(modifier = Modifier.size(13.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Spaced Repetition", style = MaterialTheme.typography.titleMedium)
-                    Text("Review due cards on an SM-2 schedule", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            }
-        }
+        // Flashcards and spaced repetition moved to the Practice tab (PracticeScreen) — they are
+        // recall drills, not reading, so they belong beside quizzes and the problem bank.
 
         val bookmarkedTopics = bookmarks.mapNotNull { TopicRegistry.find(it) }
         if (bookmarkedTopics.isNotEmpty()) {

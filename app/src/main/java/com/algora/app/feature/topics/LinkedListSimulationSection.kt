@@ -38,6 +38,8 @@ import kotlinx.coroutines.launch
 
 private const val MAX_NODES = 10
 private val initialNodes = listOf(10, 20, 30)
+private const val DEFAULT_VALUE_INPUT = "40"
+private const val DEFAULT_INDEX_INPUT = "1"
 private const val SEARCH_STEP_MS = 420L
 
 // Node fill colors match the design mock's llNodes logic exactly.
@@ -54,8 +56,9 @@ fun LinkedListSimulationSection() {
     var highlightedIndex by remember { mutableStateOf<Int?>(null) }
     var foundIndex by remember { mutableStateOf<Int?>(null) }
     var statusMessage by remember { mutableStateOf("") }
-    var valueInput by remember { mutableStateOf("") }
-    var indexInput by remember { mutableStateOf("") }
+    // Pre-filled so every op does something meaningful on first tap.
+    var valueInput by remember { mutableStateOf(DEFAULT_VALUE_INPUT) }
+    var indexInput by remember { mutableStateOf(DEFAULT_INDEX_INPUT) }
     var searchJob by remember { mutableStateOf<Job?>(null) }
     val scope = rememberCoroutineScope()
 

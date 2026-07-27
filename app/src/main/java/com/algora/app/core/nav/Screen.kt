@@ -48,16 +48,36 @@ object TopicDetailRoute {
     fun route(topicId: String) = "topic_detail/$topicId"
 }
 
-object FlashcardsRoute {
-    const val ROUTE = "flashcards"
-}
-
+// The single flashcard surface, scheduled by SM-2. Replaced the old unscheduled FlashcardsRoute,
+// which looped the same deck forever.
 object ReviewRoute {
     const val ROUTE = "review"
 }
 
 object ProgressRoute {
     const val ROUTE = "progress"
+}
+
+// Practice tab hub — everything you *do* rather than read: flashcards, spaced repetition, quizzes,
+// problem solving, interview prep. Flashcards/SR used to hang off Home (Learning); they belong here.
+object PracticeRoute {
+    const val ROUTE = "practice"
+}
+
+// Catalog of every timed quiz in QuizRegistry.
+object QuizCatalogRoute {
+    const val ROUTE = "quizzes"
+}
+
+// Problem bank: list grouped by pattern, then a per-problem workspace.
+object ProblemsRoute {
+    const val ROUTE = "problems"
+}
+
+object ProblemDetailRoute {
+    const val ARG = "problemId"
+    const val PATTERN = "problem/{$ARG}"
+    fun route(problemId: String) = "problem/$problemId"
 }
 
 // Appearance preferences (theme mode + accent), reached from the home topbar gear.
@@ -68,4 +88,16 @@ object SettingsRoute {
 // Simulations tab lands on a catalog of every topic that ships a runnable interactive lab.
 object SimulationsRoute {
     const val ROUTE = "simulations"
+}
+
+// A catalog row opens the lab alone — same topic id as TopicDetailRoute, sim-only chrome.
+object SimulationDetailRoute {
+    const val ARG = "topicId"
+    const val PATTERN = "simulation/{$ARG}"
+    fun route(topicId: String) = "simulation/$topicId"
+}
+
+// Paywall (mock's isPremium block), reached from Home's upsell button or a locked topic.
+object PremiumRoute {
+    const val ROUTE = "premium"
 }
