@@ -365,6 +365,133 @@ private fun bTreeFrames(): List<TreeFrame> {
     return b.frames
 }
 
+// ── Priority queue ADT: the contract, and why a heap and not a sorted list ───
+private fun priorityQueueFrames(): List<TreeFrame> {
+    val b = TreeBuilder()
+    // Array-backed binary heap; ids are tracked per array slot so sift-up can swap labels in place.
+    val heap = mutableListOf<Int>()
+    val ids = mutableListOf<Int>()
+
+    fun idFor(index: Int): Int {
+        while (ids.size <= index) {
+            val parent = if (ids.isEmpty()) null else ids[(ids.size - 1 - 1) / 2]
+            ids.add(b.add("", parent, if (ids.size % 2 == 1) 0 else 1))
+        }
+        return ids[index]
+    }
+    fun sync() = heap.indices.forEach { b.relabel(idFor(it), heap[it].toString()) }
+
+    b.frame("A priority queue promises three things: insert, peek at the highest-priority item, and remove it. " +
+        "It says nothing about how the rest is arranged — that freedom is what makes it fast.")
+
+    for (value in listOf(7, 4, 9, 2, 6)) {
+        heap.add(value)
+        var i = heap.lastIndex
+        idFor(i)
+        sync()
+        b.frame("insert($value) drops it at the next free slot, which keeps the tree complete but may break the " +
+            "heap order.", active = setOf(ids[i]))
+        while (i > 0) {
+            val parent = (i - 1) / 2
+            if (heap[parent] <= heap[i]) break
+            val t = heap[parent]; heap[parent] = heap[i]; heap[i] = t
+            sync()
+            b.frame("$value is smaller than its parent, so they swap. Sift-up only ever touches one root-to-leaf " +
+                "path — at most log n steps, never the whole structure.",
+                active = setOf(ids[parent]), path = setOf(ids[i]))
+            i = parent
+        }
+    }
+
+    sync()
+    b.frame("Five inserts done. Note what is *not* true: the heap is not sorted. Only one guarantee holds — every " +
+        "parent is smaller than its children, so the minimum has nowhere to hide but the root.",
+        marked = setOf(ids[0]))
+    b.frame("peek() reads the root, ${heap[0]}, in constant time. That single guarantee is all the ADT's contract " +
+        "actually needs.", marked = setOf(ids[0]))
+
+    val removed = heap[0]
+    heap[0] = heap.removeAt(heap.lastIndex)
+    b.remove(ids.removeAt(ids.size - 1))
+    sync()
+    b.frame("remove() takes $removed, then moves the last element to the root to keep the tree complete — which " +
+        "breaks the order again, at the top this time.", active = setOf(ids[0]))
+
+    var i = 0
+    while (true) {
+        val l = 2 * i + 1
+        val r = 2 * i + 2
+        var smallest = i
+        if (l < heap.size && heap[l] < heap[smallest]) smallest = l
+        if (r < heap.size && heap[r] < heap[smallest]) smallest = r
+        if (smallest == i) break
+        val t = heap[smallest]; heap[smallest] = heap[i]; heap[i] = t
+        sync()
+        b.frame("Sift-down swaps with the smaller child. Again one path, log n steps.",
+            active = setOf(ids[smallest]), path = setOf(ids[i]))
+        i = smallest
+    }
+
+    sync()
+    b.frame("The new minimum, ${heap[0]}, is at the root. A sorted list would give the same peek in O(1) but pay " +
+        "O(n) per insert to stay sorted; a heap keeps *just enough* order to answer the one question the ADT " +
+        "asks, and both insert and remove cost log n. The contract is the interface — a heap, a sorted list and " +
+        "a pairing heap all satisfy it at different prices.",
+        marked = setOf(ids[0]))
+    return b.frames
+}
+
+// ── Huffman coding: build the tree bottom-up, then read the codes off it ─────
+private fun huffmanFrames(): List<TreeFrame> {
+    val b = TreeBuilder()
+    val freq = listOf("a" to 20, "b" to 12, "c" to 8, "d" to 5, "e" to 3)
+    // Each live subtree tracks its root id, weight and the leaves under it.
+    class Sub(val id: Int, val weight: Int, val leaves: List<String>)
+
+    var live = freq.map { (ch, f) -> Sub(b.add("$ch:$f", null, 0), f, listOf(ch)) }
+    b.frame("Five symbols with their frequencies. Fixed-width coding would spend ⌈log₂ 5⌉ = 3 bits on every one of " +
+        "them, including the rare ones.")
+
+    while (live.size > 1) {
+        val sorted = live.sortedBy { it.weight }
+        val first = sorted[0]
+        val second = sorted[1]
+        b.frame("The two lightest subtrees are ${first.weight} and ${second.weight}. Merging the rarest pair first " +
+            "is what pushes them deepest, and depth is code length.",
+            active = setOf(first.id, second.id))
+        val merged = b.add((first.weight + second.weight).toString(), null, 0)
+        b.reparent(first.id, merged, 0)
+        b.reparent(second.id, merged, 1)
+        live = live.filterNot { it === first || it === second } + Sub(merged, first.weight + second.weight, first.leaves + second.leaves)
+        b.frame("They become children of a node weighing ${first.weight + second.weight}, which goes back into the " +
+            "pool. ${live.size} subtree(s) left.", marked = setOf(merged))
+    }
+
+    // A symbol's code length is its depth, read off the finished tree by walking parent links.
+    val total = freq.sumOf { it.second }
+    val finalNodes = b.frames.last().nodes
+    val codeLengths = freq.associate { (ch, _) ->
+        var depth = 0
+        var current = finalNodes.first { it.label.startsWith("$ch:") }.id
+        var parent = finalNodes.first { it.id == current }.parent
+        while (parent != null) {
+            depth++
+            current = parent
+            parent = finalNodes.first { it.id == current }.parent
+        }
+        ch to depth
+    }
+    val huffmanBits = freq.sumOf { (ch, f) -> f * codeLengths.getValue(ch) }
+    val fixedBits = total * 3
+
+    b.frame("The tree is finished. A symbol's code is the path to it — left is 0, right is 1 — so its length is " +
+        "just its depth: " + freq.joinToString(", ") { "${it.first}=${codeLengths.getValue(it.first)} bits" } + ".")
+    b.frame("Weighted by frequency that is $huffmanBits bits for the whole message, against $fixedBits at a fixed " +
+        "3 bits each — a ${"%.0f".format(100.0 * (fixedBits - huffmanBits) / fixedBits)}% saving. No code is a " +
+        "prefix of another, because every symbol sits at a leaf, so the decoder never needs a separator.")
+    return b.frames
+}
+
 private val treeConfigs = mapOf(
     "binary_search_tree" to TreeConfig(
         intro = "Inserting 50, 30, 70, 20, 40, 60, 80, then searching for 60. Every operation walks one root-to-leaf path, comparing once per level.",
@@ -400,6 +527,18 @@ private val treeConfigs = mapOf(
         intro = "An order-3 B-tree: nodes hold multiple keys and split at the median when full, so the tree stays shallow and wide — the shape disk and database indexes want.",
         markedLabel = "Settled",
         build = ::bTreeFrames,
+    ),
+    "priority_queue_adt" to TreeConfig(
+        intro = "The contract is insert, peek and remove-highest-priority. A binary heap keeps just enough order " +
+            "to serve it — watch how little of the structure each operation has to touch.",
+        markedLabel = "Root / minimum",
+        build = ::priorityQueueFrames,
+    ),
+    "huffman_coding" to TreeConfig(
+        intro = "Merge the two rarest symbols, repeat, and the tree that falls out assigns short codes to common " +
+            "symbols. The bit totals at the end are counted from the tree it actually built.",
+        markedLabel = "Merged",
+        build = ::huffmanFrames,
     ),
 )
 

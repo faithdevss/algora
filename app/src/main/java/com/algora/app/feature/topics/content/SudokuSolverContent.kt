@@ -52,7 +52,7 @@ internal val sudokuSolverContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.RecursionTreeVisualizer,
     applications = listOf(
         ApplicationCard("game", 0xFF10B981, "Puzzle Solving & Generation", "The same solver both checks uniqueness and generates new puzzles by carving from a full grid."),
         ApplicationCard("target", 0xFF3B82F6, "Constraint Propagation", "Pairing backtracking with propagation (only-choice, naked pairs) is a mini constraint solver."),

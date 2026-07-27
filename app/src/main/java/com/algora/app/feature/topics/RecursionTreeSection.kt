@@ -164,8 +164,92 @@ private fun nQueensTrace(boardN: Int): RecTrace {
     return RecTrace(t.nodes, t.frames)
 }
 
+/**
+ * Permutations of the first [n] letters. Every leaf is a complete arrangement and no branch is ever
+ * abandoned, which makes this the backtracking tree without any pruning in it — the contrast the
+ * sudoku trace needs.
+ */
+private fun permutationTrace(n: Int): RecTrace {
+    val t = Tracer()
+    val letters = "abcd".take(n).toList()
+    val used = BooleanArray(n)
+    val current = mutableListOf<Char>()
+    var leaves = 0
+    fun permute(parent: Int?): Int {
+        val label = if (current.isEmpty()) "·" else current.joinToString("")
+        val id = t.call(parent, label)
+        if (current.size == n) {
+            leaves++
+            t.ret(id, "✓ ${current.joinToString("")}")
+            return id
+        }
+        for (i in 0 until n) {
+            if (used[i]) continue
+            used[i] = true
+            current.add(letters[i])
+            permute(id)
+            current.removeAt(current.lastIndex)
+            used[i] = false
+        }
+        t.ret(id, "$leaves so far")
+        return id
+    }
+    permute(null)
+    return RecTrace(t.nodes, t.frames)
+}
+
+/**
+ * A 4x4 Latin-square sudoku, solved cell by cell. Capped hard: the full 9x9 tree is far too large to
+ * render, and the lesson — a candidate that violates a constraint is abandoned before its subtree is
+ * ever built — is identical at this size.
+ */
+private fun sudokuTrace(size: Int): RecTrace {
+    val t = Tracer()
+    val n = size
+    // A few givens, so the search has real constraints to run into.
+    val grid = Array(n) { IntArray(n) }
+    if (n == 4) {
+        grid[0][0] = 1; grid[1][2] = 1; grid[3][3] = 4
+    }
+    val boxH = if (n == 4) 2 else 1
+    val boxW = if (n == 4) 2 else 1
+
+    fun legal(r: Int, c: Int, v: Int): Boolean {
+        for (i in 0 until n) if (grid[r][i] == v || grid[i][c] == v) return false
+        val r0 = r / boxH * boxH
+        val c0 = c / boxW * boxW
+        for (i in r0 until r0 + boxH) for (j in c0 until c0 + boxW) if (grid[i][j] == v) return false
+        return true
+    }
+
+    var rejected = 0
+    fun solve(parent: Int?, pos: Int): Boolean {
+        if (pos == n * n) {
+            val id = t.call(parent, "done")
+            t.ret(id, "✓ solved")
+            return true
+        }
+        val r = pos / n
+        val c = pos % n
+        if (grid[r][c] != 0) return solve(parent, pos + 1)
+        val id = t.call(parent, "r${r}c$c")
+        for (v in 1..n) {
+            if (!legal(r, c, v)) { rejected++; continue }
+            grid[r][c] = v
+            if (solve(id, pos + 1)) { t.ret(id, "✓ = $v"); return true }
+            grid[r][c] = 0
+        }
+        t.ret(id, "✗ dead end")
+        return false
+    }
+    solve(null, 0)
+    return RecTrace(t.nodes, t.frames)
+}
+
 private val recursionConfigs = mapOf(
     "factorial" to RecursionConfig(1f..8f, 5, "n") { factorialTrace(it) },
+    "permutation_generation" to RecursionConfig(2f..4f, 3, "letters") { permutationTrace(it) },
+    "sudoku_solver" to RecursionConfig(4f..4f, 4, "grid size") { sudokuTrace(it) },
     "fibonacci_recursive" to RecursionConfig(1f..6f, 4, "n") { fibonacciTrace(it) },
     "tower_of_hanoi" to RecursionConfig(1f..4f, 3, "disks") { hanoiTrace(it) },
     "n_queens" to RecursionConfig(4f..6f, 4, "board size") { nQueensTrace(it) },

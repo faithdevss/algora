@@ -51,7 +51,7 @@ internal val huffmanCodingContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.TreeVisualizer,
     applications = listOf(
         ApplicationCard("chip", 0xFF10B981, "File Compression", "ZIP, gzip, and PNG use Huffman coding (often after other passes) to shrink data losslessly."),
         ApplicationCard("image", 0xFF3B82F6, "Media Codecs", "JPEG and MP3 entropy-code their quantized coefficients with Huffman tables."),

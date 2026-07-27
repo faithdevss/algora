@@ -338,6 +338,62 @@ private fun matrixChainFrames(): List<DpFrame> {
     return bld.frames
 }
 
+// Subset sum: dp[i][t] is true when some subset of the first i items totals exactly t. Boolean
+// rather than numeric, and the traceback recovers which items were chosen.
+private fun subsetSumFrames(): List<DpFrame> {
+    val items = listOf(3, 4, 5, 2)
+    val target = 9
+    val b = DpBuilder(rows = items.size + 1, cols = target + 1)
+    val dp = Array(items.size + 1) { BooleanArray(target + 1) }
+
+    dp[0][0] = true
+    b.fill(0, 0, "T", "dp[0][0] = true: the empty subset sums to 0. Every other total is unreachable with no items.")
+    for (t in 1..target) {
+        b.fill(0, t, "·", "dp[0][$t] = false — no items, so no way to reach $t.")
+    }
+
+    for (i in 1..items.size) {
+        val item = items[i - 1]
+        for (t in 0..target) {
+            val skip = dp[i - 1][t]
+            val take = t >= item && dp[i - 1][t - item]
+            dp[i][t] = skip || take
+            val status = when {
+                take && skip -> "dp[$i][$t]: reachable either way — skip ${item}, or take it and reach ${t - item} first."
+                take -> "dp[$i][$t] = true by taking $item: dp[${i - 1}][${t - item}] was already reachable."
+                skip -> "dp[$i][$t] = true by skipping $item — it was reachable without this item."
+                else -> "dp[$i][$t] = false: unreachable with the first $i item(s)."
+            }
+            b.fill(i, t, if (dp[i][t]) "T" else "·", status)
+        }
+    }
+
+    // Walk back from dp[n][target] recovering the chosen items.
+    val chosen = mutableListOf<Int>()
+    val path = mutableListOf<Int>()
+    var t = target
+    for (i in items.size downTo 1) {
+        path += b.key(i, t)
+        if (!dp[i - 1][t]) {
+            chosen += items[i - 1]
+            t -= items[i - 1]
+        }
+    }
+    path += b.key(0, t)
+    val picked = chosen.reversed()
+
+    b.trace(path) { cell ->
+        val r = cell / (target + 1)
+        val c = cell % (target + 1)
+        if (r == 0) "Back at dp[0][0] — the subset is complete: ${picked.joinToString(" + ")} = $target."
+        else "At dp[$r][$c]: " + (
+            if (!dp[r - 1][c]) "this total was only reachable by taking ${items[r - 1]}, so it is in the subset."
+            else "reachable without item ${items[r - 1]}, so skip it and move up."
+            )
+    }
+    return b.frames
+}
+
 private val dpConfigs = mapOf(
     "fibonacci_dp" to DpConfig(
         rows = 1, cols = 10,
@@ -400,6 +456,15 @@ private val dpConfigs = mapOf(
         corner = "wt",
         intro = "0/1 knapsack — items (wt, val) = (1,6), (2,10), (3,12), capacity 5. Each cell is the best value achievable; the traceback marks the items chosen.",
         build = ::knapsackFrames,
+    ),
+    "subset_sum" to DpConfig(
+        rows = 5, cols = 10,
+        rowHeader = { if (it == 0) "ε" else listOf(3, 4, 5, 2)[it - 1].toString() },
+        colHeader = { it.toString() },
+        corner = "item",
+        intro = "Can any subset of {3, 4, 5, 2} total exactly 9? Each cell is a yes/no rather than a number, and " +
+            "the traceback recovers which items were actually chosen.",
+        build = ::subsetSumFrames,
     ),
 )
 

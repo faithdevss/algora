@@ -176,6 +176,131 @@ private fun lruCacheFrames(): List<HashFrame> {
     return frames
 }
 
+// ── Set ADT: membership, and what "no duplicates" costs to enforce ───────────
+private fun setAdtFrames(): List<HashFrame> {
+    val buckets = 7
+    val slots = MutableList(buckets) { mutableListOf<String>() }
+    val frames = mutableListOf<HashFrame>()
+    var comparisons = 0
+    fun snapshot(status: String, probed: Set<Int> = emptySet(), hit: Set<Int> = emptySet(), miss: Set<Int> = emptySet()) {
+        frames.add(HashFrame(slots.map { it.toList() }, probed, hit, miss, status))
+    }
+
+    snapshot(
+        "A set stores unordered values with no duplicates. That is the whole contract — the operations it promises " +
+            "are add, contains and remove, and nothing about order or position.",
+    )
+
+    val inserts = listOf("red", "blue", "green", "blue", "amber")
+    for (word in inserts) {
+        val index = hashOf(word, buckets)
+        val duplicate = slots[index].contains(word)
+        comparisons += slots[index].size
+        if (duplicate) {
+            snapshot(
+                "add(\"$word\") hashes to $index, and the bucket already holds it. The add is rejected — this is " +
+                    "where uniqueness is enforced, and it costs only the ${slots[index].size} comparison(s) inside " +
+                    "one bucket rather than a scan of everything stored.",
+                probed = setOf(index),
+                miss = setOf(index),
+            )
+        } else {
+            slots[index].add(word)
+            snapshot(
+                "add(\"$word\") hashes to bucket $index and is new, so it is stored.",
+                probed = setOf(index),
+                hit = setOf(index),
+            )
+        }
+    }
+
+    val present = "green"
+    val presentIndex = hashOf(present, buckets)
+    snapshot(
+        "contains(\"$present\") hashes straight to bucket $presentIndex and checks only what is in it. The set " +
+            "never compares against the other ${inserts.distinct().size - slots[presentIndex].size} stored values.",
+        probed = setOf(presentIndex),
+        hit = setOf(presentIndex),
+    )
+
+    val absent = "violet"
+    val absentIndex = hashOf(absent, buckets)
+    snapshot(
+        "contains(\"$absent\") hashes to bucket $absentIndex" +
+            (if (slots[absentIndex].isEmpty()) ", which is empty — the answer is no after a single lookup." else
+                ", which holds ${slots[absentIndex].joinToString(", ")}; none of them match, so the answer is no."),
+        probed = setOf(absentIndex),
+        miss = setOf(absentIndex),
+    )
+
+    snapshot(
+        "A hash table is one way to honour the contract, not the contract itself. A balanced tree gives the same " +
+            "set operations in O(log n) and keeps the elements sorted; a bit array does it in O(1) when the " +
+            "universe is small and fixed. The ADT is the promise; this array of buckets is one implementation of it.",
+        hit = slots.indices.filter { slots[it].isNotEmpty() }.toSet(),
+    )
+    return frames
+}
+
+// ── Map ADT: the same machinery, keyed ───────────────────────────────────────
+private fun mapAdtFrames(): List<HashFrame> {
+    val buckets = 7
+    val slots = MutableList(buckets) { mutableListOf<String>() }
+    val frames = mutableListOf<HashFrame>()
+    fun snapshot(status: String, probed: Set<Int> = emptySet(), hit: Set<Int> = emptySet(), miss: Set<Int> = emptySet()) {
+        frames.add(HashFrame(slots.map { it.toList() }, probed, hit, miss, status))
+    }
+
+    snapshot(
+        "A map stores key → value pairs, with each key appearing once. Only the key is hashed; the value comes " +
+            "along for the ride and is never searched.",
+    )
+
+    val entries = listOf("cat" to "9", "dog" to "4", "owl" to "2")
+    for ((key, value) in entries) {
+        val index = hashOf(key, buckets)
+        slots[index].add("$key→$value")
+        snapshot(
+            "put(\"$key\", $value): hash(\"$key\") % $buckets = $index. The pair is stored in that bucket.",
+            probed = setOf(index),
+            hit = setOf(index),
+        )
+    }
+
+    val updateKey = "dog"
+    val updateIndex = hashOf(updateKey, buckets)
+    val existing = slots[updateIndex].indexOfFirst { it.startsWith("$updateKey→") }
+    val oldValue = slots[updateIndex][existing].substringAfter("→")
+    slots[updateIndex][existing] = "$updateKey→7"
+    snapshot(
+        "put(\"$updateKey\", 7) hashes to the same bucket $updateIndex and finds the key already there, so it " +
+            "overwrites the value $oldValue → 7 instead of adding a second entry. That is the difference between a " +
+            "map and a multimap, and it is enforced on the key alone.",
+        probed = setOf(updateIndex),
+        hit = setOf(updateIndex),
+    )
+
+    val getKey = "cat"
+    val getIndex = hashOf(getKey, buckets)
+    snapshot(
+        "get(\"$getKey\") hashes to bucket $getIndex and returns ${slots[getIndex].first { it.startsWith("$getKey→") }.substringAfter("→")}. " +
+            "The lookup cost depends on how full that one bucket is, not on how many pairs the map holds.",
+        probed = setOf(getIndex),
+        hit = setOf(getIndex),
+    )
+
+    val missingKey = "fox"
+    val missingIndex = hashOf(missingKey, buckets)
+    snapshot(
+        "get(\"$missingKey\") hashes to bucket $missingIndex and finds no matching key, so the map reports absent. " +
+            "Note that a set is just a map whose values are ignored — the same buckets, the same hashing, one less " +
+            "thing stored per entry.",
+        probed = setOf(missingIndex),
+        miss = setOf(missingIndex),
+    )
+    return frames
+}
+
 private val hashConfigs = mapOf(
     "hash_table" to HashConfig(
         intro = "Inserting five words into seven buckets with separate chaining, then one hit and one miss. The bucket index comes straight from the hash — no scanning.",
@@ -198,6 +323,22 @@ private val hashConfigs = mapOf(
         hitLabel = "Cached",
         probeLabel = "Accessing",
         build = ::lruCacheFrames,
+    ),
+    "set_adt" to HashConfig(
+        intro = "The set contract — add, contains, remove, no duplicates and no order — shown against one " +
+            "implementation of it, including the moment a duplicate add is rejected.",
+        slotLabel = { it.toString() },
+        hitLabel = "Stored / found",
+        probeLabel = "Hashed to",
+        build = ::setAdtFrames,
+    ),
+    "map_adt" to HashConfig(
+        intro = "Key → value pairs where only the key is hashed. Watch the second put on an existing key overwrite " +
+            "rather than duplicate.",
+        slotLabel = { it.toString() },
+        hitLabel = "Stored / found",
+        probeLabel = "Hashed to",
+        build = ::mapAdtFrames,
     ),
 )
 

@@ -48,7 +48,7 @@ internal val priorityQueueAdtContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.TreeVisualizer,
     applications = listOf(
         ApplicationCard("map", 0xFF10B981, "Shortest-Path Search", "Dijkstra's and A* pull the closest frontier node from a priority queue each step."),
         ApplicationCard("history", 0xFF3B82F6, "Schedulers", "OS task schedulers and event simulations dequeue the next job by priority or timestamp."),

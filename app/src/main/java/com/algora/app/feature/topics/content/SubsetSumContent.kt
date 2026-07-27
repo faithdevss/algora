@@ -46,7 +46,7 @@ internal val subsetSumContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.DpGridVisualizer,
     applications = listOf(
         ApplicationCard("finance", 0xFF10B981, "Budget & Partition", "Splitting expenses evenly or hitting an exact spend target is subset sum in disguise."),
         ApplicationCard("chip", 0xFF3B82F6, "Load Balancing", "Partitioning tasks into equal-weight groups reduces to subset-sum decisions."),

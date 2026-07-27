@@ -47,7 +47,7 @@ internal val setAdtContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.HashingVisualizer,
     applications = listOf(
         ApplicationCard("check", 0xFF10B981, "Deduplication", "Collecting unique visitors, tags, or IDs is a set insertion per element."),
         ApplicationCard("search", 0xFF3B82F6, "Fast Membership", "'Have I seen this?' checks — visited nodes, seen tokens — use a hash set."),

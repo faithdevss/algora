@@ -46,7 +46,7 @@ internal val mapAdtContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.HashingVisualizer,
     applications = listOf(
         ApplicationCard("chip", 0xFF10B981, "Everywhere in Code", "Config lookups, caches, counters, and indexes are all maps under the hood."),
         ApplicationCard("search", 0xFF3B82F6, "Frequency & Grouping", "Counting occurrences and grouping records by key are one-line map operations."),

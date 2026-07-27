@@ -1,7 +1,7 @@
 # Phase 3 — Interactive Simulation Library
 
-Status: **Widgets done, wiring ongoing.** 26 simulation widgets built; 143 of 176 authored topics
-ship a runnable lab, 33 still show the ComingSoon card. Full inventory and remaining work in
+Status: **Widgets done, wiring ongoing.** 26 simulation widgets built; 150 of 176 authored topics
+ship a runnable lab, 26 still show the ComingSoon card. Full inventory and remaining work in
 "Current state" below.
 
 Depends on: Phase 2
@@ -10,7 +10,7 @@ Depends on: Phase 2
 
 ## Current state (audited 2026-07-27)
 
-**143 of 176 topics ship a runnable lab; 33 still resolve to `SimulationComingSoonCard`.** Recount
+**150 of 176 topics ship a runnable lab; 26 still resolve to `SimulationComingSoonCard`.** Recount
 it at any time by walking `TopicContentProvider`'s id→content map and reading each content file's
 `simulation =` field — every number in this file comes from that walk, not from memory.
 
@@ -25,23 +25,26 @@ it at any time by walking `TopicContentProvider`'s id→content map and reading 
 | `GameSearchPlayer` | 9 | minimax/alpha-beta, MCTS, AlphaGo/Zero, MuZero, self-play, model-based RL |
 | `TokenStripPlayer` | 9 | tokenization → attention → transformers → LLM decoding |
 | `RlTrainingPlayer` | 9 | the DQN family, measured on a chain MDP |
-| `SortingVisualizer` / `DpGridVisualizer` | 8 each | 8 sorts; 8 DP problems |
-| `TreeVisualizer` | 7 | BST, heap, trie, AVL/red-black, B-tree, segment tree |
+| `SortingVisualizer` | 8 | the 8 sorts |
+| `DpGridVisualizer` | 9 | 8 DP problems + subset sum |
+| `TreeVisualizer` | 9 | BST, heap, trie, AVL/red-black, B-tree, segment tree, priority-queue ADT, Huffman |
 | `PointCloudPlayer` | 10 | k-means, DBSCAN, hierarchical, k-NN, naive Bayes, trees, PCA, k-d tree, closest pair, Monte Carlo |
 | `GraphAlgorithmPlayer` | 6 | Bellman-Ford, Floyd-Warshall, MSTs, Tarjan, Kosaraju |
 | `SearchVisualizer` | 5 | linear → exponential search |
-| `RecursionTreeVisualizer` / `BanditExplorer` / `RlGridWorld` | 4 each | recursion; bandits; tabular RL |
-| `PathfindingGrid` / `GraphVisualizer` / `HashingVisualizer` | 3 each | Dijkstra/A*/D*; graph builder + BFS/DFS; hashing |
+| `RecursionTreeVisualizer` | 6 | factorial, fibonacci, Hanoi, n-queens, permutations, sudoku |
+| `BanditExplorer` / `RlGridWorld` | 4 each | bandits; tabular RL |
+| `HashingVisualizer` | 5 | hash table, bloom filter, LRU, set ADT, map ADT |
+| `PathfindingGrid` / `GraphVisualizer` | 3 each | Dijkstra/A*/D*; graph builder + BFS/DFS |
 | `ClassifierPlayground` | 2 | logistic regression, SVM |
 | Array / LinkedList / Stack / Queue / Regression / Perceptron | 1 each | the Phase 1–5 originals |
 
-**Remaining 33, by category:**
+**Remaining 26, by category:**
 
 | Category | pending | wired | What is left |
 |---|---|---|---|
 | Reinforcement Learning | 14 | 45 | multi-agent (4, incl. `iql`), exploration + meta (4), environments (6) |
-| Algorithms | 8 | 48 | greedy (`huffman_coding`, `fractional_knapsack`, `job_sequencing`), divide-and-conquer (`karatsubas_algorithm`, `strassens_algorithm`), backtracking (`sudoku_solver`, `permutation_generation`, `subset_sum`) |
-| Data Structures | 11 | 16 | `disjoint_set`, `doubly_linked_list`, `fenwick_tree`, `graph_variants`, `list_adt`, `map_adt`, `priority_queue_adt`, `set_adt`, `skip_list`, `string`, `suffix_tree` |
+| Algorithms | 4 | 52 | greedy (`fractional_knapsack`, `job_sequencing`), divide-and-conquer (`karatsubas_algorithm`, `strassens_algorithm`) |
+| Data Structures | 8 | 19 | `disjoint_set`, `doubly_linked_list`, `fenwick_tree`, `graph_variants`, `list_adt`, `skip_list`, `string`, `suffix_tree` |
 | Deep Learning / NLP / ML / Interview Prep | 0 | 34 | complete |
 
 **How these labs are built.** Since sub-phase J the rule has been that a frame's narration may only
@@ -651,14 +654,39 @@ Verified the same way as sub-phase R: frame builders compiled and run on the JVM
 stripped, then spot-checked on the emulator (`quickselect` plays 18 frames from "target: rank 4 of
 8"). `assembleDebug` passes.
 
-**Remaining (audited 2026-07-27, after sub-phase S):** **33 of 176** topics resolve to
-`SimulationComingSoonCard`; 143 ship a lab.
+## Sub-phase T — ADTs, greedy and backtracking by reuse (this session)
+
+Another seven wired with **no new widget**, spread across four existing players. The ADT topics are
+the awkward ones: their subject is a *contract*, not a structure, so each lab shows one
+implementation honouring it and then names what else could.
+
+| Topic | Widget | What the frames do |
+|---|---|---|
+| `set_adt` | Hashing | add/contains/remove against buckets, including the rejected duplicate — then the note that a tree or a bit array satisfies the same contract at different prices |
+| `map_adt` | Hashing | only the key is hashed; the second `put` on an existing key overwrites rather than duplicating, which is the map/multimap line |
+| `priority_queue_adt` | Tree | sift-up and sift-down on an array-backed heap, ending on why "just enough order" beats a sorted list |
+| `huffman_coding` | Tree | merges the two rarest subtrees repeatedly; code lengths are read off the finished tree as depths — 100 bits against 144 fixed-width, a 31% saving |
+| `subset_sum` | DP grid | a boolean table rather than a numeric one, with the traceback recovering 4 + 5 = 9 |
+| `permutation_generation` | Recursion tree | 16 nodes for n = 3, every leaf a complete arrangement — backtracking with no pruning at all |
+| `sudoku_solver` | Recursion tree | a 4×4 Latin square with givens, so illegal candidates are abandoned before their subtree exists — the contrast the permutation trace sets up |
+
+`sudoku_solver` is capped at 4×4 deliberately (the config exposes no larger size): a 9×9 search tree
+cannot be rendered, and the lesson about pruning is identical at this size.
+
+Verified by compiling the four section files on the JVM with Compose stripped — as separate files,
+not concatenated, so their file-private declarations keep the scoping the real build gives them —
+plus an emulator check of `priority_queue_adt`. Huffman's output was checked against Kraft's
+equality (1/2 + 1/4 + 1/8 + 1/16 + 1/16 = 1), which confirms the code lengths form a valid prefix
+code rather than merely looking plausible.
+
+**Remaining (audited 2026-07-27, after sub-phase T):** **26 of 176** topics resolve to
+`SimulationComingSoonCard`; 150 ship a lab.
 
 | Category | pending | wired |
 |---|---|---|
 | Reinforcement Learning | 14 | 45 |
-| Algorithms | 8 | 48 |
-| Data Structures | 11 | 16 |
+| Algorithms | 4 | 52 |
+| Data Structures | 8 | 19 |
 | Deep Learning | 0 | 11 |
 | NLP | 0 | 8 |
 | Machine Learning | 0 | 10 |

@@ -52,7 +52,7 @@ internal val permutationGenerationContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.RecursionTreeVisualizer,
     applications = listOf(
         ApplicationCard("target", 0xFF10B981, "Brute-Force Search", "When n is small, enumerating all orderings solves problems like brute-force TSP exactly."),
         ApplicationCard("game", 0xFF3B82F6, "Puzzle & Anagram Generation", "Listing every arrangement drives anagram finders and combinatorial puzzle generators."),
