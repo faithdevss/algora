@@ -43,7 +43,7 @@ internal val imitationLearningContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.OfflineRlPlayer,
     applications = listOf(
         ApplicationCard("robot", 0xFF818CF8, "Robot Teaching", "Learning manipulation from human teleoperation demos."),
         ApplicationCard("map", 0xFF60A5FA, "Autonomous Driving", "Cloning expert driving from recorded human trajectories."),

@@ -44,7 +44,7 @@ internal val gailContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.OfflineRlPlayer,
     applications = listOf(
         ApplicationCard("robot", 0xFF818CF8, "Robotic Imitation", "Learning complex motor skills from a handful of demos."),
         ApplicationCard("game", 0xFF60A5FA, "Human-like Agents", "Producing behavior that mimics human play styles."),

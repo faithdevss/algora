@@ -1,7 +1,7 @@
 # Phase 3 — Interactive Simulation Library
 
-Status: **Widgets done, wiring ongoing.** 25 simulation widgets built; 129 of 176 authored topics
-ship a runnable lab, 47 still show the ComingSoon card. Full inventory and remaining work in
+Status: **Widgets done, wiring ongoing.** 26 simulation widgets built; 136 of 176 authored topics
+ship a runnable lab, 40 still show the ComingSoon card. Full inventory and remaining work in
 "Current state" below.
 
 Depends on: Phase 2
@@ -10,15 +10,16 @@ Depends on: Phase 2
 
 ## Current state (audited 2026-07-27)
 
-**129 of 176 topics ship a runnable lab; 47 still resolve to `SimulationComingSoonCard`.** Recount
+**136 of 176 topics ship a runnable lab; 40 still resolve to `SimulationComingSoonCard`.** Recount
 it at any time by walking `TopicContentProvider`'s id→content map and reading each content file's
 `simulation =` field — every number in this file comes from that walk, not from memory.
 
-25 widget types, resolved by `topicId` inside each section file:
+26 widget types, resolved by `topicId` inside each section file:
 
 | Widget | Topics | What it covers |
 |---|---|---|
 | `PolicyGradientPlayer` | 12 | REINFORCE → PPO, plus continuous control (DPG/DDPG/TD3/SAC) |
+| `OfflineRlPlayer` | 7 | offline RL + CQL, Decision Transformer, BC/DAgger, GAIL, IRL, RLHF |
 | `ArrayWalkPlayer` | 11 | prefix/difference/window/two-pointer walks + all 5 Interview Prep patterns |
 | `NeuralNetPlayer` | 9 | forward pass, backprop, activations, optimizers, CNN, autoencoder, GAN, RNN, LSTM |
 | `GameSearchPlayer` | 9 | minimax/alpha-beta, MCTS, AlphaGo/Zero, MuZero, self-play, model-based RL |
@@ -34,11 +35,11 @@ it at any time by walking `TopicContentProvider`'s id→content map and reading 
 | `ClassifierPlayground` | 2 | logistic regression, SVM |
 | Array / LinkedList / Stack / Queue / Regression / Perceptron | 1 each | the Phase 1–5 originals |
 
-**Remaining 47, by category:**
+**Remaining 40, by category:**
 
 | Category | pending | wired | What is left |
 |---|---|---|---|
-| Reinforcement Learning | 21 | 38 | multi-agent (3), offline + imitation (8), exploration + meta (4), environments (6) |
+| Reinforcement Learning | 14 | 45 | multi-agent (4, incl. `iql`), exploration + meta (4), environments (6) |
 | Algorithms | 14 | 42 | selection/randomised (`quickselect`, `median_of_medians`, `reservoir_sampling`, `monte_carlo_method`, `mos_algorithm`), greedy (`huffman_coding`, `fractional_knapsack`, `job_sequencing`), divide-and-conquer (`karatsubas_algorithm`, `strassens_algorithm`, `closest_pair_of_points`), backtracking (`sudoku_solver`, `permutation_generation`, `subset_sum`) |
 | Data Structures | 12 | 15 | `disjoint_set`, `doubly_linked_list`, `fenwick_tree`, `graph_variants`, `kd_tree`, `list_adt`, `map_adt`, `priority_queue_adt`, `set_adt`, `skip_list`, `string`, `suffix_tree` |
 | Deep Learning / NLP / ML / Interview Prep | 0 | 34 | complete |
@@ -50,9 +51,10 @@ gradients are sampled, the models are learned. That has caught a wrong claim in 
 noisy nets exploring deeper, monotone GAE variance, MuZero degrading under model error). The
 corrections are recorded in each sub-phase below rather than quietly patched.
 
-**Next batch.** Offline + imitation RL (`offline_rl`, `cql`, `iql`, `decision_transformer`, `gail`,
-`irl`, `imitation_learning`, `rlhf`): distribution shift, behaviour cloning's compounding error and
-a conservative Q penalty are all measurable on the same chain MDP the other RL players use.
+**Next batch.** Multi-agent (`maddpg`, `qmix`, `vdn`, `iql`) — the four share one environment, and
+non-stationarity, value decomposition and the credit-assignment problem are all measurable on a
+two-agent matrix/grid game. After that, exploration + meta (`icm`, `rnd`, `intrinsic_motivation`,
+`meta_rl`) can reuse `RlGridWorld` with an intrinsic-reward overlay.
 
 > Everything below this line is the historical record: the original scope, the sub-phases in the
 > order they were built, and the reasoning (including the corrections) behind each one.
@@ -561,12 +563,65 @@ Three claims were corrected against the measurements:
   terminal evaluations too and dropping to 30 simulations produces a real curve, and the frame now
   also states the honest surprise: search tolerates a lot of model noise before it breaks.
 
-**Remaining (audited 2026-07-27):** **47 of 176** topics resolve to `SimulationComingSoonCard`;
-129 ship a lab.
+## Sub-phase R — offline + imitation player (`OfflineRlSection.kt`)
+
+`SimulationType.OfflineRlPlayer`, wired to the 7 offline and imitation topics. Three environments
+are shared across them so the comparisons are fair: the chain with a rarely-pulled **mean-zero
+lottery action** (`offline_rl`, `cql`), a **3×8 corridor** where every move slips a row
+(`imitation_learning`, `gail`, `irl`), and the chain with a per-step cost (`decision_transformer`,
+`rlhf`). Render parts: the corridor grid, a state×action count table, plus the curve/bar renderers
+the other RL players use.
+
+| Topic | Measured |
+|---|---|
+| `offline_rl` | stitching lifts a 0.572 behaviour policy to the 0.815 optimum; then 35 lottery pulls in 404 transitions inflate its value by 1.089 and the deployed policy drops to 0.019; a truncated log leaves every Q(s, right) at 0 |
+| `cql` | α = 0.1 cuts the overestimate 1.089 → 0.007 and restores 0.815; on a left-biased log the same penalty destroys it (0.815 → 0.000) |
+| `decision_transformer` | cloning mixed data scores −1.25; conditioning tracks targets (0.00→0.20, 0.40→0.55, 0.68→0.75) and saturates at the dataset's best, 0.75 |
+| `imitation_learning` | expert 0.884, clone 0.611; 86% of episodes drift off the 7 demonstrated states and score 0.55 there; 320 demos change nothing; DAgger reaches 21/24 coverage and 0.884 |
+| `gail` | occupancy distance 0.593 → 0.035, discriminator 0.80 → 0.52 (chance), success 0.828 against the clone's 0.611 |
+| `irl` | visitation error 0.808 → 0.022, success 0.333 → 0.843; reward peaks at the goal (4.11); after a wall appears, re-planning scores 0.834 vs the clone's 0.684 |
+| `rlhf` | reward model agrees with 89.2% of rater preferences, yet proxy peaks at β = 0.02 and true return at β = 0.25 — Goodhart with numbers |
+
+Five claims were corrected against the measurements:
+
+- **`iql` is not Implicit Q-Learning here.** The batch was planned as 8 topics, but this codebase's
+  `iql` content is *Independent* Q-Learning — a multi-agent baseline. It was moved to the
+  multi-agent batch and the batch shipped 7 topics.
+- **Naive offline RL does not overestimate on a table.** The first design assumed unsupported
+  actions would be over-valued by extrapolation; tabular Q-learning has no generalisation, so
+  unvisited entries just stay at their initialisation and the max never picks them. The mechanism
+  that *is* real on a table is finite-sample: a mean-zero lottery action sampled a handful of times
+  gets locked in at whatever it happened to pay. The lab now uses that, and contrasts it with the
+  same algorithm online, whose estimate is never inflated because it can pull again.
+- **CQL's learned values are not lower bounds.** Measured, every α inflates them — by 2.643 at
+  α = 10 and 28.9 at α = 200 — because the penalty is *relative*: it pushes rare actions down and
+  data actions up. The lab states this and points at what the paper's bound is actually about.
+  Nor is α a pure safety/performance dial: on this dataset no α from 0.1 to 200 costs anything,
+  while on a left-biased dataset every α ≥ 0.1 collapses the policy. Both datasets are in the lab.
+- **Max-entropy soft VI needs a step cost.** With a terminal goal of value 0, the per-step entropy
+  bonus made never finishing worth more than finishing, and the planner refused to reach the goal.
+  (For the same reason, the "adding a constant to every state reward leaves the policy unchanged"
+  demonstration of IRL's ill-posedness is *false* here — a terminal state breaks that invariance.
+  The lab shows ambiguity the honest way instead: a second restart lands on rewards differing by
+  2.09 that induce policies differing by at most 0.346.)
+- **GAIL's usual `−log(1−D)` reward has a survival bias.** Positive everywhere, it paid the agent
+  to avoid finishing; the lab uses the symmetric logit form. Best-responding on both sides also
+  oscillated (TV stuck at 0.92) until the occupancy was averaged — the same fictitious-play damping
+  the `self_play` lab teaches.
+
+Verified two ways: the experiment core was compiled and run standalone on the JVM before being
+wrapped in Compose (this is what caught a `return@repeat`-is-`continue` bug that had stopped every
+episode from ever terminating), then the shipped frame builders were re-run with Compose stripped so
+the narration was read against the real source. On-device: the coverage table renders with the rare
+action highlighted, the corridor grid draws the expert route, and DAgger's frame stacks grid + plot
+correctly.
+
+**Remaining (audited 2026-07-27, after sub-phase R):** **40 of 176** topics resolve to
+`SimulationComingSoonCard`; 136 ship a lab.
 
 | Category | pending | wired |
 |---|---|---|
-| Reinforcement Learning | 21 | 38 |
+| Reinforcement Learning | 14 | 45 |
 | Algorithms | 14 | 42 |
 | Data Structures | 12 | 15 |
 | Deep Learning | 0 | 11 |
@@ -574,26 +629,21 @@ Three claims were corrected against the measurements:
 | Machine Learning | 0 | 10 |
 | Interview Prep | 0 | 5 |
 
-RL's remaining 21: multi-agent (`maddpg`, `qmix`, `vdn`), offline and imitation (`cql`, `iql`,
-`offline_rl`, `decision_transformer`, `gail`, `irl`, `imitation_learning`, `rlhf`), exploration and
-meta (`icm`, `rnd`, `intrinsic_motivation`, `meta_rl`), and the six environment topics (`cartpole`,
-`mountain_car`, `atari`, `mujoco`, `dota2`, `starcraft`). Offline/imitation is the natural next
-batch: distribution shift, behaviour cloning's compounding error and a conservative penalty are all
-measurable on the chain the other RL players already use.
+RL's remaining 14: multi-agent (`maddpg`, `qmix`, `vdn`, `iql`), exploration and meta (`icm`, `rnd`,
+`intrinsic_motivation`, `meta_rl`), and the six environment topics (`cartpole`, `mountain_car`,
+`atari`, `mujoco`, `dota2`, `starcraft`).
 
-RL's remaining 42 split into policy-gradient/actor-critic (≈12), model-based and search (≈9),
-multi-agent + offline + imitation (≈12), exploration and meta (≈5), and the environment topics
-(cartpole, mountain_car, atari, mujoco, dota2, starcraft). The policy-gradient family is the natural
-next batch: REINFORCE's variance, a baseline, GAE, and PPO's clipped ratio are all measurable on the
-same kind of toy MDP this player already runs.
+The existing RL players now cover tabular methods, value-based deep RL, continuous control, search,
+model-based, and offline/imitation — what is left needs either a multi-agent loop or a real
+environment, neither of which exists yet.
 
-RL is still the bulk (51) — the grid-world/bandit widgets cover tabular methods, but deep-RL topics
-(DQN family, policy gradients, model-based, multi-agent) each want a training-curve or environment
-loop that does not exist yet. Cheapest remaining wins reuse existing renderers: `subset_sum` → DP
-grid; `doubly_linked_list` → LinkedListVisualizer; `priority_queue_adt` → TreeVisualizer heap;
-`quickselect` / `median_of_medians` / `mos_algorithm` / `reservoir_sampling` → array walk player.
-RL's 21 are still the bulk of what is left: grid-world, bandit, DQN-family, policy-gradient and
-game-search players now cover tabular methods, value-based deep RL, continuous control, search and
-model-based, leaving multi-agent, offline/imitation, exploration and the environment topics. The 14 Algorithms and 12 Data
-Structures stragglers are mostly one-off structures (`skip_list`, `suffix_tree`, `kd_tree`,
-`fenwick_tree`) that each need their own renderer.
+**Cheapest remaining wins**, all reusing a renderer that already ships: `subset_sum` → DP grid;
+`doubly_linked_list` → LinkedListVisualizer; `priority_queue_adt` → TreeVisualizer heap;
+`set_adt` / `map_adt` → HashingVisualizer; `graph_variants` → GraphVisualizer; `kd_tree` →
+PointCloudPlayer (its split-line overlay already exists for `decision_trees`); `closest_pair_of_points`
+→ PointCloudPlayer; `huffman_coding` → TreeVisualizer; `quickselect` / `median_of_medians` /
+`mos_algorithm` / `reservoir_sampling` / `monte_carlo_method` → array walk player;
+`permutation_generation` / `sudoku_solver` → RecursionTreeVisualizer with hard input caps. That is
+roughly 17 of the 40 with no new renderer at all. The rest (`skip_list`, `suffix_tree`,
+`fenwick_tree`, `disjoint_set`, `string`, `karatsubas_algorithm`, `strassens_algorithm`) each need
+their own view.

@@ -43,7 +43,7 @@ internal val decisionTransformerContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.OfflineRlPlayer,
     applications = listOf(
         ApplicationCard("robot", 0xFF818CF8, "Offline Control", "Competitive on offline-RL benchmarks with no dynamic programming."),
         ApplicationCard("book", 0xFF60A5FA, "RL-as-Sequence", "Brings the Transformer toolbox and scaling to decision making."),

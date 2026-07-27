@@ -44,7 +44,7 @@ internal val rlhfContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.OfflineRlPlayer,
     applications = listOf(
         ApplicationCard("robot", 0xFF818CF8, "Aligning LLMs", "Turns pretrained language models into instruction-following assistants."),
         ApplicationCard("book", 0xFF60A5FA, "Helpfulness & Safety", "Steers models toward helpful, harmless, honest responses."),

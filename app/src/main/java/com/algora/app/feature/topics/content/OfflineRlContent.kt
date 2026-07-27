@@ -43,7 +43,7 @@ internal val offlineRlContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.OfflineRlPlayer,
     applications = listOf(
         ApplicationCard("flask", 0xFF818CF8, "Healthcare", "Learning treatment policies from historical records, where live trial is unsafe."),
         ApplicationCard("map", 0xFF60A5FA, "Autonomous Driving", "Reusing large logged driving datasets without risky on-road exploration."),

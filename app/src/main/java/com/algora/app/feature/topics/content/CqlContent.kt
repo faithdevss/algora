@@ -43,7 +43,7 @@ internal val cqlContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.OfflineRlPlayer,
     applications = listOf(
         ApplicationCard("flask", 0xFF818CF8, "Safe Offline Learning", "Learning reliable policies from logged medical or industrial data."),
         ApplicationCard("robot", 0xFF60A5FA, "Robotics from Logs", "Reusing recorded robot data without unsafe exploration."),

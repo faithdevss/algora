@@ -73,6 +73,7 @@ sealed interface SimulationType {
     data object RlTrainingPlayer : SimulationType
     data object PolicyGradientPlayer : SimulationType
     data object GameSearchPlayer : SimulationType
+    data object OfflineRlPlayer : SimulationType
     data object RegressionExplorer : SimulationType
     data object PerceptronVisualizer : SimulationType
     data object ClassifierPlayground : SimulationType

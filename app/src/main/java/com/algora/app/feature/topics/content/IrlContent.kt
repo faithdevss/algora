@@ -44,7 +44,7 @@ internal val irlContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.OfflineRlPlayer,
     applications = listOf(
         ApplicationCard("map", 0xFF818CF8, "Driving & Navigation", "Recovering the cost function behind human route choices."),
         ApplicationCard("robot", 0xFF60A5FA, "Robot Skill Transfer", "Inferring goals so robots generalize demonstrated tasks."),
