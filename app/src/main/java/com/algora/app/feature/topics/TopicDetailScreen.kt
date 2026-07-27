@@ -207,6 +207,7 @@ fun TopicDetailScreen(topicId: String, onBack: () -> Unit, onTopicClick: (String
                         SimulationType.MultiAgentPlayer -> MultiAgentSection(topicId)
                         SimulationType.ExplorationPlayer -> ExplorationSection(topicId)
                         SimulationType.LinkedStructurePlayer -> LinkedStructureSection(topicId)
+                        SimulationType.EnvironmentPlayer -> EnvironmentSection(topicId)
                         SimulationType.RegressionExplorer -> RegressionSimulationSection()
                         SimulationType.PerceptronVisualizer -> PerceptronSimulationSection()
                         SimulationType.ClassifierPlayground -> ClassifierPlaygroundSection(classifierConfigFor(topicId))

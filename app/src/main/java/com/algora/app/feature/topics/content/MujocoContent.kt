@@ -45,7 +45,7 @@ internal val mujocoContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.EnvironmentPlayer,
     applications = listOf(
         ApplicationCard("robot", 0xFF818CF8, "Continuous-Control Benchmark", "The standard suite for PPO, TD3, and SAC evaluation."),
         ApplicationCard("game", 0xFF60A5FA, "Locomotion Research", "Learning gaits for simulated legged robots."),

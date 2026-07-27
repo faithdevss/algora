@@ -754,34 +754,98 @@ Three corrections, all forced by the measurements:
 Verified by compiling the section on the JVM with Compose stripped and an emulator check of the ICM
 lab. `assembleDebug` passes.
 
-**Remaining (audited 2026-07-27, after sub-phase V):** **18 of 176** topics resolve to
-`SimulationComingSoonCard`; 158 ship a lab.
+## Sub-phase W — array-walk and recursion-tree reuse (this session)
+
+Seven topics, no new widget. Five went to the array-walk player and two to the recursion tree.
+
+| Topic | Widget | What is measured |
+|---|---|---|
+| `fenwick_tree` | Array walk | the `i += i & -i` / `i -= i & -i` walks themselves; over all 8 prefixes and all 8 updates Fenwick pays 13 reads and 20 writes, a raw array 36 reads, a prefix array 36 writes |
+| `string` | Array walk | naive concatenation copies 21 characters to build 6, a builder writes 10; at n = 1000 it is 500,500 against 2,008 |
+| `list_adt` | Array walk | one op script on both implementations — array 9 shifts / 2 index reads, linked 11 hops / 5 pointer writes |
+| `job_sequencing` | Array walk | profit-first greedy scores 142, deadline-first 134, and brute force over every subset in every order confirms 142 is optimal |
+| `fractional_knapsack` | Array walk | greedy is exactly optimal at 240 when items divide; forbid the fraction and the same ordering returns 160 against the DP optimum of 220 |
+| `karatsubas_algorithm` | Recursion tree | 1234 × 5678 costs 11 one-digit multiplications against schoolbook's 16 — and at 2 or 3 digits Karatsuba *loses*, which the root label states outright |
+| `strassens_algorithm` | Recursion tree | 7 block products instead of 8: 56 scalar multiplications against 64, paid for with 18 block additions, and the result is checked against the plain product every run |
+
+Strassen is fixed at 4×4 with a 2×2 base case on purpose. At 8×8 the tree is 1 + 7 + 49 = 57 nodes,
+which cannot be rendered legibly on a phone; the lesson is identical one level up.
+
+Two live defects were found while reading the players and fixed here:
+
+- `RecursionTreeSection` computed `steps = (range.end − range.start).toInt() − 1`, which is **−1** for
+  a single-value range. Material3's `Slider` has `require(steps >= 0)`, so `sudoku_solver` (range
+  `4f..4f`, shipped in sub-phase T) threw the moment its lab was opened. Now coerced to 0.
+- `TreeCanvas` laid out only `firstOrNull { parent == null }`, so any second root would have been
+  missing from `xById` and crashed the draw on `getValue`. Now every root is walked — which is what
+  made the disjoint-set forest below possible.
+
+## Sub-phase X — the remaining data-structure topics (this session)
+
+| Topic | Widget | What the lab does |
+|---|---|---|
+| `disjoint_set` | Tree (forest) | union by rank with both cases shown (equal ranks grow the forest, unequal do not), then path compression re-hanging what a find walked. Over the same script: naive 73 pointer walks, rank 40, rank + compression 31 |
+| `suffix_tree` | Tree | the suffix trie of `aba$` built leaf by leaf, then rebuilt with unary chains collapsed — 10 nodes to 6, with the 4 one-child nodes named before they disappear |
+| `graph_variants` | Graph algorithm | one node set read six ways. Undirected reaches all 6 from C, directed reaches 5; BFS's 2-hop path costs 10 while the 4-hop path costs 4; Kahn's algorithm places only A on the cyclic graph and all 6 once one edge is dropped |
+| `doubly_linked_list` | **New** linked-structure player | delete-by-handle is 2 writes and 0 hops against a singly linked list's 5 writes and 7 hops over the same five deletions |
+| `skip_list` | **New** linked-structure player | the search drops a level on every overshoot; 3.5 comparisons on average against 5.5, and — since ten keys prove nothing about O(log n) — real coin-flipped skip lists at n = 16/128/1024/8192 giving 5.1/10.3/18.6/22.8 against 8.5/64.5/512.5/4096.5 |
+
+The new `LinkedStructureSection` draws a row of nodes with pointer lanes: backward arrows below the
+row for the doubly linked list, stacked express lanes above it for the skip list.
+
+Two claims were corrected by their own measurements. The skip-list lab originally let the 10-key
+search stand as the result — it wins 6 comparisons to 7, which is nothing, so the lab now says so in
+those words and adds the scaling measurement. The disjoint-set script originally hit the equal-rank
+branch on all six unions, so the union-by-rank frame never showed the case it exists for; the script
+now includes both.
+
+## Sub-phase Y — the six environment topics (`EnvironmentSection.kt`)
+
+`SimulationType.EnvironmentPlayer`. Three of these run real dynamics; three cannot, and each of those
+says so in its first frame rather than pretending.
+
+| Topic | What runs | Measured |
+|---|---|---|
+| `cartpole` | Gym CartPole-v1 dynamics at 50 Hz | random actions survive 21.0 steps averaged over 200 episodes; a four-weight linear policy found by random search over 400 candidates averages 500.0 over 100 fresh starts |
+| `mountain_car` | Gym MountainCar-v0 dynamics | always-push-right never passes −0.27 of the 0.5 flag; pushing along the velocity solves it in 124 steps; 0 of 300 random episodes ever reach the goal |
+| `mujoco` | a torque-limited pendulum, Gym Pendulum-v1 dynamics | max torque held for 200 steps never gets closer than 131° to upright; energy shaping plus a PD catch reaches upright at step 104 after 2 reversals. Discretising d joints into 10 levels costs 10^d actions |
+| `atari` | a 4×8 catch game, no emulator | identical tabular Q-learning on one frame catches 56%, on two frames 84% — the single-frame agent is acting on a state that does not determine the answer |
+| `dota2` | a 40-step chain plus the real action/horizon arithmetic | γ=0.9 (horizon 10) takes a 0.05 proxy over the win worth 1.0 and never wins; γ=0.99 and γ=0.999 push and win 100%. Joint action space 738,720; ~20,250 decisions per match |
+| `starcraft` | a cyclic 3-strategy game | best-responding to the latest opponent cycles forever at exploitability 1.0; best-responding to the whole history (the league idea) falls to 0.03 over 200 iterations and approaches the uniform Nash mixture |
+
+Four things were wrong on first measurement and were fixed rather than narrated around:
+
+- **The pendulum used Gym's convention while the prose used the opposite one.** In these dynamics
+  θ = 0 is *upright*, not hanging, so the "stalls at 179°" reading was measuring the wrong angle and
+  the renderer drew a hanging arm as vertical. Both now use distance from upright, and the scene
+  negates the vertical term because canvas y grows downwards.
+- **Energy shaping alone never arrived.** It approaches upright asymptotically, so 400 steps left the
+  arm oscillating at 33°. The lab now does what swing-up actually does: pump energy, then catch with
+  a PD law inside 20° — and states that the switch point is set by physics, since past 23° gravity's
+  moment exceeds ±2 N·m.
+- **The Dota horizon lab measured the wrong thing twice.** A proxy paid every step is worth
+  `p/(1−γ)`, which beats a one-off win at *any* long γ — so all three discounts farmed, and the
+  time-limit truncation was being bootstrapped as if the episode were infinite. The proxy is now a
+  one-time cash-out at the start state and both actions terminate, which isolates the discount: the
+  three runs differ only in how much the far reward is worth. The repeating-proxy trap is now named
+  in the following frame, where it belongs — it is why OpenAI Five decayed its shaped rewards.
+- **The Atari lab claims nothing about an emulator.** The first frame says outright that a phone
+  cannot run one and that what follows is the partial-observability property in isolation.
+
+Verified the same way as the earlier sub-phases: every frame builder compiled and executed on the JVM
+with Compose stripped (the numbers above are read off that run), then emulator checks of the doubly
+linked list, skip list, disjoint set, MuJoCo and cart-pole labs. `assembleDebug` passes.
+
+**Remaining (audited 2026-07-27, after sub-phase Y):** **none.** All **176 of 176** topics ship a
+runnable lab; `SimulationComingSoonCard` is now unreachable through content and survives only as the
+fallback for `SimulationType.NotYetAvailable`.
 
 | Category | pending | wired |
 |---|---|---|
-| Reinforcement Learning | 6 | 53 |
-| Algorithms | 4 | 52 |
-| Data Structures | 8 | 19 |
+| Reinforcement Learning | 0 | 59 |
+| Algorithms | 0 | 56 |
+| Data Structures | 0 | 27 |
 | Deep Learning | 0 | 11 |
 | NLP | 0 | 8 |
 | Machine Learning | 0 | 10 |
 | Interview Prep | 0 | 5 |
-
-RL's remaining 14: multi-agent (`maddpg`, `qmix`, `vdn`, `iql`), exploration and meta (`icm`, `rnd`,
-`intrinsic_motivation`, `meta_rl`), and the six environment topics (`cartpole`, `mountain_car`,
-`atari`, `mujoco`, `dota2`, `starcraft`).
-
-The existing RL players now cover tabular methods, value-based deep RL, continuous control, search,
-model-based, and offline/imitation — what is left needs either a multi-agent loop or a real
-environment, neither of which exists yet.
-
-**Cheapest remaining wins**, all reusing a renderer that already ships: `subset_sum` → DP grid;
-`doubly_linked_list` → LinkedListVisualizer; `priority_queue_adt` → TreeVisualizer heap;
-`set_adt` / `map_adt` → HashingVisualizer; `graph_variants` → GraphVisualizer; `kd_tree` →
-PointCloudPlayer (its split-line overlay already exists for `decision_trees`); `closest_pair_of_points`
-→ PointCloudPlayer; `huffman_coding` → TreeVisualizer; `quickselect` / `median_of_medians` /
-`mos_algorithm` / `reservoir_sampling` / `monte_carlo_method` → array walk player;
-`permutation_generation` / `sudoku_solver` → RecursionTreeVisualizer with hard input caps. That is
-roughly 17 of the 40 with no new renderer at all. The rest (`skip_list`, `suffix_tree`,
-`fenwick_tree`, `disjoint_set`, `string`, `karatsubas_algorithm`, `strassens_algorithm`) each need
-their own view.

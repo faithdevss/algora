@@ -45,7 +45,7 @@ internal val cartpoleContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.EnvironmentPlayer,
     applications = listOf(
         ApplicationCard("book", 0xFF818CF8, "Deep RL Hello-World", "The first environment to validate a DQN or policy-gradient implementation."),
         ApplicationCard("robot", 0xFF60A5FA, "Control Baseline", "A stand-in for classic inverted-pendulum control problems."),

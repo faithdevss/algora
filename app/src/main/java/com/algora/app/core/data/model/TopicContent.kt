@@ -77,6 +77,7 @@ sealed interface SimulationType {
     data object MultiAgentPlayer : SimulationType
     data object ExplorationPlayer : SimulationType
     data object LinkedStructurePlayer : SimulationType
+    data object EnvironmentPlayer : SimulationType
     data object RegressionExplorer : SimulationType
     data object PerceptronVisualizer : SimulationType
     data object ClassifierPlayground : SimulationType

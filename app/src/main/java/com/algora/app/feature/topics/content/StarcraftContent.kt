@@ -45,7 +45,7 @@ internal val starcraftContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.EnvironmentPlayer,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "AlphaStar", "Reached Grandmaster rank, a landmark for complex-game RL."),
         ApplicationCard("users", 0xFF60A5FA, "Multi-Agent Strategy", "A testbed for partial-information, long-horizon coordination."),

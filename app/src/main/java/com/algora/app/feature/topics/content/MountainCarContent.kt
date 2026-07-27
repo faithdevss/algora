@@ -45,7 +45,7 @@ internal val mountainCarContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.EnvironmentPlayer,
     applications = listOf(
         ApplicationCard("bulb", 0xFF818CF8, "Exploration Testbed", "A canonical benchmark for exploration strategies and reward shaping."),
         ApplicationCard("robot", 0xFF60A5FA, "Momentum Control", "Models underactuated systems that need energy-building maneuvers."),

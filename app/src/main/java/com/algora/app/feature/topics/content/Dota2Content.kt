@@ -44,7 +44,7 @@ internal val dota2Content = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.EnvironmentPlayer,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "OpenAI Five", "First to beat esports world champions at a complex team game."),
         ApplicationCard("users", 0xFF60A5FA, "Cooperative Multi-Agent", "A benchmark for large-scale team coordination."),

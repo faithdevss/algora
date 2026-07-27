@@ -45,7 +45,7 @@ internal val atariContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.EnvironmentPlayer,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "Deep RL Benchmark", "DQN, Rainbow, and successors are measured on Atari-57."),
         ApplicationCard("image", 0xFF60A5FA, "Learning from Pixels", "Tests visual representation learning for control."),
