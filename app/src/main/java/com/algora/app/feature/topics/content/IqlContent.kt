@@ -44,7 +44,7 @@ internal val iqlContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.MultiAgentPlayer,
     applications = listOf(
         ApplicationCard("users", 0xFF818CF8, "Baseline Multi-Agent RL", "The simplest starting point for cooperative or competitive MARL."),
         ApplicationCard("game", 0xFF60A5FA, "Many-Agent Systems", "Scales to many agents where a joint model would be intractable."),

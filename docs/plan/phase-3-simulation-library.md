@@ -1,7 +1,7 @@
 # Phase 3 — Interactive Simulation Library
 
-Status: **Widgets done, wiring ongoing.** 26 simulation widgets built; 150 of 176 authored topics
-ship a runnable lab, 26 still show the ComingSoon card. Full inventory and remaining work in
+Status: **Widgets done, wiring ongoing.** 27 simulation widgets built; 154 of 176 authored topics
+ship a runnable lab, 22 still show the ComingSoon card. Full inventory and remaining work in
 "Current state" below.
 
 Depends on: Phase 2
@@ -10,16 +10,17 @@ Depends on: Phase 2
 
 ## Current state (audited 2026-07-27)
 
-**150 of 176 topics ship a runnable lab; 26 still resolve to `SimulationComingSoonCard`.** Recount
+**154 of 176 topics ship a runnable lab; 22 still resolve to `SimulationComingSoonCard`.** Recount
 it at any time by walking `TopicContentProvider`'s id→content map and reading each content file's
 `simulation =` field — every number in this file comes from that walk, not from memory.
 
-26 widget types, resolved by `topicId` inside each section file:
+27 widget types, resolved by `topicId` inside each section file:
 
 | Widget | Topics | What it covers |
 |---|---|---|
 | `PolicyGradientPlayer` | 12 | REINFORCE → PPO, plus continuous control (DPG/DDPG/TD3/SAC) |
 | `OfflineRlPlayer` | 7 | offline RL + CQL, Decision Transformer, BC/DAgger, GAIL, IRL, RLHF |
+| `MultiAgentPlayer` | 4 | IQL, VDN, QMIX, MADDPG |
 | `ArrayWalkPlayer` | 15 | prefix/difference/window/two-pointer walks, all 5 Interview Prep patterns, selection + randomised (quickselect, median of medians, Mo's, reservoir) |
 | `NeuralNetPlayer` | 9 | forward pass, backprop, activations, optimizers, CNN, autoencoder, GAN, RNN, LSTM |
 | `GameSearchPlayer` | 9 | minimax/alpha-beta, MCTS, AlphaGo/Zero, MuZero, self-play, model-based RL |
@@ -38,11 +39,11 @@ it at any time by walking `TopicContentProvider`'s id→content map and reading 
 | `ClassifierPlayground` | 2 | logistic regression, SVM |
 | Array / LinkedList / Stack / Queue / Regression / Perceptron | 1 each | the Phase 1–5 originals |
 
-**Remaining 26, by category:**
+**Remaining 22, by category:**
 
 | Category | pending | wired | What is left |
 |---|---|---|---|
-| Reinforcement Learning | 14 | 45 | multi-agent (4, incl. `iql`), exploration + meta (4), environments (6) |
+| Reinforcement Learning | 10 | 49 | exploration + meta (4), environments (6) |
 | Algorithms | 4 | 52 | greedy (`fractional_knapsack`, `job_sequencing`), divide-and-conquer (`karatsubas_algorithm`, `strassens_algorithm`) |
 | Data Structures | 8 | 19 | `disjoint_set`, `doubly_linked_list`, `fenwick_tree`, `graph_variants`, `list_adt`, `skip_list`, `string`, `suffix_tree` |
 | Deep Learning / NLP / ML / Interview Prep | 0 | 34 | complete |
@@ -54,10 +55,11 @@ gradients are sampled, the models are learned. That has caught a wrong claim in 
 noisy nets exploring deeper, monotone GAE variance, MuZero degrading under model error). The
 corrections are recorded in each sub-phase below rather than quietly patched.
 
-**Next batch.** Multi-agent (`maddpg`, `qmix`, `vdn`, `iql`) — the four share one environment, and
-non-stationarity, value decomposition and the credit-assignment problem are all measurable on a
-two-agent matrix/grid game. After that, exploration + meta (`icm`, `rnd`, `intrinsic_motivation`,
-`meta_rl`) can reuse `RlGridWorld` with an intrinsic-reward overlay.
+**Next batch.** Exploration + meta (`icm`, `rnd`, `intrinsic_motivation`, `meta_rl`) — all four can
+reuse `RlGridWorld` with an intrinsic-reward overlay on a sparse-reward maze, where the count of
+states ever reached is the measurement. The six environment topics (`cartpole`, `mountain_car`,
+`atari`, `mujoco`, `dota2`, `starcraft`) are the awkward remainder: only the first two have
+dynamics simple enough to simulate honestly.
 
 > Everything below this line is the historical record: the original scope, the sub-phases in the
 > order they were built, and the reasoning (including the corrections) behind each one.
@@ -679,12 +681,43 @@ plus an emulator check of `priority_queue_adt`. Huffman's output was checked aga
 equality (1/2 + 1/4 + 1/8 + 1/16 + 1/16 = 1), which confirms the code lengths form a valid prefix
 code rather than merely looking plausible.
 
-**Remaining (audited 2026-07-27, after sub-phase T):** **26 of 176** topics resolve to
-`SimulationComingSoonCard`; 150 ship a lab.
+## Sub-phase U — multi-agent player (`MultiAgentSection.kt`)
+
+`SimulationType.MultiAgentPlayer`, wired to the four multi-agent topics. Two environments, shared so
+the comparisons between methods are fair: the **climb game** (2 agents x 3 actions, cooperative,
+optimum 8, miscoordination −12) for `iql`/`vdn`/`qmix`, and a **continuous 2-agent task** with a
+cross term in the reward for `maddpg`. Render parts: a payoff/Q matrix shaded by magnitude, plus the
+bar and curve renderers the other RL players use.
+
+| Topic | Measured |
+|---|---|
+| `iql` | 200 independent runs: 108 reach the optimum, 92 settle at 0, mean payoff 4.32 — a coin flip. Against an exploring partner, A0 (half of the best outcome) averages −5.33, the worst action on the board |
+| `vdn` | the additive game fits exactly (MSE 0.0000, correct argmax); the climb game leaves MSE 50.6 and decentralised argmax executes a pair worth 0 instead of 8 |
+| `qmix` | on a monotone-but-not-additive payoff, VDN 0.444 → QMIX 0.001; on the climb game VDN 50.6 → QMIX 35.6, and QMIX still executes the pair worth 0 |
+| `maddpg` | the independent critic's best response moves 0.00 → 0.50 → 1.00 as the partner shifts; its error against the true joint reward is 0.91 against the centralised critic's 0.000; at one probe point its gradient is −0.33 where the truth is +1.56 |
+
+The QMIX lab's honest result is the one worth keeping: QMIX is provably at least as expressive as
+VDN (a sum is a special case of monotonic mixing) and measurably better on the product game, but
+**monotonicity is a hard limit, not a technicality** — on a non-monotone payoff both factorisations
+execute the same wrong joint action. That is why QTRAN and QPLEX exist, and the frames say so.
+
+One claim was corrected: the IQL lab originally asserted that non-optimal runs "settle into the safe
+corner worth 0". True as it turns out, but it was an assumption — the frames now bucket the 200 runs
+by the payoff they actually reached and report the distribution.
+
+The mixer is a real one, not a stand-in: a hidden layer with an ELU and non-negative weights
+(enforced by squaring), fitted by gradient descent alongside the per-agent values, so its
+expressiveness advantage over the plain sum is measured rather than asserted.
+
+Verified by compiling the section on the JVM with Compose stripped, then an emulator check of the
+QMIX payoff matrix. `assembleDebug` passes.
+
+**Remaining (audited 2026-07-27, after sub-phase U):** **22 of 176** topics resolve to
+`SimulationComingSoonCard`; 154 ship a lab.
 
 | Category | pending | wired |
 |---|---|---|
-| Reinforcement Learning | 14 | 45 |
+| Reinforcement Learning | 10 | 49 |
 | Algorithms | 4 | 52 |
 | Data Structures | 8 | 19 |
 | Deep Learning | 0 | 11 |

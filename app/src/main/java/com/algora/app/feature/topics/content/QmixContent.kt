@@ -43,7 +43,7 @@ internal val qmixContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.MultiAgentPlayer,
     applications = listOf(
         ApplicationCard("game", 0xFF818CF8, "StarCraft Micro", "A leading method on the SMAC cooperative multi-agent benchmark."),
         ApplicationCard("users", 0xFF60A5FA, "Team Coordination", "Cooperative tasks needing richer credit assignment than a plain sum."),

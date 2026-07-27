@@ -43,7 +43,7 @@ internal val maddpgContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.MultiAgentPlayer,
     applications = listOf(
         ApplicationCard("users", 0xFF818CF8, "Mixed Cooperation/Competition", "Predator-prey, negotiation, and team-vs-team scenarios."),
         ApplicationCard("game", 0xFF60A5FA, "Continuous Multi-Agent", "Extends continuous-action control to many interacting agents."),

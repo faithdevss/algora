@@ -43,7 +43,7 @@ internal val vdnContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.MultiAgentPlayer,
     applications = listOf(
         ApplicationCard("users", 0xFF818CF8, "Cooperative Teams", "Coordinating agents that share one team reward."),
         ApplicationCard("game", 0xFF60A5FA, "Multi-Agent Games", "StarCraft micromanagement and other team-vs-team tasks."),
