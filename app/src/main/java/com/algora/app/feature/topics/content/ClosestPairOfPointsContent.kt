@@ -59,7 +59,7 @@ internal val closestPairOfPointsContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.PointCloudPlayer,
     applications = listOf(
         ApplicationCard("map", 0xFF10B981, "Collision Detection", "Games and simulations find the nearest pair of objects to test for imminent collisions."),
         ApplicationCard("chart", 0xFF3B82F6, "Clustering & Nearest Neighbor", "Spotting the two most similar data points seeds hierarchical clustering."),

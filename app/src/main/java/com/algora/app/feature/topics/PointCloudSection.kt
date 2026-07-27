@@ -652,6 +652,324 @@ private val classLegend = listOf(
     QueryColor to "Query",
 )
 
+// ── Geometric structures and sampling ────────────────────────────────────────
+// Three labs that are about the plane itself rather than about learning from it. Each counts the
+// work it does, so the closing claim is a measurement: nodes pruned, comparisons avoided, error
+// against sample count.
+
+private val geometryPoints: List<P> = Lcg(2027).let { rng ->
+    List(18) { P(0.06f + rng.next() * 0.88f, 0.06f + rng.next() * 0.88f) }
+}
+
+private fun kdTreeFrames(): List<CloudFrame> {
+    val pts = geometryPoints
+    val frames = mutableListOf<CloudFrame>()
+    // Each split is recorded as (segment, depth) so the frames can reveal them one level at a time.
+    val splits = mutableListOf<Segment>()
+
+    fun build(subset: List<P>, depth: Int, x0: Float, y0: Float, x1: Float, y1: Float) {
+        if (subset.size <= 1 || depth >= 3) return
+        val vertical = depth % 2 == 0
+        val ordered = if (vertical) subset.sortedBy { it.x } else subset.sortedBy { it.y }
+        val median = ordered[ordered.size / 2]
+        splits += if (vertical) {
+            Segment(P(median.x, y0), P(median.x, y1), AxisColor)
+        } else {
+            Segment(P(x0, median.y), P(x1, median.y), AxisColor)
+        }
+        val left = ordered.take(ordered.size / 2)
+        val right = ordered.drop(ordered.size / 2 + 1)
+        if (vertical) {
+            build(left, depth + 1, x0, y0, median.x, y1)
+            build(right, depth + 1, median.x, y0, x1, y1)
+        } else {
+            build(left, depth + 1, x0, y0, x1, median.y)
+            build(right, depth + 1, x0, median.y, x1, y1)
+        }
+    }
+    build(pts, 0, 0f, 0f, 1f, 1f)
+
+    frames += CloudFrame(
+        status = "A k-d tree indexes points by splitting space, not by sorting values. With ${pts.size} points in " +
+            "the plane, the question it answers cheaply is \"what is nearest to here\".",
+        dots = pts.map { Dot(it, 0) },
+        readout = "${pts.size} points, unindexed",
+    )
+    frames += CloudFrame(
+        status = "The root splits on x at the median point, so half the points fall each side. The next level " +
+            "splits its halves on y, the level after that on x again — the axis alternates with depth.",
+        dots = pts.map { Dot(it, 0) },
+        segments = splits.take(1),
+        readout = "depth 0: split on x",
+    )
+    frames += CloudFrame(
+        status = "Two more splits, now on y. Every node owns a rectangle, and a point's position in the tree is " +
+            "decided entirely by which side of each split it falls on.",
+        dots = pts.map { Dot(it, 0) },
+        segments = splits.take(3),
+        readout = "depth 1: split on y",
+    )
+    frames += CloudFrame(
+        status = "Building down to depth 3 partitions the plane into ${splits.size + 1} cells. Construction sorts " +
+            "at each level, so it costs O(n log n) once and is then reused by every query.",
+        dots = pts.map { Dot(it, 0) },
+        segments = splits,
+        readout = "${splits.size} splits",
+    )
+
+    // Nearest-neighbour query. The search is run for real against a proper tree so the "examined"
+    // count is what the pruning actually achieves, not an estimate of it.
+    val query = P(0.62f, 0.38f)
+    val examined = LinkedHashSet<P>()
+
+    /** Recursive NN descent: nearer child first, sibling only if its half-plane is still in range. */
+    fun search(subset: List<P>, depth: Int, bestSoFar: Float): Float {
+        if (subset.isEmpty()) return bestSoFar
+        var best = bestSoFar
+        if (subset.size == 1 || depth >= 3) {
+            for (p in subset) {
+                examined += p
+                best = minOf(best, hypot(p.x - query.x, p.y - query.y))
+            }
+            return best
+        }
+        val vertical = depth % 2 == 0
+        val ordered = if (vertical) subset.sortedBy { it.x } else subset.sortedBy { it.y }
+        val median = ordered[ordered.size / 2]
+        examined += median
+        best = minOf(best, hypot(median.x - query.x, median.y - query.y))
+        val left = ordered.take(ordered.size / 2)
+        val right = ordered.drop(ordered.size / 2 + 1)
+        val axisGap = if (vertical) query.x - median.x else query.y - median.y
+        val nearSide = if (axisGap < 0) left else right
+        val farSide = if (axisGap < 0) right else left
+        best = search(nearSide, depth + 1, best)
+        // The far side can only help if the splitting line itself is closer than the best distance.
+        if (abs(axisGap) < best) best = search(farSide, depth + 1, best)
+        return best
+    }
+
+    val best = search(pts, 0, Float.MAX_VALUE)
+    val nearest = pts.minByOrNull { hypot(it.x - query.x, it.y - query.y) }!!
+    val mustCheck = examined.size
+
+    frames += CloudFrame(
+        status = "A nearest-neighbour query descends to the cell containing the query point, then only revisits a " +
+            "sibling cell if that cell's rectangle is closer than the best distance found so far.",
+        dots = pts.map { Dot(it, 0, Emphasis.FADED) },
+        segments = splits,
+        rings = listOf(Ring(query, best, QueryColor)),
+        centroids = listOf(Dot(query, 3, Emphasis.QUERY)),
+        readout = "query at (${"%.2f".format(query.x)}, ${"%.2f".format(query.y)})",
+    )
+    frames += CloudFrame(
+        status = "The nearest point is ${"%.3f".format(best)} away, and the search measured a distance to only " +
+            "$mustCheck of the ${pts.size} points to prove it. The other ${pts.size - mustCheck} were discarded " +
+            "a whole cell at a time: if the splitting line is farther than the best distance so far, nothing " +
+            "beyond it can win, so the subtree is never entered. That pruning is what makes the query O(log n) " +
+            "on average.",
+        dots = pts.map { p ->
+            Dot(p, if (p === nearest) 2 else 0, if (p in examined) Emphasis.NORMAL else Emphasis.FADED)
+        },
+        segments = splits + Segment(query, nearest, CloudColors[2]),
+        rings = listOf(Ring(query, best, QueryColor)),
+        centroids = listOf(Dot(query, 3, Emphasis.QUERY)),
+        readout = "$mustCheck of ${pts.size} points examined",
+    )
+    frames += CloudFrame(
+        status = "The catch is dimensionality. Each level splits on one axis, so in d dimensions a query has to " +
+            "descend d levels before it has constrained every coordinate once — and once d approaches log n, " +
+            "almost every cell is close enough to check and the tree degenerates to the brute-force scan it was " +
+            "meant to replace.",
+        dots = pts.map { Dot(it, 0, if (it === nearest) Emphasis.ACTIVE else Emphasis.FADED) },
+        segments = splits,
+        readout = "great in 2-D; no better than linear once d is large",
+    )
+    return frames
+}
+
+/**
+ * Hand-placed rather than sampled: the interesting case is the one where the closest pair straddles
+ * the dividing line, and a uniform cloud almost never produces it. Two loose clusters, plus a close
+ * pair sitting either side of the middle.
+ */
+private val closestPairPoints: List<P> = listOf(
+    P(0.08f, 0.20f), P(0.14f, 0.62f), P(0.22f, 0.35f), P(0.28f, 0.85f),
+    P(0.33f, 0.12f), P(0.36f, 0.55f), P(0.40f, 0.75f), P(0.44f, 0.30f),
+    P(0.49f, 0.55f), P(0.52f, 0.58f),
+    P(0.60f, 0.22f), P(0.65f, 0.70f), P(0.70f, 0.42f), P(0.75f, 0.88f),
+    P(0.80f, 0.15f), P(0.84f, 0.60f), P(0.88f, 0.33f), P(0.93f, 0.78f),
+)
+
+private fun closestPairFrames(): List<CloudFrame> {
+    val pts = closestPairPoints.sortedBy { it.x }
+    val frames = mutableListOf<CloudFrame>()
+    var bruteComparisons = 0
+    var bestPair: Pair<P, P>? = null
+    var bestDistance = Float.MAX_VALUE
+    for (i in pts.indices) for (j in i + 1 until pts.size) {
+        bruteComparisons++
+        val d = hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y)
+        if (d < bestDistance) { bestDistance = d; bestPair = pts[i] to pts[j] }
+    }
+    val (pa, pb) = bestPair!!
+
+    frames += CloudFrame(
+        status = "Find the two closest points among ${pts.size}. Checking every pair is correct and simple, and " +
+            "costs $bruteComparisons distance computations — the count grows as n²/2, so it stops being viable " +
+            "long before the input gets interesting.",
+        dots = pts.map { Dot(it, 0) },
+        readout = "brute force: $bruteComparisons pairs",
+    )
+
+    val mid = pts.size / 2
+    val splitX = (pts[mid - 1].x + pts[mid].x) / 2f
+    val leftPts = pts.take(mid)
+    val rightPts = pts.drop(mid)
+
+    fun closestIn(list: List<P>): Pair<Float, Pair<P, P>?> {
+        var d = Float.MAX_VALUE
+        var pair: Pair<P, P>? = null
+        for (i in list.indices) for (j in i + 1 until list.size) {
+            val dist = hypot(list[i].x - list[j].x, list[i].y - list[j].y)
+            if (dist < d) { d = dist; pair = list[i] to list[j] }
+        }
+        return d to pair
+    }
+    val (dl, pairL) = closestIn(leftPts)
+    val (dr, pairR) = closestIn(rightPts)
+    val delta = minOf(dl, dr)
+
+    frames += CloudFrame(
+        status = "Sort by x once, then split down the middle. Each half is solved the same way, recursively — the " +
+            "left half's closest pair is ${"%.3f".format(dl)} apart, the right half's ${"%.3f".format(dr)}.",
+        dots = pts.map { Dot(it, if (it.x < splitX) 0 else 1) },
+        segments = listOf(Segment(P(splitX, 0f), P(splitX, 1f), AxisColor, dashed = true)),
+        readout = "left ${"%.3f".format(dl)} · right ${"%.3f".format(dr)}",
+    )
+    frames += CloudFrame(
+        status = "So no pair with both points on the same side beats δ = ${"%.3f".format(delta)}. The only pairs " +
+            "left unchecked are those straddling the line, and only points within δ of it can possibly qualify.",
+        dots = pts.map { p ->
+            Dot(p, if (p.x < splitX) 0 else 1, if (abs(p.x - splitX) <= delta) Emphasis.ACTIVE else Emphasis.FADED)
+        },
+        segments = listOf(Segment(P(splitX, 0f), P(splitX, 1f), AxisColor, dashed = true)),
+        regions = listOf(Region(splitX - delta, 0f, splitX + delta, 1f, AxisColor.copy(alpha = 0.10f))),
+        readout = "δ = ${"%.3f".format(delta)}",
+    )
+
+    val strip = pts.filter { abs(it.x - splitX) <= delta }.sortedBy { it.y }
+    var stripComparisons = 0
+    var stripBest = delta
+    var stripPair: Pair<P, P>? = null
+    for (i in strip.indices) {
+        var j = i + 1
+        while (j < strip.size && strip[j].y - strip[i].y < delta) {
+            stripComparisons++
+            val d = hypot(strip[i].x - strip[j].x, strip[i].y - strip[j].y)
+            if (d < stripBest) { stripBest = d; stripPair = strip[i] to strip[j] }
+            j++
+        }
+    }
+
+    frames += CloudFrame(
+        status = "${strip.size} points fall in the strip. Sorted by y, each one only has to be compared against " +
+            "those within δ above it — a geometric argument caps that at a constant number of neighbours, which " +
+            "is why the strip costs $stripComparisons comparisons here rather than ${strip.size * (strip.size - 1) / 2}.",
+        dots = pts.map { p ->
+            Dot(p, if (p.x < splitX) 0 else 1, if (abs(p.x - splitX) <= delta) Emphasis.ACTIVE else Emphasis.FADED)
+        },
+        segments = listOf(Segment(P(splitX, 0f), P(splitX, 1f), AxisColor, dashed = true)),
+        regions = listOf(Region(splitX - delta, 0f, splitX + delta, 1f, AxisColor.copy(alpha = 0.10f))),
+        readout = "$stripComparisons comparisons in the strip",
+    )
+
+    val found = stripPair ?: pairL ?: pairR
+    frames += CloudFrame(
+        status = "The closest pair is ${"%.3f".format(bestDistance)} apart" +
+            (if (stripPair != null) ", and it straddles the split — which is exactly the case the strip exists to catch." else ", found inside one of the halves.") +
+            " Total recurrence T(n) = 2T(n/2) + O(n), so O(n log n) against brute force's $bruteComparisons pairs.",
+        dots = pts.map { p ->
+            Dot(p, if (p === found?.first || p === found?.second) 2 else 0, if (p === found?.first || p === found?.second) Emphasis.ACTIVE else Emphasis.FADED)
+        },
+        segments = listOf(Segment(pa, pb, CloudColors[2])),
+        readout = "closest distance ${"%.3f".format(bestDistance)}",
+    )
+    return frames
+}
+
+private fun monteCarloFrames(): List<CloudFrame> {
+    // Estimate pi by sampling the unit square and counting what lands inside the quarter circle.
+    val rng = Lcg(31337)
+    val samples = List(1200) { P(rng.next(), rng.next()) }
+    val checkpoints = listOf(50, 200, 600, 1200)
+    val frames = mutableListOf<CloudFrame>()
+
+    fun inside(p: P) = hypot(p.x, p.y) <= 1f
+    fun estimateAt(n: Int) = 4.0 * samples.take(n).count { inside(it) } / n
+
+    frames += CloudFrame(
+        status = "A quarter circle of radius 1 sits inside a 1×1 square. Its area is π/4, the square's is 1, so " +
+            "the fraction of uniformly random points landing inside the arc estimates π/4 — no geometry required, " +
+            "only counting.",
+        dots = emptyList(),
+        rings = listOf(Ring(P(0f, 0f), 1f, AxisColor)),
+        readout = "area ratio = π/4 ≈ ${"%.4f".format(Math.PI / 4)}",
+    )
+
+    for (n in checkpoints) {
+        val est = estimateAt(n)
+        val hits = samples.take(n).count { inside(it) }
+        frames += CloudFrame(
+            status = "$n samples: $hits landed inside, giving 4 × $hits/$n = ${"%.4f".format(est)}. The error is " +
+                "${"%.4f".format(abs(est - Math.PI))}.",
+            dots = samples.take(n).map { Dot(it, if (inside(it)) 0 else 1, Emphasis.NORMAL) },
+            rings = listOf(Ring(P(0f, 0f), 1f, AxisColor)),
+            readout = "π ≈ ${"%.4f".format(est)}   ·   error ${"%.4f".format(abs(est - Math.PI))}",
+        )
+    }
+
+    val singleErrors = checkpoints.map { abs(estimateAt(it) - Math.PI) }
+    // One run says nothing about the rate: its error is itself random. Average the absolute error
+    // over independent repetitions at each sample count and the 1/sqrt(n) trend appears.
+    val reps = 300
+    val meanErrors = checkpoints.map { n ->
+        val rep = Lcg(9001 + n)
+        var total = 0.0
+        repeat(reps) {
+            var hits = 0
+            repeat(n) { if (hypot(rep.next(), rep.next()) <= 1f) hits++ }
+            total += abs(4.0 * hits / n - Math.PI)
+        }
+        total / reps
+    }
+
+    frames += CloudFrame(
+        status = "That single run's errors were " +
+            checkpoints.indices.joinToString(", ") { "${checkpoints[it]}→${"%.4f".format(singleErrors[it])}" } +
+            " — not decreasing. One run proves nothing, because its error is itself a random variable; " +
+            "${checkpoints[1]} samples beating ${checkpoints.last()} here is luck, not a result.",
+        dots = samples.map { Dot(it, if (inside(it)) 0 else 1, Emphasis.FADED) },
+        rings = listOf(Ring(P(0f, 0f), 1f, AxisColor)),
+        readout = "a single run's error is noise, not a rate",
+    )
+    frames += CloudFrame(
+        status = "Averaged over $reps independent runs at each size, the mean absolute error is " +
+            checkpoints.indices.joinToString(", ") { "${checkpoints[it]}→${"%.4f".format(meanErrors[it])}" } +
+            ". Going from ${checkpoints.first()} to ${checkpoints.last()} samples is " +
+            "${checkpoints.last() / checkpoints.first()}× the work for " +
+            "${"%.1f".format(meanErrors.first() / meanErrors.last())}× the accuracy — close to the √" +
+            "${checkpoints.last() / checkpoints.first()} = " +
+            "${"%.1f".format(sqrt((checkpoints.last() / checkpoints.first()).toDouble()))} that 1/√n predicts. " +
+            "That is the method's defining weakness, and what it buys in exchange is indifference to dimension.",
+        dots = samples.map { Dot(it, if (inside(it)) 0 else 1, Emphasis.FADED) },
+        rings = listOf(Ring(P(0f, 0f), 1f, AxisColor)),
+        readout = "mean error ${"%.4f".format(meanErrors.first())} → ${"%.4f".format(meanErrors.last())} " +
+            "over ${checkpoints.last() / checkpoints.first()}× the samples",
+    )
+    return frames
+}
+
 private val cloudConfigs = mapOf(
     "kmeans" to CloudConfig(
         intro = "k-means alternates two steps: assign each point to the nearest centroid, then move each centroid to " +
@@ -706,6 +1024,36 @@ private val cloudConfigs = mapOf(
             AxisColor to "PC1",
         ),
         build = ::pcaFrames,
+    ),
+    "kd_tree" to CloudConfig(
+        intro = "Splitting the plane instead of sorting the points, then a nearest-neighbour query that prunes " +
+            "most of the cloud without measuring a distance to it.",
+        legend = listOf(
+            CloudColors[0] to "Point",
+            CloudColors[2] to "Nearest",
+            AxisColor to "Split",
+        ),
+        build = ::kdTreeFrames,
+    ),
+    "closest_pair_of_points" to CloudConfig(
+        intro = "Divide and conquer on the plane: solve both halves, then check only the strip near the dividing " +
+            "line. Comparison counts are shown against brute force at each stage.",
+        legend = listOf(
+            CloudColors[0] to "Left half",
+            CloudColors[1] to "Right half",
+            AxisColor to "Split · strip",
+        ),
+        build = ::closestPairFrames,
+    ),
+    "monte_carlo_method" to CloudConfig(
+        intro = "Estimating π by throwing darts at a square. The estimate is recomputed at four sample sizes so " +
+            "the 1/√n error rate is visible rather than asserted.",
+        legend = listOf(
+            CloudColors[0] to "Inside arc",
+            CloudColors[1] to "Outside",
+            AxisColor to "Quarter circle",
+        ),
+        build = ::monteCarloFrames,
     ),
 )
 

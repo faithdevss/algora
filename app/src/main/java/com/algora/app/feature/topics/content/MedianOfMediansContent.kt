@@ -47,7 +47,7 @@ internal val medianOfMediansContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.ArrayWalkPlayer,
     applications = listOf(
         ApplicationCard("target", 0xFF10B981, "Worst-Case Selection", "Finds the k-th smallest / the median in guaranteed linear time, unlike randomized quickselect."),
         ApplicationCard("chip", 0xFF3B82F6, "Deterministic Guarantees", "Real-time and safety-critical code prefers its predictable bound over expected-case speed."),

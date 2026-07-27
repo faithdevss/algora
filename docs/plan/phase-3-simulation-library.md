@@ -1,7 +1,7 @@
 # Phase 3 — Interactive Simulation Library
 
-Status: **Widgets done, wiring ongoing.** 26 simulation widgets built; 136 of 176 authored topics
-ship a runnable lab, 40 still show the ComingSoon card. Full inventory and remaining work in
+Status: **Widgets done, wiring ongoing.** 26 simulation widgets built; 143 of 176 authored topics
+ship a runnable lab, 33 still show the ComingSoon card. Full inventory and remaining work in
 "Current state" below.
 
 Depends on: Phase 2
@@ -10,7 +10,7 @@ Depends on: Phase 2
 
 ## Current state (audited 2026-07-27)
 
-**136 of 176 topics ship a runnable lab; 40 still resolve to `SimulationComingSoonCard`.** Recount
+**143 of 176 topics ship a runnable lab; 33 still resolve to `SimulationComingSoonCard`.** Recount
 it at any time by walking `TopicContentProvider`'s id→content map and reading each content file's
 `simulation =` field — every number in this file comes from that walk, not from memory.
 
@@ -20,14 +20,14 @@ it at any time by walking `TopicContentProvider`'s id→content map and reading 
 |---|---|---|
 | `PolicyGradientPlayer` | 12 | REINFORCE → PPO, plus continuous control (DPG/DDPG/TD3/SAC) |
 | `OfflineRlPlayer` | 7 | offline RL + CQL, Decision Transformer, BC/DAgger, GAIL, IRL, RLHF |
-| `ArrayWalkPlayer` | 11 | prefix/difference/window/two-pointer walks + all 5 Interview Prep patterns |
+| `ArrayWalkPlayer` | 15 | prefix/difference/window/two-pointer walks, all 5 Interview Prep patterns, selection + randomised (quickselect, median of medians, Mo's, reservoir) |
 | `NeuralNetPlayer` | 9 | forward pass, backprop, activations, optimizers, CNN, autoencoder, GAN, RNN, LSTM |
 | `GameSearchPlayer` | 9 | minimax/alpha-beta, MCTS, AlphaGo/Zero, MuZero, self-play, model-based RL |
 | `TokenStripPlayer` | 9 | tokenization → attention → transformers → LLM decoding |
 | `RlTrainingPlayer` | 9 | the DQN family, measured on a chain MDP |
 | `SortingVisualizer` / `DpGridVisualizer` | 8 each | 8 sorts; 8 DP problems |
 | `TreeVisualizer` | 7 | BST, heap, trie, AVL/red-black, B-tree, segment tree |
-| `PointCloudPlayer` | 7 | k-means, DBSCAN, hierarchical, k-NN, naive Bayes, trees, PCA |
+| `PointCloudPlayer` | 10 | k-means, DBSCAN, hierarchical, k-NN, naive Bayes, trees, PCA, k-d tree, closest pair, Monte Carlo |
 | `GraphAlgorithmPlayer` | 6 | Bellman-Ford, Floyd-Warshall, MSTs, Tarjan, Kosaraju |
 | `SearchVisualizer` | 5 | linear → exponential search |
 | `RecursionTreeVisualizer` / `BanditExplorer` / `RlGridWorld` | 4 each | recursion; bandits; tabular RL |
@@ -35,13 +35,13 @@ it at any time by walking `TopicContentProvider`'s id→content map and reading 
 | `ClassifierPlayground` | 2 | logistic regression, SVM |
 | Array / LinkedList / Stack / Queue / Regression / Perceptron | 1 each | the Phase 1–5 originals |
 
-**Remaining 40, by category:**
+**Remaining 33, by category:**
 
 | Category | pending | wired | What is left |
 |---|---|---|---|
 | Reinforcement Learning | 14 | 45 | multi-agent (4, incl. `iql`), exploration + meta (4), environments (6) |
-| Algorithms | 14 | 42 | selection/randomised (`quickselect`, `median_of_medians`, `reservoir_sampling`, `monte_carlo_method`, `mos_algorithm`), greedy (`huffman_coding`, `fractional_knapsack`, `job_sequencing`), divide-and-conquer (`karatsubas_algorithm`, `strassens_algorithm`, `closest_pair_of_points`), backtracking (`sudoku_solver`, `permutation_generation`, `subset_sum`) |
-| Data Structures | 12 | 15 | `disjoint_set`, `doubly_linked_list`, `fenwick_tree`, `graph_variants`, `kd_tree`, `list_adt`, `map_adt`, `priority_queue_adt`, `set_adt`, `skip_list`, `string`, `suffix_tree` |
+| Algorithms | 8 | 48 | greedy (`huffman_coding`, `fractional_knapsack`, `job_sequencing`), divide-and-conquer (`karatsubas_algorithm`, `strassens_algorithm`), backtracking (`sudoku_solver`, `permutation_generation`, `subset_sum`) |
+| Data Structures | 11 | 16 | `disjoint_set`, `doubly_linked_list`, `fenwick_tree`, `graph_variants`, `list_adt`, `map_adt`, `priority_queue_adt`, `set_adt`, `skip_list`, `string`, `suffix_tree` |
 | Deep Learning / NLP / ML / Interview Prep | 0 | 34 | complete |
 
 **How these labs are built.** Since sub-phase J the rule has been that a frame's narration may only
@@ -616,14 +616,49 @@ the narration was read against the real source. On-device: the coverage table re
 action highlighted, the corridor grid draws the expert route, and DAgger's frame stacks grid + plot
 correctly.
 
-**Remaining (audited 2026-07-27, after sub-phase R):** **40 of 176** topics resolve to
-`SimulationComingSoonCard`; 136 ship a lab.
+## Sub-phase S — selection, geometry and sampling by reuse (this session)
+
+Seven topics wired with **no new widget**: four configs added to `ArrayWalkSection` and three to
+`PointCloudSection`. Each one counts its own work, so the closing claim of every lab is a
+measurement rather than a complexity class quoted from the textbook.
+
+| Topic | Widget | Measured |
+|---|---|---|
+| `quickselect` | ArrayWalk | 10 comparisons to find the 4th smallest of 8, against 20 to sort the same array |
+| `median_of_medians` | ArrayWalk | groups of 5 → pivot 9 → a 7/7 split, against the guaranteed 3n/10 floor |
+| `mos_algorithm` | ArrayWalk | the same 5 range queries cost 46 pointer moves in arrival order, 20 in block order |
+| `reservoir_sampling` | ArrayWalk | selection rate per position over 20,000 runs lands in 0.245–0.254 against the expected 0.250 |
+| `kd_tree` | PointCloud | a real pruning NN search measures 8 of 18 points; the other 10 are discarded a cell at a time |
+| `closest_pair_of_points` | PointCloud | δ = 0.130 from the halves, then 2 strip comparisons find a 0.042 pair that straddles the split |
+| `monte_carlo_method` | PointCloud | mean absolute error over 300 runs: 0.1979 → 0.0392 for 24× the samples (√24 predicts 4.9×, measured 5.05×) |
+
+Three drafts were wrong and the run caught them:
+
+- **The k-d tree's "examined" count was a fabricated proxy** — a distance threshold applied to every
+  point, which reported 1 of 18. It now runs an actual recursive descent that visits the nearer
+  child first and only enters the sibling when the splitting line is closer than the best distance
+  so far, and counts what that touches.
+- **The closest-pair strip came out empty.** On a uniform cloud δ is set by some incidental tight
+  pair inside one half, so the strip is narrow and the interesting case never happens — the frame
+  read "costs 0 comparisons here rather than 0". The points are now hand-placed as two loose
+  clusters with a close pair either side of the middle, which is the case the strip exists for.
+- **Monte Carlo's single-run error is not monotone** (0.1384, 0.0016, 0.0184, 0.0116 — 200 samples
+  beat 1200), so narrating it as "error shrinks as 1/√n" next to that sequence would have been a
+  lie. The lab now shows the single run, says plainly that one run's error is a random variable and
+  proves nothing, and then averages over 300 independent runs at each size to show the actual rate.
+
+Verified the same way as sub-phase R: frame builders compiled and run on the JVM with Compose
+stripped, then spot-checked on the emulator (`quickselect` plays 18 frames from "target: rank 4 of
+8"). `assembleDebug` passes.
+
+**Remaining (audited 2026-07-27, after sub-phase S):** **33 of 176** topics resolve to
+`SimulationComingSoonCard`; 143 ship a lab.
 
 | Category | pending | wired |
 |---|---|---|
 | Reinforcement Learning | 14 | 45 |
-| Algorithms | 14 | 42 |
-| Data Structures | 12 | 15 |
+| Algorithms | 8 | 48 |
+| Data Structures | 11 | 16 |
 | Deep Learning | 0 | 11 |
 | NLP | 0 | 8 |
 | Machine Learning | 0 | 10 |

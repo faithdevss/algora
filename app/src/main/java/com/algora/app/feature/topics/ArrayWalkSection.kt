@@ -738,6 +738,391 @@ private fun dedupeInPlaceFrames(): List<WalkFrame> {
     return frames
 }
 
+// ── Selection and randomised walks ───────────────────────────────────────────
+// These four count something as they go — comparisons, pointer moves, selection frequencies — so
+// the closing claim of each lab is a number the walk itself produced.
+
+/** Deterministic LCG, so the sampling labs quote the same figures on every launch. */
+private class WalkRng(private var state: Int) {
+    fun next(): Double {
+        state = state * 1103515245 + 12345
+        return (((state ushr 16) and 0x7fff).toDouble()) / 32767.0
+    }
+}
+
+private fun quickselectFrames(): List<WalkFrame> {
+    val a = intArrayOf(7, 2, 9, 4, 1, 8, 3, 6).copyOf()
+    val target = 3   // 0-indexed: the 4th smallest
+    val sorted = a.sortedArray()
+    val frames = mutableListOf<WalkFrame>()
+    var comparisons = 0
+
+    // `lo`..`hi` is the live range; everything outside it has been ruled out for good.
+    fun row(lo: Int, hi: Int, pivotIndex: Int?, scan: Int?, boundary: Int?, done: Int? = null) =
+        a.mapIndexed { i, v ->
+            CellView(
+                v.toString(),
+                when {
+                    i == done -> CellMark.RESULT
+                    i < lo || i > hi -> CellMark.DIM
+                    i == pivotIndex -> CellMark.RESULT
+                    i == scan -> CellMark.ACTIVE
+                    boundary != null && i < boundary -> CellMark.WINDOW
+                    else -> CellMark.IDLE
+                },
+            )
+        }
+
+    frames += WalkFrame(
+        status = "Find the ${target + 1}th smallest value without sorting. Sorting would order all ${a.size} " +
+            "elements; quickselect only ever descends into the side that can still contain the answer.",
+        cells = row(0, a.lastIndex, null, null, null),
+        readout = "target: rank ${target + 1} of ${a.size}",
+    )
+
+    var lo = 0
+    var hi = a.lastIndex
+    var answer = -1
+    while (lo <= hi) {
+        val pivot = a[hi]
+        frames += WalkFrame(
+            status = "Partition a[$lo..$hi] around the pivot ${pivot}. Everything smaller is swapped to the front.",
+            cells = row(lo, hi, hi, null, null),
+            pointers = mapOf(hi to "pivot"),
+        )
+        var boundary = lo
+        for (j in lo until hi) {
+            comparisons++
+            val smaller = a[j] < pivot
+            if (smaller) {
+                val t = a[boundary]; a[boundary] = a[j]; a[j] = t
+                boundary++
+            }
+            frames += WalkFrame(
+                status = if (smaller) {
+                    "${a[boundary - 1]} < $pivot — swap it into the smaller-than-pivot block, which now holds " +
+                        "${boundary - lo}."
+                } else {
+                    "${a[j]} ≥ $pivot — leave it where it is."
+                },
+                cells = row(lo, hi, hi, j, boundary),
+                pointers = mapOf(j to "j", hi to "pivot"),
+            )
+        }
+        val t = a[boundary]; a[boundary] = a[hi]; a[hi] = t
+
+        when {
+            boundary == target -> {
+                answer = a[boundary]
+                frames += WalkFrame(
+                    status = "The pivot lands at index $boundary, which is exactly the rank we wanted. Its final " +
+                        "position is its answer — no further work, and the two sides were never sorted.",
+                    cells = row(lo, hi, null, null, null, done = boundary),
+                    readout = "${target + 1}th smallest = $answer, found in $comparisons comparisons",
+                )
+                lo = boundary + 1
+                hi = boundary   // ends the loop
+            }
+            boundary > target -> {
+                frames += WalkFrame(
+                    status = "The pivot settles at index $boundary, above the rank we want, so the answer lies to " +
+                        "its left. Indices $boundary..$hi are discarded and never looked at again.",
+                    cells = row(lo, boundary - 1, null, null, null),
+                    readout = "${boundary - lo} of ${a.size} still in play",
+                )
+                hi = boundary - 1
+            }
+            else -> {
+                frames += WalkFrame(
+                    status = "The pivot settles at index $boundary, below the rank we want, so the answer lies to " +
+                        "its right. Everything from $lo up to and including $boundary is discarded.",
+                    cells = row(boundary + 1, hi, null, null, null),
+                    readout = "${hi - boundary} of ${a.size} still in play",
+                )
+                lo = boundary + 1
+            }
+        }
+    }
+
+    // What the same array costs to sort, counted the same way.
+    var sortComparisons = 0
+    run {
+        val b = intArrayOf(7, 2, 9, 4, 1, 8, 3, 6)
+        for (i in 1 until b.size) {
+            var j = i
+            while (j > 0) {
+                sortComparisons++
+                if (b[j - 1] <= b[j]) break
+                val t2 = b[j - 1]; b[j - 1] = b[j]; b[j] = t2
+                j--
+            }
+        }
+    }
+
+    frames += WalkFrame(
+        status = "Quickselect answered in $comparisons comparisons. Sorting the same array to read off index " +
+            "$target takes $sortComparisons — and sorting computes the other ${a.size - 1} ranks nobody asked " +
+            "for. Expected cost is linear because each round discards a constant fraction: n + n/2 + n/4 … ≈ 2n.",
+        cells = sorted.mapIndexed { i, v -> CellView(v.toString(), if (i == target) CellMark.RESULT else CellMark.DIM) },
+        readout = "$comparisons comparisons vs $sortComparisons to sort",
+    )
+    return frames
+}
+
+private fun medianOfMediansFrames(): List<WalkFrame> {
+    val a = listOf(12, 3, 17, 8, 1, 20, 6, 14, 9, 2, 18, 11, 5, 15, 7)
+    val groups = a.chunked(5)
+    val medians = groups.map { it.sorted()[it.size / 2] }
+    val pivot = medians.sorted()[medians.size / 2]
+    val below = a.count { it < pivot }
+    val above = a.count { it > pivot }
+    val frames = mutableListOf<WalkFrame>()
+
+    fun row(mark: (Int) -> CellMark) = a.mapIndexed { i, v -> CellView(v.toString(), mark(i)) }
+
+    frames += WalkFrame(
+        status = "Quickselect is linear *on average*, but a badly chosen pivot splits off one element at a time " +
+            "and costs O(n²). Median of medians picks a pivot with a guaranteed split, making the worst case " +
+            "linear too.",
+        cells = row { CellMark.IDLE },
+        readout = "${a.size} elements, in groups of 5",
+    )
+    frames += WalkFrame(
+        status = "Split into ${groups.size} groups of 5. Each group is small and fixed-size, so sorting one is " +
+            "constant work — ${groups.size} groups is O(n) in total.",
+        cells = row { if ((it / 5) % 2 == 0) CellMark.WINDOW else CellMark.IDLE },
+        aux = groups.flatMap { g -> g.sorted().map { CellView(it.toString(), CellMark.DIM) } },
+        auxLabel = "each group, sorted",
+    )
+    frames += WalkFrame(
+        status = "Take each group's median: ${medians.joinToString(", ")}. These ${medians.size} values are the " +
+            "only ones that matter for choosing the pivot.",
+        cells = row { CellMark.DIM },
+        aux = groups.flatMap { g ->
+            g.sorted().mapIndexed { i, v ->
+                CellView(v.toString(), if (i == g.size / 2) CellMark.ACTIVE else CellMark.DIM)
+            }
+        },
+        auxLabel = "group medians highlighted",
+    )
+    frames += WalkFrame(
+        status = "The pivot is the median of those medians: $pivot. Finding it is a recursive quickselect on a " +
+            "list one fifth the size, which is what keeps the recursion affordable.",
+        cells = row { if (a[it] == pivot) CellMark.RESULT else CellMark.DIM },
+        aux = medians.map { CellView(it.toString(), if (it == pivot) CellMark.RESULT else CellMark.WINDOW) },
+        auxLabel = "the ${medians.size} medians",
+        readout = "pivot = $pivot",
+    )
+    frames += WalkFrame(
+        status = "Partitioning on $pivot puts $below elements below it and $above above — the smaller side is " +
+            "${"%.0f".format(100.0 * minOf(below, above) / a.size)}% of the array, so that is what gets thrown " +
+            "away this round. Half the groups have a median on each side of the pivot, and in each of those at " +
+            "least three of five elements fall the same way, so at least 3n/10 is discarded no matter what the " +
+            "input is. That floor is what turns the worst case linear.",
+        cells = row {
+            when {
+                a[it] == pivot -> CellMark.RESULT
+                a[it] < pivot -> CellMark.WINDOW
+                else -> CellMark.IDLE
+            }
+        },
+        readout = "$below below · $above above — guaranteed floor is ${3 * a.size / 10}",
+    )
+    frames += WalkFrame(
+        status = "The catch is the constant. Grouping, sorting each group and recursing to find the pivot all cost " +
+            "real time, so in practice a random pivot is faster and median of medians is reserved for when a " +
+            "worst-case bound actually has to hold.",
+        cells = row { if (a[it] == pivot) CellMark.RESULT else CellMark.DIM },
+        readout = "guaranteed O(n) — at a constant factor you pay on every input",
+    )
+    return frames
+}
+
+private fun mosAlgorithmFrames(): List<WalkFrame> {
+    val a = listOf(4, 1, 7, 2, 9, 3, 6, 5, 8, 2, 4, 1)
+    val queries = listOf(0 to 4, 6 to 11, 1 to 3, 5 to 9, 2 to 7)
+    val block = 3
+
+    fun movesFor(order: List<Pair<Int, Int>>): Int {
+        var l = 0
+        var r = -1
+        var moves = 0
+        for ((ql, qr) in order) {
+            moves += kotlin.math.abs(ql - l) + kotlin.math.abs(qr - r)
+            l = ql
+            r = qr
+        }
+        return moves
+    }
+
+    val sorted = queries.sortedWith(compareBy({ it.first / block }, { it.second }))
+    val naiveMoves = movesFor(queries)
+    val mosMoves = movesFor(sorted)
+    val frames = mutableListOf<WalkFrame>()
+
+    fun row(l: Int, r: Int, active: Int? = null) = a.mapIndexed { i, v ->
+        CellView(
+            v.toString(),
+            when {
+                i == active -> CellMark.ACTIVE
+                i in l..r -> CellMark.WINDOW
+                else -> CellMark.DIM
+            },
+        )
+    }
+
+    frames += WalkFrame(
+        status = "Five range-sum queries over ${a.size} elements, and all of them are known up front. That is the " +
+            "one assumption Mo's algorithm needs: the queries are offline, so we may answer them in whatever " +
+            "order is cheapest.",
+        cells = a.map { CellView(it.toString()) },
+        readout = queries.joinToString("  ") { "[${it.first},${it.second}]" },
+    )
+    frames += WalkFrame(
+        status = "Answering them in the order asked drags the two pointers back and forth across the array: " +
+            "$naiveMoves pointer moves in total. Nothing is wrong with the answers — the cost is purely the " +
+            "travel between consecutive ranges.",
+        cells = row(queries[0].first, queries[0].second),
+        readout = "$naiveMoves pointer moves in query order",
+    )
+    frames += WalkFrame(
+        status = "Sort the queries instead by which block of ${block} their left end falls in, breaking ties by " +
+            "right end. Within a block the right pointer only ever advances, and the left pointer stays inside a " +
+            "window of ${block}.",
+        cells = a.mapIndexed { i, v -> CellView(v.toString(), if ((i / block) % 2 == 0) CellMark.WINDOW else CellMark.IDLE) },
+        readout = sorted.joinToString("  ") { "[${it.first},${it.second}]" },
+    )
+
+    var l = 0
+    var r = -1
+    var sum = 0
+    var moves = 0
+    for ((qi, q) in sorted.withIndex()) {
+        val (ql, qr) = q
+        while (r < qr) { r++; sum += a[r]; moves++ }
+        while (l > ql) { l--; sum += a[l]; moves++ }
+        while (r > qr) { sum -= a[r]; r--; moves++ }
+        while (l < ql) { sum -= a[l]; l++; moves++ }
+        frames += WalkFrame(
+            status = "Query ${qi + 1} of ${sorted.size}: [$ql, $qr] in block ${ql / block}. The window is adjusted " +
+                "one element at a time rather than rebuilt, so the running sum is reused.",
+            cells = row(l, r),
+            pointers = mapOf(l to "L", r to "R"),
+            readout = "sum = $sum   ·   $moves moves so far",
+        )
+    }
+
+    frames += WalkFrame(
+        status = "All five answered in $moves pointer moves against $naiveMoves in the order they arrived. The " +
+            "ordering is the whole algorithm: with a block size of about √n the total travel is O((n + q)√n), " +
+            "which beats recomputing each range from scratch whenever the ranges are long.",
+        cells = a.map { CellView(it.toString(), CellMark.DONE) },
+        readout = "$naiveMoves → $moves pointer moves",
+    )
+    return frames
+}
+
+private fun reservoirSamplingFrames(): List<WalkFrame> {
+    val stream = listOf(41, 17, 63, 8, 92, 25, 54, 39, 71, 6, 88, 30)
+    val k = 3
+    val rng = WalkRng(20240727)
+    val reservoir = IntArray(k) { stream[it] }
+    val frames = mutableListOf<WalkFrame>()
+
+    fun streamRow(upTo: Int, active: Int?, kept: Set<Int>) = stream.mapIndexed { i, v ->
+        CellView(
+            v.toString(),
+            when {
+                i == active -> CellMark.ACTIVE
+                i in kept -> CellMark.RESULT
+                i <= upTo -> CellMark.DIM
+                else -> CellMark.IDLE
+            },
+        )
+    }
+
+    var keptIndices = (0 until k).toMutableSet()
+
+    frames += WalkFrame(
+        status = "Pick $k items uniformly at random from a stream whose length is unknown until it ends, storing " +
+            "only the $k. The first $k items go straight in — at that point they are the whole stream.",
+        cells = streamRow(k - 1, null, keptIndices),
+        aux = reservoir.map { CellView(it.toString(), CellMark.RESULT) },
+        auxLabel = "reservoir",
+        readout = "reservoir filled with the first $k items",
+    )
+
+    for (i in k until stream.size) {
+        val n = i + 1
+        val roll = rng.next()
+        val threshold = k.toDouble() / n
+        val accepted = roll < threshold
+        var replacedSlot = -1
+        if (accepted) {
+            replacedSlot = (rng.next() * k).toInt().coerceIn(0, k - 1)
+            val evicted = reservoir[replacedSlot]
+            keptIndices = keptIndices.filterNot { stream[it] == evicted }.toMutableSet()
+            keptIndices += i
+            reservoir[replacedSlot] = stream[i]
+        }
+        frames += WalkFrame(
+            status = if (accepted) {
+                "Item ${i + 1} is ${stream[i]}. It is accepted with probability $k/${n} = " +
+                    "${"%.2f".format(threshold)}; the draw was ${"%.2f".format(roll)}, so it enters and evicts " +
+                    "slot $replacedSlot."
+            } else {
+                "Item ${i + 1} is ${stream[i]}. Accepted with probability $k/${n} = ${"%.2f".format(threshold)}, " +
+                    "but the draw was ${"%.2f".format(roll)} — it is discarded and never stored."
+            },
+            cells = streamRow(i, i, keptIndices),
+            aux = reservoir.mapIndexed { s, v ->
+                CellView(v.toString(), if (s == replacedSlot) CellMark.ACTIVE else CellMark.RESULT)
+            },
+            auxLabel = "reservoir",
+            readout = "accept probability $k/$n = ${"%.2f".format(threshold)}",
+        )
+    }
+
+    // The claim is uniformity, so measure it rather than assert it.
+    val trials = 20000
+    val hits = IntArray(stream.size)
+    val trialRng = WalkRng(987654321)
+    repeat(trials) {
+        val res = IntArray(k) { it }
+        for (i in k until stream.size) {
+            if (trialRng.next() < k.toDouble() / (i + 1)) {
+                res[(trialRng.next() * k).toInt().coerceIn(0, k - 1)] = i
+            }
+        }
+        for (idx in res) hits[idx]++
+    }
+    val rates = hits.map { it.toDouble() / trials }
+    val expected = k.toDouble() / stream.size
+
+    frames += WalkFrame(
+        status = "The stream is done and the reservoir holds ${reservoir.joinToString(", ")} — using memory for $k " +
+            "items, never ${stream.size}. The claim that matters is that every item had an equal chance of " +
+            "ending up there, so run it $trials times and count.",
+        cells = streamRow(stream.lastIndex, null, keptIndices),
+        aux = reservoir.map { CellView(it.toString(), CellMark.RESULT) },
+        auxLabel = "final reservoir",
+        readout = "selection rate ranged ${"%.3f".format(rates.min())}–${"%.3f".format(rates.max())} " +
+            "against the expected ${"%.3f".format(expected)}",
+    )
+    frames += WalkFrame(
+        status = "Every position lands within ${"%.3f".format(rates.maxOf { kotlin.math.abs(it - expected) })} of " +
+            "$k/${stream.size} = ${"%.3f".format(expected)}, including the very first item — which survives only " +
+            "by never being evicted — and the last, which walks in with probability $k/${stream.size}. The " +
+            "shrinking accept probability is exactly what keeps those two equal.",
+        cells = stream.mapIndexed { i, _ ->
+            CellView("%.2f".format(rates[i]), if (kotlin.math.abs(rates[i] - expected) < 0.01) CellMark.DONE else CellMark.ACTIVE)
+        },
+        auxLabel = "measured selection rate per position",
+        readout = "expected ${"%.3f".format(expected)} everywhere",
+    )
+    return frames
+}
+
 // ── Config ───────────────────────────────────────────────────────────────────
 
 private val walkConfigs = mapOf(
@@ -814,6 +1199,46 @@ private val walkConfigs = mapOf(
             "the log factor at log k rather than log m.",
         legend = heapLegend,
         build = ::topKFrequentFrames,
+    ),
+    "quickselect" to WalkConfig(
+        intro = "Partition, then recurse into one side only. The comparison count at the end is the argument for " +
+            "why selecting is cheaper than sorting.",
+        legend = listOf(
+            ActiveFill to "Comparing",
+            WindowFill to "Below pivot",
+            ResultFill to "Pivot · answer",
+        ),
+        build = ::quickselectFrames,
+    ),
+    "median_of_medians" to WalkConfig(
+        intro = "A pivot chosen so its split is guaranteed rather than hoped for — and the measured split it " +
+            "produces on this input.",
+        legend = listOf(
+            ActiveFill to "Group median",
+            WindowFill to "Below pivot",
+            ResultFill to "Pivot",
+        ),
+        build = ::medianOfMediansFrames,
+    ),
+    "mos_algorithm" to WalkConfig(
+        intro = "The same five range queries answered in two different orders, with the pointer travel counted " +
+            "both times. The ordering is the entire algorithm.",
+        legend = listOf(
+            WindowFill to "Current window",
+            ActiveFill to "Pointer",
+            DoneFill to "Answered",
+        ),
+        build = ::mosAlgorithmFrames,
+    ),
+    "reservoir_sampling" to WalkConfig(
+        intro = "One pass, constant memory, and a uniform sample from a stream of unknown length — with the " +
+            "uniformity measured over 20,000 runs rather than asserted.",
+        legend = listOf(
+            ActiveFill to "Current item",
+            ResultFill to "In reservoir",
+            DoneFill to "Within tolerance",
+        ),
+        build = ::reservoirSamplingFrames,
     ),
 )
 

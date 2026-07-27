@@ -56,7 +56,7 @@ internal val quickselectContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.ArrayWalkPlayer,
     applications = listOf(
         ApplicationCard("target", 0xFF10B981, "Median & Percentiles", "Compute a median or any percentile without the cost of a full sort."),
         ApplicationCard("trend", 0xFF3B82F6, "Top-K Selection", "Partition once to gather the k largest/smallest elements in linear expected time."),

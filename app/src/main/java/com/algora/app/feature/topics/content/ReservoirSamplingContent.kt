@@ -53,7 +53,7 @@ internal val reservoirSamplingContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.ArrayWalkPlayer,
     applications = listOf(
         ApplicationCard("chart", 0xFF10B981, "Stream Sampling", "Sample log lines or events from an unbounded feed without buffering all of them."),
         ApplicationCard("flask", 0xFF3B82F6, "Big-Data Analytics", "Draw a fair random subset from a dataset too large to fit in memory in one pass."),

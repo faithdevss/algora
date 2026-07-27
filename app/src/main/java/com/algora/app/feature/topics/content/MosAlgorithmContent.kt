@@ -51,7 +51,7 @@ internal val mosAlgorithmContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.ArrayWalkPlayer,
     applications = listOf(
         ApplicationCard("chart", 0xFF10B981, "Range Distinct Counts", "Answering many 'how many distinct values in [l, r]?' queries offline is Mo's signature use."),
         ApplicationCard("search", 0xFF3B82F6, "Frequency Queries", "Mode, frequency-of-frequencies, and similar range statistics fit its add/remove model."),

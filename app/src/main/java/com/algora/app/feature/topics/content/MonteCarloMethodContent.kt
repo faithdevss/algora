@@ -48,7 +48,7 @@ internal val monteCarloMethodContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.PointCloudPlayer,
     applications = listOf(
         ApplicationCard("finance", 0xFF10B981, "Risk & Pricing", "Options pricing and portfolio risk simulate thousands of market paths to estimate outcomes."),
         ApplicationCard("game", 0xFF3B82F6, "Game AI (MCTS)", "Monte Carlo Tree Search powers strong Go and board-game engines by sampling playouts."),

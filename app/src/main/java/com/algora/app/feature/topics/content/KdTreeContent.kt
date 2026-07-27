@@ -51,7 +51,7 @@ internal val kdTreeContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.NotYetAvailable,
+    simulation = SimulationType.PointCloudPlayer,
     applications = listOf(
         ApplicationCard("map", 0xFF10B981, "Nearest-Neighbor Search", "Find the closest points — map POIs, recommendations — without scanning everything."),
         ApplicationCard("game", 0xFF3B82F6, "Collision & Culling", "Quad/octrees partition game worlds for fast collision checks and frustum culling."),
