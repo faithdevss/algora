@@ -30,6 +30,38 @@ class ProgressRepositoryTest {
     }
 
     @Test
+    fun completionsByDay_countsTopicsPerDay() = runTest {
+        val repository = newRepository()
+
+        repository.markCompleted("array", day = 20_000L)
+        repository.markCompleted("bst", day = 20_000L)
+        repository.markCompleted("heap", day = 20_001L)
+
+        assertEquals(mapOf(20_000L to 2, 20_001L to 1), repository.completionsByDay.first())
+    }
+
+    @Test
+    fun markCompleted_keepsFirstCompletionDay() = runTest {
+        val repository = newRepository()
+
+        repository.markCompleted("array", day = 20_000L)
+        repository.markCompleted("array", day = 20_005L)
+
+        assertEquals(mapOf(20_000L to 1), repository.completionsByDay.first())
+    }
+
+    @Test
+    fun markIncomplete_dropsThatTopicsCompletionDay() = runTest {
+        val repository = newRepository()
+        repository.markCompleted("array", day = 20_000L)
+        repository.markCompleted("bst", day = 20_000L)
+
+        repository.markIncomplete("array")
+
+        assertEquals(mapOf(20_000L to 1), repository.completionsByDay.first())
+    }
+
+    @Test
     fun markIncomplete_removesTopicIdFromFlow() = runTest {
         val repository = newRepository()
         repository.markCompleted("array")

@@ -21,6 +21,9 @@ object SettingsKeys {
     val LAST_OPENED = stringPreferencesKey("last_opened_topic")
     val STREAK_COUNT = intPreferencesKey("streak_count")
     val STREAK_LAST_DAY = longPreferencesKey("streak_last_epoch_day")
+    // Every epoch-day the app was opened, trimmed to a rolling window — the streak counter alone
+    // cannot say *which* days were active, which the Progress week strip needs.
+    val ACTIVE_DAYS = stringSetPreferencesKey("active_epoch_days")
     val SRS = stringSetPreferencesKey("srs_state")
     // How many never-seen cards were introduced, and on which day — drives the daily new-card cap.
     val NEW_CARDS_DAY = longPreferencesKey("new_cards_epoch_day")

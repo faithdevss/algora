@@ -108,7 +108,8 @@ fun NavGraph(
 
         // Progress dashboard — mock's fixed Progress nav destination (isProgress block).
         composable(ProgressRoute.ROUTE) {
-            ProgressScreen(mode = mode)
+            // Category rows are shortcuts into that category's topic list.
+            ProgressScreen(mode = mode, onCategoryClick = { navController.navigate(it) })
         }
 
         // Simulations catalog — every topic with a runnable interactive lab.

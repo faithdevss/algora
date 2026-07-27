@@ -54,6 +54,12 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     val streak: Flow<Int> =
         dataStore.data.map { prefs -> prefs[SettingsKeys.STREAK_COUNT] ?: 0 }
 
+    /** Epoch days the app was opened, within the retained window. */
+    val activeDays: Flow<Set<Long>> =
+        dataStore.data.map { prefs ->
+            (prefs[SettingsKeys.ACTIVE_DAYS] ?: emptySet()).mapNotNull { it.toLongOrNull() }.toSet()
+        }
+
     val srs: Flow<Map<String, SrsCard>> =
         dataStore.data.map { prefs ->
             (prefs[SettingsKeys.SRS] ?: emptySet()).mapNotNull { parseSrs(it) }.toMap()
@@ -101,6 +107,15 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             }
             prefs[SettingsKeys.STREAK_COUNT] = newCount
             prefs[SettingsKeys.STREAK_LAST_DAY] = today
+
+            val history = (prefs[SettingsKeys.ACTIVE_DAYS] ?: emptySet()).mapNotNull { it.toLongOrNull() }
+            prefs[SettingsKeys.ACTIVE_DAYS] = (history + today)
+                .filter { it > today - ACTIVITY_HISTORY_DAYS }
+                .map { it.toString() }
+                .toSet()
         }
     }
 }
+
+// Only recent days are ever rendered; keeping more would grow the preference set without bound.
+private const val ACTIVITY_HISTORY_DAYS = 60L
