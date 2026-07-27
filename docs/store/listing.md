@@ -1,7 +1,7 @@
 # Play Store listing — Algora
 
 Copy-paste source for the Play Console listing, plus an inventory of the graphics in this folder.
-Every number quoted below is taken from the running app (`app-debug.apk`, versionName `0.1.0`), not
+Every number quoted below is taken from the running app (`app-debug.apk`, versionName `0.1.41`), not
 estimated: 176 topics each with a runnable lab, 91 practice problems, 19 timed quizzes.
 
 ---
@@ -171,4 +171,8 @@ Open items that are not copy problems but will block or damage the release:
   declare whatever AdMob's current disclosure requires once the real ids are in.
 - **Support email and privacy policy URL** are mandatory fields and are not written anywhere in the
   repo yet.
-- `versionCode 1` / `versionName 0.1.0` — bump before a production track upload.
+- **Version numbers are derived, not typed.** `versionCode` is the commit count on the branch being
+  built and `versionName` is `major.minor.<commit count>` (`app/build.gradle.kts`) — currently 41 /
+  `0.1.41`. Nothing to bump per build; raise `versionMajor` / `versionMinor` only when the release
+  is a genuinely new line. Build from a git checkout with full history, or the fallback pins the
+  code to 1 and Play will reject the second upload.

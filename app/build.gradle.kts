@@ -3,6 +3,21 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// Release line. Bump these by hand when the release is actually a new line; the patch number and
+// the version code come from git so nobody has to remember to bump anything per build.
+val versionMajor = 0
+val versionMinor = 1
+
+// Commit count on the current branch — monotonic, so every build off a later commit gets a higher
+// version code, which is exactly what Play requires. Falls back to 1 when there is no git history
+// (source archive, shallow CI clone) so the build still works.
+val gitCommitCount: Int = runCatching {
+    providers.exec {
+        commandLine("git", "rev-list", "--count", "HEAD")
+        isIgnoreExitValue = true
+    }.standardOutput.asText.get().trim().toInt()
+}.getOrDefault(1)
+
 android {
     namespace = "com.algora.app"
     compileSdk = 37
@@ -11,8 +26,8 @@ android {
         applicationId = "com.algora.app"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = gitCommitCount
+        versionName = "$versionMajor.$versionMinor.$gitCommitCount"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
