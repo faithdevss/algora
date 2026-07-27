@@ -1,0 +1,174 @@
+# Play Store listing — Algora
+
+Copy-paste source for the Play Console listing, plus an inventory of the graphics in this folder.
+Every number quoted below is taken from the running app (`app-debug.apk`, versionName `0.1.0`), not
+estimated: 176 topics each with a runnable lab, 91 practice problems, 19 timed quizzes.
+
+---
+
+## Store presence
+
+| Field | Value |
+|---|---|
+| App name | `Algora` |
+| Package | `com.algora.app` |
+| Category | Education |
+| Tags | Computer science, Programming, Interview prep, Machine learning |
+| Content rating | Everyone (no user content, no communication features) |
+| Price | Free, with one lifetime in-app purchase |
+| Contact | *(fill in support email before submitting)* |
+
+---
+
+## Short description
+
+Max 80 characters. Current: 75.
+
+```
+Learn algorithms and AI through 176 labs you can run — offline, no account.
+```
+
+Alternates, if the first reads too dense:
+
+```
+Data structures, algorithms and AI — every topic has a lab you can run.
+```
+
+```
+See how algorithms actually work: 176 interactive labs, offline and ad-light.
+```
+
+---
+
+## Full description
+
+Max 4000 characters. Current: 2980.
+
+```
+Most algorithm apps hand you a wall of text and a code sample. Algora hands you the thing itself —
+a linked list you can insert into, a graph you can run BFS across, a regression line you can drag
+until the error stops shrinking.
+
+176 topics across two tracks, and every single one ships with an interactive lab.
+
+DSA TRACK
+• Data structures — arrays, strings, linked lists, stacks, queues, hash tables, trees, heaps, tries,
+  graphs, disjoint sets, skip lists, B-trees and more
+• Algorithms — sorting, searching, recursion, dynamic programming, greedy methods, backtracking,
+  graph traversal, shortest paths, string matching
+• Complexity analysis — Big-O, amortised analysis, recurrence solving, space/time trade-offs
+• Interview prep — the core patterns (sliding window, two pointers, fast/slow, merge intervals,
+  cyclic sort), behavioural STAR answers, and a system design primer
+
+AI TRACK
+• Machine learning — regression, classification, clustering, trees and ensembles, model evaluation
+• Deep learning — neurons, backpropagation, CNNs, RNNs, transformers, training dynamics
+• NLP — tokenisation, embeddings, attention, sequence models, the modern pipeline end to end
+• Reinforcement learning — bandits, Q-learning, policy gradients, DQN, multi-agent methods,
+  exploration, offline RL
+
+EVERY TOPIC IS BUILT THE SAME WAY
+1. What it is, in plain language
+2. How it works, step by step
+3. The mathematics, written out rather than hand-waved
+4. A technical deep dive with runnable code
+5. An interactive simulation — the part you actually play with
+6. Where it shows up in real systems
+7. Key takeaways worth remembering
+
+PRACTICE, NOT JUST READING
+• 91 problems grouped by pattern, each with examples, constraints, progressive hints, an approach
+  walk-through with complexity, and a full Kotlin solution
+• Every problem lists the topics it depends on, linked, so a gap sends you straight to the fix
+• 19 timed quizzes — mock interview rounds, company-flavoured sets, and per-subject drills
+• Spaced-repetition flashcards on an SM-2 schedule, capped at 20 new cards a day so a keen first
+  session doesn't bury you a week later
+
+TRACK WHAT YOU ACTUALLY DID
+A completion ring per track, per-category bars, a week strip showing the topics you finished each
+day, and a milestone ladder from your first topic to the whole track.
+
+BUILT TO BE USED ANYWHERE
+Everything is bundled in the app. No account, no sign-in, no server — open it on a plane, on the
+underground, or on a phone with the data switched off and it behaves identically. Progress is stored
+on your device.
+
+Light and dark themes, five accent colours, bookmarks, and a continue-where-you-left-off shortcut.
+
+PREMIUM
+Algora is free to use, with a large part of the library open. Premium is a single lifetime purchase
+— no subscription — that unlocks every remaining topic, lab and analysis tool and removes ads. Any
+locked topic can also be opened for 24 hours by watching a rewarded ad, if you would rather not pay.
+```
+
+---
+
+## What's new (release notes)
+
+Max 500 characters.
+
+```
+First release.
+
+• 176 topics across DSA and AI, each with an interactive lab
+• 91 pattern-grouped practice problems with hints and worked solutions
+• 19 timed quizzes and SM-2 scheduled flashcards
+• A progress dashboard with per-day activity and milestones
+• Fully offline — no account, no server
+```
+
+---
+
+## Graphics
+
+| Asset | File | Spec |
+|---|---|---|
+| Feature graphic | `graphics/feature-graphic-1024x500.png` | 1024×500 PNG, no alpha |
+| App icon | `graphics/icon-512.png` | 512×512 PNG |
+
+Both are generated from `docs/design/Algora Icon.html`'s brand tile — the same
+`#6366F1 → #7C3AED → #C026D3` gradient and node-graph mark the launcher icon uses — so the store
+page and the installed icon read as one thing.
+
+---
+
+## Screenshots
+
+Captured on a Pixel 7 emulator (1080×2400, 9:19.5), dark theme, with the status bar in demo mode so
+the clock reads 9:41 and no notification icons leak in. All content is real app state, not mockups:
+the 6 completed topics behind the progress numbers were completed by hand before capture.
+
+| # | File | What it shows | Suggested caption |
+|---|---|---|---|
+| 1 | `01-home-dsa.png` | Home, DSA track — featured lab, continue, category grid | Two tracks. One tap to the lab. |
+| 2 | `02-topic-detail.png` | Array topic — hero plus How Does It Work steps | Every topic explains itself first |
+| 3 | `03-lab-linked-list.png` | Linked-list visualiser with insert/delete/search | Then hands you the controls |
+| 4 | `04-simulations-catalog.png` | Catalog of all 176 labs | 176 labs, all runnable offline |
+| 5 | `05-problem-detail.png` | Problem with examples and prerequisite topics | Problems that link back to the theory |
+| 6 | `06-timed-quiz.png` | Timed mock interview, question 1 of 6 | Timed rounds under a real clock |
+| 7 | `07-flashcards.png` | Revealed card with Again / Good / Easy | Recall on an SM-2 schedule |
+| 8 | `08-progress.png` | Progress dashboard — ring, week strip, milestones | See the week you actually had |
+| 9 | `09-ai-track-home.png` | Home, AI track | ML, DL, NLP and RL, same treatment |
+| 10 | `10-lab-linear-regression.png` | Regression lab fitted, with the gradient-descent code | Drag the line. Watch the error fall. |
+
+**Play Console caps phone screenshots at 8.** Ten are supplied because ten were asked for; if the
+console rejects the extras, drop 9 and 10 — the AI track is already implied by screenshot 1's track
+toggle, and 3 already carries the "labs are interactive" message. Alternatively upload 9 and 10 in
+the 7-inch and 10-inch tablet slots, which accept the same aspect ratio.
+
+---
+
+## Before submitting
+
+Open items that are not copy problems but will block or damage the release:
+
+- **Ad and billing ids are still fakes.** Phase 8 shipped billing and rewarded ads against debug
+  stubs (`docs/plan/ROADMAP.md`). Real AdMob unit ids and the Play Console product id for the
+  lifetime purchase have to be swapped in before upload, or the paywall and unlock paths will not
+  work in production.
+- **Data safety form.** The app itself collects nothing — progress lives in local DataStore, there
+  is no account and no network call of our own. The ads SDK does collect data, so the form must
+  declare whatever AdMob's current disclosure requires once the real ids are in.
+- **Support email and privacy policy URL** are mandatory fields and are not written anywhere in the
+  repo yet.
+- `versionCode 1` / `versionName 0.1.0` — bump before a production track upload.
