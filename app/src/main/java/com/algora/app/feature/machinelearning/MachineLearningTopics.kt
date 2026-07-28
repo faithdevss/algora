@@ -31,6 +31,7 @@ private val regression = MachineLearningCategories.regression
 private val classification = MachineLearningCategories.classification
 private val bayesian = MachineLearningCategories.bayesian
 private val ensemble = MachineLearningCategories.ensemble
+private val clustering = MachineLearningCategories.clustering
 private val supervised = MachineLearningCategories.supervised
 private val unsupervised = MachineLearningCategories.unsupervised
 
@@ -109,15 +110,30 @@ private val supervisedTopics = listOf(
     topic("model_evaluation", "Model Evaluation", supervised, "Precision, recall, F1, ROC-AUC and the thresholds behind them.", isPremium = true),
 )
 
+// The doc's Clustering block in full. Ordered by family: centroid, hierarchical, density, then the
+// three that do not fit any of those.
+private val clusteringTopics = listOf(
+    topic("kmeans", "K-Means Clustering", clustering, "Partition points into k clusters around moving centroids.", isPremium = true),
+    topic("k_medians", "K-Medians", clustering, "Swap the mean for the median and the squared error for absolute.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("k_modes", "K-Modes", clustering, "The same loop for categorical data, which has no mean at all.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("hierarchical_clustering", "Hierarchical (Agglomerative)", clustering, "Build a tree of nested clusters by merging the closest pair.", isPremium = true),
+    topic("hierarchical_divisive", "Hierarchical (Divisive)", clustering, "The same dendrogram built downward, splitting instead of merging.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("dbscan", "DBSCAN", clustering, "Density-based clustering that finds arbitrary shapes and noise.", isPremium = true),
+    topic("hdbscan", "HDBSCAN", clustering, "Every eps at once, keeping the clusters that persist across them.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("optics", "OPTICS", clustering, "An ordering and a reachability plot instead of one fixed eps.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("mean_shift", "Mean Shift Clustering", clustering, "Climb the density gradient; the peaks are the clusters.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("birch", "BIRCH", clustering, "One streaming pass that summarizes rather than stores.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("affinity_propagation", "Affinity Propagation", clustering, "Points message each other until exemplars emerge.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("spectral_clustering", "Spectral Clustering", clustering, "Cluster by connectivity, using the graph Laplacian's eigenvectors.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("gmm", "Gaussian Mixture Models (GMM)", clustering, "Soft assignments and full covariances — k-means is its special case.", isPremium = true, difficulty = Difficulty.ADVANCED),
+)
+
 private val unsupervisedTopics = listOf(
-    topic("kmeans", "K-Means Clustering", unsupervised, "Partition points into k clusters around moving centroids.", isPremium = true),
-    topic("hierarchical_clustering", "Hierarchical Clustering", unsupervised, "Build a tree of nested clusters by merging or splitting.", isPremium = true),
     topic("pca", "PCA", unsupervised, "Project data onto its directions of greatest variance.", isPremium = true),
-    topic("dbscan", "DBSCAN", unsupervised, "Density-based clustering that finds arbitrary shapes and noise.", isPremium = true),
 )
 
 object MachineLearningTopics {
-    val topics: List<Topic> = regressionTopics + classificationTopics + bayesianTopics + ensembleTopics + supervisedTopics + unsupervisedTopics
+    val topics: List<Topic> = regressionTopics + classificationTopics + bayesianTopics + ensembleTopics + clusteringTopics + supervisedTopics + unsupervisedTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }

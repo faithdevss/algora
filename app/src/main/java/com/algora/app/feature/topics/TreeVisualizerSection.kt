@@ -999,7 +999,58 @@ private fun catboostFrames(): List<TreeFrame> {
     return builder.frames
 }
 
+// ── Divisive hierarchical clustering ─────────────────────────────────────────
+// Agglomerative builds the dendrogram from the leaves up; divisive builds it from the root down.
+// Same tree, opposite direction, and different things go wrong at each end.
+
+private fun divisiveFrames(): List<TreeFrame> {
+    val builder = TreeBuilder()
+    val points = compactBlobs
+    val splits = divisive(points, 4)
+
+    val nodeFor = HashMap<List<Int>, Int>()
+    val root = builder.add("all ${points.size}", null, 0)
+    nodeFor[points.indices.toList()] = root
+
+    builder.frame(
+        "Divisive clustering starts at the opposite end from agglomerative: everything in one cluster, split downward. Both produce a dendrogram; the difference is which end of it is computed first.",
+        active = setOf(root),
+    )
+
+    splits.forEachIndexed { index, step ->
+        val parent = nodeFor[step.parent] ?: root
+        val left = builder.add("${step.left.size} pts", parent, 0)
+        val right = builder.add("${step.right.size} pts", parent, 1)
+        nodeFor[step.left] = left
+        nodeFor[step.right] = right
+        builder.relabel(parent, "split @ ${"%.2f".format(step.diameter)}")
+
+        builder.frame(
+            "Split ${index + 1}: the least cohesive cluster is the one with the largest diameter (${"%.2f".format(step.diameter)}), so it goes first. It divides into ${step.left.size} and ${step.right.size} points.",
+            active = setOf(left, right),
+            path = setOf(parent),
+        )
+    }
+
+    builder.frame(
+        "The exact version of this is intractable — finding the best split of a cluster of n points means checking 2^(n−1) − 1 partitions. Practical implementations approximate, and this one uses 2-means on the chosen cluster, which is what DIANA-style implementations do.",
+        marked = nodeFor.values.toSet() - root,
+    )
+
+    builder.frame(
+        "The tradeoff against agglomerative is about where each one can go wrong. Divisive makes its most consequential decision first, with the whole dataset in view, so a good top-level split is likely — but the cost is high and a bad early split is never revisited. Agglomerative decides locally and cheaply at the bottom, where a wrong early merge is equally permanent but affects far fewer points.",
+        marked = nodeFor.values.toSet() - root,
+        path = setOf(root),
+    )
+    return builder.frames
+}
+
 private val treeConfigs = mapOf(
+    "hierarchical_divisive" to TreeConfig(
+        intro = "The dendrogram built top-down: repeatedly split the least cohesive cluster, with the real diameters driving which one goes next.",
+        markedLabel = "Cluster",
+        build = ::divisiveFrames,
+    ),
     "xgboost" to TreeConfig(
         intro = "One tree built by the real second-order gain formula: G and H sums, the closed-form leaf value, and a split that γ prunes away.",
         markedLabel = "Leaf",

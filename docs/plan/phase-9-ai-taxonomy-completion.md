@@ -1,8 +1,11 @@
 # Phase 9 — AI Taxonomy Completion
 
-Status: In progress — Track A complete (RL at 100% of the doc), B1–B4 done. 47 of 226 topics
-authored; taxonomy at 247, target 426. AI sections now: ML 48, DL 15, NLP 12, RL 74.
-Next: B5 (Clustering, 10 topics)
+Status: In progress — Track A complete (RL at 100% of the doc), B1–B5 done. 57 of 226 topics
+authored; taxonomy at 257, target 426. AI sections now: ML 58, DL 15, NLP 12, RL 74.
+Next: B6 (Dimensionality Reduction, 8 topics).
+
+**Outstanding, and slipping:** both guards this plan specifies as "New" — `AiTaxonomyCoverageTest`
+and the category-integrity assertion — are still unbuilt after five batches. See the Guards section.
 Depends on: Phase 5 (AI mode shell + content template), Phase 3 (simulation widgets), Phase 8 (premium gating)
 
 ## Goal
@@ -12,7 +15,7 @@ and what the app actually ships. Today the four AI sections carry **102 topics**
 for **~328 distinct topics** once cross-listed entries (RLHF ×3, MDP ×2, LSTM ×3, Perceptron ×2) are
 collapsed. This phase authors the missing **226**, taking the whole app from 200 to **426 topics**.
 
-## Current coverage (measured 2026-07-28)
+## Baseline coverage (measured 2026-07-28, before any batch landed)
 
 | Section | Doc entries | App topics | Covered | New topics needed |
 |---|---|---|---|---|
@@ -26,9 +29,32 @@ collapsed. This phase authors the missing **226**, taking the whole app from 200
 doc's ML → NN Foundations block is largely satisfied by Deep Learning topics; the doc's DL → Deep RL
 block is fully satisfied by the RL section).
 
-RL is the only near-complete section: everything from **DQN Family** downward ships, plus three
-topics the doc does not list (VDN, QMIX, MADDPG). The two gaps are its two most foundational
-sub-sections.
+RL was the only near-complete section at that point: everything from **DQN Family** downward
+shipped, plus three topics the doc does not list (VDN, QMIX, MADDPG). Its two gaps were its two most
+foundational sub-sections, and Track A closed both.
+
+This table is the starting snapshot and is deliberately left unedited. Live status is the table
+below.
+
+## Progress
+
+| Batch | Topics | Status | Notes |
+|---|---|---|---|
+| A1 · RL Core Concepts | 8 | **Done** | POMDP sensor replaced after verification |
+| A2 · RL Tabular Methods | 7 | **Done** | `RlGridWorldSection` gained a world parameter for the cliff walk |
+| B1 · Regression | 11 | **Done** | New `RegressionLab` sim type |
+| B2 · Classification | 5 | **Done** | New `DecisionSurface` sim type |
+| B3 · Bayesian Algorithms | 7 | **Done** | No new widget; CNB sign bug caught |
+| B4 · Ensemble Methods | 9 | **Done** | No new widget; XGBoost and LightGBM arithmetic corrected |
+| B5 · Clustering | 10 | **Done** | No new widget; `twoMoons` geometry replaced |
+| B6 · Dimensionality Reduction | 8 | Next | |
+| B7–B10 | 38 | Planned | |
+| Track C (C1–C9) | 73 | Planned | `FeatureMapPlayer` still outstanding |
+| Track D (D1–D6) | 50 | Planned | |
+| **Total** | **226** | **57 done** | Taxonomy 200 → 257 of 426 |
+
+Sections against the doc: **RL 100%**, ML 58 topics of its eventual ~100, DL and NLP untouched at 15
+and 12.
 
 ## Decisions taken before planning
 
@@ -52,9 +78,17 @@ means no batch may land a topic row without its content file in the same change.
 Existing categories are kept where a doc heading matches; the two generic ML/DL/NLP buckets are
 retired once their topics are redistributed.
 
-**Machine Learning — 12 categories** (`ml_regression`, `ml_classification`, `ml_bayesian`,
-`ml_ensemble`, `ml_clustering`, `ml_dimreduction`, `ml_nn_foundations`, `ml_association`,
-`ml_timeseries`, `ml_preprocessing`, `ml_metrics`, `ml_rl_fundamentals`)
+**Machine Learning — 12 categories.** Built so far: `ml_regression`, `ml_classification`,
+`ml_bayesian`, `ml_ensemble`, `ml_clustering`. Still to come: `ml_dimreduction`,
+`ml_nn_foundations`, `ml_association`, `ml_timeseries`, `ml_preprocessing`, `ml_metrics`,
+`ml_rl_fundamentals`.
+
+`ml_supervised` and `ml_unsupervised` are being hollowed out a batch at a time rather than deleted up
+front, so that no category is ever empty mid-phase. They currently hold the leftovers —
+`ml_supervised`: `perceptron`, `bias_variance`, `regularization`, `model_evaluation`;
+`ml_unsupervised`: `pca`. B6 takes `pca`, B9 takes the evaluation and practice topics, and B10 takes
+`perceptron`. Both buckets should be gone by the end of Track B, and if either still exists then,
+something was missed.
 
 **Deep Learning — 11 categories** (`dl_basics`, `dl_activations`, `dl_cnn`, `dl_detection`,
 `dl_rnn`, `dl_transformers`, `dl_generative`, `dl_deep_rl`, `dl_optimizers`, `dl_regularization`,
@@ -72,8 +106,9 @@ ramp and reuse `resolveIcon()` names already in the icon set. No new icon assets
 
 ## Batches
 
-Fourteen batches, each one or two categories, sized so a batch is a single session's work and lands
-green. Order is dependency-first: foundations before the topics that cross-link to them.
+Twenty-seven batches (A×2, B×10, C×9, D×6), each one or two categories, sized so a batch is a single
+session's work and lands green. Order is dependency-first: foundations before the topics that
+cross-link to them.
 
 ### Track A — Reinforcement Learning (15 topics, closes the section)
 
@@ -298,11 +333,47 @@ every node at a level shares one condition.
   level-wise realizing 4.0 + 0.3 = 4.3 and leaf-wise 4.0 + 2.1 = 6.1, because leaf-wise declines to
   spend a budgeted split on the 0.3 node.
 
-**B5 · Clustering** — 10 topics
-K-Medians · K-Modes · Hierarchical (Divisive) · HDBSCAN · OPTICS · Mean Shift · BIRCH ·
-Affinity Propagation · Spectral · GMM
-*Sims:* `PointCloudPlayer` (centroid moves, reachability plots, mode-seeking kernel drift, soft GMM
-responsibilities), `GraphVisualizer` (spectral's affinity graph → eigenvector cut).
+**B5 · Clustering** — 10 topics — **Done**
+`k_medians` · `k_modes` · `hierarchical_divisive` · `hdbscan` · `optics` · `mean_shift` · `birch` ·
+`affinity_propagation` · `spectral_clustering` · `gmm`
+
+New category `ml_clustering`, holding the doc's Clustering block in full — `kmeans`,
+`hierarchical_clustering` and `dbscan` moved over from `ml_unsupervised`, with the hierarchical one
+renamed to "Hierarchical (Agglomerative)" to pair with the new divisive topic. All premium.
+`ml_unsupervised` is down to `pca` alone, which B6 will absorb.
+
+**Still no new widget, fourth batch running.** Eight configs on `PointCloudPlayer`, one on
+`TokenStripPlayer` (k-modes, which is categorical and has no scatter plot), one on `TreeVisualizer`
+(divisive, which is a dendrogram). `CloudFrame` gained two additive fields, in the same spirit as
+`RlFrame`'s earlier ones: `profile`, a bar strip under the scatter — OPTICS' reachability plot is the
+algorithm's actual output and cannot be read off a scatter — and `ellipses`, because rings draw only
+circles and a Gaussian mixture's whole advantage over k-means is that its components are not
+circular.
+
+New file `ClusteringMath.kt` holds the algorithms: Lloyd's loop parameterized by mean-vs-median,
+mean-shift kernel steps, an OPTICS priority walk, complete-linkage agglomerative and diameter-driven
+divisive, EM for a full-covariance Gaussian mixture, affinity propagation's two message updates, and
+a Laplacian Fiedler vector.
+
+**One outright failure caught by verification, and it invalidated the topic's premise.** The
+`twoMoons` generator used hand-picked arc centres and radii, and the moons came out too weakly
+interleaved: spectral clustering scored 0.67 against k-means' 0.65, so the entire reason the topic
+exists — that spectral succeeds where k-means cannot — was simply not visible in the lab. Replaced
+with scikit-learn's actual `make_moons` construction mapped into the unit square, which measures 0.98
+against 0.85.
+
+Two smaller fixes fell out of the same check:
+- The Fiedler power iteration was under-converged. Because `c` must exceed λ_max to keep (cI − L)
+  positive definite, the ratio (c−λ₃)/(c−λ₂) sits near 1 and convergence is slow by construction.
+  Checked against a full eigendecomposition at n = 60: 400 and 2000 iterations agree on 95% of signs,
+  6000 agrees exactly. Raised to 6000, with the measurement recorded in a comment.
+- The mean-shift builder still contained drafting debris — a `while (…&& false) break`, a
+  `repeat(0)` and a self-assignment — which made the iteration schedule meaningless. Rewritten to a
+  real 1/2/4/8 snapshot schedule that also reports how far the furthest seed has travelled.
+
+Both spectral frames now report the measured accuracy for k-means and for spectral rather than
+asserting either. Verified separately: k-medians' centre sits 0.083 away from k-means' on the
+outlier dataset, and mean shift finds exactly the 3 modes the data was built with.
 
 **B6 · Dimensionality Reduction** — 8 topics
 Kernel PCA · Incremental PCA · t-SNE · UMAP · SVD · ICA · Factor Analysis · LLE
@@ -358,9 +429,10 @@ Sigmoid · Tanh · ReLU · Leaky ReLU · PReLU · ELU · SELU · Swish · GELU �
 **C3 · CNN Mechanics + Architectures** — 11 topics
 Convolution Layers · Pooling · Padding & Strides · LeNet-5 · AlexNet · VGG · Inception · ResNet ·
 DenseNet · MobileNet · EfficientNet · ViT
-*Sims:* **one new widget** — `FeatureMapPlayer`: an input grid, a sliding kernel, and the resulting
-feature map, with stride/padding/kernel-size controls and a per-architecture layer stack. This is the
-only new simulation widget the phase needs, and it also serves C4.
+*Sims:* `FeatureMapPlayer` — an input grid, a sliding kernel, and the resulting feature map, with
+stride/padding/kernel-size controls and a per-architecture layer stack. It also serves C4. (The
+original plan called this the phase's only new widget; that turned out to be wrong — see the note
+above.)
 
 **C4 · Object Detection & Segmentation** — 9 topics
 R-CNN · Fast R-CNN · Faster R-CNN · YOLO (V1–V8) · SSD · RetinaNet · U-Net · Mask R-CNN ·
@@ -466,38 +538,63 @@ monetization angle.
 
 ## Guards
 
-- `ContentCoverageTest` — already asserts every browsable topic has content, nothing resolves to
-  `NotYetAvailable`, and every prerequisite/cross-link id resolves. Must stay green at the end of
-  **every** batch, not just the phase.
-- **New: `AiTaxonomyCoverageTest`** — a checked-in `AiTaxonomyMap.kt` maps each `docs/topics.ai.md`
-  entry to the topic id that serves it (many-to-one where a doc entry is satisfied by a cross-listed
-  topic). The test asserts every mapped id resolves through `TopicRegistry` and that no doc entry is
-  unmapped. This is what makes "are we done?" a test result rather than a manual recount, and it
-  catches drift if the doc is edited later.
-- **New: category integrity assertion** — every topic's `categoryId` resolves to a category in its
-  section's `all` list, and no category is empty. Cheap, and the 40-category restructure is exactly
-  where that breaks silently.
+**Shipping and green (46 tests):**
+- `ContentCoverageTest` — every browsable topic has content, nothing resolves to `NotYetAvailable`,
+  and every prerequisite and cross-link id resolves. It has caught real breakage every batch and is
+  run (with `--rerun-tasks`) at the end of each one.
+
+**Specified here, and still not built after five batches:**
+- `AiTaxonomyCoverageTest` + a checked-in `AiTaxonomyMap.kt` mapping each `docs/topics.ai.md` entry
+  to the topic id serving it. Without it, "how much of the doc is covered?" is still a manual recount
+  — which is exactly how the ~24 / ~26 / ~18 "covered" figures in the baseline table were produced,
+  and they are estimates rather than measurements.
+- The category-integrity assertion: every `categoryId` resolves within its section's `all` list, and
+  no category is empty.
+
+**This slip is the plan's largest open risk, and it compounds.** Five batches have restructured ML's
+categories by hand with nothing checking the invariant, and `ml_supervised`/`ml_unsupervised` are
+mid-migration precisely where an empty or orphaned category would appear. The taxonomy map also gets
+more expensive to write the longer it waits, since every batch adds entries to backfill.
+
+**Recommendation: build both before B6**, not at the end of the phase. They are perhaps an hour of
+work, the category assertion is a dozen lines, and the taxonomy map turns the phase's headline
+question into a test result. Deferring them again should be a deliberate decision rather than a
+default.
 
 ## Risks / open items
 
-- **Topic-id collisions.** `TopicRegistry` already collapses cross-listed ids first-wins
-  (`perceptron`, `transformers`). This phase deliberately cross-lists far more (backprop, LSTM,
-  attention, RLHF, all seven Deep RL entries). The `AiTaxonomyMap` makes each collision intentional
-  and reviewable instead of accidental.
-- **`FeatureMapPlayer` is net-new** and blocks batches C3 and C4. Build it first within Track C, or
-  reorder Track C to start at C1/C2 while it lands.
-- **Browse-list length.** 426 topics changes the character of the category screens. Per-category
-  search already exists (Phase 2); worth re-checking scroll performance and whether Home's Quick
-  Access grid still makes sense as the only route into a 12-category ML section.
-- **Batch B9 (17 metrics) and D6 (16)** are the two thin-topic batches. They are the most likely to
-  read as filler if authored mechanically — each metric needs its own honest "when this one misleads
-  you" angle, not a formula restatement.
+- **Widget estimation was wrong, and by a lot.** The phase was planned around one net-new simulation
+  widget. Three batches in, two config-driven sim types had shipped (`RegressionLab`,
+  `DecisionSurface`) plus additive fields on `RlFrame` and `CloudFrame`. The pattern that emerged:
+  existing widgets were each bound to one model shape, so a batch either fits an existing one exactly
+  or needs a new config-driven sibling. B3, B4 and B5 then needed nothing new, so the cost is
+  front-loaded per *family* rather than per batch. Check the remaining batches against what now
+  exists before assuming more.
+- **`FeatureMapPlayer` is still net-new** and blocks C3 and C4. Build it while C1/C2 land.
+- **Verification keeps finding real defects, not wording problems.** Across five batches: an
+  inverted Complement NB sign that produced confidently wrong classifications, MCMC step sizes whose
+  "too large" case sat in the well-tuned regime, an XGBoost split gain that was negative where the
+  narration took it, LightGBM leaf counts that contradicted the drawing, and a `twoMoons` geometry
+  that made spectral clustering score 0.67 against k-means' 0.65 — erasing the reason that topic
+  exists. Every one of these reads plausibly and is wrong. **Numeric claims in a lab must be measured
+  before the copy around them is written**, and notes that could go either way should compute the
+  comparison rather than assert it.
+- **Topic-id collisions.** `TopicRegistry` collapses cross-listed ids first-wins (`perceptron`,
+  `transformers`). Tracks C and D cross-list far more (backprop, LSTM, attention, RLHF, all seven
+  Deep RL entries). Without `AiTaxonomyMap` these stay accidental rather than reviewable.
+- **Browse-list length.** 426 topics changes the character of the category screens, and ML alone is
+  heading for 12 categories. Per-category search exists (Phase 2); scroll performance and whether
+  Home's Quick Access grid is still a sensible sole entry point are both unchecked.
+- **Batch B9 (17 metrics) and D6 (16)** remain the thin-topic batches, and the most likely to read as
+  filler if authored mechanically. Each metric needs its own "when this one misleads you" angle.
 
 ## Suggested order
 
-A1 → A2 (RL hits 100%, smallest track, validates the new-category mechanics on a section that already
-has nine) → B1 → B2 → B3 → B4 → B5 → B6 → B7 → B8 → B9 → B10 → C1 → C2 → `FeatureMapPlayer` → C3 →
-C4 → C5 → C6 → C7 → C8 → C9 → D1 → D2 → D3 → D4 → D5 → D6.
+~~A1 → A2~~ → ~~B1 → B2 → B3 → B4 → B5~~ → **guards** → B6 → B7 → B8 → B9 → B10 → C1 → C2 →
+`FeatureMapPlayer` → C3 → C4 → C5 → C6 → C7 → C8 → C9 → D1 → D2 → D3 → D4 → D5 → D6.
+
+Struck-through batches are done. The `guards` step is inserted deliberately: see the Guards section
+for why it should not slip past B6.
 
 ## Verification
 

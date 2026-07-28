@@ -92,6 +92,17 @@ object PrerequisiteGraph {
         "lightgbm" to listOf("xgboost"),
         "catboost" to listOf("xgboost", "categorical_nb"),
         "isolation_forest" to listOf("random_forest"),
+        // ML clustering: centroid family, hierarchical family, density family, then the rest
+        "k_medians" to listOf("kmeans"),
+        "k_modes" to listOf("kmeans", "categorical_nb"),
+        "hierarchical_divisive" to listOf("hierarchical_clustering"),
+        "optics" to listOf("dbscan"),
+        "hdbscan" to listOf("optics"),
+        "mean_shift" to listOf("kmeans"),
+        "birch" to listOf("hierarchical_clustering", "b_tree"),
+        "affinity_propagation" to listOf("kmeans"),
+        "spectral_clustering" to listOf("kmeans", "pca", "graph"),
+        "gmm" to listOf("kmeans", "qda"),
         // ML: the practice layer sits on top of a first model
         "bias_variance" to listOf("linear_regression"),
         "regularization" to listOf("linear_regression", "bias_variance"),

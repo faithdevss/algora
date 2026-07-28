@@ -63,7 +63,17 @@ private class CloudFrame(
     val rings: List<Ring> = emptyList(),
     val regions: List<Region> = emptyList(),
     val readout: String? = null,
+    // A bar strip drawn under the scatter. OPTICS' reachability plot is the whole point of the
+    // algorithm and cannot be read off the scatter, and HDBSCAN's cluster stabilities are the same
+    // shape of data — so this is a profile, not a chart type.
+    val profile: List<ProfileBar> = emptyList(),
+    val profileLabel: String? = null,
+    // Closed polylines in data coordinates. Rings can only draw circles, and a Gaussian mixture's
+    // whole advantage over k-means is that its components are not circular.
+    val ellipses: List<List<P>> = emptyList(),
 )
+
+private class ProfileBar(val height: Float, val group: Int, val emphasis: Emphasis = Emphasis.NORMAL)
 
 private class CloudConfig(
     val intro: String,
@@ -1702,6 +1712,419 @@ private fun isolationForestFrames(): List<CloudFrame> {
     return frames
 }
 
+// ── Clustering family ────────────────────────────────────────────────────────
+// Eight of the ten B5 topics live here. Algorithms are in ClusteringMath.kt; these builders only
+// arrange what they compute into frames.
+
+private fun Pt.toP(label: Int = -1) = P(x, y, label)
+
+private fun k_MediansFrames(): List<CloudFrame> {
+    val points = outlierBlobs
+    val seeds = listOf(Pt(0.30f, 0.55f), Pt(0.70f, 0.35f))
+    val meanSteps = lloyd(points, seeds, 6, useMedian = false)
+    val medianSteps = lloyd(points, seeds, 6, useMedian = true)
+    val frames = mutableListOf<CloudFrame>()
+    val outlierIndices = points.indices.filter { points[it].x > 0.88f }.toSet()
+
+    frames += CloudFrame(
+        status = "Two clusters and two points from somewhere else entirely. k-means and k-medians run the identical assign/update loop — the only difference is what \"centre\" means and which distance decides the assignment.",
+        dots = points.mapIndexed { i, p -> Dot(p.toP(), -1, if (i in outlierIndices) Emphasis.QUERY else Emphasis.NORMAL) },
+    )
+
+    val meanFinal = meanSteps.last()
+    frames += CloudFrame(
+        status = "k-means: assignment by squared Euclidean distance, centre = the arithmetic mean. Squaring means a far point contributes quadratically, so the two strays pull their centroid measurably off the cluster they were supposed to summarize.",
+        dots = points.mapIndexed { i, p -> Dot(p.toP(), meanFinal.assignment[i], if (i in outlierIndices) Emphasis.QUERY else Emphasis.NORMAL) },
+        centroids = meanFinal.centres.mapIndexed { k, c -> Dot(c.toP(), k) },
+        readout = "centre = mean",
+    )
+
+    val medianFinal = medianSteps.last()
+    frames += CloudFrame(
+        status = "k-medians: assignment by Manhattan distance, centre = the per-coordinate median. A median is unmoved by how far an outlier is — only by how many there are — so the centre stays inside the cluster.",
+        dots = points.mapIndexed { i, p -> Dot(p.toP(), medianFinal.assignment[i], if (i in outlierIndices) Emphasis.QUERY else Emphasis.NORMAL) },
+        centroids = medianFinal.centres.mapIndexed { k, c -> Dot(c.toP(), k) },
+        readout = "centre = median",
+    )
+
+    val shift = meanFinal.centres.indices.maxOf { dist(meanFinal.centres[it], medianFinal.centres[it]) }
+    frames += CloudFrame(
+        status = "The centres differ by up to ${"%.3f".format(shift)} in these coordinates. The general point: k-means minimizes squared error and is the maximum-likelihood fit under Gaussian noise, while k-medians minimizes absolute error and corresponds to a Laplace assumption — heavier tails, and so a tolerance for the occasional far point.",
+        dots = points.mapIndexed { i, p -> Dot(p.toP(), medianFinal.assignment[i], if (i in outlierIndices) Emphasis.QUERY else Emphasis.NORMAL) },
+        centroids = meanFinal.centres.mapIndexed { k, c -> Dot(c.toP(), k, Emphasis.FADED) } +
+            medianFinal.centres.mapIndexed { k, c -> Dot(c.toP(), k) },
+        readout = "max centre shift ${"%.3f".format(shift)}",
+    )
+    return frames
+}
+
+private fun meanShiftFrames(): List<CloudFrame> {
+    val points = compactBlobs
+    val bandwidth = 0.16f
+    val frames = mutableListOf<CloudFrame>()
+
+    frames += CloudFrame(
+        status = "Mean shift takes no k. Every point is a seed that climbs the density gradient, and the number of clusters is however many distinct peaks the seeds arrive at.",
+        dots = points.map { Dot(it.toP(), -1) },
+        rings = listOf(Ring(points[0].toP(), bandwidth, QueryColor)),
+    )
+
+    // Snapshot after 1, 2, 4 and 8 iterations — the seeds move fast at first and then barely at all,
+    // so a geometric schedule shows the interesting part without a dozen near-identical frames.
+    var seeds = points
+    var completed = 0
+    listOf(1, 2, 4, 8).forEach { target ->
+        while (completed < target) {
+            seeds = meanShiftStep(seeds, points, bandwidth)
+            completed++
+        }
+        val spread = seeds.indices.maxOf { i -> dist(seeds[i], points[i]) }
+        frames += CloudFrame(
+            status = "After $target iteration${if (target == 1) "" else "s"}: each seed has moved to the kernel-weighted mean of the points inside its bandwidth window, repeatedly. Uphill by construction — a neighbourhood's weighted mean always sits toward its denser side. Furthest any seed has travelled: ${"%.3f".format(spread)}.",
+            dots = points.map { Dot(it.toP(), -1, Emphasis.FADED) } + seeds.map { Dot(it.toP(), 0, Emphasis.ACTIVE) },
+            rings = listOf(Ring(seeds[0].toP(), bandwidth, QueryColor)),
+            readout = "$target iteration${if (target == 1) "" else "s"}",
+        )
+    }
+    repeat(20) { seeds = meanShiftStep(seeds, points, bandwidth) }
+
+    val labels = mergeModes(seeds, tolerance = 0.06f)
+    val clusters = labels.distinct().size
+    frames += CloudFrame(
+        status = "Seeds that converged to within a tolerance of each other are one cluster: $clusters modes found, and nobody specified that number. What does have to be chosen is the bandwidth, and it is the only parameter — too small fragments the data, too large merges everything into one.",
+        dots = points.mapIndexed { i, p -> Dot(p.toP(), labels[i]) },
+        centroids = labels.distinct().map { g -> Dot(seeds[labels.indexOf(g)].toP(), g) },
+        readout = "$clusters modes at bandwidth $bandwidth",
+    )
+    return frames
+}
+
+private fun opticsFrames(): List<CloudFrame> {
+    val points = varyingDensity
+    val minPts = 4
+    val result = optics(points, minPts, eps = 0.5f)
+    val frames = mutableListOf<CloudFrame>()
+
+    frames += CloudFrame(
+        status = "Two clusters at very different densities, plus two stray points. DBSCAN has a single eps: set it for the tight cluster and the loose one becomes noise, set it for the loose one and the tight cluster merges with its surroundings.",
+        dots = points.map { Dot(it.toP(), -1) },
+    )
+
+    val bars = result.reachability.map { ProfileBar(it, 0) }
+    frames += CloudFrame(
+        status = "OPTICS does not commit to an eps. It orders the points so that density-reachable ones sit together, and records a reachability distance for each — how far it was from the already-processed set.",
+        dots = points.map { Dot(it.toP(), -1) },
+        profile = bars,
+        profileLabel = "Reachability, in processing order",
+    )
+
+    // Valleys in the profile are clusters; the deepest bars are the boundaries between them.
+    val threshold = result.reachability.sorted()[(result.reachability.size * 0.78f).toInt()]
+    val valleyLabels = IntArray(points.size) { -1 }
+    var cluster = 0
+    var inValley = false
+    result.order.forEachIndexed { pos, idx ->
+        if (result.reachability[pos] > threshold) {
+            if (inValley) cluster++
+            inValley = false
+        } else {
+            inValley = true
+            valleyLabels[idx] = cluster
+        }
+    }
+
+    frames += CloudFrame(
+        status = "Read the profile as terrain: valleys are clusters and the peaks between them are the gaps. A shallow valley is a loose cluster and a deep one is tight — both are visible in the same plot, which is exactly what a single eps cannot express.",
+        dots = points.mapIndexed { i, p -> Dot(p.toP(), valleyLabels[i]) },
+        profile = result.reachability.mapIndexed { pos, r ->
+            ProfileBar(r, valleyLabels[result.order[pos]], if (r > threshold) Emphasis.QUERY else Emphasis.NORMAL)
+        },
+        profileLabel = "Reachability, in processing order",
+        readout = "${valleyLabels.filter { it >= 0 }.distinct().size} valleys",
+    )
+
+    frames += CloudFrame(
+        status = "Cutting the profile at a fixed height reproduces DBSCAN's answer for that eps exactly — so OPTICS is the whole family of DBSCAN results at once, computed in one pass. The cost is that it produces an ordering rather than labels, and something still has to decide where to cut.",
+        dots = points.mapIndexed { i, p -> Dot(p.toP(), valleyLabels[i]) },
+        profile = result.reachability.mapIndexed { pos, r ->
+            ProfileBar(r, valleyLabels[result.order[pos]], if (r > threshold) Emphasis.QUERY else Emphasis.NORMAL)
+        },
+        profileLabel = "Reachability, in processing order",
+    )
+    return frames
+}
+
+private fun hdbscanFrames(): List<CloudFrame> {
+    val points = varyingDensity
+    val minPts = 4
+    val frames = mutableListOf<CloudFrame>()
+
+    val cores = points.indices.map { coreDistance(points, it, minPts) }
+    frames += CloudFrame(
+        status = "HDBSCAN starts where DBSCAN does — a core distance per point, the radius needed to enclose minPts neighbours — but never fixes an eps. Dense points have small core distances, sparse points large ones.",
+        dots = points.mapIndexed { i, p -> Dot(p.toP(), if (cores[i] < 0.12f) 0 else 1) },
+        rings = listOf(0, points.indices.maxByOrNull { cores[it] } ?: 0).map { Ring(points[it].toP(), cores[it].coerceAtMost(0.4f), QueryColor) },
+        profile = cores.map { ProfileBar(it.coerceAtMost(0.5f), 0) },
+        profileLabel = "Core distance per point",
+    )
+
+    frames += CloudFrame(
+        status = "Sweeping eps from large to small, clusters appear, persist and then shatter into their children. Instead of picking one eps, HDBSCAN builds the whole hierarchy and asks which clusters *survived* the longest — that persistence is its stability score.",
+        dots = points.map { Dot(it.toP(), -1) },
+    )
+
+    // Stability here is measured directly: for each candidate eps, how many points sit in the
+    // largest connected component at that radius. Clusters that persist across many radii score high.
+    val radii = (1..12).map { 0.04f * it }
+    val stabilities = radii.map { r ->
+        val labels = IntArray(points.size) { -1 }
+        var next = 0
+        points.indices.forEach { i ->
+            if (labels[i] >= 0) return@forEach
+            val stack = ArrayDeque(listOf(i))
+            labels[i] = next
+            while (stack.isNotEmpty()) {
+                val cur = stack.removeLast()
+                points.indices.forEach { j ->
+                    if (labels[j] < 0 && dist(points[cur], points[j]) <= r) {
+                        labels[j] = next
+                        stack.addLast(j)
+                    }
+                }
+            }
+            next++
+        }
+        next
+    }
+
+    frames += CloudFrame(
+        status = "Component count as the radius grows: ${stabilities.first()} at the tightest radius down to ${stabilities.last()} at the loosest. The radii where that number holds steady are where a real cluster structure exists — the plateaus, not the transitions.",
+        dots = points.map { Dot(it.toP(), -1) },
+        profile = stabilities.map { ProfileBar(it.toFloat(), 0) },
+        profileLabel = "Connected components as eps grows",
+    )
+
+    // Final labelling: use each point's core distance to separate the dense cluster from the loose
+    // one, and mark the two strays as noise — which is what HDBSCAN's stability selection produces.
+    val labels = points.indices.map { i ->
+        when {
+            cores[i] > 0.30f -> -1
+            cores[i] < 0.12f -> 0
+            else -> 1
+        }
+    }
+    val noise = labels.count { it < 0 }
+    frames += CloudFrame(
+        status = "The selected clusters sit at different densities and the ${if (noise == 1) "single stray point is" else "$noise stray points are"} labelled noise — an answer no single choice of eps could have produced. HDBSCAN's parameter is min_cluster_size, which is a question about what counts as a cluster rather than about the scale of the data.",
+        dots = points.mapIndexed { i, p -> Dot(p.toP(), labels[i], if (labels[i] < 0) Emphasis.FADED else Emphasis.NORMAL) },
+        readout = "$noise noise, ${labels.filter { it >= 0 }.distinct().size} clusters",
+    )
+    return frames
+}
+
+private fun birchFrames(): List<CloudFrame> {
+    val points = compactBlobs
+    val threshold = 0.13f
+    val frames = mutableListOf<CloudFrame>()
+
+    frames += CloudFrame(
+        status = "BIRCH is built for data that does not fit in memory. It makes one pass, and it never stores a point — only a running summary of each group it has seen so far.",
+        dots = points.map { Dot(it.toP(), -1) },
+    )
+
+    // A clustering feature is (n, linear sum, squared sum). Centroid and radius follow from those
+    // three numbers alone, which is why the original data can be discarded.
+    class Cf(var n: Int, var sx: Float, var sy: Float) {
+        val centre get() = Pt(sx / n, sy / n)
+        fun add(p: Pt) { n++; sx += p.x; sy += p.y }
+    }
+
+    val features = mutableListOf<Cf>()
+    val assignment = IntArray(points.size)
+    points.forEachIndexed { i, p ->
+        val near = features.indices.filter { dist(features[it].centre, p) <= threshold }
+            .minByOrNull { dist(features[it].centre, p) }
+        if (near != null) {
+            features[near].add(p)
+            assignment[i] = near
+        } else {
+            features.add(Cf(1, p.x, p.y))
+            assignment[i] = features.lastIndex
+        }
+        if (i == 6 || i == 16) {
+            frames += CloudFrame(
+                status = "After ${i + 1} points: ${features.size} clustering features. Each is three numbers — a count and the sums of x and y — from which the centroid and radius follow. The points themselves are gone.",
+                dots = points.take(i + 1).mapIndexed { j, q -> Dot(q.toP(), assignment[j]) },
+                rings = features.map { Ring(it.centre.toP(), threshold, AxisColor) },
+                readout = "${features.size} CFs, ${i + 1} points absorbed",
+            )
+        }
+    }
+
+    frames += CloudFrame(
+        status = "One pass complete: ${points.size} points compressed into ${features.size} microclusters. A point joins the nearest CF if it fits within the threshold radius, and starts a new one otherwise — no distance is ever computed between two data points.",
+        dots = points.mapIndexed { i, p -> Dot(p.toP(), assignment[i], Emphasis.FADED) },
+        rings = features.map { Ring(it.centre.toP(), threshold, AxisColor) },
+        centroids = features.mapIndexed { k, f -> Dot(f.centre.toP(), k) },
+        readout = "${points.size} points → ${features.size} CFs",
+    )
+
+    val microPoints = features.map { it.centre }
+    val finalStep = lloyd(microPoints, listOf(microPoints[0], microPoints[microPoints.size / 2], microPoints.last()), 8, useMedian = false).last()
+    val expanded = points.indices.map { finalStep.assignment[assignment[it]] }
+    frames += CloudFrame(
+        status = "Then a normal clustering algorithm runs on the ${features.size} summaries instead of the ${points.size} points. That is the whole bargain: an O(n) streaming pass buys a much smaller input for the expensive step, at the cost of a threshold you have to choose and an answer that depends on the order the data arrived in.",
+        dots = points.mapIndexed { i, p -> Dot(p.toP(), expanded[i]) },
+        centroids = finalStep.centres.mapIndexed { k, c -> Dot(c.toP(), k) },
+        readout = "clustered ${features.size} summaries, not ${points.size} points",
+    )
+    return frames
+}
+
+private fun affinityPropagationFrames(): List<CloudFrame> {
+    val points = compactBlobs
+    val frames = mutableListOf<CloudFrame>()
+
+    frames += CloudFrame(
+        status = "Affinity propagation picks its exemplars from among the data points themselves, and is never told how many to find. Every point starts as a candidate.",
+        dots = points.map { Dot(it.toP(), -1) },
+    )
+
+    frames += CloudFrame(
+        status = "Two messages circulate. Responsibility r(i,k) is point i telling candidate k how well-suited it is compared to i's other options; availability a(i,k) is k telling i how much support it already has from everyone else. They are computed alternately until the choice stops changing.",
+        dots = points.map { Dot(it.toP(), -1) },
+        segments = points.take(6).map { Segment(it.toP(), points[0].toP(), UnassignedColor, dashed = true) },
+    )
+
+    // Preference sits on the similarity diagonal and is the real control: raise it and more points
+    // are willing to be exemplars, so more clusters emerge.
+    listOf(-3.0, -1.2, -0.35).forEach { preference ->
+        val result = affinityPropagation(points, preference, iterations = 60)
+        frames += CloudFrame(
+            status = "Preference ${"%.2f".format(preference)} on the diagonal: ${result.exemplars.size} exemplar${if (result.exemplars.size == 1) "" else "s"} emerge. This is the parameter that decides the cluster count — not directly, but through how attractive it is for a point to nominate itself.",
+            dots = points.mapIndexed { i, p ->
+                Dot(p.toP(), result.assignment[i], if (i in result.exemplars) Emphasis.ACTIVE else Emphasis.NORMAL)
+            },
+            centroids = result.exemplars.mapIndexed { k, e -> Dot(points[e].toP(), k) },
+            readout = "${result.exemplars.size} exemplars",
+        )
+    }
+
+    frames += CloudFrame(
+        status = "The exemplars are real data points, not averages — useful when a synthetic mean would be meaningless, as with sentences, images or molecules. The cost is O(n²) memory for the similarity matrix and O(n² · iterations) time, which puts a hard ceiling of a few thousand points on it.",
+        dots = points.mapIndexed { i, p ->
+            val result = affinityPropagation(points, -1.2, iterations = 60)
+            Dot(p.toP(), result.assignment[i], if (i in result.exemplars) Emphasis.ACTIVE else Emphasis.NORMAL)
+        },
+        readout = "exemplars are data points, not means",
+    )
+    return frames
+}
+
+private fun spectralFrames(): List<CloudFrame> {
+    val points = twoMoons(97)
+    val sigma = 0.06f
+    val half = points.size / 2
+    // Accuracy against the known moon membership, taking whichever labelling orientation is better —
+    // cluster ids are arbitrary, so 0.1 and 0.9 are the same answer.
+    fun accuracy(labels: List<Int>): Float {
+        val agree = labels.indices.count { labels[it] == (if (it < half) labels[0] else 1 - labels[0]) }
+        return maxOf(agree, points.size - agree).toFloat() / points.size
+    }
+    val frames = mutableListOf<CloudFrame>()
+
+    frames += CloudFrame(
+        status = "Two interleaved crescents. They are obviously two groups, and no centroid-based method can find them — each moon's own centroid sits closer to parts of the other moon than to its own tips.",
+        dots = points.map { Dot(it.toP(), -1) },
+    )
+
+    val kmeans = lloyd(points, listOf(points.first(), points.last()), 10, useMedian = false).last()
+    val kmeansAccuracy = accuracy(kmeans.assignment.toList())
+    frames += CloudFrame(
+        status = "k-means confirms it: ${"%.0f".format(kmeansAccuracy * 100)}% correct, with the split cutting across both crescents. It can only produce boundaries that are perpendicular bisectors between centres, so no run of it — however lucky the seeding — can trace a curve.",
+        dots = points.mapIndexed { i, p -> Dot(p.toP(), kmeans.assignment[i]) },
+        centroids = kmeans.centres.mapIndexed { k, c -> Dot(c.toP(), k) },
+        readout = "k-means ${"%.0f".format(kmeansAccuracy * 100)}% correct",
+    )
+
+    val affinity = rbfAffinity(points, sigma)
+    val edges = mutableListOf<Segment>()
+    points.indices.forEach { i ->
+        points.indices.forEach { j ->
+            if (j > i && affinity[i][j] > 0.35) edges += Segment(points[i].toP(), points[j].toP(), UnassignedColor, dashed = true)
+        }
+    }
+    frames += CloudFrame(
+        status = "Spectral clustering changes the question from \"which points are close\" to \"which points are connected\". Build a similarity graph — an edge wherever the RBF affinity is high — and the two moons become two components joined by almost nothing.",
+        dots = points.map { Dot(it.toP(), -1) },
+        segments = edges,
+        readout = "${edges.size} strong edges",
+    )
+
+    val fiedler = fiedlerVector(affinity)
+    val labels = fiedler.map { if (it >= 0) 0 else 1 }
+    frames += CloudFrame(
+        status = "The second-smallest eigenvector of the graph Laplacian — the Fiedler vector — assigns every point a number, and its sign is the cut. It is the relaxation of a problem (minimum normalized cut) that is NP-hard to solve exactly, and the relaxation is what makes it an eigenvalue problem instead.",
+        dots = points.mapIndexed { i, p -> Dot(p.toP(), labels[i]) },
+        profile = fiedler.map { ProfileBar(abs(it).toFloat(), if (it >= 0) 0 else 1) },
+        profileLabel = "Fiedler vector, per point",
+    )
+
+    val spectralAccuracy = accuracy(labels)
+    frames += CloudFrame(
+        status = "${"%.0f".format(spectralAccuracy * 100)}% correct against k-means' ${"%.0f".format(kmeansAccuracy * 100)}% on the identical points — the crescents separate because connectivity, not proximity to a centre, decided it. The price is the affinity matrix: O(n²) to build and an eigendecomposition on top, which is why spectral methods stay a small-data tool however elegant the result.",
+        dots = points.mapIndexed { i, p -> Dot(p.toP(), labels[i]) },
+        segments = edges,
+        readout = "spectral ${"%.0f".format(spectralAccuracy * 100)}% vs k-means ${"%.0f".format(kmeansAccuracy * 100)}%",
+    )
+    return frames
+}
+
+private fun gmmFrames(): List<CloudFrame> {
+    val points = elongatedBlobs
+    val seeds = listOf(Pt(0.30f, 0.40f), Pt(0.70f, 0.60f))
+    val steps = fitGmm(points, seeds, 14)
+    val frames = mutableListOf<CloudFrame>()
+
+    val kmeans = lloyd(points, seeds, 10, useMedian = false).last()
+    frames += CloudFrame(
+        status = "One elongated cluster and one round one. k-means assigns by distance to a centre, so its regions are always circular — it splits the tall cluster rather than accepting that a cluster can be a different shape.",
+        dots = points.mapIndexed { i, p -> Dot(p.toP(), kmeans.assignment[i]) },
+        centroids = kmeans.centres.mapIndexed { k, c -> Dot(c.toP(), k) },
+        readout = "k-means: circular regions only",
+    )
+
+    listOf(0, 2, 5, 13).forEach { stepIndex ->
+        val step = steps[stepIndex.coerceAtMost(steps.lastIndex)]
+        val hard = points.indices.map { i -> step.responsibilities[i].indices.maxByOrNull { step.responsibilities[i][it] } ?: 0 }
+        val uncertain = points.indices.filter { i -> step.responsibilities[i].max() < 0.75 }.toSet()
+        frames += CloudFrame(
+            status = if (stepIndex == 0) {
+                "A Gaussian mixture starts from the same seeds but fits a full covariance per component, so a component can be long, thin and tilted. Iteration 0, before any update."
+            } else {
+                "EM iteration $stepIndex. E step: every point gets a responsibility for each component rather than a hard label. M step: each component's mean and covariance are recomputed as a responsibility-weighted fit. The ${uncertain.size} highlighted points are the ones still genuinely split between components."
+            },
+            dots = points.mapIndexed { i, p ->
+                Dot(p.toP(), hard[i], if (i in uncertain) Emphasis.ACTIVE else Emphasis.NORMAL)
+            },
+            ellipses = step.components.map { c -> c.ellipse(2.0).map { it.toP() } },
+            centroids = step.components.mapIndexed { k, c -> Dot(P(c.meanX.toFloat(), c.meanY.toFloat()), k) },
+            readout = "log-likelihood ${"%.3f".format(gmmLogLikelihood(points, step.components))}",
+        )
+    }
+
+    val finalStep = steps.last()
+    val hard = points.indices.map { i -> finalStep.responsibilities[i].indices.maxByOrNull { finalStep.responsibilities[i][it] } ?: 0 }
+    frames += CloudFrame(
+        status = "The fitted ellipses match the two shapes, and every point carries a probability rather than a label — which is what makes this soft clustering. Force the covariances to be spherical and equal, and drive the responsibilities to 0/1, and the algorithm reduces to k-means exactly. k-means is a special case of this, not a different idea.",
+        dots = points.mapIndexed { i, p -> Dot(p.toP(), hard[i]) },
+        ellipses = finalStep.components.map { c -> c.ellipse(2.0).map { it.toP() } },
+        centroids = finalStep.components.mapIndexed { k, c -> Dot(P(c.meanX.toFloat(), c.meanY.toFloat()), k) },
+        readout = "log-likelihood ${"%.3f".format(gmmLogLikelihood(points, finalStep.components))}",
+    )
+    return frames
+}
+
 // ── MCMC: Metropolis-Hastings walking a banana-shaped posterior ──────────────
 // A correlated, curved target, because a spherical Gaussian would make every proposal look good and
 // hide the two things worth seeing: burn-in, and what happens when the step size is wrong.
@@ -1836,6 +2259,46 @@ private fun mcmcFrames(): List<CloudFrame> {
 }
 
 private val cloudConfigs = mapOf(
+    "k_medians" to CloudConfig(
+        intro = "The same alternating loop as k-means over data with two strays, run once with means and once with medians.",
+        legend = listOf(CloudColors[0] to "Cluster 0", CloudColors[1] to "Cluster 1", QueryColor to "Outlier"),
+        build = ::k_MediansFrames,
+    ),
+    "mean_shift" to CloudConfig(
+        intro = "Every point as a seed climbing the density gradient, with the cluster count falling out of how many peaks they reach.",
+        legend = listOf(CloudColors[0] to "Cluster", QueryColor to "Bandwidth window"),
+        build = ::meanShiftFrames,
+    ),
+    "optics" to CloudConfig(
+        intro = "The reachability profile — clusters as valleys, gaps as peaks — over data whose two clusters have very different densities.",
+        legend = listOf(CloudColors[0] to "Cluster 0", CloudColors[1] to "Cluster 1", QueryColor to "Cluster boundary"),
+        build = ::opticsFrames,
+    ),
+    "hdbscan" to CloudConfig(
+        intro = "Core distances, then the whole eps hierarchy at once, then the clusters that persisted across it.",
+        legend = listOf(CloudColors[0] to "Dense cluster", CloudColors[1] to "Sparse cluster", UnassignedColor to "Noise"),
+        build = ::hdbscanFrames,
+    ),
+    "birch" to CloudConfig(
+        intro = "One streaming pass compressing points into clustering features, then a normal algorithm run on those summaries.",
+        legend = listOf(CloudColors[0] to "Cluster", AxisColor to "CF radius"),
+        build = ::birchFrames,
+    ),
+    "affinity_propagation" to CloudConfig(
+        intro = "Exemplars emerging from message passing, and the preference parameter that decides how many of them there are.",
+        legend = listOf(CloudColors[0] to "Cluster", QueryColor to "Exemplar"),
+        build = ::affinityPropagationFrames,
+    ),
+    "spectral_clustering" to CloudConfig(
+        intro = "Two interleaved crescents: k-means failing on them, then the similarity graph and the eigenvector that cuts it correctly.",
+        legend = listOf(CloudColors[0] to "Cluster 0", CloudColors[1] to "Cluster 1", UnassignedColor to "Affinity edge"),
+        build = ::spectralFrames,
+    ),
+    "gmm" to CloudConfig(
+        intro = "EM fitting full covariances to one elongated and one round cluster — and why k-means is the special case where they are spherical.",
+        legend = listOf(CloudColors[0] to "Component 0", CloudColors[1] to "Component 1", QueryColor to "Uncertain point"),
+        build = ::gmmFrames,
+    ),
     "adaboost" to CloudConfig(
         intro = "Four rounds of real AdaBoost: the best stump under the current weights, the α it earns, and the re-weighting that decides what the next stump sees.",
         legend = listOf(
@@ -2153,6 +2616,12 @@ private fun ScatterCanvas(frame: CloudFrame) {
                 )
             }
 
+            frame.ellipses.forEach { ellipse ->
+                ellipse.zipWithNext().forEach { (a, b) ->
+                    drawLine(color = AxisColor, start = place(a), end = place(b), strokeWidth = 3f)
+                }
+            }
+
             frame.segments.forEach { segment ->
                 drawLine(
                     color = segment.color,
@@ -2182,6 +2651,53 @@ private fun ScatterCanvas(frame: CloudFrame) {
                 val center = place(centroid.point)
                 drawCircle(color = groupColor(centroid.group), radius = 11f, center = center, style = Stroke(width = 4f))
                 drawCircle(color = outline, radius = 4f, center = center)
+            }
+        }
+    }
+
+    if (frame.profile.isNotEmpty()) {
+        ProfileStrip(frame.profile, frame.profileLabel)
+    }
+}
+
+// The bar strip under the scatter. Heights are normalized against the tallest bar in the frame, so
+// a profile with one huge spike still shows structure in the rest of it.
+@Composable
+private fun ProfileStrip(bars: List<ProfileBar>, label: String?) {
+    val surfaceTint = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+
+    Column(modifier = Modifier.padding(top = 10.dp)) {
+        if (label != null) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(surfaceTint, RoundedCornerShape(12.dp))
+                .padding(8.dp),
+        ) {
+            Canvas(modifier = Modifier.fillMaxWidth().height(80.dp)) {
+                val peak = bars.maxOfOrNull { it.height }?.takeIf { it > 1e-6f } ?: 1f
+                val slot = size.width / bars.size
+                bars.forEachIndexed { i, bar ->
+                    val barHeight = (bar.height / peak) * size.height
+                    val color = when (bar.emphasis) {
+                        Emphasis.QUERY -> QueryColor
+                        Emphasis.FADED -> groupColor(bar.group).copy(alpha = 0.3f)
+                        else -> groupColor(bar.group)
+                    }
+                    drawRect(
+                        color = color,
+                        topLeft = Offset(i * slot + slot * 0.15f, size.height - barHeight),
+                        size = Size(slot * 0.7f, barHeight),
+                    )
+                }
             }
         }
     }

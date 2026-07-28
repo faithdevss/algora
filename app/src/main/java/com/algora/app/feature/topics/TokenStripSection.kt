@@ -1208,12 +1208,111 @@ private fun categoricalFrames(): List<TokenFrame> {
     return frames
 }
 
+// ── k-modes: k-means for data that has no arithmetic ────────────────────────
+// Categorical rows have no mean and no Euclidean distance, so k-modes swaps both: the centre is the
+// per-attribute mode and the distance is a count of mismatches. Everything else is Lloyd's loop.
+
+private val kModesAttributes = listOf("Colour", "Size", "Shape", "Finish")
+
+private val kModesRows = listOf(
+    listOf("red", "small", "round", "matte"),
+    listOf("red", "small", "square", "matte"),
+    listOf("red", "large", "round", "matte"),
+    listOf("blue", "large", "square", "gloss"),
+    listOf("blue", "large", "square", "matte"),
+    listOf("blue", "small", "square", "gloss"),
+    listOf("green", "large", "round", "gloss"),
+    listOf("blue", "large", "round", "gloss"),
+)
+
+private fun hamming(a: List<String>, b: List<String>) = a.indices.count { a[it] != b[it] }
+
+private fun modeOf(rows: List<List<String>>, attribute: Int): String =
+    rows.map { it[attribute] }.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key ?: "—"
+
+private fun kModesFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    var centres = listOf(kModesRows[0], kModesRows[6])
+
+    frames.add(
+        TokenFrame(
+            status = "Eight rows of purely categorical attributes. There is no mean of {red, blue, green}, and encoding them as 0/1/2 would invent an ordering — so k-means simply does not apply here.",
+            chips = kModesAttributes.map { Chip(it) },
+            chipsLabel = "Attributes",
+            rows = kModesRows.mapIndexed { i, r -> "row ${i + 1}" to r.joinToString(" · ") },
+        ),
+    )
+
+    frames.add(
+        TokenFrame(
+            status = "k-modes changes two things and keeps the rest of Lloyd's algorithm. Distance becomes the count of attributes that differ — the Hamming distance — and the centre becomes the most frequent value per attribute.",
+            chips = centres[0].mapIndexed { i, v -> Chip(v, sub = kModesAttributes[i], mark = ChipMark.RESULT) },
+            chipsLabel = "Initial centre 1",
+            rows = kModesRows.mapIndexed { i, r ->
+                "row ${i + 1}" to "d to c1 = ${hamming(r, centres[0])} · d to c2 = ${hamming(r, centres[1])}"
+            },
+        ),
+    )
+
+    var assignment = IntArray(kModesRows.size)
+    repeat(3) { iteration ->
+        assignment = IntArray(kModesRows.size) { i ->
+            centres.indices.minByOrNull { hamming(kModesRows[i], centres[it]) } ?: 0
+        }
+        frames.add(
+            TokenFrame(
+                status = "Iteration ${iteration + 1} — assign: each row joins whichever centre it mismatches on fewest attributes. Cluster sizes ${assignment.count { it == 0 }} and ${assignment.count { it == 1 }}.",
+                chips = kModesAttributes.map { Chip(it) },
+                chipsLabel = "Attributes",
+                rows = kModesRows.mapIndexed { i, r ->
+                    "row ${i + 1} → c${assignment[i] + 1}" to r.joinToString(" · ")
+                },
+            ),
+        )
+
+        centres = centres.indices.map { k ->
+            val members = kModesRows.filterIndexed { i, _ -> assignment[i] == k }
+            if (members.isEmpty()) centres[k] else kModesAttributes.indices.map { modeOf(members, it) }
+        }
+        frames.add(
+            TokenFrame(
+                status = "Iteration ${iteration + 1} — update: each centre becomes the per-attribute mode of its members. Note the centre is a valid row of the same type as the data, which a mean would not have been.",
+                chips = centres[0].mapIndexed { i, v -> Chip(v, sub = kModesAttributes[i], mark = ChipMark.RESULT) } +
+                    listOf(Chip("|")) +
+                    centres[1].mapIndexed { i, v -> Chip(v, sub = kModesAttributes[i], mark = ChipMark.ACTIVE) },
+                chipsLabel = "Centre 1  |  Centre 2",
+            ),
+        )
+    }
+
+    val cost = kModesRows.indices.sumOf { hamming(kModesRows[it], centres[assignment[it]]) }
+    frames.add(
+        TokenFrame(
+            status = "Converged at a total mismatch cost of $cost. Two caveats worth carrying: Hamming distance treats every attribute as equally important, which is rarely true; and for data with both categorical and numeric columns you need k-prototypes, which sums a Hamming term and a Euclidean one with a weight between them.",
+            chips = centres[0].mapIndexed { i, v -> Chip(v, sub = kModesAttributes[i], mark = ChipMark.RESULT) } +
+                listOf(Chip("|")) +
+                centres[1].mapIndexed { i, v -> Chip(v, sub = kModesAttributes[i], mark = ChipMark.ACTIVE) },
+            chipsLabel = "Final centres",
+            rows = kModesRows.mapIndexed { i, r ->
+                "row ${i + 1} → c${assignment[i] + 1}" to "mismatch ${hamming(r, centres[assignment[i]])}"
+            },
+            readout = "total cost $cost",
+        ),
+    )
+    return frames
+}
+
 private val nbLegend = listOf(
     ChipActive to "Current",
     ChipResult to "Scored",
 )
 
 private val tokenConfigs = mapOf(
+    "k_modes" to TokenConfig(
+        intro = "Lloyd's algorithm on purely categorical rows: Hamming distance in place of Euclidean, per-attribute mode in place of the mean.",
+        legend = nbLegend,
+        build = ::kModesFrames,
+    ),
     "multinomial_nb" to TokenConfig(
         intro = "One document classified end to end: counts, Laplace smoothing, log priors, then a running sum per class.",
         legend = nbLegend,
