@@ -166,6 +166,18 @@ object PrerequisiteGraph {
         "neural_network_basics" to listOf("mlp"),
         "vanishing_gradient" to listOf("backpropagation", "activation_functions"),
         "exploding_gradient" to listOf("vanishing_gradient"),
+        // DL activations: the two saturating ones first, then the rectifier family in the order
+        // each repairs the previous one's failure, then the smooth self-gated pair, then softmax.
+        "sigmoid" to listOf("activation_functions"),
+        "tanh" to listOf("sigmoid"),
+        "relu" to listOf("sigmoid"),
+        "leaky_relu" to listOf("relu"),
+        "prelu" to listOf("leaky_relu"),
+        "elu" to listOf("relu"),
+        "selu" to listOf("elu"),
+        "swish" to listOf("relu", "sigmoid"),
+        "gelu" to listOf("swish"),
+        "softmax" to listOf("sigmoid"),
         // DL: training techniques presuppose the training loop
         "batch_normalization" to listOf("neural_network_basics", "backpropagation"),
         "dropout" to listOf("neural_network_basics", "regularization"),

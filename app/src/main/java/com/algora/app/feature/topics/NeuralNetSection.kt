@@ -1466,7 +1466,774 @@ private fun explodingGradientFrames(): List<NetFrame> {
     return frames
 }
 
+// ── Activation functions (phase 9, batch C2) ─────────────────────────────────
+// Ten labs sharing one shape: draw the function and its derivative, then measure the property that
+// makes this activation worth having and the one that makes it fail. Everything comes from
+// ActivationMath.kt, where each activation is defined once with its derivative and every claim is
+// run through a real stack rather than quoted from a table.
+
+private fun curveOf(label: String, color: Color, from: Float = -6f, to: Float = 6f, f: (Double) -> Double) =
+    Curve(label, sample(from..to, 120) { f(it.toDouble()).toFloat() }, color)
+
+/**
+ * Builds a plot whose y range is derived from the curves rather than hand-picked. Hand-picking is
+ * what C1 found four bugs in: PlotCanvas clamps rather than skips, so a curve that leaves its
+ * declared box is drawn flat along the edge and reads as a real feature of the function.
+ */
+private fun autoPlot(
+    label: String,
+    curves: List<Curve>,
+    xRange: ClosedFloatingPointRange<Float> = -6f..6f,
+): CurvePlot {
+    val ys = curves.flatMap { c -> c.points.filter { it.first in xRange }.map { it.second } }
+    val lo = ys.min()
+    val hi = ys.max()
+    val pad = ((hi - lo) * 0.08f).coerceAtLeast(0.05f)
+    return CurvePlot(label, curves, xRange, (lo - pad)..(hi + pad))
+}
+
+private fun shapePlot(activation: Activation) = autoPlot(
+    "${activation.name} and its derivative",
+    listOf(
+        curveOf(activation.name, ForwardColor) { activation.f(it) },
+        curveOf("derivative", BackwardColor) { activation.df(it) },
+    ),
+)
+
+private fun depthStatsFrame(activation: Activation, status: String): NetFrame {
+    val p = propagate(activation)
+    return NetFrame(
+        status = status,
+        plot = CurvePlot(
+            "mean and standard deviation of activations, by layer",
+            listOf(
+                Curve("mean", p.perLayer.map { it.layer.toFloat() to it.mean.toFloat() }, AccentB),
+                Curve("std", p.perLayer.map { it.layer.toFloat() to it.std.toFloat() }, ForwardColor),
+            ),
+            1f..20f,
+            -0.6f..2.2f,
+        ),
+        readout = "layer 20: mean ${"%.3f".format(p.perLayer.last().mean)}, std ${"%.3f".format(p.perLayer.last().std)}",
+    )
+}
+
+private val saturationWidths = listOf(1.0, 2.0, 4.0, 8.0, 16.0)
+
+private fun saturationFrame(activation: Activation, status: String): NetFrame {
+    val values = saturationWidths.map { saturationAtScale(activation, it) }
+    return NetFrame(
+        status = status,
+        bars = listOf(
+            NetBar(
+                "fraction with derivative below 0.01",
+                values.map { it.toFloat() },
+                BackwardColor,
+                saturationWidths.map { "σ=${it.toInt()}" },
+            ),
+        ),
+        readout = saturationWidths.indices.joinToString(" · ") {
+            "σ${saturationWidths[it].toInt()}→${"%.0f".format(values[it] * 100)}%"
+        },
+    )
+}
+
+private fun sigmoidLabFrames(): List<NetFrame> {
+    val a = sigmoidActivation
+    val frames = mutableListOf<NetFrame>()
+    val peak = (-800..800).maxOf { a.df(it / 100.0) }
+
+    frames += NetFrame(
+        status = "σ(z) = 1/(1+e⁻ᶻ) squashes any real number into (0, 1), which is why it was the default for " +
+            "thirty years and why it is still exactly right as an output for a binary probability. The problem is " +
+            "the other curve: σ′ peaks at ${"%.2f".format(peak)} and is small everywhere else.",
+        plot = shapePlot(a),
+        readout = "max σ′ = ${"%.2f".format(peak)}, at z = 0",
+    )
+
+    val mean = meanOutput(a)
+    frames += NetFrame(
+        status = "It is also not zero-centred. Over standard normal input the mean output is " +
+            "${"%.3f".format(mean)} — every activation a downstream unit sees is positive. That makes every weight " +
+            "in that unit's gradient share a sign, so the update can only move all-positive or all-negative, and the " +
+            "path to the minimum becomes a zig-zag. Tanh exists mostly to fix this one thing.",
+        plot = autoPlot(
+            "sigmoid against tanh",
+            listOf(
+                curveOf("sigmoid", ForwardColor) { a.f(it) },
+                curveOf("tanh", AccentA) { tanhActivation.f(it) },
+            ),
+        ),
+        readout = "mean output ${"%.3f".format(mean)} — never negative",
+    )
+
+    frames += saturationFrame(
+        a,
+        "Saturation is not a fixed property of the function, it is what happens once the pre-activations get wide. " +
+            "At a pre-activation standard deviation of 1 essentially nothing is saturated; at 4 a quarter of units " +
+            "are on a flat tail; at 16 more than three quarters. This is why the same activation can look fine in a " +
+            "shallow, well-scaled network and stall a deep or badly-initialised one.",
+    )
+
+    val deep = propagate(a)
+    frames += NetFrame(
+        status = "Twenty layers of it, at the LeCun initialisation it is designed for. The gradient at layer 1 is " +
+            "${"%.0e".format(deep.gradientRatio)} times weaker than at layer 20 — the σ′ ≤ ${"%.2f".format(peak)} " +
+            "ceiling compounding once per layer, exactly as the vanishing-gradient topic describes. No init scale " +
+            "escapes it, because the ceiling does not move.",
+        plot = CurvePlot(
+            "log₁₀ ‖∂L/∂W‖ by layer",
+            listOf(log10Curve(deep.gradientPerLayer, "sigmoid", BackwardColor)),
+            1f..20f, -14f..2f,
+        ),
+        readout = "layer 1 is ${"%.0e".format(deep.gradientRatio)}× weaker",
+    )
+
+    frames += NetFrame(
+        status = "Where it still belongs, which is a shorter list than it used to be and not empty. As the output " +
+            "of a binary classifier, where you want a probability and the saturation is the calibration. As a gate " +
+            "inside an LSTM or a GRU, where a value in (0, 1) is exactly the \"how much to let through\" semantics " +
+            "the architecture needs. As the σ in Swish. What it is no longer is a hidden-layer default.",
+        plot = shapePlot(a),
+        readout = "output layers and gates — not hidden layers",
+    )
+    return frames
+}
+
+private fun tanhLabFrames(): List<NetFrame> {
+    val a = tanhActivation
+    val frames = mutableListOf<NetFrame>()
+
+    frames += NetFrame(
+        status = "tanh is a rescaled sigmoid — tanh(z) = 2σ(2z) − 1 — and the rescaling buys two things. Its range " +
+            "is (−1, 1) rather than (0, 1), and its derivative peaks at 1 rather than at 0.25.",
+        plot = shapePlot(a),
+        readout = "max tanh′ = 1.00, four times sigmoid's",
+    )
+
+    val meanTanh = meanOutput(a)
+    val meanSigmoid = meanOutput(sigmoidActivation)
+    frames += NetFrame(
+        status = "Zero-centred, and measurably so: mean output ${"%.3f".format(meanTanh)} over standard normal " +
+            "input against sigmoid's ${"%.3f".format(meanSigmoid)}. Downstream gradients no longer all share a " +
+            "sign, so the zig-zag sigmoid causes goes away. This is the whole reason tanh replaced sigmoid as the " +
+            "hidden-layer default in the 1990s.",
+        plot = autoPlot(
+            "tanh against sigmoid",
+            listOf(
+                curveOf("tanh", ForwardColor) { a.f(it) },
+                curveOf("sigmoid", NeutralColor) { sigmoidActivation.f(it) },
+            ),
+        ),
+        readout = "mean ${"%.3f".format(meanTanh)} vs sigmoid's ${"%.3f".format(meanSigmoid)}",
+    )
+
+    frames += saturationFrame(
+        a,
+        "What it does not fix is saturation, and it is in fact worse on that axis than sigmoid: at a pre-activation " +
+            "width of 4, tanh has a larger fraction of units on a flat tail, because its curve turns over sooner. A " +
+            "derivative that peaks at 1 still spends most of its range well below 1, so a deep stack still multiplies " +
+            "by less than one per layer.",
+    )
+
+    frames += depthStatsFrame(
+        a,
+        "Twenty layers, LeCun init. The signal is centred the whole way down — mean stays near zero, which is the " +
+            "win — but the standard deviation shrinks steadily, so the network is quietly losing dynamic range with " +
+            "depth. Tanh was a real improvement on sigmoid and still not enough to make very deep stacks trainable; " +
+            "that took ReLU.",
+    )
+
+    frames += NetFrame(
+        status = "It did not disappear, though. Every LSTM and GRU still uses tanh for the candidate and output " +
+            "transforms, because those want a bounded, zero-centred value and the bounding is load-bearing — an " +
+            "unbounded cell update would drift. Bounded output is a feature wherever a value is going to be carried " +
+            "across many steps rather than passed straight to the next layer.",
+        plot = shapePlot(a),
+        readout = "still the default inside gated recurrent cells",
+    )
+    return frames
+}
+
+private fun reluLabFrames(): List<NetFrame> {
+    val a = reluActivation
+    val frames = mutableListOf<NetFrame>()
+
+    frames += NetFrame(
+        status = "max(0, z). No exponentials, no saturation on the positive side, and a derivative that is exactly " +
+            "1 wherever the unit is active — so a deep stack multiplies the backward signal by exactly one per " +
+            "layer instead of by a quarter. That single property is most of why depth became practical in 2012.",
+        plot = shapePlot(a),
+        readout = "derivative is exactly 1 or exactly 0",
+    )
+
+    val reluStuck = saturationWidths.map { saturationAtScale(a, it) }
+    val sigmoidStuck = saturationWidths.map { saturationAtScale(sigmoidActivation, it) }
+    frames += NetFrame(
+        status = "Half of ReLU's domain has zero derivative, which sounds like sigmoid's problem and is not the " +
+            "same thing. The fraction of inputs with a dead derivative is ${"%.0f".format(reluStuck[0] * 100)}% and " +
+            "stays there no matter how wide the pre-activations get, because the boundary is at zero and does not " +
+            "move. Sigmoid's rises from ${"%.0f".format(sigmoidStuck[0] * 100)}% to " +
+            "${"%.0f".format(sigmoidStuck.last() * 100)}% over the same sweep. One is a fixed property of the shape; " +
+            "the other is a failure that gets worse as training proceeds.",
+        bars = listOf(
+            NetBar("ReLU: zero-derivative fraction", reluStuck.map { it.toFloat() }, AccentA, saturationWidths.map { "σ=${it.toInt()}" }),
+            NetBar("Sigmoid: same measurement", sigmoidStuck.map { it.toFloat() }, BackwardColor, saturationWidths.map { "σ=${it.toInt()}" }),
+        ),
+        readout = "constant 50% against a climb to ${"%.0f".format(sigmoidStuck.last() * 100)}%",
+    )
+
+    val rates = listOf(1.0, 30.0, 60.0, 100.0)
+    val dead = rates.map { dyingRelu(learningRate = it) }
+    frames += NetFrame(
+        status = "The real failure has a different name. Train one layer with plain SGD and count the units that " +
+            "end up inactive for *every* input in the batch: at a learning rate of ${rates[0].toInt()}, none. At " +
+            "${rates[1].toInt()}, ${"%.0f".format(dead[1].deadFraction * 100)}%. At ${rates[2].toInt()}, " +
+            "${"%.0f".format(dead[2].deadFraction * 100)}%. At ${rates[3].toInt()}, " +
+            "${"%.0f".format(dead[3].deadFraction * 100)}% — the entire layer. A large step drives the bias far " +
+            "enough negative that the unit stops firing at all.",
+        bars = listOf(
+            NetBar(
+                "dead unit fraction after 120 steps",
+                dead.map { it.deadFraction.toFloat() },
+                BackwardColor,
+                rates.map { "lr ${it.toInt()}" },
+            ),
+        ),
+        readout = "dying ReLU is caused by the step size, not the init",
+    )
+
+    val worst = dead.last()
+    frames += NetFrame(
+        status = "And it is permanent, which is what makes it worse than it first sounds. A unit that is off for " +
+            "every input has gradient exactly zero for every example, so no future update can move it — there is " +
+            "nothing to descend. Watch when it happens: the deaths are all inside the first ten steps and the " +
+            "fraction is flat for the remaining hundred and ten. Leaky ReLU on the identical run kills " +
+            "${"%.0f".format(dyingRelu(leakyReluActivation(), learningRate = rates[3]).deadFraction * 100)}%.",
+        plot = CurvePlot(
+            "dead fraction over training, lr = ${rates[3].toInt()}",
+            listOf(
+                Curve("ReLU", worst.deadOverTime.mapIndexed { i, v -> (i * 10).toFloat() to v.toFloat() }, BackwardColor),
+                Curve(
+                    "Leaky ReLU",
+                    dyingRelu(leakyReluActivation(), learningRate = rates[3]).deadOverTime
+                        .mapIndexed { i, v -> (i * 10).toFloat() to v.toFloat() },
+                    AccentA,
+                ),
+            ),
+            0f..110f, -0.05f..1.1f,
+        ),
+        readout = "dead by step 10, and dead for good",
+    )
+    return frames
+}
+
+private fun leakyReluLabFrames(): List<NetFrame> {
+    val slope = 0.01
+    val a = leakyReluActivation(slope)
+    val frames = mutableListOf<NetFrame>()
+
+    frames += NetFrame(
+        status = "One character of difference: max(αz, z) with α = $slope instead of max(0, z). The negative side " +
+            "is no longer flat, so its derivative is $slope rather than 0 — small, but not zero, and that is the " +
+            "entire point. A unit that has drifted negative still receives a gradient and can still come back.",
+        plot = shapePlot(a),
+        readout = "negative-side derivative $slope, not 0",
+    )
+
+    val rates = listOf(1.0, 30.0, 60.0, 100.0)
+    val relu = rates.map { dyingRelu(reluActivation, learningRate = it).deadFraction }
+    val leaky = rates.map { dyingRelu(a, learningRate = it).deadFraction }
+    frames += NetFrame(
+        status = "The same learning-rate sweep the ReLU lab runs. ReLU loses " +
+            "${"%.0f".format(relu[1] * 100)}%, ${"%.0f".format(relu[2] * 100)}% and " +
+            "${"%.0f".format(relu[3] * 100)}% of its units as the rate climbs. Leaky ReLU loses " +
+            "${leaky.joinToString(", ") { "%.0f".format(it * 100) + "%" }} — nothing, at any rate tested. The unit " +
+            "cannot become permanently unreachable because the derivative is never exactly zero.",
+        bars = listOf(
+            NetBar("ReLU dead fraction", relu.map { it.toFloat() }, BackwardColor, rates.map { "lr ${it.toInt()}" }),
+            NetBar("Leaky ReLU dead fraction", leaky.map { it.toFloat() }, AccentA, rates.map { "lr ${it.toInt()}" }),
+        ),
+        readout = "the dying problem is gone outright",
+    )
+
+    frames += NetFrame(
+        status = "What it costs. The output is no longer exactly zero for negative input, so the representation " +
+            "stops being sparse — ReLU's exact zeros are genuinely useful, both as a form of regularisation and for " +
+            "the sparse kernels some hardware exploits. And α is a hyperparameter nobody tunes: 0.01 is a number " +
+            "from the paper, and there is no principled way to choose it, which is exactly the gap PReLU fills by " +
+            "learning it.",
+        plot = autoPlot(
+            "Leaky ReLU against ReLU, negative side",
+            listOf(
+                curveOf("Leaky ReLU", ForwardColor, -6f, 2f) { a.f(it) },
+                curveOf("ReLU", NeutralColor, -6f, 2f) { reluActivation.f(it) },
+            ),
+            -6f..2f,
+        ),
+        readout = "no exact zeros · α is a guess",
+    )
+
+    frames += NetFrame(
+        status = "The honest summary is that it is a cheap insurance policy rather than an upgrade. Published " +
+            "comparisons find the accuracy difference against ReLU small and inconsistent across tasks — the case " +
+            "for it is that it removes a specific catastrophic failure at essentially no cost, not that it learns " +
+            "better. Reach for it when you have seen dead units, or when you cannot afford to check.",
+        plot = shapePlot(a),
+        readout = "insurance, not an upgrade",
+    )
+    return frames
+}
+
+private fun preluLabFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+    val run = trainPrelu()
+
+    frames += NetFrame(
+        status = "PReLU is Leaky ReLU with α promoted from a hyperparameter to a parameter: it is learned by " +
+            "gradient descent along with every weight, typically one α per channel. The gradient is available for " +
+            "free — ∂out/∂α is just z on the negative side and 0 on the positive side — so the whole change costs " +
+            "one number per channel.",
+        plot = autoPlot(
+            "three values of α",
+            listOf(
+                curveOf("α = 0 (ReLU)", NeutralColor) { reluActivation.f(it) },
+                curveOf("α = 0.01", AccentB) { leakyReluActivation(0.01).f(it) },
+                curveOf("α = 0.25 (learned here)", ForwardColor) { leakyReluActivation(0.25).f(it) },
+            ),
+        ),
+        readout = "α is a parameter, not a setting",
+    )
+
+    frames += NetFrame(
+        status = "Run it against data generated with a true negative slope of 0.25, starting from α = 0 — that is, " +
+            "starting as plain ReLU. Gradient descent recovers " +
+            "${"%.4f".format(run.alphaHistory.last())} against a true ${"%.2f".format(0.25)}, and the loss goes to " +
+            "${"%.4f".format(run.lossHistory.last())}. Nothing about the slope was specified in advance.",
+        plot = CurvePlot(
+            "α over training",
+            listOf(
+                Curve("α", run.alphaHistory.mapIndexed { i, v -> i.toFloat() to v.toFloat() }, ForwardColor),
+                Curve("true α", listOf(0f to 0.25f, run.alphaHistory.size.toFloat() to 0.25f), NeutralColor),
+            ),
+            0f..run.alphaHistory.size.toFloat(), -0.05f..0.35f,
+        ),
+        readout = "α ${"%.2f".format(run.alphaHistory.first())} → ${"%.4f".format(run.alphaHistory.last())}",
+    )
+
+    frames += NetFrame(
+        status = "The result that made it famous: PReLU was the activation in the 2015 network that first reported " +
+            "super-human top-5 accuracy on ImageNet, in the same paper that introduced He initialisation. The two " +
+            "belong together — the init derivation accounts for the negative slope, so using PReLU with a variance " +
+            "calculation that assumes ReLU leaves the scaling slightly wrong.",
+        plot = CurvePlot(
+            "loss over training",
+            listOf(Curve("MSE", run.lossHistory.mapIndexed { i, v -> i.toFloat() to v.toFloat() }, BackwardColor)),
+            0f..run.lossHistory.size.toFloat(), 0f..(run.lossHistory.max().toFloat() * 1.1f),
+        ),
+        readout = "He init and PReLU are from the same paper",
+    )
+
+    frames += NetFrame(
+        status = "And the caveat, which is the usual one for extra parameters: on a small dataset a learned α is " +
+            "one more thing that can overfit, and the reported gains over Leaky ReLU are modest. It is also worth " +
+            "knowing that α is unconstrained — nothing stops it learning a negative value, which would make the " +
+            "activation non-monotone, and nothing in the formulation says that is wrong.",
+        plot = autoPlot(
+            "three values of α",
+            listOf(
+                curveOf("α = 0", NeutralColor) { reluActivation.f(it) },
+                curveOf("α = 0.25", ForwardColor) { leakyReluActivation(0.25).f(it) },
+                curveOf("α = −0.2 (nothing forbids it)", BackwardColor) { leakyReluActivation(-0.2).f(it) },
+            ),
+        ),
+        readout = "one parameter per channel, unconstrained",
+    )
+    return frames
+}
+
+private fun eluLabFrames(): List<NetFrame> {
+    val a = eluActivation()
+    val frames = mutableListOf<NetFrame>()
+
+    frames += NetFrame(
+        status = "ELU keeps the identity on the positive side and replaces the negative side with α(eᶻ − 1), which " +
+            "is smooth at every point and saturates gently to −α rather than falling away without limit. The " +
+            "saturation is deliberate: a bounded negative response makes the unit robust to a large negative input " +
+            "rather than propagating it.",
+        plot = shapePlot(a),
+        readout = "smooth everywhere · bounded below at −α",
+    )
+
+    val meanElu = meanOutput(a)
+    val meanRelu = meanOutput(reluActivation)
+    frames += NetFrame(
+        status = "The argument for it is the mean. Over standard normal input ELU averages " +
+            "${"%.3f".format(meanElu)} against ReLU's ${"%.3f".format(meanRelu)} — much closer to zero, because the " +
+            "negative side contributes something instead of nothing. Activations centred near zero are the same " +
+            "property batch normalisation is added to enforce, and ELU gets part of the way there for free.",
+        plot = autoPlot(
+            "ELU against ReLU",
+            listOf(
+                curveOf("ELU", ForwardColor) { a.f(it) },
+                curveOf("ReLU", NeutralColor) { reluActivation.f(it) },
+            ),
+        ),
+        readout = "mean ${"%.3f".format(meanElu)} vs ReLU's ${"%.3f".format(meanRelu)}",
+    )
+
+    frames += saturationFrame(
+        a,
+        "Its negative saturation does cost something, and the measurement says how much: the fraction of units with " +
+            "a near-zero derivative climbs with the pre-activation width the way sigmoid's does, though from a lower " +
+            "base and more slowly. ELU is not saturation-free — it trades ReLU's hard zero for a soft floor, and a " +
+            "soft floor is still a floor.",
+    )
+
+    frames += NetFrame(
+        status = "In practice the deciding factor is usually cost rather than accuracy. ELU needs an exponential on " +
+            "the negative half, and max(0, z) is a comparison — on a large model that difference is real, and the " +
+            "accuracy gain over ReLU with batch normalisation is small. ELU is a good default when you are not " +
+            "using normalisation layers, which is a narrower situation now than it was in 2015.",
+        plot = shapePlot(a),
+        readout = "an exp() per negative unit",
+    )
+    return frames
+}
+
+private fun seluLabFrames(): List<NetFrame> {
+    val a = seluActivation
+    val frames = mutableListOf<NetFrame>()
+
+    frames += NetFrame(
+        status = "SELU is ELU multiplied by λ, with α and λ fixed at " +
+            "${"%.4f".format(SeluAlpha)} and ${"%.4f".format(SeluLambda)}. Those are not tuned values — they are " +
+            "the solution to a fixed-point equation, chosen so that a layer maps activations with mean 0 and " +
+            "variance 1 to activations with mean 0 and variance 1. The claim is that a deep stack normalises itself " +
+            "with no normalisation layer at all.",
+        plot = shapePlot(a),
+        readout = "λ = ${"%.4f".format(SeluLambda)}, α = ${"%.4f".format(SeluAlpha)}",
+    )
+
+    val selu = propagate(a)
+    frames += depthStatsFrame(
+        a,
+        "Twenty layers, LeCun normal initialisation, and the claim measured rather than repeated: the mean stays " +
+            "within a few hundredths of zero and the standard deviation within a few hundredths of one, the whole " +
+            "way down. Layer 20 comes out at mean ${"%.3f".format(selu.perLayer.last().mean)} and std " +
+            "${"%.3f".format(selu.perLayer.last().std)}. Nothing is normalising anything; the activation's own " +
+            "shape is doing it.",
+    )
+
+    val relu = propagate(reluActivation)
+    val tanhRun = propagate(tanhActivation)
+    frames += NetFrame(
+        status = "The same twenty layers for ReLU and tanh, each at the initialisation it is designed for. Both " +
+            "lose their signal with depth — ReLU's standard deviation falls to " +
+            "${"%.3f".format(relu.perLayer.last().std)} and tanh's to " +
+            "${"%.3f".format(tanhRun.perLayer.last().std)}, against SELU's " +
+            "${"%.3f".format(selu.perLayer.last().std)}. This is the comparison the paper is about, and it holds.",
+        plot = CurvePlot(
+            "activation std by layer",
+            listOf(
+                Curve("SELU", selu.perLayer.map { it.layer.toFloat() to it.std.toFloat() }, AccentA),
+                Curve("ReLU", relu.perLayer.map { it.layer.toFloat() to it.std.toFloat() }, NeutralColor),
+                Curve("tanh", tanhRun.perLayer.map { it.layer.toFloat() to it.std.toFloat() }, BackwardColor),
+            ),
+            1f..20f, 0f..1.3f,
+        ),
+        readout = "std at layer 20: ${"%.3f".format(selu.perLayer.last().std)} · ${"%.3f".format(relu.perLayer.last().std)} · ${"%.3f".format(tanhRun.perLayer.last().std)}",
+    )
+
+    val wrongInit = propagate(a, initScale = sqrt(2.0 / 32.0))
+    frames += NetFrame(
+        status = "And the condition that is easy to miss: the fixed point is derived assuming LeCun normal " +
+            "initialisation, variance 1/n. Run the identical SELU stack under He initialisation instead and layer " +
+            "20 comes out at mean ${"%.2f".format(wrongInit.perLayer.last().mean)} and std " +
+            "${"%.2f".format(wrongInit.perLayer.last().std)} — the self-normalisation is simply gone. The " +
+            "initialisation is part of the method, not a detail beside it, and the same goes for the dropout " +
+            "variant it requires (alpha-dropout, which preserves mean and variance where ordinary dropout does not).",
+        plot = CurvePlot(
+            "SELU activation std, two initialisations",
+            listOf(
+                Curve("LeCun (correct)", selu.perLayer.map { it.layer.toFloat() to it.std.toFloat() }, AccentA),
+                Curve("He (wrong)", wrongInit.perLayer.map { it.layer.toFloat() to it.std.toFloat() }, BackwardColor),
+            ),
+            1f..20f, 0f..6f,
+        ),
+        readout = "under He init: mean ${"%.2f".format(wrongInit.perLayer.last().mean)}, std ${"%.2f".format(wrongInit.perLayer.last().std)}",
+    )
+
+    frames += NetFrame(
+        status = "So why is it not everywhere? The property is real and the practice went elsewhere. It holds for " +
+            "plain feedforward stacks and not for convolutions, residual connections or attention, where the " +
+            "architecture moves the statistics itself; it needs its own initialisation and its own dropout; and " +
+            "batch and layer normalisation give the same stability with none of those conditions. SELU is worth " +
+            "knowing as a result about what an activation *can* do, and it is rarely the right default.",
+        plot = shapePlot(a),
+        readout = "a real property, superseded by normalisation layers",
+    )
+    return frames
+}
+
+private fun swishLabFrames(): List<NetFrame> {
+    val a = swishActivation()
+    val frames = mutableListOf<NetFrame>()
+    val minimum = minimumOf({ a.f(it) })
+    val peak = (-800..800).maxOf { a.df(it / 100.0) }
+
+    frames += NetFrame(
+        status = "Swish is z·σ(βz): the input multiplied by a gate computed from the input itself. It is smooth " +
+            "everywhere, unbounded above and bounded below, and — unlike everything before it here — it is not " +
+            "monotone. It dips to ${"%.4f".format(minimum.second)} at z = ${"%.3f".format(minimum.first)} before " +
+            "coming back up.",
+        plot = shapePlot(a),
+        readout = "minimum ${"%.4f".format(minimum.second)} at z = ${"%.3f".format(minimum.first)}",
+    )
+
+    frames += NetFrame(
+        status = "That dip has a consequence worth seeing: the derivative exceeds 1, peaking at " +
+            "${"%.4f".format(peak)}. Every activation before this one in the category has a derivative capped at 1 " +
+            "or below, so they can only attenuate the backward signal. Swish can amplify it slightly — which is " +
+            "part of why it behaves well in very deep stacks, and also why it is not a free win.",
+        plot = autoPlot(
+            "derivatives compared",
+            listOf(
+                curveOf("Swish′", ForwardColor) { a.df(it) },
+                curveOf("ReLU′", NeutralColor) { reluActivation.df(it) },
+            ),
+        ),
+        readout = "max derivative ${"%.4f".format(peak)} — above 1",
+    )
+
+    frames += NetFrame(
+        status = "β interpolates between two things you already know. At β → 0 the gate is a constant ½ and Swish " +
+            "becomes the linear function z/2; at β → ∞ the gate becomes a step and Swish becomes ReLU exactly. β = " +
+            "1 is the usual choice and is what SiLU means; making β learnable is possible and rarely worth it.",
+        plot = autoPlot(
+            "β = 0.1, 1, 10",
+            listOf(
+                curveOf("β = 0.1", NeutralColor) { swishActivation(0.1).f(it) },
+                curveOf("β = 1", ForwardColor) { swishActivation(1.0).f(it) },
+                curveOf("β = 10", AccentB) { swishActivation(10.0).f(it) },
+            ),
+        ),
+        readout = "β → 0 is linear · β → ∞ is ReLU",
+    )
+
+    frames += NetFrame(
+        status = "It is worth being straight about where it came from. Swish was found by an automated search over " +
+            "candidate activation functions, not derived from a property anyone wanted — the explanations for why " +
+            "it works were written afterwards. It had also been published twice before under other names (SiL, " +
+            "SiLU). The reported gains over ReLU are consistent but small, around a point of ImageNet top-1, and " +
+            "it costs a sigmoid per unit. That is the whole case: a modest, reproducible improvement with a real " +
+            "compute cost.",
+        plot = shapePlot(a),
+        readout = "found by search · small consistent gain · costs a sigmoid",
+    )
+    return frames
+}
+
+private fun geluLabFrames(): List<NetFrame> {
+    val a = geluActivation
+    val frames = mutableListOf<NetFrame>()
+    val minimum = minimumOf({ a.f(it) })
+    val vsRelu = maxDeviation({ a.f(it) }, { reluActivation.f(it) })
+    val vsSwish = maxDeviation({ a.f(it) }, { swishActivation().f(it) })
+    val vsApprox = maxDeviation({ a.f(it) }, ::geluTanhApproximation)
+
+    frames += NetFrame(
+        status = "GELU is z·Φ(z), the input times the probability that a standard normal draw falls below it. The " +
+            "motivation is different from every other activation here: rather than shaping a curve, it asks what " +
+            "happens if a unit is kept or dropped at random with probability depending on its own value, and then " +
+            "takes the expectation. It is dropout and ReLU merged into one deterministic function.",
+        plot = shapePlot(a),
+        readout = "z · Φ(z) — a smooth, probabilistic gate",
+    )
+
+    frames += NetFrame(
+        status = "Shape-wise it is a smoothed ReLU with a dip: minimum ${"%.4f".format(minimum.second)} at z = " +
+            "${"%.3f".format(minimum.first)}, and it differs from ReLU by at most " +
+            "${"%.4f".format(vsRelu.second)}, at z = ${"%.3f".format(vsRelu.first)}. That is a small difference in " +
+            "absolute terms and it is concentrated exactly at the kink, where ReLU is not differentiable — which is " +
+            "the part that matters for optimisation.",
+        plot = autoPlot(
+            "GELU against ReLU",
+            listOf(
+                curveOf("GELU", ForwardColor) { a.f(it) },
+                curveOf("ReLU", NeutralColor) { reluActivation.f(it) },
+            ),
+        ),
+        readout = "max gap from ReLU ${"%.4f".format(vsRelu.second)}, at the kink",
+    )
+
+    frames += NetFrame(
+        status = "Against Swish, which it closely resembles, the largest gap is ${"%.4f".format(vsSwish.second)} at " +
+            "z = ${"%.3f".format(vsSwish.first)} — they are different functions with different derivations that " +
+            "landed in almost the same place. Neither has a convincing argument for being better than the other; " +
+            "which one a model uses is mostly which paper its architecture descended from.",
+        plot = autoPlot(
+            "GELU against Swish",
+            listOf(
+                curveOf("GELU", ForwardColor) { a.f(it) },
+                curveOf("Swish (β=1)", AccentB) { swishActivation().f(it) },
+            ),
+        ),
+        readout = "max gap from Swish ${"%.4f".format(vsSwish.second)}",
+    )
+
+    frames += NetFrame(
+        status = "One practical detail that matters more than it should. Because Φ was expensive, BERT and GPT-2 " +
+            "shipped a tanh-based approximation, and it is within ${"%.5f".format(vsApprox.second)} of the exact " +
+            "function everywhere. That difference is negligible mathematically and not negligible operationally: " +
+            "pretrained weights were fitted with the approximation, so frameworks keep both — `nn.GELU()` and " +
+            "`nn.GELU(approximate='tanh')` — and swapping them under a checkpoint shifts its outputs slightly.",
+        plot = autoPlot(
+            "exact minus tanh approximation, ×10⁴",
+            listOf(
+                Curve(
+                    "difference",
+                    sample(-6f..6f, 200) { ((a.f(it.toDouble()) - geluTanhApproximation(it.toDouble())) * 1e4).toFloat() },
+                    BackwardColor,
+                ),
+            ),
+        ),
+        readout = "max difference ${"%.5f".format(vsApprox.second)}",
+    )
+
+    frames += NetFrame(
+        status = "GELU is the default in essentially every transformer — BERT, GPT, ViT — and that is the honest " +
+            "reason to know it. The empirical case is a small consistent edge over ReLU on those architectures; the " +
+            "theoretical case is suggestive rather than decisive. It is the standard because it works slightly " +
+            "better and everyone else is using it, which is a legitimate reason and worth naming as such.",
+        plot = shapePlot(a),
+        readout = "the transformer default",
+    )
+    return frames
+}
+
+private fun softmaxLabFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+    val logits = listOf(2.0, 1.0, 0.1, -0.5)
+    val labels = listOf("2.0", "1.0", "0.1", "−0.5")
+
+    val base = softmax(logits)
+    frames += NetFrame(
+        status = "Softmax is the odd one out in this category, and the difference is structural rather than a " +
+            "matter of shape: every other activation here maps one number to one number, and softmax maps a whole " +
+            "vector to a whole vector. Each output depends on every input, because the denominator is a sum over " +
+            "all of them. Logits ${labels.joinToString()} become " +
+            "${base.joinToString { "%.3f".format(it) }}, and they sum to exactly 1.",
+        bars = listOf(
+            NetBar("logits", logits.map { it.toFloat() }, NeutralColor, labels),
+            NetBar("probabilities", base.map { it.toFloat() }, ForwardColor, base.map { "%.2f".format(it) }),
+        ),
+        readout = "sums to ${"%.4f".format(base.sum())}",
+    )
+
+    val temperatures = listOf(0.25, 0.5, 1.0, 2.0, 5.0)
+    val entropies = temperatures.map { entropyOf(softmax(logits, it)) }
+    frames += NetFrame(
+        status = "Dividing the logits by a temperature before exponentiating controls how peaked the result is, " +
+            "and nothing else about it. At T = ${temperatures.first()} the top class takes " +
+            "${"%.1f".format(softmax(logits, temperatures.first())[0] * 100)}% of the mass; at T = " +
+            "${temperatures.last().toInt()} it takes only " +
+            "${"%.1f".format(softmax(logits, temperatures.last())[0] * 100)}%. Entropy climbs from " +
+            "${"%.2f".format(entropies.first())} to ${"%.2f".format(entropies.last())} nats. This is the sampling " +
+            "temperature in every text generator, and it is a property of the softmax rather than of the model.",
+        plot = CurvePlot(
+            "probability of each class against temperature",
+            listOf(
+                Curve("logit 2.0", temperatures.mapIndexed { i, t -> t.toFloat() to softmax(logits, t)[0].toFloat() }, ForwardColor),
+                Curve("logit 1.0", temperatures.mapIndexed { i, t -> t.toFloat() to softmax(logits, t)[1].toFloat() }, AccentB),
+                Curve("logit 0.1", temperatures.mapIndexed { i, t -> t.toFloat() to softmax(logits, t)[2].toFloat() }, AccentA),
+                Curve("logit −0.5", temperatures.mapIndexed { i, t -> t.toFloat() to softmax(logits, t)[3].toFloat() }, NeutralColor),
+            ),
+            0.25f..5f, 0f..1.05f,
+        ),
+        readout = "entropy ${"%.2f".format(entropies.first())} → ${"%.2f".format(entropies.last())} nats",
+    )
+
+    val big = listOf(1000.0, 1001.0, 1002.0)
+    val naive = softmaxNaive(big)
+    val stable = softmax(big)
+    frames += NetFrame(
+        status = "The implementation detail that is not optional. Computing eᶻ directly on logits of " +
+            "${big.joinToString { it.toInt().toString() }} overflows a double and returns " +
+            "${naive.joinToString { if (it.isNaN()) "NaN" else "%.3f".format(it) }}. Subtracting the maximum logit " +
+            "first changes the result by exactly nothing — the constant cancels between numerator and denominator — " +
+            "and gives ${stable.joinToString { "%.3f".format(it) }}. Every library does this internally, which is " +
+            "also why you should pass logits to a cross-entropy loss rather than probabilities.",
+        bars = listOf(
+            NetBar("stable softmax", stable.map { it.toFloat() }, AccentA, stable.map { "%.3f".format(it) }),
+        ),
+        readout = "naive → NaN · shifted → correct",
+    )
+
+    val jacobian = softmaxJacobian(base)
+    frames += NetFrame(
+        status = "Its derivative is a matrix, not a number: ∂pᵢ/∂zⱼ = pᵢ(δᵢⱼ − pⱼ). Every row sums to zero, which " +
+            "says something real — pushing one probability up must pull the others down, because they are " +
+            "constrained to sum to 1. Paired with cross-entropy loss the whole matrix collapses to ŷ − y, and that " +
+            "cancellation is why the two are always implemented together rather than as separate layers.",
+        grids = listOf(
+            GridView("Jacobian ∂pᵢ/∂zⱼ", jacobian.map { row -> row.map { it.toFloat() } }),
+        ),
+        readout = "row sums ${jacobian.joinToString { "%.2f".format(it.sum()) }} — all zero",
+    )
+    return frames
+}
+
 private val netConfigs = mapOf(
+    "sigmoid" to NetConfig(
+        intro = "The curve, its 0.25 derivative ceiling, the saturation that grows with pre-activation width, and twenty layers of the consequence.",
+        legend = listOf(ForwardColor to "σ(z)", BackwardColor to "σ′(z)", AccentA to "tanh"),
+        build = ::sigmoidLabFrames,
+    ),
+    "tanh" to NetConfig(
+        intro = "A rescaled sigmoid: zero-centred, derivative peaking at 1 instead of 0.25 — and saturating slightly sooner.",
+        legend = listOf(ForwardColor to "tanh(z)", BackwardColor to "derivative", NeutralColor to "sigmoid"),
+        build = ::tanhLabFrames,
+    ),
+    "relu" to NetConfig(
+        intro = "Derivative exactly 1 where active, a fixed 50% zero region that does not grow, and the dying-unit failure measured under real SGD.",
+        legend = listOf(ForwardColor to "ReLU", BackwardColor to "Dead units", AccentA to "Leaky ReLU"),
+        build = ::reluLabFrames,
+    ),
+    "leaky_relu" to NetConfig(
+        intro = "One character of difference from ReLU, run through the same learning-rate sweep that killed ReLU's units.",
+        legend = listOf(ForwardColor to "Leaky ReLU", NeutralColor to "ReLU", AccentA to "Dead: none"),
+        build = ::leakyReluLabFrames,
+    ),
+    "prelu" to NetConfig(
+        intro = "The negative slope as a learned parameter: α starts at 0 and gradient descent finds the value the data wants.",
+        legend = listOf(ForwardColor to "Learned α", NeutralColor to "ReLU", BackwardColor to "Loss"),
+        build = ::preluLabFrames,
+    ),
+    "elu" to NetConfig(
+        intro = "A smooth negative branch saturating at −α, and the mean-activation argument that motivates it.",
+        legend = listOf(ForwardColor to "ELU", NeutralColor to "ReLU", BackwardColor to "Saturation"),
+        build = ::eluLabFrames,
+    ),
+    "selu" to NetConfig(
+        intro = "The self-normalising claim, measured over twenty layers — and what happens to it under the wrong initialisation.",
+        legend = listOf(AccentA to "SELU", NeutralColor to "ReLU", BackwardColor to "tanh / wrong init"),
+        build = ::seluLabFrames,
+    ),
+    "swish" to NetConfig(
+        intro = "Self-gated and non-monotone: the dip below zero, a derivative above 1, and what β interpolates between.",
+        legend = listOf(ForwardColor to "Swish", NeutralColor to "ReLU", AccentB to "β variants"),
+        build = ::swishLabFrames,
+    ),
+    "gelu" to NetConfig(
+        intro = "z·Φ(z), measured against ReLU and Swish — plus the tanh approximation the pretrained checkpoints were fitted with.",
+        legend = listOf(ForwardColor to "GELU", NeutralColor to "ReLU", AccentB to "Swish"),
+        build = ::geluLabFrames,
+    ),
+    "softmax" to NetConfig(
+        intro = "The one activation here that maps a vector to a vector: temperature, the overflow you must avoid, and a Jacobian instead of a derivative.",
+        legend = listOf(ForwardColor to "Probabilities", NeutralColor to "Logits", AccentA to "Stable"),
+        build = ::softmaxLabFrames,
+    ),
     "biological_neuron" to NetConfig(
         intro = "A leaky integrate-and-fire neuron, simulated properly — sub-threshold, firing, and its full f–I curve — beside the artificial unit that abstracts it.",
         legend = listOf(ForwardColor to "Membrane / f–I", BackwardColor to "Threshold", OutputColor to "Response"),

@@ -195,16 +195,16 @@ class AiTaxonomyCoverageTest {
             ),
             // `activation_functions` is the umbrella; C2 authors the ten.
             "Activation Functions" to linkedMapOf(
-                "Sigmoid" to emptyList(),                               // C2
-                "Tanh (Hyperbolic Tangent)" to emptyList(),             // C2
-                "ReLU (Rectified Linear Unit)" to emptyList(),          // C2
-                "Leaky ReLU" to emptyList(),                            // C2
-                "Parametric ReLU (PReLU)" to emptyList(),               // C2
-                "ELU (Exponential Linear Unit)" to emptyList(),         // C2
-                "SELU (Scaled ELU)" to emptyList(),                     // C2
-                "Swish (by Google)" to emptyList(),                     // C2
-                "GELU (Gaussian Error Linear Unit)" to emptyList(),     // C2
-                "Softmax (Output Layer)" to emptyList(),                // C2
+                "Sigmoid" to listOf("sigmoid"),
+                "Tanh (Hyperbolic Tangent)" to listOf("tanh"),
+                "ReLU (Rectified Linear Unit)" to listOf("relu"),
+                "Leaky ReLU" to listOf("leaky_relu"),
+                "Parametric ReLU (PReLU)" to listOf("prelu"),
+                "ELU (Exponential Linear Unit)" to listOf("elu"),
+                "SELU (Scaled ELU)" to listOf("selu"),
+                "Swish (by Google)" to listOf("swish"),
+                "GELU (Gaussian Error Linear Unit)" to listOf("gelu"),
+                "Softmax (Output Layer)" to listOf("softmax"),
             ),
             // `cnn` is the umbrella; C3 authors the mechanics and the architectures.
             "Convolutional Neural Networks (CNN)" to linkedMapOf(
@@ -514,7 +514,7 @@ class AiTaxonomyCoverageTest {
 
     // The ratchet. Move it when a batch lands; a batch that does not move it did not close any doc
     // entry, which is worth noticing.
-    private val expectedCoveredCount = 197
+    private val expectedCoveredCount = 207
 
     // Doc entries the app answers from the DSA taxonomy rather than an AI section. Deliberate reuse
     // — the alternative is a duplicate page — but small and explicit, so it cannot grow by accident.

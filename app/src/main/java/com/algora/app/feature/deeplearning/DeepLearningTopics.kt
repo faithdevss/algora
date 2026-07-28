@@ -26,6 +26,7 @@ private fun topic(
 )
 
 private val basics = DeepLearningCategories.basics
+private val activations = DeepLearningCategories.activations
 private val fundamentals = DeepLearningCategories.fundamentals
 private val architectures = DeepLearningCategories.architectures
 
@@ -47,8 +48,26 @@ private val basicsTopics = listOf(
     topic("exploding_gradient", "The Exploding Gradient Problem", basics, "The same multiplication running the other way, and why clipping works.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
 )
 
+// The doc's Activation Functions block in full, led by the existing activation_functions umbrella
+// moved over from dl_fundamentals. Ordered as the history actually went: the two saturating ones
+// that came first, the rectifier family that replaced them and the repairs to its one failure, then
+// the two smooth self-gated functions that won the transformer era — and softmax last, because it
+// is an output layer rather than a hidden non-linearity.
+private val activationTopics = listOf(
+    topic("activation_functions", "Activation Functions", activations, "Non-linearities (ReLU, sigmoid, tanh) that give networks their power.", isPremium = true),
+    topic("sigmoid", "Sigmoid", activations, "The original, its 0.25 derivative ceiling, and where it still belongs.", difficulty = Difficulty.BEGINNER),
+    topic("tanh", "Tanh (Hyperbolic Tangent)", activations, "Zero-centred, four times the gradient — and still saturating.", isPremium = true, difficulty = Difficulty.BEGINNER),
+    topic("relu", "ReLU (Rectified Linear Unit)", activations, "Derivative exactly 1 where active, and the units that die when the step is too big.", difficulty = Difficulty.BEGINNER),
+    topic("leaky_relu", "Leaky ReLU", activations, "One character of difference, and the dying problem is gone.", isPremium = true, difficulty = Difficulty.BEGINNER),
+    topic("prelu", "Parametric ReLU (PReLU)", activations, "Stop guessing the negative slope and learn it.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("elu", "ELU (Exponential Linear Unit)", activations, "A smooth negative branch that saturates, for a mean nearer zero.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("selu", "SELU (Scaled ELU)", activations, "Two constants that make a deep stack normalise itself — under one exact condition.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("swish", "Swish (by Google)", activations, "Self-gated and non-monotone, with a derivative that can exceed 1.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("gelu", "GELU (Gaussian Error Linear Unit)", activations, "Dropout and ReLU merged into one deterministic function — the transformer default.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("softmax", "Softmax (Output Layer)", activations, "The one that maps a vector to a vector, with a Jacobian instead of a derivative.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+)
+
 private val fundamentalsTopics = listOf(
-    topic("activation_functions", "Activation Functions", fundamentals, "Non-linearities (ReLU, sigmoid, tanh) that give networks their power.", isPremium = true),
     topic("gradient_descent_variants", "Gradient Descent Variants", fundamentals, "SGD, Momentum, RMSProp, Adam and friends.", isPremium = true),
     topic("batch_normalization", "Batch Normalization", fundamentals, "Re-centre and re-scale activations so deep stacks stay trainable.", isPremium = true),
     topic("dropout", "Dropout", fundamentals, "Randomly silence neurons during training so none becomes indispensable.", isPremium = true),
@@ -66,7 +85,7 @@ private val architecturesTopics = listOf(
 )
 
 object DeepLearningTopics {
-    val topics: List<Topic> = basicsTopics + fundamentalsTopics + architecturesTopics
+    val topics: List<Topic> = basicsTopics + activationTopics + fundamentalsTopics + architecturesTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }

@@ -1,11 +1,11 @@
 # Phase 9 — AI Taxonomy Completion
 
-Status: In progress — Track A complete (RL at 100% of the doc), B1–B7 and C1 done. 78 of 226 topics
-authored; taxonomy at 278, target 426. AI sections now: ML 75, DL 19, NLP 12, RL 74.
-**Doc coverage is measured, not estimated: 197 of the doc's 357 entries (55%).**
-Next: C2 (Activation Functions, 10 topics) — or back to B8, which is still open. Track B was
-interrupted after B7 by a deliberate jump to Track C; **B8, B9 and B10 remain unbuilt**, and
-`ml_supervised` therefore still holds the four topics they were to redistribute.
+Status: In progress — Track A complete (RL at 100% of the doc), B1–B7 and C1–C2 done. 88 of 226
+topics authored; taxonomy at 288, target 426. AI sections now: ML 75, DL 29, NLP 12, RL 74.
+**Doc coverage is measured, not estimated: 207 of the doc's 357 entries (58%).**
+Next: `FeatureMapPlayer`, then C3 — the plan puts the widget before the CNN batch that needs it.
+Track B was interrupted after B7 by a deliberate jump to Track C; **B8, B9 and B10 remain unbuilt**,
+and `ml_supervised` therefore still holds the four topics they were to redistribute.
 
 **Both guards are now built.** Phase 10 landed the category-integrity assertion
 (`CategoryIntegrityTest`, generic over all eight sections), and B6 landed
@@ -71,13 +71,14 @@ below.
 | B7 · Association Rules + Time Series | 9 | **Done** | No new widget; one additive `LabCanvas` fix. `B7MathTest` added |
 | B8–B10 | 29 | **Skipped for now** | Deliberate jump to Track C; `ml_supervised` still awaits them |
 | C1 · NN Basics | 4 | **Done** | No new widget. New `NeuralNetPlayer` frame guard found 4 live bugs |
-| C2–C9 | 69 | Planned | `FeatureMapPlayer` still outstanding, blocks C3/C4 |
+| C2 · Activation Functions | 10 | **Done** | No new widget. `autoPlot` retires hand-picked axes |
+| C3–C9 | 59 | Planned | `FeatureMapPlayer` still outstanding, blocks C3/C4 |
 | Track D (D1–D6) | 50 | Planned | |
-| **Total** | **226** | **78 done** | Taxonomy 200 → 278 of 426 |
+| **Total** | **226** | **88 done** | Taxonomy 200 → 288 of 426 |
 
 Sections against the doc, measured by `AiTaxonomyCoverageTest` rather than counted by hand:
-**RL 71/71**, ML 84/113, DL 26/96, NLP 16/77 — **197 of 357 overall**. ML is 75 topics of its
-eventual ~100; DL has started at 19; NLP is untouched at 12. Browsable topics across the app: 301.
+**RL 71/71**, ML 84/113, DL 36/96, NLP 16/77 — **207 of 357 overall**. ML is 75 topics of its
+eventual ~100; DL is at 29; NLP is untouched at 12. Browsable topics across the app: 311.
 
 ## Decisions taken before planning
 
@@ -569,16 +570,59 @@ New guard `DeepNetMathTest` (12 tests), including that clipping preserves each l
 the gradient — the property that distinguishes global-norm clipping from per-parameter clipping and
 the one the frame's claim rests on.
 
-**C2 · Activation Functions** — 10 topics
-Sigmoid · Tanh · ReLU · Leaky ReLU · PReLU · ELU · SELU · Swish · GELU · Softmax
-*Sims:* `RegressionExplorer` (function + derivative curves, saturation regions shaded) and
-`NeuralNetPlayer` (dead-ReLU count per activation).
+**C2 · Activation Functions** — 10 topics — **Done**
+`sigmoid` · `tanh` · `relu` · `leaky_relu` · `prelu` · `elu` · `selu` · `swish` · `gelu` · `softmax`
+
+New category `dl_activations` (icon `trend`), led by the existing `activation_functions` umbrella
+moved over from `dl_fundamentals`, which keeps its remaining four for C8 and C9. `sigmoid` and
+`relu` are free; the rest premium. Ordered as the history went: the two saturating functions, the
+rectifier family and the repairs to its one failure, the two smooth self-gated functions that won
+the transformer era, and softmax last because it is an output layer rather than a hidden
+non-linearity.
+
+**No new widget.** The plan proposed `RegressionExplorer` here, which is the same mistake B7 caught
+— it has no `topicId` parameter and cannot take configs. All ten went to `NeuralNetPlayer`, whose
+`CurvePlot` with explicit axes is exactly the right shape for a function and its derivative. New
+math file `ActivationMath.kt` defines each activation once with its derivative and measures every
+claim by running signal through a real stack.
+
+**A guard change worth keeping.** C1's frame guard failed immediately on seven of the ten new labs —
+identity-like curves over x ∈ [−6, 6] reach 6, and hand-picked y ranges of `-1f..4f` clipped them.
+Rather than widen each by hand, `autoPlot` now derives the y range from the curves. Hand-picked axes
+caused three of C1's four found bugs; this removes the category rather than the seven instances.
+
+**Measurements the copy is built on**, all computed at build time:
+- σ′ ≤ 0.25 exactly, against tanh's 1.0. Mean output 0.497 against tanh's −0.009.
+- Saturation is a property of *scale*, not of the function: sigmoid's flat-tail fraction goes
+  0.000 → 0.777 as the pre-activation standard deviation goes 1 → 16, while **ReLU's stays at 0.50
+  throughout** — a fixed feature of the shape rather than a failure that worsens with training.
+- **Dying ReLU, run rather than described.** One layer, plain SGD, 120 steps: 0% dead at lr 1,
+  12.5% at 30, 78.1% at 60, 100% at 100 — and every death happens inside the first ten steps, with
+  the fraction flat for the remaining hundred and ten. Leaky ReLU loses nothing at any rate.
+- PReLU's α trained from 0 to 0.2500 against a true 0.25.
+- ELU's mean output 0.151 against ReLU's 0.394 — while **Leaky ReLU's is 0.390**, essentially
+  unchanged. The two are often said to solve the same problem and measurably do not.
+- **SELU self-normalises**: over 20 layers at LeCun init, layer 20 measures mean −0.014, std 0.971,
+  holding across three seeds — against ReLU's 0.090 and tanh's 0.148. Under He init instead it
+  breaks completely: mean 2.00, std 4.81. The initialisation is part of the method.
+- Swish min −0.2785 at −1.2785, GELU min −0.1700 at −0.752, derivatives peaking at 1.0998 and
+  1.1289 — both above 1, unlike every earlier activation in the category.
+- GELU's tanh approximation within 0.00047 of exact everywhere; softmax naive on [1000, 1001, 1002]
+  returns NaN while the shifted form returns [0.090, 0.245, 0.665]; temperature entropy 0.095 → 1.368
+  nats; every Jacobian row sums to zero.
+
+New guard `ActivationMathTest` (16 tests). Most are exact, because an activation is a formula; the
+depth-propagation and dead-unit ones are orderings checked across seeds, since a result holding only
+for the configuration on screen would not be a property of the activation.
 
 > **Note on new widgets.** The phase was planned assuming `FeatureMapPlayer` would be the only
 > net-new simulation widget. B1 and B2 each needed one as well (`RegressionLab`, `DecisionSurface`),
 > because the existing labs were bound to a single model shape. Both are config-driven and expected to
 > serve later batches — `DecisionSurface` in particular should cover B3 and B4 — so the remaining
-> batches should be checked against them before assuming more widget work.
+> batches should be checked against them before assuming more widget work. That check has now paid
+> off for seven consecutive batches (B3–B7, C1–C2), and twice the *plan's own* widget suggestion was
+> the wrong one: it named `RegressionExplorer` for both B7 and C2, and that widget takes no
+> `topicId` at all. Read the widget before trusting the plan's line about it.
 
 **C3 · CNN Mechanics + Architectures** — 11 topics
 Convolution Layers · Pooling · Padding & Strides · LeNet-5 · AlexNet · VGG · Inception · ResNet ·
@@ -692,7 +736,7 @@ monetization angle.
 
 ## Guards
 
-**Shipping and green (107 tests):**
+**Shipping and green (123 tests):**
 - `ContentCoverageTest` — every browsable topic has content, nothing resolves to `NotYetAvailable`,
   and every prerequisite and cross-link id resolves. It has caught real breakage every batch and is
   run (with `--rerun-tasks`) at the end of each one.
@@ -700,13 +744,19 @@ monetization angle.
   within its own section's `all` list, no category is empty, ids are globally unique. This is what
   made deleting `ml_unsupervised` in B6 a safe edit rather than a careful one.
 - `SimulationFrameTest` (phase 10) — runs every frame builder on the JVM and asserts point-cloud
-  frames stay inside the unit square. Caught B6's `unevenClusters` overflow.
+  frames stay inside the unit square. Caught B6's `unevenClusters` overflow. **C1 added neural-net
+  coverage** (declared plot axes, bar caption arity) and it found four live bugs on its first run,
+  two of them frames rendering the wrong data entirely; **C2 then failed on seven of its own ten new
+  labs** before they shipped, which `autoPlot` now prevents structurally. Worth extending to the
+  remaining unguarded widgets — `TokenStrip`, `RegressionLab`, `DecisionSurface` — rather than
+  waiting for a batch to need them.
 - `AiTaxonomyCoverageTest` (B6) — the doc as code. 357 entries nested by section and heading, each
   mapped to the topic ids serving it or to an explicit gap; pins the entry count, id resolution,
   section membership, and the covered count. Its failure message prints the remaining backlog.
-- `DimReductionMathTest` (B6), `B7MathTest` (B7) and `DeepNetMathTest` (C1) — pin the properties each
-  batch's copy leans on, so a re-tune that makes a topic pointless fails instead of shipping. Worth
-  continuing per batch; `B7MathTest` caught a wrong claim that had already been written.
+- `DimReductionMathTest` (B6), `B7MathTest` (B7), `DeepNetMathTest` (C1) and `ActivationMathTest`
+  (C2) — pin the properties each batch's copy leans on, so a re-tune that makes a topic pointless
+  fails instead of shipping. Worth continuing per batch; `B7MathTest` caught a wrong claim that had
+  already been written.
 
 **Nothing specified here is now unbuilt.** The lesson from the five-batch slip is worth keeping:
 the taxonomy map cost about an hour, would have cost the same at any point, and immediately
@@ -727,7 +777,7 @@ number closed no doc entry, which is worth noticing at the time rather than at t
   after a one-line canvas change. Check the remaining batches against what now exists, and check
   *which* of two similar widgets is the config-driven one.
 - **`FeatureMapPlayer` is still net-new** and blocks C3 and C4. Build it while C1/C2 land.
-- **Verification keeps finding real defects, not wording problems.** Across eight batches: an
+- **Verification keeps finding real defects, not wording problems.** Across nine batches: an
   inverted Complement NB sign that produced confidently wrong classifications, MCMC step sizes whose
   "too large" case sat in the well-tuned regime, an XGBoost split gain that was negative where the
   narration took it, LightGBM leaf counts that contradicted the drawing, and a `twoMoons` geometry
@@ -741,7 +791,9 @@ number closed no doc entry, which is worth noticing at the time rather than at t
   test that caught it, not the probe. Both steps earn their place: the probe before the copy, the
   guard after it. C1 added a third kind: a *widget* guard, which found four defects in labs that had
   shipped batches earlier and were rendering the wrong data the whole time. Every widget without one
-  is carrying unknown bugs of that shape.
+  is carrying unknown bugs of that shape. C2 then showed the guard's second use — it failed on seven
+  of ten new labs during authoring, which is far cheaper than finding them after release, and the fix
+  (`autoPlot`, deriving axes from the data) removed the whole class rather than the seven instances.
 - **Topic-id collisions.** `TopicRegistry` collapses cross-listed ids first-wins (`perceptron`,
   `transformers`). Tracks C and D cross-list far more (backprop, LSTM, attention, RLHF, all seven
   Deep RL entries). `AiTaxonomyCoverageTest` now makes these reviewable — a cross-listed entry
@@ -755,8 +807,8 @@ number closed no doc entry, which is worth noticing at the time rather than at t
 
 ## Suggested order
 
-~~A1 → A2~~ → ~~B1 → B2 → B3 → B4 → B5~~ → ~~guards~~ → ~~B6 → B7~~ → **B8** → B9 → B10 → ~~C1~~ →
-**C2** → `FeatureMapPlayer` → C3 → C4 → C5 → C6 → C7 → C8 → C9 → D1 → D2 → D3 → D4 → D5 → D6.
+~~A1 → A2~~ → ~~B1 → B2 → B3 → B4 → B5~~ → ~~guards~~ → ~~B6 → B7~~ → **B8** → B9 → B10 → ~~C1 → C2~~
+→ **`FeatureMapPlayer`** → C3 → C4 → C5 → C6 → C7 → C8 → C9 → D1 → D2 → D3 → D4 → D5 → D6.
 
 Struck-through batches are done. The guards step landed with B6 rather than before it, in the same
 session. The order was then broken deliberately: C1 was built before B8–B10 at the user's direction,
