@@ -204,9 +204,9 @@ category guard load-bearing rather than nice-to-have.
 | D2 · Computational Geometry | 4 | **Done** | Needed no new `CloudFrame` fields; found a live `mcmc` bug |
 | D3 · String Algorithms | 5 (+3 moved) | **Done** | `TreeVisualizer` did need failure-link support; added |
 | D4 · Math & Number Theory | 7 | **Done** | Every worked example pinned by a `require` in its builder |
-| D5 · Bit Manipulation | 4 | Next | New `BitBoardPlayer` widget |
+| D5 · Bit Manipulation | 4 | **Done** | `BitBoardPlayer` built; `algo_misc` renumbered to 13 |
 | Guards | — | Planned | Taxonomy + category guards land at the end, not with D1 — see below |
-| **Total** | **27** | **23 done** | Algorithms 67 → 94; app taxonomy 257 → 284 |
+| **Total** | **27** | **27 done** | Measured: Algorithms 66 → 93; browsable topics 253 → 280 |
 
 ### Deviations from the plan as written
 
@@ -331,6 +331,38 @@ after it: a wrong constant leaves the frames structurally valid and every captio
 structure checks cannot catch it. During writing, the extended-Euclid unwind did initially drop its
 last division step, which produces coefficients for the wrong pair; the pin is what would have
 caught it.
+
+### D5, as built
+
+Category `algo_bits` (`11 · Bit Manipulation`, `stack`, `#10B981`) with `bit_basics` free and
+`count_set_bits`, `subsets_bitmask`, `xor_tricks` premium. With 9 through 12 now existing as their
+own groups, `algo_misc` was renumbered from `9 · Misc & Advanced` to `13 · Miscellaneous & Advanced`
+as the plan specified — id unchanged, so nothing referencing a topic in it moved.
+
+**`BitBoardPlayer` is the phase's one new widget, and it was genuinely needed.** `ArrayWalkPlayer`'s
+row is one weighted, labelled cell per element; the bit topics need eight to sixteen narrow uniform
+cells whose *position* carries the meaning, since bit 3 is the 8s place whether it holds a 0 or a 1.
+Stretching the array row that wide collapses its labels and it has no notion of a place value to
+annotate. `BitBoardSection` renders one or more labelled bit rows with a decimal readout beside each
+and a caption naming the operation — the same config-map shape as `RegressionLab` and
+`DecisionSurface`, not a bespoke screen. Wired through `SimulationHost`, `simLabel` and
+`SimulationFrameTest` like every other host.
+
+Every numeric claim in the four builders was verified before writing (`44 & 43 = 40`,
+`44 & −44 = 4`, popcount(156) = 4, `4^1^2^1^2 = 4`, prefix-XOR of positions 1–3 of (3,8,2,6,4) = 12),
+and the XOR builder pins its two results with `require`.
+
+## Count correction
+
+**The plan's baseline figures were wrong and are corrected here.** It claimed 67 algorithm topics,
+29 Data Structures topics and an app taxonomy of 257 going to 284. Measured against the code at the
+start of the phase: **66** algorithm topics, **28** Data Structures topics, and **253** browsable
+topics across the six sections `ContentCoverageTest` covers (Data Structures, Algorithms, ML, DL,
+NLP, RL — Analysis and Interview Prep are excluded there, being tools and drills rather than 7-section
+topic pages). The phase added exactly the 27 topics it set out to add, verified by diffing topic ids
+against the pre-phase commit with nothing removed, so the true end state is **93** algorithm topics
+and **280** browsable topics. The per-batch counts in the D1–D4 commit messages inherited the
+plan's off-by-four and are wrong by that constant; this table is the correct record.
 
 ## Out of scope
 

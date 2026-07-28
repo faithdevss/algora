@@ -89,6 +89,11 @@ sealed interface SimulationType {
     // conic, class-conditional ellipses or support vectors. DecisionSurface renders an arbitrary
     // decision function by sampling it on a grid.
     data object DecisionSurface : SimulationType
+    // ArrayWalkPlayer's row is one weighted, labelled cell per element; the bit topics need eight to
+    // sixteen narrow uniform cells whose position carries the meaning — bit 3 is the 8s place
+    // whether it holds a 0 or a 1. Stretching the array row that wide collapses its labels.
+    data object BitBoardPlayer : SimulationType
+
     data object PerceptronVisualizer : SimulationType
     data object ClassifierPlayground : SimulationType
     data object RecursionTreeVisualizer : SimulationType

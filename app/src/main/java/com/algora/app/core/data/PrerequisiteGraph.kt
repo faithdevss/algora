@@ -50,6 +50,10 @@ object PrerequisiteGraph {
         // Static range queries
         "sparse_table" to listOf("binary_search", "prefix_sum"),
         "lca" to listOf("tree", "sparse_table"),
+        // Bit manipulation: the place-value idioms first, then what they are used to build
+        "count_set_bits" to listOf("bit_basics"),
+        "subsets_bitmask" to listOf("bit_basics"),
+        "xor_tricks" to listOf("bit_basics", "prefix_sum"),
         // Math & number theory: gcd first, then the modulus, then everything the modulus enables
         "modular_arithmetic" to listOf("euclid_gcd"),
         "fast_power" to listOf("binary_search"),

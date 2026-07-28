@@ -21,11 +21,15 @@ object AlgorithmsCategories {
     val pathfinding = Category("algo_pathfinding", "8 · Pathfinding", Section.ALGORITHMS, 0xFF06B6D4, "map")
     val math = Category("algo_math", "9 · Math & Number Theory", Section.ALGORITHMS, 0xFFF59E0B, "chip")
     val strings = Category("algo_strings", "10 · String Algorithms", Section.ALGORITHMS, 0xFFEC4899, "browser")
+    val bits = Category("algo_bits", "11 · Bit Manipulation", Section.ALGORITHMS, 0xFF10B981, "stack")
     val geometry = Category("algo_geometry", "12 · Computational Geometry", Section.ALGORITHMS, 0xFF06B6D4, "globe")
-    val miscAdvanced = Category("algo_misc", "9 · Misc & Advanced", Section.ALGORITHMS, 0xFF8B5CF6, "chip")
+
+    // Renumbered from 9 now that 9 through 12 exist as their own groups. The id is unchanged, so
+    // nothing that references a topic in it moves.
+    val miscAdvanced = Category("algo_misc", "13 · Miscellaneous & Advanced", Section.ALGORITHMS, 0xFF8B5CF6, "chip")
 
     val all = listOf(
         sorting, searching, recursion, divideConquer, greedy, dynamicProgramming, graphAlgorithms,
-        pathfinding, math, strings, geometry, miscAdvanced,
+        pathfinding, math, strings, bits, geometry, miscAdvanced,
     )
 }

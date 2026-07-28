@@ -32,6 +32,7 @@ private val graphAlgo = AlgorithmsCategories.graphAlgorithms
 private val pathfinding = AlgorithmsCategories.pathfinding
 private val numberTheory = AlgorithmsCategories.math
 private val strings = AlgorithmsCategories.strings
+private val bits = AlgorithmsCategories.bits
 private val geometry = AlgorithmsCategories.geometry
 private val misc = AlgorithmsCategories.miscAdvanced
 
@@ -146,6 +147,13 @@ private val stringTopics = listOf(
     topic("aho_corasick", "Aho-Corasick", strings, "Matches every pattern in a dictionary in one pass over the text.", isPremium = true),
 )
 
+private val bitTopics = listOf(
+    topic("bit_basics", "Bit Basics", bits, "Parity, powers of two, and the n & (n−1) trick."),
+    topic("count_set_bits", "Count Set Bits", bits, "Brian Kernighan's loop runs once per set bit, not once per position.", isPremium = true),
+    topic("subsets_bitmask", "Subsets using Bitmask", bits, "Counting to 2ⁿ enumerates every subset exactly once.", isPremium = true),
+    topic("xor_tricks", "XOR Tricks", bits, "Its own inverse — single number, swap without a temp, and prefix ranges.", isPremium = true),
+)
+
 // closest_pair_of_points stays in Divide and Conquer — the doc lists it under both headings — and
 // cross-links here instead of moving.
 private val geometryTopics = listOf(
@@ -171,7 +179,7 @@ object AlgorithmsTopics {
     val topics: List<Topic> =
         sortingTopics + searchingTopics + recursionTopics + divideConquerTopics + greedyTopics +
             dpTopics + graphAlgoTopics + pathfindingTopics + mathTopics + stringTopics +
-            geometryTopics + miscTopics
+            bitTopics + geometryTopics + miscTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }
