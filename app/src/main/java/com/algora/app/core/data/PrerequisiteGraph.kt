@@ -153,6 +153,19 @@ object PrerequisiteGraph {
         "arima" to listOf("autoregression"),
         "sarima" to listOf("arima"),
         "prophet" to listOf("sarima", "regularization"),
+        // ML: the practice layer sits on top of a first model
+        "bias_variance" to listOf("linear_regression"),
+        "regularization" to listOf("linear_regression", "bias_variance"),
+        "model_evaluation" to listOf("logistic_regression"),
+        "random_forest" to listOf("decision_trees"),
+        "gradient_boosting" to listOf("decision_trees", "gradient_descent_variants"),
+        // DL: the basics block, as a reading path. The two gradient pathologies both presuppose
+        // backprop, because they are statements about what backprop's product does with depth.
+        "perceptron" to listOf("biological_neuron"),
+        "mlp" to listOf("perceptron"),
+        "neural_network_basics" to listOf("mlp"),
+        "vanishing_gradient" to listOf("backpropagation", "activation_functions"),
+        "exploding_gradient" to listOf("vanishing_gradient"),
         // DL: training techniques presuppose the training loop
         "batch_normalization" to listOf("neural_network_basics", "backpropagation"),
         "dropout" to listOf("neural_network_basics", "regularization"),

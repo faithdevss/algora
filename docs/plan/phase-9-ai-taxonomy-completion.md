@@ -1,9 +1,11 @@
 # Phase 9 — AI Taxonomy Completion
 
-Status: In progress — Track A complete (RL at 100% of the doc), B1–B7 done. 74 of 226 topics
-authored; taxonomy at 274, target 426. AI sections now: ML 75, DL 15, NLP 12, RL 74.
-**Doc coverage is measured, not estimated: 192 of the doc's 357 entries (54%).**
-Next: B8 (Data Preprocessing, 9 topics).
+Status: In progress — Track A complete (RL at 100% of the doc), B1–B7 and C1 done. 78 of 226 topics
+authored; taxonomy at 278, target 426. AI sections now: ML 75, DL 19, NLP 12, RL 74.
+**Doc coverage is measured, not estimated: 197 of the doc's 357 entries (55%).**
+Next: C2 (Activation Functions, 10 topics) — or back to B8, which is still open. Track B was
+interrupted after B7 by a deliberate jump to Track C; **B8, B9 and B10 remain unbuilt**, and
+`ml_supervised` therefore still holds the four topics they were to redistribute.
 
 **Both guards are now built.** Phase 10 landed the category-integrity assertion
 (`CategoryIntegrityTest`, generic over all eight sections), and B6 landed
@@ -67,14 +69,15 @@ below.
 | B6 · Dimensionality Reduction | 8 | **Done** | New `DimReductionMath.kt`; no new widget. `ml_unsupervised` retired |
 | — · Guards | — | **Done** | `AiTaxonomyCoverageTest` + `DimReductionMathTest` |
 | B7 · Association Rules + Time Series | 9 | **Done** | No new widget; one additive `LabCanvas` fix. `B7MathTest` added |
-| B8–B10 | 29 | Planned | |
-| Track C (C1–C9) | 73 | Planned | `FeatureMapPlayer` still outstanding |
+| B8–B10 | 29 | **Skipped for now** | Deliberate jump to Track C; `ml_supervised` still awaits them |
+| C1 · NN Basics | 4 | **Done** | No new widget. New `NeuralNetPlayer` frame guard found 4 live bugs |
+| C2–C9 | 69 | Planned | `FeatureMapPlayer` still outstanding, blocks C3/C4 |
 | Track D (D1–D6) | 50 | Planned | |
-| **Total** | **226** | **74 done** | Taxonomy 200 → 274 of 426 |
+| **Total** | **226** | **78 done** | Taxonomy 200 → 278 of 426 |
 
 Sections against the doc, measured by `AiTaxonomyCoverageTest` rather than counted by hand:
-**RL 71/71**, ML 83/113, DL 22/96, NLP 16/77 — **192 of 357 overall**. ML is 75 topics of its
-eventual ~100; DL and NLP are untouched at 15 and 12. Browsable topics across the app: 297.
+**RL 71/71**, ML 84/113, DL 26/96, NLP 16/77 — **197 of 357 overall**. ML is 75 topics of its
+eventual ~100; DL has started at 19; NLP is untouched at 12. Browsable topics across the app: 301.
 
 ## Decisions taken before planning
 
@@ -516,10 +519,55 @@ The rest of both blocks is satisfied by cross-listing existing DL and RL topics 
 
 ### Track C — Deep Learning (73 topics)
 
-**C1 · NN Basics** — 4 topics
-The Biological Neuron · Multi-Layer Perceptron · Vanishing Gradient · Exploding Gradient
-*Sims:* `NeuralNetPlayer` (gradient magnitudes per layer shrinking/blowing up across depth — makes
-both problems visible rather than asserted).
+**C1 · NN Basics** — 4 topics — **Done**
+`biological_neuron` · `mlp` · `vanishing_gradient` · `exploding_gradient`
+
+First Track C batch, and the first new DL category: `dl_basics` ("Neural Network Basics", icon
+`robot`), holding the doc's block in full — the four new topics plus `perceptron`,
+`neural_network_basics` and `backpropagation` moved over from `dl_fundamentals`, which keeps its
+other five until C2, C8 and C9 claim them. `neural_network_basics` was renamed to the doc's title,
+**"Feedforward Networks"**, since "Neural Network Basics" is now the category. `biological_neuron`
+and `mlp` are free; the two gradient topics premium.
+
+**No new widget** — all four on `NeuralNetPlayer`, whose `NetFrame` already carried everything
+needed (layer diagram, curve plot with explicit axes, matrix grid, bars). New math file
+`DeepNetMath.kt`: a leaky integrate-and-fire neuron, a real 2-3-1 network trained on XOR by
+backpropagation, and a 12-layer dense stack whose per-layer gradient norms come from an actual
+backward pass rather than a decay formula.
+
+**The batch's most useful output was a guard, not a topic.** `NeuralNetPlayer` had no entry in
+`SimulationFrameTest` at all — the phase's most-used widget from here on (C1–C9 all lean on it) was
+the only major one unguarded. The new check builds every config and asserts that a plot's curves stay
+inside the axis range the frame declared and that a bar's captions match its values. It failed
+immediately on **four live bugs in already-shipped labs**:
+- **`rnn` and `lstm_gru` were rendering the wrong data.** Both passed a `mutableListOf` straight into
+  `NetBar`, so every frame held the same growing list by reference — each early frame drew the
+  *final* four (or six) bars while its captions had been snapshotted at build time. Fixed with
+  `.toList()`.
+- **`gradient_descent_variants` had a hand-picked plot box that did not contain its paths.** Thirteen
+  points fell outside it, and `PlotCanvas` clamps rather than skips, so momentum's overshoot was
+  drawn flat along the boundary and read as a deliberate slide. The box is now derived from the paths.
+- **`dropout` and `rnn` each had an axis ceiling one point too low** — 1.11 against a declared 1.1,
+  and 1.3⁸ = 8.16 against a declared 8, the latter in a frame whose entire subject is that the curve
+  does not stay flat.
+
+**Verification changed two of the four labs before any copy was written.** The first XOR run used
+2 hidden units and did not converge — final loss 0.347, having learned x₁ alone. A seed and width
+sweep showed why and became a frame: 2 units solve 2 of 5 seeds, 3 solve 4, 4 solve 5. The failures
+are local minima, so width bought *trainability*, not expressiveness — a better point than the one
+originally planned. And the first deep-stack run used width 8, where n is too small for the
+variance argument to hold; widened to 16 and checked across five seeds, sigmoid vanishes at every
+init scale tried (ratios 5.7×10¹ to 3.1×10⁷) while ReLU with He init stays within a factor of ~2.
+
+Measured numbers the frames quote: rheobase exactly 15 with 0 Hz below it and 30/54/94/154/228 Hz
+above; linear-hidden XOR stuck at 0.6931 = ln 2 with every output exactly 0.500; sigmoid's first
+layer ~570× weaker than its last over 12 layers; ReLU at init scale 1.5 taking mean activation from
+1.4 to 5.7 × 10⁶ (≈3.6× per layer) and a gradient norm of 3.7 × 10¹⁵, clipped to exactly 5.0 by a
+uniform factor of 1.3 × 10⁻¹⁵.
+
+New guard `DeepNetMathTest` (12 tests), including that clipping preserves each layer's *share* of
+the gradient — the property that distinguishes global-norm clipping from per-parameter clipping and
+the one the frame's claim rests on.
 
 **C2 · Activation Functions** — 10 topics
 Sigmoid · Tanh · ReLU · Leaky ReLU · PReLU · ELU · SELU · Swish · GELU · Softmax
@@ -644,7 +692,7 @@ monetization angle.
 
 ## Guards
 
-**Shipping and green (94 tests):**
+**Shipping and green (107 tests):**
 - `ContentCoverageTest` — every browsable topic has content, nothing resolves to `NotYetAvailable`,
   and every prerequisite and cross-link id resolves. It has caught real breakage every batch and is
   run (with `--rerun-tasks`) at the end of each one.
@@ -656,9 +704,9 @@ monetization angle.
 - `AiTaxonomyCoverageTest` (B6) — the doc as code. 357 entries nested by section and heading, each
   mapped to the topic ids serving it or to an explicit gap; pins the entry count, id resolution,
   section membership, and the covered count. Its failure message prints the remaining backlog.
-- `DimReductionMathTest` (B6) and `B7MathTest` (B7) — pin the properties each batch's copy leans on,
-  so a re-tune that makes a topic pointless fails instead of shipping. Worth continuing per batch;
-  `B7MathTest` caught a wrong claim that had already been written.
+- `DimReductionMathTest` (B6), `B7MathTest` (B7) and `DeepNetMathTest` (C1) — pin the properties each
+  batch's copy leans on, so a re-tune that makes a topic pointless fails instead of shipping. Worth
+  continuing per batch; `B7MathTest` caught a wrong claim that had already been written.
 
 **Nothing specified here is now unbuilt.** The lesson from the five-batch slip is worth keeping:
 the taxonomy map cost about an hour, would have cost the same at any point, and immediately
@@ -672,14 +720,14 @@ number closed no doc entry, which is worth noticing at the time rather than at t
   widget. Three batches in, two config-driven sim types had shipped (`RegressionLab`,
   `DecisionSurface`) plus additive fields on `RlFrame` and `CloudFrame`. The pattern that emerged:
   existing widgets were each bound to one model shape, so a batch either fits an existing one exactly
-  or needs a new config-driven sibling. B3 through B7 then needed nothing new — five consecutive
-  batches on existing widgets — so the cost is front-loaded per *family* rather than per batch. B7
+  or needs a new config-driven sibling. B3 through B7 and C1 then needed nothing new — six
+  consecutive batches on existing widgets — so the cost is front-loaded per *family* rather than per batch. B7
   also showed the second-order version of the same mistake: the plan named `RegressionExplorer` for
   its time-series half, which cannot take a config at all, while `RegressionLab` took all six topics
   after a one-line canvas change. Check the remaining batches against what now exists, and check
   *which* of two similar widgets is the config-driven one.
 - **`FeatureMapPlayer` is still net-new** and blocks C3 and C4. Build it while C1/C2 land.
-- **Verification keeps finding real defects, not wording problems.** Across seven batches: an
+- **Verification keeps finding real defects, not wording problems.** Across eight batches: an
   inverted Complement NB sign that produced confidently wrong classifications, MCMC step sizes whose
   "too large" case sat in the well-tuned regime, an XGBoost split gain that was negative where the
   narration took it, LightGBM leaf counts that contradicted the drawing, and a `twoMoons` geometry
@@ -691,7 +739,9 @@ number closed no doc entry, which is worth noticing at the time rather than at t
   rather than assert it. B7 added one more — an `autoregression` paragraph asserting the model loses
   to the seasonal benchmark at every order, when it wins from p = 9 — and it was the batch's own guard
   test that caught it, not the probe. Both steps earn their place: the probe before the copy, the
-  guard after it.
+  guard after it. C1 added a third kind: a *widget* guard, which found four defects in labs that had
+  shipped batches earlier and were rendering the wrong data the whole time. Every widget without one
+  is carrying unknown bugs of that shape.
 - **Topic-id collisions.** `TopicRegistry` collapses cross-listed ids first-wins (`perceptron`,
   `transformers`). Tracks C and D cross-list far more (backprop, LSTM, attention, RLHF, all seven
   Deep RL entries). `AiTaxonomyCoverageTest` now makes these reviewable — a cross-listed entry
@@ -705,11 +755,13 @@ number closed no doc entry, which is worth noticing at the time rather than at t
 
 ## Suggested order
 
-~~A1 → A2~~ → ~~B1 → B2 → B3 → B4 → B5~~ → ~~guards~~ → ~~B6 → B7~~ → **B8** → B9 → B10 → C1 → C2 →
-`FeatureMapPlayer` → C3 → C4 → C5 → C6 → C7 → C8 → C9 → D1 → D2 → D3 → D4 → D5 → D6.
+~~A1 → A2~~ → ~~B1 → B2 → B3 → B4 → B5~~ → ~~guards~~ → ~~B6 → B7~~ → **B8** → B9 → B10 → ~~C1~~ →
+**C2** → `FeatureMapPlayer` → C3 → C4 → C5 → C6 → C7 → C8 → C9 → D1 → D2 → D3 → D4 → D5 → D6.
 
 Struck-through batches are done. The guards step landed with B6 rather than before it, in the same
-session — both `AiTaxonomyCoverageTest` and B6's own `DimReductionMathTest`.
+session. The order was then broken deliberately: C1 was built before B8–B10 at the user's direction,
+which is fine — the tracks are independent, and Track C's only real dependency is `FeatureMapPlayer`
+before C3. B8–B10 stay open, and Track B is not finished until `ml_supervised` is empty.
 
 ## Verification
 

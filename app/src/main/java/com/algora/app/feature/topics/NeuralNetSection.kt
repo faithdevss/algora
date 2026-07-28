@@ -35,6 +35,7 @@ import com.algora.app.core.ui.theme.SimColors
 import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.max
+import kotlin.math.log10
 import kotlin.math.sqrt
 import kotlin.math.tanh
 
@@ -406,6 +407,15 @@ private fun gradientDescentFrames(): List<NetFrame> {
     fun trajectory(path: List<List<Float>>, label: String, color: Color) =
         Curve(label, path.map { it[0] to it[1] }, color)
 
+    // The plot box is derived from the paths rather than hand-picked. Momentum overshoots past
+    // w₁ = −1.2 on its way in, and a fixed box drew that excursion clamped flat against the edge —
+    // which read as a deliberate slide along the boundary instead of the overshoot it is.
+    val allPaths = sgd + momentum + adam
+    val xPad = 0.15f
+    val xLo = allPaths.minOf { it[0] } - xPad
+    val xHi = allPaths.maxOf { it[0] } + xPad
+    val yLo = allPaths.minOf { it[1] } - xPad
+    val yHi = allPaths.maxOf { it[1] } + xPad
     val frames = mutableListOf<NetFrame>()
 
     frames += NetFrame(
@@ -414,14 +424,14 @@ private fun gradientDescentFrames(): List<NetFrame> {
         plot = CurvePlot(
             "w₁ (x) vs w₂ (y)",
             listOf(Curve("start", listOf(start[0] to start[1]), NeutralColor)),
-            -1.2f..1.2f, -0.2f..1.8f,
+            xLo..xHi, yLo..yHi,
         ),
     )
     frames += NetFrame(
         status = "Plain SGD is capped by the steep axis: above lr = 0.1 it diverges outright, so it runs at " +
             "$sgdLr. w₁ collapses immediately, then the flat axis crawls — the loss left after $steps steps, " +
             "${"%.4f".format(loss(sgd.last()))}, is almost entirely w₂.",
-        plot = CurvePlot("SGD trajectory", listOf(trajectory(sgd, "SGD", ForwardColor)), -1.2f..1.2f, -0.2f..1.8f),
+        plot = CurvePlot("SGD trajectory", listOf(trajectory(sgd, "SGD", ForwardColor)), xLo..xHi, yLo..yHi),
         readout = "loss ${"%.4f".format(loss(sgd.last()))} · w₂ still at ${"%.2f".format(sgd.last()[1])}",
     )
     frames += NetFrame(
@@ -432,7 +442,7 @@ private fun gradientDescentFrames(): List<NetFrame> {
         plot = CurvePlot(
             "SGD vs Momentum",
             listOf(trajectory(sgd, "SGD", ForwardColor), trajectory(momentum, "Momentum", AccentA)),
-            -1.2f..1.2f, -0.2f..1.8f,
+            xLo..xHi, yLo..yHi,
         ),
         readout = "loss ${"%.4f".format(loss(momentum.last()))}",
     )
@@ -447,7 +457,7 @@ private fun gradientDescentFrames(): List<NetFrame> {
                 trajectory(momentum, "Momentum", AccentA),
                 trajectory(adam, "Adam", OutputColor),
             ),
-            -1.2f..1.2f, -0.2f..1.8f,
+            xLo..xHi, yLo..yHi,
         ),
         readout = "loss ${"%.4f".format(loss(adam.last()))}",
     )
@@ -698,7 +708,9 @@ private fun rnnUnrollFrames(): List<NetFrame> {
                 NetLayer("x", inputs.mapIndexed { i, v -> NetNode(v, if (i == t) NodeMood.FORWARD else NodeMood.IDLE) }),
                 NetLayer("h", inputs.indices.map { NetNode(states.getOrElse(it) { 0f }, if (it == t) NodeMood.OUTPUT else NodeMood.IDLE) }),
             ),
-            bars = listOf(NetBar("hidden state over time", states, ForwardColor, (1..states.size).map { "t$it" })),
+            // states.toList(): the bar must hold a snapshot. Passing the mutable list meant every
+            // frame rendered the final four values while its captions were frozen at build time.
+            bars = listOf(NetBar("hidden state over time", states.toList(), ForwardColor, (1..states.size).map { "t$it" })),
         )
     }
 
@@ -713,6 +725,9 @@ private fun rnnUnrollFrames(): List<NetFrame> {
         ),
         readout = "$u^8 = ${"%.3f".format(influence.last())}",
     )
+    // 1.3^8 is 8.16, so the old ceiling of 8 clipped the last point of the exploding curve flat —
+    // in a frame whose whole subject is that it does not stay flat.
+    val exploding = (1..8).map { it.toFloat() to 1.3f.pow(it) }
     frames += NetFrame(
         status = "u below 1 vanishes, u above 1 explodes — the same multiplication either way. Clipping handles the " +
             "explosion; the vanishing case is what gated cells were designed for.",
@@ -720,9 +735,9 @@ private fun rnnUnrollFrames(): List<NetFrame> {
             "u = 0.6 vs u = 1.3",
             listOf(
                 Curve("u = 0.6", influence.mapIndexed { i, v -> (i + 1).toFloat() to v }, BackwardColor),
-                Curve("u = 1.3", (1..8).map { (it).toFloat() to 1.3f.pow(it) }, AccentB),
+                Curve("u = 1.3", exploding, AccentB),
             ),
-            1f..8f, 0f..8f,
+            1f..8f, 0f..(exploding.maxOf { it.second } * 1.05f),
         ),
     )
     return frames
@@ -764,10 +779,11 @@ private fun lstmFrames(): List<NetFrame> {
                     "reset" -> " The forget gate closes and the stored value is wiped in a single step — deliberately."
                     else -> " Both gates are nearly shut: the cell simply carries what it already had."
                 },
+            // Snapshots, for the same reason as the RNN lab above.
             bars = listOf(
-                NetBar("forget gate", forgets, ForwardColor, (1..forgets.size).map { "t$it" }),
-                NetBar("input gate", inputs, AccentB, (1..inputs.size).map { "t$it" }),
-                NetBar("cell state", cells, OutputColor, (1..cells.size).map { "t$it" }),
+                NetBar("forget gate", forgets.toList(), ForwardColor, (1..forgets.size).map { "t$it" }),
+                NetBar("input gate", inputs.toList(), AccentB, (1..inputs.size).map { "t$it" }),
+                NetBar("cell state", cells.toList(), OutputColor, (1..cells.size).map { "t$it" }),
             ),
         )
     }
@@ -981,7 +997,7 @@ private fun dropoutFrames(): List<NetFrame> {
                 Curve("dropout p = $p", regularized, ForwardColor),
             ),
             xRange = 0f..19f,
-            yRange = 0f..1.1f,
+            yRange = 0f..1.2f,
         ),
         readout = "p ≈ 0.5 for dense layers, 0.1–0.3 for conv and embeddings",
     )
@@ -1050,7 +1066,427 @@ private fun transferLearningFrames(): List<NetFrame> {
     return frames
 }
 
+// ── Neural network basics (phase 9, batch C1) ────────────────────────────────
+// Four labs on the same widget: a leaky integrate-and-fire neuron beside the artificial unit that
+// abstracts it, a real MLP trained on XOR, and the two failure modes of depth. Everything is
+// computed in DeepNetMath.kt by an actual forward and backward pass — the gradient decay in
+// particular is measured rather than derived from a decay formula, and `DeepNetMathTest` pins the
+// orderings the narration depends on.
+
+private fun log10Curve(values: List<Double>, label: String, color: Color): Curve =
+    Curve(label, values.mapIndexed { i, v -> (i + 1).toFloat() to log10(max(v, 1e-300)).toFloat() }, color)
+
+private fun biologicalNeuronFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+    val rheo = rheobase()
+
+    val quiet = lifTrace(12.0, 120.0)
+    frames += NetFrame(
+        status = "A real neuron is a leaky capacitor with a threshold. Charge flows in, the membrane potential rises, " +
+            "and it leaks back toward its resting −70 mV the whole time. At 12 units of input current the two balance " +
+            "at ${"%.0f".format(quiet.potential.last())} mV — below the −55 mV threshold — and the cell never fires, " +
+            "however long you wait.",
+        plot = CurvePlot(
+            "membrane potential (mV) over 120 ms",
+            listOf(
+                Curve("V(t)", quiet.potential.mapIndexed { i, v -> (i * quiet.dt).toFloat() to v.toFloat() }, ForwardColor),
+                Curve("threshold", listOf(0f to LifThreshold.toFloat(), 120f to LifThreshold.toFloat()), BackwardColor),
+            ),
+            0f..120f,
+            -80f..-50f,
+        ),
+        readout = "0 spikes · rheobase is ${"%.0f".format(rheo)}",
+    )
+
+    val firing = lifTrace(20.0, 120.0)
+    frames += NetFrame(
+        status = "Push the current to 20 and the potential reaches threshold, the cell spikes, and it is immediately " +
+            "reset to −75 mV with a 2 ms refractory period during which nothing can happen. ${firing.spikeTimes.size} " +
+            "spikes in 120 ms. Note what the output is: not a number, but a time — the spike is identical every time, " +
+            "and all the information is in when it happened.",
+        plot = CurvePlot(
+            "membrane potential (mV) over 120 ms",
+            listOf(
+                Curve("V(t)", firing.potential.mapIndexed { i, v -> (i * firing.dt).toFloat() to v.toFloat() }, ForwardColor),
+                Curve("threshold", listOf(0f to LifThreshold.toFloat(), 120f to LifThreshold.toFloat()), BackwardColor),
+            ),
+            0f..120f,
+            -80f..-50f,
+        ),
+        readout = "${firing.spikeTimes.size} spikes · ${"%.0f".format(firingRate(20.0))} Hz",
+    )
+
+    val currents = (0..24).map { it * 4.0 }
+    val rates = currents.map { firingRate(it) }
+    frames += NetFrame(
+        status = "Sweep the input current and measure the firing rate at each level, and the neuron's whole " +
+            "input-output behaviour appears: flat zero up to the rheobase at ${"%.0f".format(rheo)}, then rising and " +
+            "bending over as the refractory period starts to bite. Nobody designed that shape — it falls out of a " +
+            "leak, a threshold and a reset.",
+        plot = CurvePlot(
+            "firing rate (Hz) against input current",
+            listOf(Curve("f–I curve", currents.indices.map { currents[it].toFloat() to rates[it].toFloat() }, OutputColor)),
+            0f..96f,
+            0f..260f,
+        ),
+        readout = "0 Hz below ${"%.0f".format(rheo)} · ${"%.0f".format(rates.last())} Hz at ${currents.last().toInt()}",
+    )
+
+    val peak = rates.max()
+    frames += NetFrame(
+        status = "Now the artificial unit, and the comparison is the point of this topic. It computes Σwᵢxᵢ + b and " +
+            "passes it through an activation — and the two standard choices are shaped like the curve above. ReLU is " +
+            "the rectifying part, off below a threshold and rising after it. Sigmoid is the saturating part. The f–I " +
+            "curve, normalised, sits between them. The abstraction was not arbitrary.",
+        plot = CurvePlot(
+            "normalised response",
+            listOf(
+                Curve("f–I (normalised)", currents.indices.map { currents[it].toFloat() to (rates[it] / peak).toFloat() }, OutputColor),
+                Curve("ReLU", sample(0f..96f) { ((it - rheo.toFloat()) / 60f).coerceIn(0f, 1f) }, AccentA),
+                Curve("sigmoid", sample(0f..96f) { sigmoid((it - 30f) / 12f) }, AccentB),
+            ),
+            0f..96f,
+            0f..1.1f,
+        ),
+        readout = "one number in, one number out",
+    )
+
+    frames += NetFrame(
+        status = "And what the abstraction throws away, which is most of it. Time: the artificial unit has no state " +
+            "between inputs, so spike timing — which carries real information — has nowhere to live. Dendrites: they " +
+            "compute non-linearly before the soma sees anything, so one neuron is closer to a small network than to " +
+            "one unit. Neurotransmitters, glia, and the fact that the brain does not run backpropagation, for which " +
+            "no biological mechanism has ever been found. \"Neural network\" is a metaphor that stopped being a model " +
+            "of the brain around 1960, and it is worth knowing which one you are talking about.",
+        layers = listOf(
+            NetLayer("inputs", listOf(NetNode(0.9f, NodeMood.FORWARD), NetNode(0.2f, NodeMood.FORWARD), NetNode(0.5f, NodeMood.FORWARD))),
+            NetLayer("Σwx+b", listOf(NetNode(0.72f, NodeMood.IDLE))),
+            NetLayer("activation", listOf(NetNode(0.67f, NodeMood.OUTPUT))),
+        ),
+        readout = "a useful caricature, not a simulation",
+    )
+    return frames
+}
+
+private fun mlpFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+    val run = trainXor(hiddenUnits = 3, seed = 11)
+
+    frames += NetFrame(
+        status = "XOR: output 1 when exactly one input is 1. Four points, and no straight line separates them — " +
+            "(0,0) and (1,1) belong together in one class while (0,1) and (1,0) belong together in the other, and " +
+            "they sit on opposite diagonals. A single perceptron cannot do this, which is the result that stopped " +
+            "the field for most of the 1970s.",
+        grids = listOf(
+            GridView(
+                "x₁, x₂ → y",
+                xorInputs.indices.map { listOf(xorInputs[it][0].toFloat(), xorInputs[it][1].toFloat(), xorTargets[it].toFloat()) },
+                highlight = setOf(0 to 2, 1 to 2, 2 to 2, 3 to 2),
+            ),
+        ),
+    )
+
+    fun layersAt(state: MlpState, row: Int) = listOf(
+        NetLayer("input", xorInputs[row].map { NetNode(it.toFloat(), NodeMood.FORWARD) }),
+        NetLayer("hidden (tanh)", state.hidden[row].map { NetNode(it.toFloat(), NodeMood.IDLE) }),
+        NetLayer("output (σ)", listOf(NetNode(state.outputs[row].toFloat(), NodeMood.OUTPUT))),
+    )
+
+    run.history.forEach { state ->
+        val correct = (0..3).count { (state.outputs[it] >= 0.5) == (xorTargets[it] >= 0.5) }
+        frames += NetFrame(
+            status = if (state.epoch == 0) {
+                "The fix is a hidden layer: 2 inputs, 3 tanh units, 1 sigmoid output. At initialisation the weights " +
+                    "are random and every output sits near 0.5 — the network has no opinion yet. Loss " +
+                    "${"%.4f".format(state.loss)}."
+            } else {
+                "Epoch ${state.epoch}. Full-batch gradient descent, gradients from backpropagation, no tricks. Loss " +
+                    "${"%.4f".format(state.loss)}, $correct of 4 correct. Outputs: " +
+                    state.outputs.joinToString { "%.3f".format(it) } + "."
+            },
+            layers = layersAt(state, 1),
+            bars = listOf(NetBar("output per input", state.outputs.map { it.toFloat() }, ForwardColor, listOf("00", "01", "10", "11"))),
+            readout = "epoch ${state.epoch} · loss ${"%.4f".format(state.loss)}",
+        )
+    }
+
+    frames += NetFrame(
+        status = "Here is what the hidden layer bought. Each row is one input's coordinates in hidden space — three " +
+            "numbers instead of two. The network did not learn XOR directly; it learned a *representation* in which " +
+            "XOR is linearly separable, and then solved the easy problem. That is what every layer in every deep " +
+            "network is doing, and the reason depth is worth anything at all.",
+        grids = listOf(
+            GridView(
+                "hidden activations, one row per input",
+                run.final.hidden.map { row -> row.map { it.toFloat() } },
+            ),
+        ),
+        readout = "final loss ${"%.4f".format(run.final.loss)} · solved: ${if (run.solved) "yes" else "no"}",
+    )
+
+    val linear = trainXor(hiddenUnits = 3, seed = 11, linearHidden = true)
+    frames += NetFrame(
+        status = "Remove the tanh and keep everything else — same architecture, same training, same number of " +
+            "weights. The loss stops at ${"%.4f".format(linear.final.loss)} and every output is exactly 0.500. That " +
+            "number is ln 2, the loss of a model that predicts a coin flip: a stack of linear maps is a linear map, " +
+            "so three hidden units with no non-linearity are worth exactly as much as none. The activation function " +
+            "is not a detail bolted onto the architecture — without it there is no architecture.",
+        plot = CurvePlot(
+            "training loss",
+            listOf(
+                Curve("tanh hidden", xorLossCurve(false, hiddenUnits = 3, seed = 11), AccentA),
+                Curve("linear hidden", xorLossCurve(true, hiddenUnits = 3, seed = 11), BackwardColor),
+            ),
+            0f..6000f,
+            0f..0.8f,
+        ),
+        readout = "linear: ${"%.4f".format(linear.final.loss)} = ln 2",
+    )
+
+    val widths = listOf(2, 3, 4)
+    val seeds = listOf(11, 17, 23, 31, 41)
+    val solveCounts = widths.map { h -> h to seeds.count { trainXor(hiddenUnits = h, seed = it).solved } }
+    frames += NetFrame(
+        status = "One last thing, measured rather than assumed. Two hidden units is the textbook minimum for XOR and " +
+            "it is genuinely enough — but running the same training from five different random initialisations, it " +
+            "converges only ${solveCounts[0].second} times out of ${seeds.size}. Three units: " +
+            "${solveCounts[1].second} of ${seeds.size}. Four: ${solveCounts[2].second} of ${seeds.size}. The failures " +
+            "are local minima, not bugs. Extra width does not make the network more expressive here; it makes the " +
+            "loss surface easier to descend, which is a different and underrated reason real networks are wider than " +
+            "they need to be.",
+        bars = listOf(
+            NetBar(
+                "runs solved out of ${seeds.size}",
+                solveCounts.map { it.second.toFloat() },
+                AccentA,
+                widths.map { "$it hidden" },
+            ),
+        ),
+        readout = "expressiveness is not the same as trainability",
+    )
+    return frames
+}
+
+private fun vanishingGradientFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+    val maxDerivative = maxSigmoidDerivative()
+
+    frames += NetFrame(
+        status = "Backpropagation multiplies. The gradient reaching layer l is a product of every activation " +
+            "derivative and weight matrix between l and the loss — so whatever those factors do on average, they do " +
+            "it once per layer. Here is the sigmoid and its derivative: the derivative peaks at " +
+            "${"%.2f".format(maxDerivative)} at z = 0 and falls away fast on both sides. That maximum is a hard " +
+            "ceiling, and it is less than a half.",
+        plot = CurvePlot(
+            "σ(z) and σ′(z)",
+            listOf(
+                Curve("σ(z)", sample(-8f..8f) { sigmoid(it) }, ForwardColor),
+                Curve("σ′(z)", sample(-8f..8f) { sigmoid(it) * (1 - sigmoid(it)) }, BackwardColor),
+            ),
+            -8f..8f,
+            -0.1f..1.1f,
+        ),
+        readout = "max σ′ = ${"%.2f".format(maxDerivative)}",
+    )
+
+    val sigmoidRun = deepGradients(activation = DeepActivation.Sigmoid, initScale = 1.0)
+    frames += NetFrame(
+        status = "A 12-layer network, 16 units wide, sigmoid throughout. One forward pass, one backward pass, and " +
+            "the Frobenius norm of ∂L/∂W measured at every layer — nothing here is a formula for the decay, it is " +
+            "the decay. The bars are the mean activation per layer, which is healthy: the forward pass looks fine, " +
+            "and that is exactly why this failure is hard to notice.",
+        bars = listOf(
+            NetBar(
+                "mean |activation| per layer",
+                sigmoidRun.activation.map { it.toFloat() },
+                ForwardColor,
+                (1..12).map { if (it % 3 == 0) "$it" else "" },
+            ),
+        ),
+        readout = "forward pass: no sign of a problem",
+    )
+
+    val reluRun = deepGradients(activation = DeepActivation.Relu, initScale = sqrt(2.0 / 16.0))
+    frames += NetFrame(
+        status = "The backward pass, on a log scale because a linear one would draw eleven of the twelve bars as " +
+            "nothing. Sigmoid: layer 1's gradient is ${"%.1e".format(sigmoidRun.perLayer.first())} against layer 12's " +
+            "${"%.1e".format(sigmoidRun.perLayer.last())} — a factor of ${"%.0f".format(sigmoidRun.ratio)}. ReLU with " +
+            "He initialisation on the identical architecture stays flat to within a factor of " +
+            "${"%.1f".format(1.0 / reluRun.ratio)}. The layers nearest the input are the ones that learn slowest, " +
+            "and those are the layers that decide what features exist at all.",
+        plot = CurvePlot(
+            "log₁₀ ‖∂L/∂W‖ by layer",
+            listOf(
+                log10Curve(sigmoidRun.perLayer, "sigmoid", BackwardColor),
+                log10Curve(reluRun.perLayer, "ReLU + He init", AccentA),
+            ),
+            1f..12f,
+            -4f..2f,
+        ),
+        readout = "sigmoid: ${"%.0f".format(sigmoidRun.ratio)}× weaker at the input",
+    )
+
+    val small = deepGradients(activation = DeepActivation.Sigmoid, initScale = 0.25)
+    val large = deepGradients(activation = DeepActivation.Sigmoid, initScale = 1.5)
+    frames += NetFrame(
+        status = "Initialisation cannot rescue it, only trade one problem for another. At an init scale of 0.25 the " +
+            "weights themselves shrink the signal too and the ratio worsens to " +
+            "${"%.0e".format(small.ratio)}; at 1.5 it improves to ${"%.0f".format(large.ratio)} but the units start " +
+            "saturating, where σ′ is near zero anyway. There is no scale at which a deep sigmoid stack propagates " +
+            "gradients cleanly, because the ceiling of ${"%.2f".format(maxDerivative)} does not move.",
+        plot = CurvePlot(
+            "log₁₀ ‖∂L/∂W‖ by layer, three init scales",
+            listOf(
+                log10Curve(small.perLayer, "scale 0.25", NeutralColor),
+                log10Curve(sigmoidRun.perLayer, "scale 1.0", BackwardColor),
+                log10Curve(large.perLayer, "scale 1.5", AccentB),
+            ),
+            1f..12f,
+            -8f..2f,
+        ),
+        readout = "ratios ${"%.0e".format(small.ratio)} · ${"%.0e".format(sigmoidRun.ratio)} · ${"%.0e".format(large.ratio)}",
+    )
+
+    frames += NetFrame(
+        status = "What actually fixed it, in the order the field found them. ReLU, whose derivative is exactly 1 " +
+            "wherever the unit is active, so there is no shrinking factor to compound. He and Xavier initialisation, " +
+            "which set the weight scale so the variance is preserved layer to layer. Batch and layer normalisation, " +
+            "which re-centre the pre-activations so units stay off the saturated tails. And residual connections, " +
+            "which add an identity path so the gradient has a route to the early layers that multiplies by nothing " +
+            "at all — that last one is why 152 layers became possible in 2015 when 20 had been hard in 2012.",
+        plot = CurvePlot(
+            "log₁₀ ‖∂L/∂W‖ by layer",
+            listOf(
+                log10Curve(sigmoidRun.perLayer, "sigmoid", BackwardColor),
+                log10Curve(reluRun.perLayer, "ReLU + He init", AccentA),
+            ),
+            1f..12f,
+            -4f..2f,
+        ),
+        readout = "the fixes are architectural, not numerical",
+    )
+    return frames
+}
+
+private fun explodingGradientFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+    val stable = deepGradients(activation = DeepActivation.Relu, initScale = sqrt(2.0 / 16.0))
+    val blown = deepGradients(activation = DeepActivation.Relu, initScale = 1.5)
+
+    frames += NetFrame(
+        status = "The same multiplication, running the other way. If the factors between layers average above one " +
+            "rather than below it, the product grows with depth instead of shrinking — and unlike vanishing, this " +
+            "one is visible in the forward pass. Two 12-layer ReLU stacks, identical except for the weight " +
+            "initialisation scale: He at ${"%.2f".format(sqrt(2.0 / 16.0))}, and a careless 1.5.",
+        plot = CurvePlot(
+            "log₁₀ mean |activation| by layer",
+            listOf(
+                log10Curve(stable.activation, "He init", AccentA),
+                log10Curve(blown.activation, "scale 1.5", BackwardColor),
+            ),
+            1f..12f,
+            -1f..8f,
+        ),
+        readout = "activations: ${"%.1f".format(blown.activation.first())} → ${"%.1e".format(blown.activation.last())}",
+    )
+
+    frames += NetFrame(
+        status = "Twelve layers took the mean activation from ${"%.1f".format(blown.activation.first())} to " +
+            "${"%.1e".format(blown.activation.last())} — a factor of about " +
+            "${"%.0e".format(blown.activation.last() / blown.activation.first())}, compounding at roughly " +
+            "${"%.1f".format(Math.pow(blown.activation.last() / blown.activation.first(), 1.0 / 11.0))}× per layer. " +
+            "Nothing here is unstable in the numerical-error sense; it is a geometric series doing what geometric " +
+            "series do, and thirty layers instead of twelve would overflow a float outright.",
+        bars = listOf(
+            NetBar(
+                "log₁₀ mean |activation| per layer",
+                blown.activation.map { log10(max(it, 1e-300)).toFloat() },
+                BackwardColor,
+                (1..12).map { if (it % 3 == 0) "$it" else "" },
+            ),
+        ),
+        readout = "≈ ${"%.1f".format(Math.pow(blown.activation.last() / blown.activation.first(), 1.0 / 11.0))}× per layer",
+    )
+
+    val clip = clipGlobalNorm(blown.perLayer, 5.0)
+    frames += NetFrame(
+        status = "The gradients follow. Total gradient norm across all twelve layers: " +
+            "${"%.1e".format(clip.beforeNorm)}. This is what a NaN loss looks like one step before it happens — the " +
+            "update is finite and enormous, the weights land somewhere absurd, the next forward pass overflows, and " +
+            "every number in the model becomes NaN at once. The symptom people report is \"the loss went to NaN at " +
+            "step 400\"; the cause was here.",
+        plot = CurvePlot(
+            "log₁₀ ‖∂L/∂W‖ by layer",
+            listOf(
+                log10Curve(stable.perLayer, "He init", AccentA),
+                log10Curve(blown.perLayer, "scale 1.5", BackwardColor),
+            ),
+            1f..12f,
+            -2f..18f,
+        ),
+        readout = "‖g‖ = ${"%.1e".format(clip.beforeNorm)}",
+    )
+
+    frames += NetFrame(
+        status = "Gradient clipping, and it is worth being precise about why it works. Compute the global norm over " +
+            "every parameter; if it exceeds a threshold, multiply *everything* by threshold/norm. Here that is " +
+            "${"%.1e".format(clip.beforeNorm)} down to ${"%.1f".format(clip.afterNorm)}, a scale factor of " +
+            "${"%.1e".format(clip.scale)}. Because the same factor is applied everywhere, the direction of the step " +
+            "is untouched — only its length is capped. Clipping each parameter separately would not have that " +
+            "property, and it is the reason `clip_grad_norm_` is the one people use.",
+        bars = listOf(
+            NetBar(
+                "log₁₀ ‖∂L/∂W‖ after clipping",
+                clip.clippedPerLayer.map { log10(max(it, 1e-300)).toFloat() },
+                AccentA,
+                (1..12).map { if (it % 3 == 0) "$it" else "" },
+            ),
+        ),
+        readout = "‖g‖ ${"%.1e".format(clip.beforeNorm)} → ${"%.1f".format(clip.afterNorm)}, direction unchanged",
+    )
+
+    frames += NetFrame(
+        status = "Vanishing and exploding are the same phenomenon with the ratio on either side of one, but they " +
+            "are not equally bad in practice. Exploding announces itself — a spiking loss, then NaN — and clipping " +
+            "plus a smaller initialisation usually fixes it in an afternoon. Vanishing is silent: the loss goes " +
+            "down, the model trains, and the early layers simply never learn anything, which looks like a model " +
+            "that is not big enough rather than one that is broken. The loud failure is the easier one to have.",
+        plot = CurvePlot(
+            "log₁₀ ‖∂L/∂W‖ by layer",
+            listOf(
+                log10Curve(deepGradients(activation = DeepActivation.Sigmoid, initScale = 1.0).perLayer, "vanishing", NeutralColor),
+                log10Curve(stable.perLayer, "healthy", AccentA),
+                log10Curve(blown.perLayer, "exploding", BackwardColor),
+            ),
+            1f..12f,
+            -4f..18f,
+        ),
+        readout = "same mechanism, opposite sign",
+    )
+    return frames
+}
+
 private val netConfigs = mapOf(
+    "biological_neuron" to NetConfig(
+        intro = "A leaky integrate-and-fire neuron, simulated properly — sub-threshold, firing, and its full f–I curve — beside the artificial unit that abstracts it.",
+        legend = listOf(ForwardColor to "Membrane / f–I", BackwardColor to "Threshold", OutputColor to "Response"),
+        build = ::biologicalNeuronFrames,
+    ),
+    "mlp" to NetConfig(
+        intro = "A 2-3-1 network actually trained on XOR by backpropagation, then the same network with the non-linearity removed.",
+        legend = listOf(ForwardColor to "Forward", AccentA to "With tanh", BackwardColor to "Linear hidden"),
+        build = ::mlpFrames,
+    ),
+    "vanishing_gradient" to NetConfig(
+        intro = "Twelve sigmoid layers, one real backward pass, and the gradient norm measured at every layer on a log scale.",
+        legend = listOf(ForwardColor to "Forward pass", BackwardColor to "Sigmoid gradient", AccentA to "ReLU + He"),
+        build = ::vanishingGradientFrames,
+    ),
+    "exploding_gradient" to NetConfig(
+        intro = "The same stack with a careless initialisation: activations and gradients compounding upward, and what global-norm clipping does about it.",
+        legend = listOf(AccentA to "Healthy", BackwardColor to "Exploding", NeutralColor to "Vanishing"),
+        build = ::explodingGradientFrames,
+    ),
     "batch_normalization" to NetConfig(
         intro = "One feature across a mini-batch of eight, normalized for real: batch statistics, the normalized " +
             "values, the learned γ/β restore, and the switch to running statistics at inference.",
@@ -1159,6 +1595,31 @@ private val netConfigs = mapOf(
 
 private fun netConfigFor(topicId: String): NetConfig =
     netConfigs[topicId] ?: netConfigs.getValue("neural_network_basics")
+
+internal val neuralNetTopicIds: Set<String> get() = netConfigs.keys
+
+internal fun neuralNetFrameCount(topicId: String): Int {
+    val frames = netConfigFor(topicId).build()
+    frames.forEach { frame ->
+        // A plot whose curve leaves its declared range is drawn clamped, so a builder that gets its
+        // axis wrong looks plausible on screen. C1's log-scale plots span twenty orders of
+        // magnitude, which is exactly where that mistake is easy to make.
+        frame.plot?.let { plot ->
+            val stray = plot.curves.flatMap { it.points }.count { (x, y) ->
+                !x.isFinite() || !y.isFinite() ||
+                    x !in plot.xRange || y !in (plot.yRange.start - 0.001f)..(plot.yRange.endInclusive + 0.001f)
+            }
+            require(stray == 0) { "$topicId plots $stray point(s) outside '${plot.label}' declared range" }
+        }
+        frame.bars.forEach { bar ->
+            require(bar.values.all { it.isFinite() }) { "$topicId draws a non-finite bar in '${bar.label}'" }
+            require(bar.captions.isEmpty() || bar.captions.size == bar.values.size) {
+                "$topicId bar '${bar.label}' has ${bar.captions.size} captions for ${bar.values.size} values"
+            }
+        }
+    }
+    return frames.size
+}
 
 // ── UI ───────────────────────────────────────────────────────────────────────
 

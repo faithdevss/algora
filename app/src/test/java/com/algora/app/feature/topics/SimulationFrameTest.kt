@@ -48,6 +48,13 @@ class SimulationFrameTest {
     fun `every bit-board config builds frames of actual bits`() =
         check("BitBoard", bitBoardTopicIds, ::bitBoardFrameCount)
 
+    // Added with C1: the neural-net labs are the phase's most-used widget from here on (C1-C9 all
+    // lean on it) and had no frame guard at all. The helper also checks that a plot's curves stay
+    // inside the axis range the frame declared, which a log-scale plot makes easy to get wrong.
+    @Test
+    fun `every neural-net config builds frames inside its declared axes`() =
+        check("NeuralNet", neuralNetTopicIds, ::neuralNetFrameCount)
+
     // The recursion tree is the one widget with a live parameter, so this covers every n the slider
     // can reach, not just the default one.
     @Test

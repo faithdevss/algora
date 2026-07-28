@@ -116,7 +116,7 @@ class AiTaxonomyCoverageTest {
             ),
             "Neural Network Foundations" to linkedMapOf(
                 "The Perceptron" to listOf("perceptron"),
-                "Multi-Layer Perceptron (MLP)" to emptyList(),          // C1
+                "Multi-Layer Perceptron (MLP)" to listOf("mlp"),
                 "Backpropagation" to listOf("backpropagation"),
                 // One topic, "Gradient Descent Variants", whose subject is the batch/mini/stochastic
                 // split and the adaptive optimizers built on it. C8 breaks the optimizers out.
@@ -185,13 +185,13 @@ class AiTaxonomyCoverageTest {
         ),
         "Deep Learning" to linkedMapOf(
             "Neural Network Basics" to linkedMapOf(
-                "The Biological Neuron" to emptyList(),                 // C1
+                "The Biological Neuron" to listOf("biological_neuron"),
                 "The Perceptron" to listOf("perceptron"),
-                "Multi-Layer Perceptron (MLP)" to emptyList(),          // C1
+                "Multi-Layer Perceptron (MLP)" to listOf("mlp"),
                 "Feedforward Networks" to listOf("neural_network_basics"),
                 "Backpropagation Algorithm" to listOf("backpropagation"),
-                "The Vanishing Gradient Problem" to emptyList(),        // C1
-                "The Exploding Gradient Problem" to emptyList(),        // C1
+                "The Vanishing Gradient Problem" to listOf("vanishing_gradient"),
+                "The Exploding Gradient Problem" to listOf("exploding_gradient"),
             ),
             // `activation_functions` is the umbrella; C2 authors the ten.
             "Activation Functions" to linkedMapOf(
@@ -514,7 +514,7 @@ class AiTaxonomyCoverageTest {
 
     // The ratchet. Move it when a batch lands; a batch that does not move it did not close any doc
     // entry, which is worth noticing.
-    private val expectedCoveredCount = 192
+    private val expectedCoveredCount = 197
 
     // Doc entries the app answers from the DSA taxonomy rather than an AI section. Deliberate reuse
     // — the alternative is a duplicate page — but small and explicit, so it cannot grow by accident.

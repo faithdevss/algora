@@ -25,18 +25,29 @@ private fun topic(
     difficulty = difficulty,
 )
 
+private val basics = DeepLearningCategories.basics
 private val fundamentals = DeepLearningCategories.fundamentals
 private val architectures = DeepLearningCategories.architectures
 
-private val fundamentalsTopics = listOf(
+// The doc's Neural Network Basics block, in full. Ordered as a reading path rather than by when
+// each topic was written: what a neuron is, what one artificial unit can do, what a layer of them
+// adds, how the whole stack is trained, and the two ways that training fails with depth.
+private val basicsTopics = listOf(
+    topic("biological_neuron", "The Biological Neuron", basics, "What the metaphor was taken from — and how much of it was left behind.", difficulty = Difficulty.BEGINNER),
     // Cross-listed with ML (mock lists The Perceptron under both). Same id -> same detail/content.
     topic(
-        "perceptron", "The Perceptron", fundamentals,
+        "perceptron", "The Perceptron", basics,
         "The first artificial neuron",
         iconName = "robot", difficulty = Difficulty.BEGINNER,
     ),
-    topic("neural_network_basics", "Neural Network Basics", fundamentals, "Layers of neurons that learn features from data.", isPremium = true),
-    topic("backpropagation", "Backpropagation", fundamentals, "The chain rule applied to train every weight in a network.", isPremium = true),
+    topic("mlp", "Multi-Layer Perceptron (MLP)", basics, "One hidden layer, and the problem a single unit provably cannot solve.", difficulty = Difficulty.BEGINNER),
+    topic("neural_network_basics", "Feedforward Networks", basics, "Layers of neurons that learn features from data.", isPremium = true),
+    topic("backpropagation", "Backpropagation Algorithm", basics, "The chain rule applied to train every weight in a network.", isPremium = true),
+    topic("vanishing_gradient", "The Vanishing Gradient Problem", basics, "Why the layers nearest the input learn slowest — measured, not asserted.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("exploding_gradient", "The Exploding Gradient Problem", basics, "The same multiplication running the other way, and why clipping works.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+)
+
+private val fundamentalsTopics = listOf(
     topic("activation_functions", "Activation Functions", fundamentals, "Non-linearities (ReLU, sigmoid, tanh) that give networks their power.", isPremium = true),
     topic("gradient_descent_variants", "Gradient Descent Variants", fundamentals, "SGD, Momentum, RMSProp, Adam and friends.", isPremium = true),
     topic("batch_normalization", "Batch Normalization", fundamentals, "Re-centre and re-scale activations so deep stacks stay trainable.", isPremium = true),
@@ -55,7 +66,7 @@ private val architecturesTopics = listOf(
 )
 
 object DeepLearningTopics {
-    val topics: List<Topic> = fundamentalsTopics + architecturesTopics
+    val topics: List<Topic> = basicsTopics + fundamentalsTopics + architecturesTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }
