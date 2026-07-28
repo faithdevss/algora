@@ -369,7 +369,57 @@ private fun strassenTrace(size: Int): RecTrace {
     return RecTrace(t.nodes, t.frames)
 }
 
+// Exponentiation by squaring. The tree is the complexity argument: one child per level, and the
+// level count is ⌊log₂ n⌋ + 1 — against the n-deep chain a naive loop would draw.
+private fun fastPowerTrace(exponent: Int): RecTrace {
+    val t = Tracer()
+    val base = 3L
+
+    fun power(parent: Int?, e: Int): Long {
+        val id = t.call(parent, "3^$e")
+        val result = if (e == 0) {
+            1L
+        } else {
+            // Computed once and squared. Two recursive calls on e/2 would be the same answer
+            // in O(n) time, which is the mistake this shape exists to rule out.
+            val half = power(id, e / 2)
+            val squared = half * half
+            if (e % 2 == 0) squared else squared * base
+        }
+        t.ret(id, "= $result")
+        return result
+    }
+
+    power(null, exponent)
+    return RecTrace(t.nodes, t.frames)
+}
+
+// The same recursion with a reduction after every multiply, so nothing ever exceeds mod².
+private fun modularPowerTrace(exponent: Int): RecTrace {
+    val t = Tracer()
+    val base = 3L
+    val mod = 17L
+
+    fun power(parent: Int?, e: Int): Long {
+        val id = t.call(parent, "3^$e mod 17")
+        val result = if (e == 0) {
+            1L
+        } else {
+            val half = power(id, e / 2)
+            val squared = half * half % mod
+            if (e % 2 == 0) squared else squared * base % mod
+        }
+        t.ret(id, "= $result")
+        return result
+    }
+
+    power(null, exponent)
+    return RecTrace(t.nodes, t.frames)
+}
+
 private val recursionConfigs = mapOf(
+    "fast_power" to RecursionConfig(1f..20f, 13, "exponent") { fastPowerTrace(it) },
+    "modular_exponentiation" to RecursionConfig(1f..20f, 13, "exponent") { modularPowerTrace(it) },
     "factorial" to RecursionConfig(1f..8f, 5, "n") { factorialTrace(it) },
     "karatsubas_algorithm" to RecursionConfig(2f..4f, 4, "digits per operand") { karatsubaTrace(it) },
     "strassens_algorithm" to RecursionConfig(4f..4f, 4, "matrix size") { strassenTrace(it) },
@@ -382,6 +432,27 @@ private val recursionConfigs = mapOf(
 
 private fun recursionConfigFor(topicId: String): RecursionConfig =
     recursionConfigs[topicId] ?: recursionConfigs.getValue("factorial")
+
+internal val recursionTreeTopicIds: Set<String> get() = recursionConfigs.keys
+
+// Traces are rebuilt whenever the slider moves, so the whole declared range has to work — not just
+// the default. A deep n is also where an unguarded trace overflows the stack.
+internal fun recursionTreeFrameCount(topicId: String): Int {
+    val config = recursionConfigFor(topicId)
+    var total = 0
+    for (n in config.nRange.start.toInt()..config.nRange.endInclusive.toInt()) {
+        val trace = config.build(n)
+        require(trace.frames.isNotEmpty()) { "$topicId at n = $n produced no frames" }
+        val ids = trace.nodes.map { it.id }.toSet()
+        val orphans = trace.nodes.mapNotNull { it.parent }.filter { it !in ids }
+        require(orphans.isEmpty()) { "$topicId at n = $n has nodes with unresolvable parents: $orphans" }
+        trace.frames.forEach { frame ->
+            require(frame.stateById.keys.all { it in ids }) { "$topicId at n = $n states a node not in the trace" }
+        }
+        total += trace.frames.size
+    }
+    return total
+}
 
 private val ActiveColor = Color(0xFFFACC15)
 private val WaitingColor = Color(0xFF3B82F6)

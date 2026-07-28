@@ -203,10 +203,10 @@ category guard load-bearing rather than nice-to-have.
 | D1 · Existing-category gap-fill | 7 | **Done** | Plus `SimulationFrameTest` — see below |
 | D2 · Computational Geometry | 4 | **Done** | Needed no new `CloudFrame` fields; found a live `mcmc` bug |
 | D3 · String Algorithms | 5 (+3 moved) | **Done** | `TreeVisualizer` did need failure-link support; added |
-| D4 · Math & Number Theory | 7 | Next | |
-| D5 · Bit Manipulation | 4 | Planned | New `BitBoardPlayer` widget |
+| D4 · Math & Number Theory | 7 | **Done** | Every worked example pinned by a `require` in its builder |
+| D5 · Bit Manipulation | 4 | Next | New `BitBoardPlayer` widget |
 | Guards | — | Planned | Taxonomy + category guards land at the end, not with D1 — see below |
-| **Total** | **27** | **16 done** | Algorithms 67 → 94; app taxonomy 257 → 284 |
+| **Total** | **27** | **23 done** | Algorithms 67 → 94; app taxonomy 257 → 284 |
 
 ### Deviations from the plan as written
 
@@ -306,6 +306,31 @@ the narration was wrong. Fixed by separating `prefixOf` (the lookup key, empty a
 display label, and the builder now ends with a `require(found == [she, he, hers])`, which puts the
 claim the frames make under the test that runs them. "he" is reachable only through the output link
 off "she", so it is the first thing a wrong transition drops.
+
+### D4, as built
+
+Category `algo_math` (`9 · Math & Number Theory`, `chip`, `#F59E0B`) with `euclid_gcd` free and the
+other six premium. The doc's separate listing of "Fast Power / Binary Exponentiation" and "Modular
+Exponentiation" is kept: `fast_power` is the halving idea and its matrix-power use, and
+`modular_exponentiation` is that idea under a modulus plus the inverse it enables — which is what
+`fermats_little_theorem` then needs.
+
+Hosts went as planned. `fast_power` and `modular_exponentiation` are `RecursionTreeVisualizer`
+traces on a live exponent slider (1–20, default 13), because the halving tree *is* the complexity
+argument. The other five are `ArrayWalkPlayer`: the gcd remainder chain as a growing row followed by
+the Bézout back-substitution, residue rows for modular arithmetic where whether `1` appears in the
+`a·k mod m` row is exactly whether `a` is invertible, the sieve across two rows so 2…30 stays
+readable, powers of 3 mod 7 arriving at 1 at exponent 6, and CRT as three successive filters over
+0…31 with the closed-form construction shown afterwards.
+
+**Every worked example was computed and checked before it was written, as the plan required** — and
+then pinned in code. Each builder that states a number now ends with a `require`: `252·(−2) +
+105·5 = 21` for Bézout, the exact prime list for the sieve, and `23` for CRT from *both* the filter
+and the construction independently. This is the D3 lesson applied ahead of the failure rather than
+after it: a wrong constant leaves the frames structurally valid and every caption plausible, so
+structure checks cannot catch it. During writing, the extended-Euclid unwind did initially drop its
+last division step, which produces coefficients for the wrong pair; the pin is what would have
+caught it.
 
 ## Out of scope
 

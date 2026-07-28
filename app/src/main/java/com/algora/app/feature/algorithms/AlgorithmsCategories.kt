@@ -19,12 +19,13 @@ object AlgorithmsCategories {
     val dynamicProgramming = Category("algo_dp", "6 · Dynamic Programming", Section.ALGORITHMS, 0xFFEC4899, "stack")
     val graphAlgorithms = Category("algo_graph", "7 · Graph Algorithms", Section.ALGORITHMS, 0xFF3B82F6, "share")
     val pathfinding = Category("algo_pathfinding", "8 · Pathfinding", Section.ALGORITHMS, 0xFF06B6D4, "map")
+    val math = Category("algo_math", "9 · Math & Number Theory", Section.ALGORITHMS, 0xFFF59E0B, "chip")
     val strings = Category("algo_strings", "10 · String Algorithms", Section.ALGORITHMS, 0xFFEC4899, "browser")
     val geometry = Category("algo_geometry", "12 · Computational Geometry", Section.ALGORITHMS, 0xFF06B6D4, "globe")
     val miscAdvanced = Category("algo_misc", "9 · Misc & Advanced", Section.ALGORITHMS, 0xFF8B5CF6, "chip")
 
     val all = listOf(
         sorting, searching, recursion, divideConquer, greedy, dynamicProgramming, graphAlgorithms,
-        pathfinding, strings, geometry, miscAdvanced,
+        pathfinding, math, strings, geometry, miscAdvanced,
     )
 }

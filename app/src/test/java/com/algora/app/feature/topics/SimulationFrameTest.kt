@@ -43,4 +43,10 @@ class SimulationFrameTest {
     @Test
     fun `every tree config builds frames with resolvable parents and links`() =
         check("TreeVisualizer", treeVisualizerTopicIds, ::treeVisualizerFrameCount)
+
+    // The recursion tree is the one widget with a live parameter, so this covers every n the slider
+    // can reach, not just the default one.
+    @Test
+    fun `every recursion-tree config builds frames across its whole slider range`() =
+        check("RecursionTree", recursionTreeTopicIds, ::recursionTreeFrameCount)
 }

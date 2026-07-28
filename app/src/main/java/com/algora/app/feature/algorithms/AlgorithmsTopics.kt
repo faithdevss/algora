@@ -30,6 +30,7 @@ private val greedy = AlgorithmsCategories.greedy
 private val dp = AlgorithmsCategories.dynamicProgramming
 private val graphAlgo = AlgorithmsCategories.graphAlgorithms
 private val pathfinding = AlgorithmsCategories.pathfinding
+private val numberTheory = AlgorithmsCategories.math
 private val strings = AlgorithmsCategories.strings
 private val geometry = AlgorithmsCategories.geometry
 private val misc = AlgorithmsCategories.miscAdvanced
@@ -119,6 +120,19 @@ private val pathfindingTopics = listOf(
     topic("ida_star", "IDA*", pathfinding, "A*'s answer on a stack instead of a frontier — linear memory.", isPremium = true),
 )
 
+// The doc lists "Fast Power / Binary Exponentiation" and "Modular Exponentiation" as separate
+// entries and they stay separate here: fast_power is the halving idea and its matrix-power use,
+// modular_exponentiation is that idea under a modulus plus the inverse it enables.
+private val mathTopics = listOf(
+    topic("euclid_gcd", "Euclid's GCD & LCM", numberTheory, "Repeated remainder — the oldest algorithm still in daily use."),
+    topic("modular_arithmetic", "Modular Arithmetic", numberTheory, "Arithmetic that wraps, and the one operation that does not survive it.", isPremium = true),
+    topic("fast_power", "Fast Power", numberTheory, "Halve the exponent, square the base — O(log n) multiplications.", isPremium = true),
+    topic("modular_exponentiation", "Modular Exponentiation", numberTheory, "Fast power under a modulus, and the modular inverse it buys.", isPremium = true),
+    topic("sieve_of_eratosthenes", "Sieve of Eratosthenes", numberTheory, "Marks composites in passes to list every prime below n.", isPremium = true),
+    topic("fermats_little_theorem", "Fermat's Little Theorem", numberTheory, "aᵖ⁻¹ ≡ 1 mod p — inverses, primality tests, and the numbers that fool them.", isPremium = true),
+    topic("chinese_remainder_theorem", "Chinese Remainder Theorem", numberTheory, "Reassembles one number from its remainders under coprime moduli.", isPremium = true),
+)
+
 // kmp, rabin_karp and manacher moved here from algo_misc. Their ids are unchanged, so no content
 // file, cross-link, prerequisite or problem-bank reference had to move with them — only categoryId.
 private val stringTopics = listOf(
@@ -156,7 +170,8 @@ private val miscTopics = listOf(
 object AlgorithmsTopics {
     val topics: List<Topic> =
         sortingTopics + searchingTopics + recursionTopics + divideConquerTopics + greedyTopics +
-            dpTopics + graphAlgoTopics + pathfindingTopics + stringTopics + geometryTopics + miscTopics
+            dpTopics + graphAlgoTopics + pathfindingTopics + mathTopics + stringTopics +
+            geometryTopics + miscTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }

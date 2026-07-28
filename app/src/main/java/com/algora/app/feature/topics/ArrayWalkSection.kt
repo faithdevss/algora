@@ -819,6 +819,369 @@ private fun coinChangeGreedyFrames(): List<WalkFrame> {
     return frames
 }
 
+// ── Math & number theory ─────────────────────────────────────────────────────
+
+// The remainder chain as a growing row, then the back-substitution that turns it into Bézout
+// coefficients — because the coefficients are what modular inverses and CRT actually consume.
+private fun euclidGcdFrames(): List<WalkFrame> {
+    val a0 = 252L
+    val b0 = 105L
+    val frames = mutableListOf<WalkFrame>()
+    val chain = mutableListOf(a0, b0)
+    val steps = mutableListOf<Triple<Long, Long, Long>>()   // (dividend, quotient, remainder)
+
+    frames += WalkFrame(
+        status = "gcd($a0, $b0). The identity that drives everything: gcd(a, b) = gcd(b, a mod b) — both pairs have " +
+            "exactly the same common divisors, not merely the same greatest one.",
+        cells = chain.map { CellView(it.toString(), CellMark.ACTIVE) },
+    )
+
+    var a = a0
+    var b = b0
+    while (b != 0L) {
+        val q = a / b
+        val r = a % b
+        steps += Triple(a, q, r)
+        chain += r
+        frames += WalkFrame(
+            status = "$a = $q × $b + $r." + if (r == 0L) " Remainder zero — the previous value, $b, is the answer." else " Replace the pair with ($b, $r) and repeat.",
+            cells = chain.mapIndexed { i, v ->
+                CellView(
+                    v.toString(),
+                    when {
+                        i == chain.lastIndex -> if (r == 0L) CellMark.DIM else CellMark.ACTIVE
+                        i == chain.lastIndex - 1 -> if (r == 0L) CellMark.RESULT else CellMark.WINDOW
+                        else -> CellMark.DIM
+                    },
+                )
+            },
+            readout = "step ${steps.size}",
+        )
+        a = b
+        b = r
+    }
+    val g = a
+
+    frames += WalkFrame(
+        status = "gcd = $g in ${steps.size} divisions. Lamé's bound is five times the digit count of the smaller input, and the " +
+            "worst case is a pair of consecutive Fibonacci numbers — every remainder then lands exactly on the previous one.",
+        cells = chain.map { CellView(it.toString(), if (it == g) CellMark.RESULT else CellMark.DIM) },
+        readout = "gcd($a0, $b0) = $g",
+    )
+    frames += WalkFrame(
+        status = "lcm = $a0 / $g × $b0 = ${a0 / g * b0}. Divide before multiplying: $a0 × $b0 can overflow for inputs whose " +
+            "lcm comfortably would not.",
+        cells = chain.map { CellView(it.toString(), CellMark.DIM) },
+        readout = "lcm($a0, $b0) = ${a0 / g * b0}",
+    )
+
+    // Back-substitution: walk the division steps in reverse, rewriting g as a combination.
+    var x = 1L
+    var y = 0L
+    // Every division step contributes one unwind, including the last one — dropping it silently
+    // produces coefficients for the wrong pair.
+    for ((dividend, q, _) in steps.reversed()) {
+        val newX = y
+        val newY = x - q * y
+        x = newX
+        y = newY
+        frames += WalkFrame(
+            status = "Back-substitute through $dividend = $q × … : $g = $a0 × $x + $b0 × $y." +
+                if (x == 1L && y == 0L) "" else " Check: ${a0 * x} + ${b0 * y} = ${a0 * x + b0 * y}.",
+            cells = chain.mapIndexed { i, v -> CellView(v.toString(), if (i == chain.lastIndex - 1) CellMark.RESULT else CellMark.DIM) },
+            readout = "$a0·$x + $b0·$y = ${a0 * x + b0 * y}",
+        )
+    }
+
+    // The frames state these numbers, so pin them: an off-by-one in the unwind produces coefficients
+    // for the wrong pair and every caption above stays plausible.
+    require(a0 * x + b0 * y == g) { "euclid_gcd Bézout is wrong: $a0·$x + $b0·$y != $g" }
+    require(x == -2L && y == 5L) { "euclid_gcd expected (x, y) = (-2, 5), got ($x, $y)" }
+
+    frames += WalkFrame(
+        status = "Bézout: $a0 × $x + $b0 × $y = $g. Those coefficients are the whole reason the extended version exists — " +
+            "when gcd is 1 the coefficient of a is a's modular inverse, and that is where CRT and RSA key generation start.",
+        cells = chain.map { CellView(it.toString(), if (it == g) CellMark.RESULT else CellMark.DIM) },
+        readout = "x = $x, y = $y",
+    )
+    return frames
+}
+
+// Residue rows: the multiples of a under a modulus. Whether 1 ever appears in that row is exactly
+// whether a is invertible, so the inverse is something seen rather than asserted.
+private fun modularArithmeticFrames(): List<WalkFrame> {
+    val frames = mutableListOf<WalkFrame>()
+
+    fun residueRow(m: Int) = (0 until m).map { CellView(it.toString(), CellMark.IDLE) }
+
+    fun multiplesRow(a: Int, m: Int, highlightOne: Boolean) = (0 until m).map { k ->
+        val v = a * k % m
+        CellView(v.toString(), if (highlightOne && v == 1) CellMark.RESULT else if (v == 0) CellMark.DIM else CellMark.WINDOW)
+    }
+
+    frames += WalkFrame(
+        status = "Working mod 7, every integer collapses onto one of seven residues. 17 ≡ 3 and 23 ≡ 2, because each differs " +
+            "from its residue by a multiple of 7.",
+        cells = residueRow(7),
+        pointers = mapOf(3 to "17", 2 to "23"),
+    )
+    frames += WalkFrame(
+        status = "Addition survives the collapse: 17 + 23 = 40 ≡ ${40 % 7}, and (3 + 2) mod 7 = ${(3 + 2) % 7}. They agree, which is " +
+            "what lets you reduce at every step instead of at the end.",
+        cells = residueRow(7).mapIndexed { i, c -> if (i == 40 % 7) CellView(c.text, CellMark.RESULT) else c },
+        readout = "17 + 23 ≡ ${40 % 7} (mod 7)",
+    )
+    frames += WalkFrame(
+        status = "Multiplication too: 17 × 23 = 391 ≡ ${391 % 7}, and (3 × 2) mod 7 = ${3 * 2 % 7}.",
+        cells = residueRow(7).mapIndexed { i, c -> if (i == 391 % 7) CellView(c.text, CellMark.RESULT) else c },
+        readout = "17 × 23 ≡ ${391 % 7} (mod 7)",
+    )
+    frames += WalkFrame(
+        status = "Subtraction survives mathematically but not in Kotlin: 17 − 23 = −6, and −6 % 7 is −6, because % takes the " +
+            "dividend's sign. The residue wanted is ${((-6 % 7) + 7) % 7}, so normalise with ((a % m) + m) % m.",
+        cells = residueRow(7).mapIndexed { i, c -> if (i == ((-6 % 7) + 7) % 7) CellView(c.text, CellMark.RESULT) else c },
+        readout = "−6 % 7 = −6 in code · ${((-6 % 7) + 7) % 7} in maths",
+    )
+
+    frames += WalkFrame(
+        status = "Division is the operation that does not survive. Dividing by 3 means multiplying by some 3⁻¹ with 3 × 3⁻¹ ≡ 1. " +
+            "The row below is 3k mod 7 for k = 0 … 6 — the question is whether 1 appears in it.",
+        cells = residueRow(7),
+        aux = multiplesRow(3, 7, highlightOne = false),
+        auxLabel = "3k mod 7",
+    )
+    frames += WalkFrame(
+        status = "It does, at k = 5: 3 × 5 = 15 = 2×7 + 1. So 3⁻¹ ≡ 5 (mod 7). The row hits every residue exactly once, which is " +
+            "what gcd(3, 7) = 1 guarantees.",
+        cells = residueRow(7).mapIndexed { i, c -> if (i == 5) CellView(c.text, CellMark.ACTIVE) else c },
+        pointers = mapOf(5 to "k"),
+        aux = multiplesRow(3, 7, highlightOne = true),
+        auxLabel = "3k mod 7",
+        readout = "3⁻¹ ≡ 5 (mod 7)",
+    )
+    frames += WalkFrame(
+        status = "Now mod 4, with a = 2. gcd(2, 4) = 2, and the row is 2k mod 4 — every entry is even, so 1 never appears and 2 has " +
+            "no inverse at all. An inverse exists exactly when gcd(a, m) = 1; this is that condition made visible.",
+        cells = residueRow(4),
+        aux = multiplesRow(2, 4, highlightOne = true),
+        auxLabel = "2k mod 4",
+        readout = "no inverse: gcd(2, 4) = 2",
+    )
+    return frames
+}
+
+private fun sieveFrames(): List<WalkFrame> {
+    val n = 30
+    val frames = mutableListOf<WalkFrame>()
+    val isPrime = BooleanArray(n + 1) { it >= 2 }
+    val split = 16   // first row 2..16, aux row 17..30 — one row of 29 cells would be unreadable
+
+    fun rowFor(range: IntRange, active: Set<Int>, struck: Set<Int>) = range.map { v ->
+        CellView(
+            v.toString(),
+            when {
+                v in active -> CellMark.ACTIVE
+                v in struck -> CellMark.RESULT
+                !isPrime[v] -> CellMark.DIM
+                else -> CellMark.WINDOW
+            },
+        )
+    }
+
+    fun frame(status: String, active: Set<Int> = emptySet(), struck: Set<Int> = emptySet(), readout: String? = null) {
+        frames += WalkFrame(
+            status = status,
+            cells = rowFor(2..split, active, struck),
+            aux = rowFor((split + 1)..n, active, struck),
+            auxLabel = "${split + 1} … $n",
+            readout = readout,
+        )
+    }
+
+    frame("Everything from 2 to $n starts as a candidate. Nothing here will ever be divided — composites are removed by marking.")
+
+    var p = 2
+    while (p * p <= n) {
+        if (isPrime[p]) {
+            // Start at p², not 2p: every k·p with k < p already went when k's own prime factors did.
+            val struck = mutableSetOf<Int>()
+            var multiple = p * p
+            while (multiple <= n) {
+                if (isPrime[multiple]) struck += multiple
+                isPrime[multiple] = false
+                multiple += p
+            }
+            frame(
+                "$p survives, so it is prime. Strike its multiples starting at ${p * p} — not at ${2 * p}, because every k·$p with " +
+                    "k < $p was already removed when k's own prime factors were processed. " +
+                    if (struck.isEmpty()) "Nothing new was left to strike." else "Struck ${struck.sorted().joinToString(", ")}.",
+                active = setOf(p),
+                struck = struck,
+                readout = "p = $p, marking from ${p * p}",
+            )
+        }
+        p++
+    }
+
+    val primes = (2..n).filter { isPrime[it] }
+    require(primes == listOf(2, 3, 5, 7, 11, 13, 17, 19, 23, 29)) { "sieve to $n produced $primes" }
+    frame(
+        "The outer loop stopped at p·p > $n, so only ${(2..n).filter { isPrime[it] && it * it <= n }.joinToString(", ")} ever marked " +
+            "anything — a composite below $n must have a factor at most √$n. Everything still standing is prime: " +
+            "${primes.joinToString(", ")}.",
+        readout = "${primes.size} primes below $n · O(n log log n)",
+    )
+    return frames
+}
+
+private fun fermatFrames(): List<WalkFrame> {
+    val p = 7
+    val frames = mutableListOf<WalkFrame>()
+
+    fun powerRow(a: Int, upTo: Int) = (1..p - 1).map { e ->
+        var v = 1
+        repeat(e) { v = v * a % p }
+        CellView(
+            if (e <= upTo) v.toString() else "·",
+            when {
+                e > upTo -> CellMark.DIM
+                v == 1 && e == p - 1 -> CellMark.RESULT
+                e == upTo -> CellMark.ACTIVE
+                else -> CellMark.WINDOW
+            },
+        )
+    }
+
+    frames += WalkFrame(
+        status = "Fermat's claim: for a prime p and any a it does not divide, a^(p−1) ≡ 1 (mod $p). The row is the exponent, " +
+            "1 through ${p - 1}.",
+        cells = (1..p - 1).map { CellView(it.toString(), CellMark.IDLE) },
+        aux = powerRow(3, 0),
+        auxLabel = "3^e mod $p",
+    )
+    for (e in 1..p - 1) {
+        var v = 1
+        repeat(e) { v = v * 3 % p }
+        frames += WalkFrame(
+            status = "3^$e ≡ $v (mod $p)." + if (e == p - 1) " There it is — and note the row hit every non-zero residue exactly once on the way, which makes 3 a primitive root mod $p." else "",
+            cells = (1..p - 1).map { CellView(it.toString(), if (it == e) CellMark.ACTIVE else if (it < e) CellMark.WINDOW else CellMark.IDLE) },
+            pointers = mapOf(e - 1 to "e"),
+            aux = powerRow(3, e),
+            auxLabel = "3^e mod $p",
+            readout = "3^$e ≡ $v",
+        )
+    }
+    frames += WalkFrame(
+        status = "Base 2 lands on 1 every three steps rather than every six, but still lands on 1 at exponent ${p - 1} — an element's " +
+            "order always divides p − 1, which is why the theorem holds for every base at once.",
+        cells = (1..p - 1).map { CellView(it.toString(), CellMark.DIM) },
+        aux = powerRow(2, p - 1),
+        auxLabel = "2^e mod $p",
+        readout = "order of 2 is 3, and 3 divides ${p - 1}",
+    )
+
+    var inverse = 1
+    repeat(p - 2) { inverse = inverse * 3 % p }
+    frames += WalkFrame(
+        status = "Drop the exponent by one and you have division: 3^${p - 2} ≡ $inverse, and 3 × $inverse = ${3 * inverse} ≡ ${3 * inverse % p} (mod $p). " +
+            "That is how a fraction is computed \"mod 10⁹ + 7\" — the modulus is prime, so every non-zero residue is invertible.",
+        cells = (1..p - 1).map { CellView(it.toString(), if (it == p - 2) CellMark.RESULT else CellMark.DIM) },
+        aux = powerRow(3, p - 1),
+        auxLabel = "3^e mod $p",
+        readout = "3⁻¹ ≡ $inverse (mod $p)",
+    )
+
+    // Read backwards it is a primality test, and read backwards it is unreliable.
+    val carmichael = 561
+    val factors = listOf(3, 11, 17)
+    frames += WalkFrame(
+        status = "Reversed, this is a primality test: a^(n−1) ≢ 1 proves n composite. But it never proves the converse. " +
+            "$carmichael = ${factors.joinToString(" × ")} passes for every base coprime to it, because it is squarefree and " +
+            "${factors.joinToString(", ") { "${it - 1} | ${carmichael - 1}" }}. Carmichael numbers are infinite in supply, so " +
+            "Miller-Rabin — which also checks square roots of 1 — is what actually gets used.",
+        cells = factors.map { CellView(it.toString(), CellMark.RESULT) } + CellView("= $carmichael", CellMark.DIM),
+        readout = "561 is composite and passes every Fermat round",
+    )
+    return frames
+}
+
+// The three congruences as successive filters over 0 … 31, so the unique survivor below the product
+// is watched appearing rather than produced by a formula.
+private fun crtFrames(): List<WalkFrame> {
+    val remainders = listOf(2, 3, 2)
+    val moduli = listOf(3, 5, 7)
+    val product = moduli.reduce(Int::times)
+    val shown = 32
+    val split = 15
+    val frames = mutableListOf<WalkFrame>()
+    var alive = (0 until shown).toSet()
+
+    fun rowFor(range: IntRange, live: Set<Int>, justCut: Set<Int>) = range.map { v ->
+        CellView(
+            v.toString(),
+            when {
+                v in justCut -> CellMark.DIM
+                live.size == 1 && v in live -> CellMark.RESULT
+                v in live -> CellMark.WINDOW
+                else -> CellMark.DIM
+            },
+        )
+    }
+
+    fun frame(status: String, live: Set<Int>, justCut: Set<Int> = emptySet(), readout: String? = null) {
+        frames += WalkFrame(
+            status = status,
+            cells = rowFor(0..split, live, justCut),
+            aux = rowFor((split + 1) until shown, live, justCut),
+            auxLabel = "${split + 1} … ${shown - 1}",
+            readout = readout,
+        )
+    }
+
+    frame(
+        "Sunzi's puzzle: a number leaving remainder 2 under 3, 3 under 5 and 2 under 7. The moduli are pairwise coprime, so a " +
+            "solution exists and is unique modulo 3 × 5 × 7 = $product.",
+        alive,
+    )
+
+    for (i in moduli.indices) {
+        val survivors = alive.filter { it % moduli[i] == remainders[i] }.toSet()
+        val cut = alive - survivors
+        alive = survivors
+        frame(
+            "x ≡ ${remainders[i]} (mod ${moduli[i]}) leaves ${alive.sorted().joinToString(", ")}. " +
+                if (alive.size == 1) "One survivor below $product, exactly as the theorem promises." else "${alive.size} candidates remain in this window.",
+            alive,
+            cut,
+            readout = "after ${i + 1} congruence${if (i == 0) "" else "s"}: ${alive.size} left",
+        )
+    }
+
+    // The construction, which finds the same answer without any filtering.
+    val answer = alive.single()
+    require(answer == 23) { "CRT filter left $answer, expected 23" }
+    val partials = moduli.map { product / it }
+    val inverses = moduli.mapIndexed { i, m -> (1 until m).first { partials[i] % m * it % m == 1 } }
+    val terms = remainders.indices.map { remainders[it] * partials[it] * inverses[it] }
+    // Same answer from the closed form; if the two ever disagree the caption below is a lie.
+    require(terms.sum() % product == answer) { "CRT construction gave ${terms.sum() % product}, filter gave $answer" }
+
+    frame(
+        "The construction gets there without scanning. Mᵢ = $product / mᵢ is ${partials.joinToString(", ")} — each divisible by every " +
+            "modulus but its own — and multiplying by Mᵢ⁻¹ mod mᵢ (${inverses.joinToString(", ")}) makes each term 1 in its own modulus and 0 " +
+            "in the others. ${terms.joinToString(" + ")} = ${terms.sum()}, and ${terms.sum()} mod $product = ${terms.sum() % product}.",
+        alive,
+        readout = "x ≡ $answer (mod $product)",
+    )
+    frame(
+        "Coprimality is doing all the work. With moduli 4 and 6, x ≡ 1 (mod 4) and x ≡ 2 (mod 6) have no solution at all: the first " +
+            "forces x odd, the second forces it even. The general form is solvable exactly when the remainders agree modulo each pair's gcd.",
+        alive,
+        readout = "unique mod $product · $answer, 128, 233, …",
+    )
+    return frames
+}
+
 // ── String algorithms ────────────────────────────────────────────────────────
 
 // The aux row is the pattern drawn where it currently sits, so the shift of one — and the
@@ -2730,6 +3093,56 @@ private val walkConfigs = mapOf(
             ResultFill to "New best",
         ),
         build = ::longestPalindromeFrames,
+    ),
+    "euclid_gcd" to WalkConfig(
+        intro = "The remainder chain for gcd(252, 105) as a growing row, then the back-substitution that turns it into " +
+            "Bézout coefficients — which is the part modular inverses, CRT and RSA key generation actually consume.",
+        legend = listOf(
+            ActiveFill to "Current remainder",
+            WindowFill to "Previous pair",
+            ResultFill to "gcd / result",
+        ),
+        build = ::euclidGcdFrames,
+    ),
+    "modular_arithmetic" to WalkConfig(
+        intro = "Residues mod 7, and the one operation that does not survive the collapse. The aux row is a·k mod m — whether " +
+            "1 ever appears in it is exactly whether a has an inverse.",
+        legend = listOf(
+            ActiveFill to "Current",
+            WindowFill to "Residue reached",
+            ResultFill to "Answer / inverse",
+        ),
+        build = ::modularArithmeticFrames,
+    ),
+    "sieve_of_eratosthenes" to WalkConfig(
+        intro = "2 through 30 across two rows. Each pass strikes one prime's multiples starting at p², and the outer loop stops " +
+            "at √30 — so only 2, 3 and 5 ever mark anything and nothing is ever divided.",
+        legend = listOf(
+            ActiveFill to "Prime being processed",
+            WindowFill to "Still standing",
+            ResultFill to "Struck this pass",
+        ),
+        build = ::sieveFrames,
+    ),
+    "fermats_little_theorem" to WalkConfig(
+        intro = "Powers of 3 mod 7, one exponent at a time, arriving at 1 exactly at exponent 6. Then the inverse that follows " +
+            "from it, and the composite that passes the test anyway.",
+        legend = listOf(
+            ActiveFill to "Current exponent",
+            WindowFill to "Computed",
+            ResultFill to "≡ 1 / result",
+        ),
+        build = ::fermatFrames,
+    ),
+    "chinese_remainder_theorem" to WalkConfig(
+        intro = "0 through 31 across two rows, with each congruence applied as a filter. One number survives all three, and the " +
+            "closing frames show the construction that finds it without scanning at all.",
+        legend = listOf(
+            WindowFill to "Still possible",
+            ResultFill to "The unique solution",
+            ActiveFill to "Eliminated",
+        ),
+        build = ::crtFrames,
     ),
 )
 

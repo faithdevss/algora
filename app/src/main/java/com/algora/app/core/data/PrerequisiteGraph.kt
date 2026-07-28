@@ -50,6 +50,13 @@ object PrerequisiteGraph {
         // Static range queries
         "sparse_table" to listOf("binary_search", "prefix_sum"),
         "lca" to listOf("tree", "sparse_table"),
+        // Math & number theory: gcd first, then the modulus, then everything the modulus enables
+        "modular_arithmetic" to listOf("euclid_gcd"),
+        "fast_power" to listOf("binary_search"),
+        "modular_exponentiation" to listOf("fast_power", "modular_arithmetic"),
+        "fermats_little_theorem" to listOf("modular_exponentiation"),
+        "chinese_remainder_theorem" to listOf("modular_arithmetic", "euclid_gcd"),
+        "sieve_of_eratosthenes" to listOf("array"),
         // String algorithms
         "naive_string_search" to listOf("string"),
         "kmp" to listOf("naive_string_search"),
