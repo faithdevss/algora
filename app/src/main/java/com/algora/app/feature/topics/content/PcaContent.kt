@@ -58,6 +58,9 @@ internal val pcaContent = TopicContent(
         "It's linear — for non-linear structure use t-SNE, UMAP, or autoencoders.",
     ),
     crossLinks = listOf(
+        CrossLink("svd", "Singular Value Decomposition (SVD)"),
+        CrossLink("kernel_pca", "Kernel PCA"),
+        CrossLink("tsne", "t-SNE"),
         CrossLink("autoencoders", "Autoencoders"),
         CrossLink("kmeans", "K-Means Clustering"),
     ),

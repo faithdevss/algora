@@ -15,8 +15,14 @@ object MachineLearningCategories {
     val bayesian = Category("ml_bayesian", "Bayesian Algorithms", Section.ML, 0xFF14B8A6, "flask")
     val ensemble = Category("ml_ensemble", "Ensemble Methods", Section.ML, 0xFFF59E0B, "stack")
     val clustering = Category("ml_clustering", "Clustering", Section.ML, 0xFF3B82F6, "share")
-    val supervised = Category("ml_supervised", "Supervised", Section.ML, 0xFF6366F1, "robot")
-    val unsupervised = Category("ml_unsupervised", "Unsupervised", Section.ML, 0xFF3B82F6, "share")
 
-    val all = listOf(regression, classification, bayesian, ensemble, clustering, supervised, unsupervised)
+    // "chart" is the scree plot — the one picture every method in this category produces. The other
+    // apt name, "stack", already belongs to Ensemble Methods and would render the same glyph twice
+    // in one browser.
+    val dimReduction = Category("ml_dimreduction", "Dimensionality Reduction", Section.ML, 0xFFEC4899, "chart")
+    val supervised = Category("ml_supervised", "Supervised", Section.ML, 0xFF6366F1, "robot")
+
+    // `ml_unsupervised` is gone: B5 took its clustering topics and B6 took `pca`, its last one.
+    // `ml_supervised` still holds the four topics B9 and B10 will redistribute.
+    val all = listOf(regression, classification, bayesian, ensemble, clustering, dimReduction, supervised)
 }

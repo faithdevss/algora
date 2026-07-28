@@ -132,12 +132,16 @@ object PrerequisiteGraph {
         "affinity_propagation" to listOf("kmeans"),
         "spectral_clustering" to listOf("kmeans", "pca", "graph"),
         "gmm" to listOf("kmeans", "qda"),
-        // ML: the practice layer sits on top of a first model
-        "bias_variance" to listOf("linear_regression"),
-        "regularization" to listOf("linear_regression", "bias_variance"),
-        "model_evaluation" to listOf("logistic_regression"),
-        "random_forest" to listOf("decision_trees"),
-        "gradient_boosting" to listOf("decision_trees", "gradient_descent_variants"),
+        // ML: dimensionality reduction. The linear four hang off PCA and the SVD underneath it; the
+        // manifold three hang off k-NN, since a neighbourhood is the only input they have.
+        "svd" to listOf("pca"),
+        "kernel_pca" to listOf("pca", "svm_rbf"),
+        "incremental_pca" to listOf("pca"),
+        "ica" to listOf("pca"),
+        "factor_analysis" to listOf("pca", "bias_variance"),
+        "tsne" to listOf("pca", "knn"),
+        "umap" to listOf("tsne", "graph"),
+        "lle" to listOf("pca", "knn"),
         // DL: training techniques presuppose the training loop
         "batch_normalization" to listOf("neural_network_basics", "backpropagation"),
         "dropout" to listOf("neural_network_basics", "regularization"),

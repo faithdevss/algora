@@ -32,8 +32,8 @@ private val classification = MachineLearningCategories.classification
 private val bayesian = MachineLearningCategories.bayesian
 private val ensemble = MachineLearningCategories.ensemble
 private val clustering = MachineLearningCategories.clustering
+private val dimReduction = MachineLearningCategories.dimReduction
 private val supervised = MachineLearningCategories.supervised
-private val unsupervised = MachineLearningCategories.unsupervised
 
 // Ordered as a reading path: the plain fit, then the two penalties, then the estimators that change
 // the loss or the assumptions.
@@ -128,12 +128,24 @@ private val clusteringTopics = listOf(
     topic("gmm", "Gaussian Mixture Models (GMM)", clustering, "Soft assignments and full covariances — k-means is its special case.", isPremium = true, difficulty = Difficulty.ADVANCED),
 )
 
-private val unsupervisedTopics = listOf(
-    topic("pca", "PCA", unsupervised, "Project data onto its directions of greatest variance.", isPremium = true),
+// The doc's Dimensionality Reduction block in full. Ordered as the two families it really contains:
+// the linear factorizations first (PCA and the three things that are PCA seen from another angle),
+// then the manifold methods, which answer a different question and are not interchangeable with them.
+// `svd` is free — it is the linear algebra the first four topics are all special cases of.
+private val dimReductionTopics = listOf(
+    topic("pca", "Principal Component Analysis (PCA)", dimReduction, "Project data onto its directions of greatest variance.", isPremium = true),
+    topic("svd", "Singular Value Decomposition (SVD)", dimReduction, "The factorization underneath PCA — and the theorem that says truncating it is optimal.", difficulty = Difficulty.INTERMEDIATE),
+    topic("kernel_pca", "Kernel PCA", dimReduction, "PCA in a feature space you never have to construct.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("incremental_pca", "Incremental PCA", dimReduction, "Fit the same components a batch at a time, in memory that does not grow with n.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("ica", "Independent Component Analysis (ICA)", dimReduction, "Separate mixed signals by looking for non-Gaussianity, not variance.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("factor_analysis", "Factor Analysis", dimReduction, "Model common variance and admit that the rest is noise.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("tsne", "t-SNE", dimReduction, "A neighbourhood-preserving map — and everything in it you must not read.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("umap", "UMAP", dimReduction, "A fuzzy k-NN graph laid out by force, keeping more of the global picture.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("lle", "Locally Linear Embedding (LLE)", dimReduction, "Every patch is flat: rebuild each point from its neighbours, then keep the weights.", isPremium = true, difficulty = Difficulty.ADVANCED),
 )
 
 object MachineLearningTopics {
-    val topics: List<Topic> = regressionTopics + classificationTopics + bayesianTopics + ensembleTopics + clusteringTopics + supervisedTopics + unsupervisedTopics
+    val topics: List<Topic> = regressionTopics + classificationTopics + bayesianTopics + ensembleTopics + clusteringTopics + dimReductionTopics + supervisedTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }

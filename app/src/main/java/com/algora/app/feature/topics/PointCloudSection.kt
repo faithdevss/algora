@@ -2602,7 +2602,714 @@ private fun lineIntersectionFrames(): List<CloudFrame> {
     return frames
 }
 
+// ── Dimensionality reduction (phase 9, batch B6) ─────────────────────────────
+// Eight labs sharing one shape: show what the data looks like, show what a *linear* projection can
+// and cannot do with it, then run the method and score the result. Every number these frames quote
+// is computed by DimReductionMath at build time — the measured values are recorded in
+// DimReductionMathTest, which fails if any of them moves.
+
+private fun pct(v: Double) = "${"%.0f".format(v * 100)}%"
+
+private fun axisSegment(centre: Pt, direction: DoubleArray, halfLength: Float, color: Color): Segment =
+    Segment(
+        P(centre.x - direction[0].toFloat() * halfLength, centre.y - direction[1].toFloat() * halfLength),
+        P(centre.x + direction[0].toFloat() * halfLength, centre.y + direction[1].toFloat() * halfLength),
+        color,
+    )
+
+private fun ringGroup(index: Int) = if (index < InnerRingCount) 0 else 1
+
+private fun kernelPcaFrames(): List<CloudFrame> {
+    val raw = concentricRings
+    val plotted = fitToUnit(raw)
+    val dots = plotted.mapIndexed { i, p -> Dot(p.toP(), ringGroup(i)) }
+    val frames = mutableListOf<CloudFrame>()
+
+    frames += CloudFrame(
+        status = "Two concentric rings. There is one obvious feature here — distance from the centre — and it is not a " +
+            "linear function of x and y, so no projection onto a straight axis can recover it.",
+        dots = dots,
+    )
+
+    val eigen = jacobiEigen(covariance2(raw))
+    val mean = meanOf(raw)
+    val plotMean = fitToUnit(raw + listOf(mean)).last()
+    val linearScores = DoubleArray(raw.size) { i ->
+        (raw[i].x - mean.x) * eigen.vectors[0][0] + (raw[i].y - mean.y) * eigen.vectors[0][1]
+    }
+    val linearAccuracy = bestThresholdAccuracy(linearScores, InnerRingCount)
+    val explained = eigen.values[0] / (eigen.values[0] + eigen.values[1])
+    frames += CloudFrame(
+        status = "Ordinary PCA first. The cloud is round, so PC1 explains only ${pct(explained)} of the variance — and " +
+            "thresholding it labels the rings ${pct(linearAccuracy)} correctly, which is barely better than the " +
+            "${pct(InnerRingCount.toDouble() / raw.size)} you get by calling everything one ring. PCA has not failed to " +
+            "converge; the answer it is looking for does not exist in the space it searches.",
+        dots = dots,
+        centroids = listOf(Dot(plotMean.toP(), 2, Emphasis.ACTIVE)),
+        segments = listOf(axisSegment(plotMean, eigen.vectors[0], 0.42f, AxisColor)),
+        readout = "linear PC1 separates ${pct(linearAccuracy)}",
+    )
+
+    val gamma = 4.0
+    // 1/√(2γ) is the RBF's own length scale — the radius at which similarity has dropped to e^(−½).
+    val bandwidth = (1.0 / sqrt(2.0 * gamma)).toFloat()
+    val scale = (plotted[1].x - plotted[0].x) / (raw[1].x - raw[0].x)
+    frames += CloudFrame(
+        status = "Kernel PCA replaces every inner product with k(xᵢ, xⱼ) = exp(−γ‖xᵢ−xⱼ‖²), which is the inner product " +
+            "of some much higher-dimensional feature map — one nobody ever writes down. The circles show that kernel's " +
+            "length scale at γ = ${"%.0f".format(gamma)}: a point is similar to its own ring's neighbours and to almost " +
+            "nothing on the other ring.",
+        dots = dots,
+        rings = listOf(0, 8, InnerRingCount + 4, InnerRingCount + 15).map {
+            Ring(plotted[it].toP(), bandwidth * abs(scale), QueryColor)
+        },
+    )
+
+    val kp = kernelPca(raw, gamma, components = 2)
+    val embedded = fitToUnit(raw.indices.map { Pt(kp.components[0][it].toFloat(), kp.components[1][it].toFloat()) })
+    val kpcAccuracy = bestThresholdAccuracy(kp.components[0], InnerRingCount)
+    frames += CloudFrame(
+        status = "The Gram matrix is double-centred — K̃ = K − 1ₙK − K1ₙ + 1ₙK1ₙ, because the feature-space mean is not " +
+            "at the origin and nothing else can move it there — and then eigendecomposed. Plotting the top two kernel " +
+            "components: the rings come apart, and a single threshold on KPC1 now labels them ${pct(kpcAccuracy)} correctly.",
+        dots = embedded.mapIndexed { i, p -> Dot(p.toP(), ringGroup(i)) },
+        readout = "KPC1 separates ${pct(kpcAccuracy)}",
+    )
+
+    val tooSmall = kernelPca(raw, 0.5, components = 2)
+    val tooSmallAccuracy = bestThresholdAccuracy(tooSmall.components[0], InnerRingCount)
+    val smallEmbedded = fitToUnit(raw.indices.map { Pt(tooSmall.components[0][it].toFloat(), tooSmall.components[1][it].toFloat()) })
+    frames += CloudFrame(
+        status = "γ is not a detail. At γ = 0.5 the kernel is so wide that every point looks similar to every other, the " +
+            "leading components go back to describing the overall shape, and KPC1 is down to ${pct(tooSmallAccuracy)} — " +
+            "the radius information has moved into a later component instead of disappearing.",
+        dots = smallEmbedded.mapIndexed { i, p -> Dot(p.toP(), ringGroup(i), Emphasis.FADED) },
+        readout = "γ = 0.5 → KPC1 separates ${pct(tooSmallAccuracy)}",
+    )
+
+    val tooLarge = kernelPca(raw, 16.0, components = 2)
+    val tooLargeAccuracy = bestThresholdAccuracy(tooLarge.components[0], InnerRingCount)
+    val largeEmbedded = fitToUnit(raw.indices.map { Pt(tooLarge.components[0][it].toFloat(), tooLarge.components[1][it].toFloat()) })
+    frames += CloudFrame(
+        status = "At γ = 16 the kernel is narrower than the gap between neighbours on the same ring, so every point " +
+            "becomes its own island and the spectrum flattens — ${pct(tooLargeAccuracy)}. Tuned, too wide and too narrow " +
+            "all run the same code; the bandwidth is the model. And the price of all three is a ${raw.size}×${raw.size} " +
+            "matrix, which is why kernel PCA does not scale the way PCA does.",
+        dots = largeEmbedded.mapIndexed { i, p -> Dot(p.toP(), ringGroup(i), Emphasis.FADED) },
+        readout = "γ = 16 → KPC1 separates ${pct(tooLargeAccuracy)}",
+    )
+    return frames
+}
+
+private fun incrementalPcaFrames(): List<CloudFrame> {
+    val points = correlatedCloudPts
+    val steps = incrementalPca(points, 4)
+    val frames = mutableListOf<CloudFrame>()
+
+    frames += CloudFrame(
+        status = "Batch PCA wants the whole matrix at once: to form the covariance it needs every row, and to " +
+            "eigendecompose it needs the covariance. On ${points.size} points that is nothing. On ten million rows of a " +
+            "thousand features it is the reason the job does not fit.",
+        dots = points.map { Dot(it.toP(), 0, Emphasis.FADED) },
+    )
+
+    steps.forEachIndexed { index, step ->
+        val seen = step.seen
+        frames += CloudFrame(
+            status = "Batch ${index + 1}: $seen of ${points.size} rows have been through the accumulator. Nothing is " +
+                "retained but a count, a running mean and a 2×2 sum of products — the rows themselves are gone. The " +
+                "component from what has been seen so far sits ${"%.1f".format(step.degreesFromBatch)}° from the answer " +
+                "full-batch PCA gives, and explains ${pct(step.explained)} of the variance seen so far.",
+            dots = points.mapIndexed { i, p ->
+                Dot(p.toP(), if (i < seen) 0 else -1, if (i < seen) Emphasis.NORMAL else Emphasis.FADED)
+            },
+            centroids = listOf(Dot(step.mean.toP(), 2, Emphasis.ACTIVE)),
+            segments = listOf(
+                axisSegment(step.mean, doubleArrayOf(step.axis.x.toDouble(), step.axis.y.toDouble()), 0.38f, AxisColor),
+            ),
+            readout = "$seen rows seen · ${"%.1f".format(step.degreesFromBatch)}° from batch PCA",
+        )
+    }
+
+    val last = steps.last()
+    frames += CloudFrame(
+        status = "After the last batch the axis is ${"%.1f".format(last.degreesFromBatch)}° from the batch answer, because " +
+            "an accumulated covariance over all the data *is* the batch covariance — this variant is exact, not " +
+            "approximate. The memory it used was O(d²) in the number of features and did not depend on the number of " +
+            "rows at all. scikit-learn's IncrementalPCA does the same job with a different mechanism, merging an SVD per " +
+            "batch, which trades exactness for numerical stability on wide data.",
+        dots = points.map { Dot(it.toP(), 0) },
+        centroids = listOf(Dot(last.mean.toP(), 2, Emphasis.ACTIVE)),
+        segments = listOf(
+            axisSegment(last.mean, doubleArrayOf(last.axis.x.toDouble(), last.axis.y.toDouble()), 0.38f, AxisColor),
+        ),
+        readout = "exact · O(d²) memory, independent of n",
+    )
+    return frames
+}
+
+private fun svdFrames(): List<CloudFrame> {
+    val points = correlatedCloudPts
+    val mean = meanOf(points)
+    val centered = points.map { Pt(it.x - mean.x, it.y - mean.y) }
+    val svd = svd2(centered)
+    val frames = mutableListOf<CloudFrame>()
+
+    frames += CloudFrame(
+        status = "Eighteen rows, two columns. PCA arrives at its axes through the covariance matrix; the SVD gets the same " +
+            "axes straight out of the data matrix, as X = UΣVᵀ — a rotation, a scaling, and another rotation, which is " +
+            "all any matrix ever does.",
+        dots = points.map { Dot(it.toP(), 0) },
+    )
+
+    val v1 = svd.rightVectors[0]
+    val v2 = svd.rightVectors[1]
+    frames += CloudFrame(
+        status = "The right singular vectors are the axes, and the singular values are how far the data reaches along " +
+            "each: σ₁ = ${"%.3f".format(svd.singularValues[0])} against σ₂ = ${"%.3f".format(svd.singularValues[1])}. " +
+            "On centred data these are exactly PCA's components, and σᵢ² = n·λᵢ — same answer, no covariance matrix formed.",
+        dots = points.map { Dot(it.toP(), 0, Emphasis.FADED) },
+        centroids = listOf(Dot(mean.toP(), 2, Emphasis.ACTIVE)),
+        segments = listOf(
+            axisSegment(mean, v1, 0.40f, AxisColor),
+            axisSegment(mean, v2, 0.10f, UnassignedColor),
+        ),
+        readout = "σ = ${"%.3f".format(svd.singularValues[0])}, ${"%.3f".format(svd.singularValues[1])}",
+    )
+
+    val reconstructed = svd.rank1.map { Pt(it.x + mean.x, it.y + mean.y) }
+    frames += CloudFrame(
+        status = "Keep σ₁ and throw σ₂ away and you get the best rank-1 approximation of the matrix that exists. Not the " +
+            "best anyone has found — the best there is: the Eckart–Young theorem says truncating the SVD is optimal in " +
+            "Frobenius norm, and the error it leaves is exactly the norm of the discarded singular values.",
+        dots = points.map { Dot(it.toP(), 0, Emphasis.FADED) },
+        centroids = reconstructed.map { Dot(it.toP(), 2, Emphasis.ACTIVE) },
+        segments = listOf(axisSegment(mean, v1, 0.40f, AxisColor)) +
+            points.indices.map { Segment(points[it].toP(), reconstructed[it].toP(), UnassignedColor, dashed = true) },
+        readout = "‖X − X₁‖ꜰ = ${"%.4f".format(svd.rank1Error)} = σ₂",
+    )
+
+    val energy = svd.singularValues[0] * svd.singularValues[0] /
+        (svd.singularValues[0] * svd.singularValues[0] + svd.singularValues[1] * svd.singularValues[1])
+    frames += CloudFrame(
+        status = "Measured: the rank-1 error is ${"%.4f".format(svd.rank1Error)} and σ₂ is " +
+            "${"%.4f".format(svd.singularValues[1])} — the same number, which is the theorem rather than a coincidence. " +
+            "The kept component carries ${pct(energy)} of the squared Frobenius norm, and that ratio is what a scree plot " +
+            "shows and what \"keep 95% of the variance\" means.",
+        dots = reconstructed.map { Dot(it.toP(), 2) },
+        segments = listOf(axisSegment(mean, v1, 0.40f, AxisColor)),
+        readout = "rank 1 keeps ${pct(energy)} of the energy",
+    )
+
+    val uncentered = svd2(points)
+    val centeredAngle = axisAngleDegrees(v1[0], v1[1])
+    val uncenteredAngle = axisAngleDegrees(uncentered.rightVectors[0][0], uncentered.rightVectors[0][1])
+    val meanAngle = axisAngleDegrees(mean.x.toDouble(), mean.y.toDouble())
+    frames += CloudFrame(
+        status = "The one trap. Run the SVD on the raw matrix instead of the centred one and v₁ swings from " +
+            "${"%.1f".format(centeredAngle)}° to ${"%.1f".format(uncenteredAngle)}°, towards the direction of the mean at " +
+            "${"%.1f".format(meanAngle)}° — because with the origin off to one side, the largest direction in the data is " +
+            "simply where the data *is*. That is not a bug in the SVD; it is the difference between the SVD of a matrix " +
+            "and PCA of a dataset, and it is why PCA centres first.",
+        dots = points.map { Dot(it.toP(), 0) },
+        centroids = listOf(Dot(mean.toP(), 2, Emphasis.ACTIVE)),
+        segments = listOf(
+            axisSegment(mean, v1, 0.40f, AxisColor),
+            Segment(P(0f, 0f), P(uncentered.rightVectors[0][0].toFloat() * 0.9f, uncentered.rightVectors[0][1].toFloat() * 0.9f), QueryColor, dashed = true),
+        ),
+        readout = "centred ${"%.1f".format(centeredAngle)}° · raw ${"%.1f".format(uncenteredAngle)}°",
+    )
+    return frames
+}
+
+private fun icaFrames(): List<CloudFrame> {
+    val raw = mixedSources
+    val plotted = fitToUnit(raw)
+    val frames = mutableListOf<CloudFrame>()
+
+    frames += CloudFrame(
+        status = "Two independent sources, each uniform on [−1, 1], observed only after mixing: every point is a different " +
+            "blend of both. The give-away is the shape — independent uniforms make a square, and a linear mix of them " +
+            "makes a parallelogram whose edges point along the mixing directions.",
+        dots = plotted.map { Dot(it.toP(), 0) },
+    )
+
+    val pcaAxes = jacobiEigen(covariance2(raw)).vectors
+    val centre = meanOf(plotted)
+    val trueA = axisAngleDegrees(mixingMatrix[0][0], mixingMatrix[1][0])
+    val trueB = axisAngleDegrees(mixingMatrix[0][1], mixingMatrix[1][1])
+    frames += CloudFrame(
+        status = "PCA cannot be the answer, for a structural reason rather than a numerical one: its components are " +
+            "orthogonal by construction, and here they come out at ${"%.1f".format(axisAngleDegrees(pcaAxes[0][0], pcaAxes[0][1]))}° " +
+            "and ${"%.1f".format(axisAngleDegrees(pcaAxes[1][0], pcaAxes[1][1]))}° — exactly 90° apart. The two directions " +
+            "actually in the data are ${"%.1f".format(axisSeparation(trueA, trueB))}° apart. No amount of variance " +
+            "maximisation reaches a non-orthogonal pair.",
+        dots = plotted.map { Dot(it.toP(), 0, Emphasis.FADED) },
+        segments = listOf(
+            axisSegment(centre, pcaAxes[0], 0.40f, AxisColor),
+            axisSegment(centre, pcaAxes[1], 0.28f, AxisColor),
+        ),
+        readout = "PCA axes 90° apart · true mixing ${"%.1f".format(axisSeparation(trueA, trueB))}°",
+    )
+
+    val ica = fastIca(raw)
+    frames += CloudFrame(
+        status = "ICA starts where PCA finishes. Whitening — PCA, then divide each component by its standard deviation — " +
+            "leaves the cloud with identity covariance, so all the second-order structure is gone and what remains to be " +
+            "found is a pure rotation. That is the entire reason ICA is tractable.",
+        dots = fitToUnit(ica.whitened).map { Dot(it.toP(), 3) },
+        readout = "whitened: covariance = I",
+    )
+
+    val recoveredA = axisAngleDegrees(ica.mixingDirections[0][0], ica.mixingDirections[0][1])
+    val recoveredB = axisAngleDegrees(ica.mixingDirections[1][0], ica.mixingDirections[1][1])
+    val errA = minOf(axisSeparation(recoveredA, trueA), axisSeparation(recoveredA, trueB))
+    val errB = minOf(axisSeparation(recoveredB, trueA), axisSeparation(recoveredB, trueB))
+    frames += CloudFrame(
+        status = "FastICA finds that rotation by a fixed-point iteration on w ← E[zg(wᵀz)] − E[g′(wᵀz)]w with g = tanh, " +
+            "which converged in ${ica.iterations} iterations here. Mapped back through the whitening, the recovered " +
+            "directions land at ${"%.1f".format(recoveredA)}° and ${"%.1f".format(recoveredB)}° against true mixing " +
+            "columns at ${"%.1f".format(trueA)}° and ${"%.1f".format(trueB)}° — off by ${"%.1f".format(errA)}° and " +
+            "${"%.1f".format(errB)}°, and not orthogonal to each other.",
+        dots = plotted.map { Dot(it.toP(), 0) },
+        segments = listOf(
+            axisSegment(centre, ica.mixingDirections[0], 0.42f, QueryColor),
+            axisSegment(centre, ica.mixingDirections[1], 0.42f, QueryColor),
+        ),
+        readout = "recovered within ${"%.1f".format(maxOf(errA, errB))}°",
+    )
+
+    val mixedKurtosis = excessKurtosis(raw.map { it.x.toDouble() })
+    val sourceKurtosis = excessKurtosis(ica.sources.map { it.x.toDouble() })
+    frames += CloudFrame(
+        status = "Why non-Gaussianity is the objective: a sum of independent variables is more Gaussian than its parts, so " +
+            "the mixtures sit closer to a normal than the sources do. Measured on this data — excess kurtosis " +
+            "${"%.2f".format(mixedKurtosis)} for the observed mixture against ${"%.2f".format(sourceKurtosis)} for the " +
+            "recovered source, with a uniform's true value being −1.2. Maximising non-Gaussianity walks that backwards. " +
+            "The catch is the corollary: if the sources really were Gaussian, ICA could not work at all, because a " +
+            "rotation of a spherical Gaussian is the same spherical Gaussian.",
+        dots = fitToUnit(ica.sources).map { Dot(it.toP(), 2) },
+        readout = "kurtosis ${"%.2f".format(mixedKurtosis)} → ${"%.2f".format(sourceKurtosis)}",
+    )
+    return frames
+}
+
+private fun factorAnalysisFrames(): List<CloudFrame> {
+    val fa = oneFactorAnalysis(factorSamples)
+    val plotted = fitToUnit(factorSamples.map { Pt(it.x1.toFloat(), it.x2.toFloat()) })
+    val frames = mutableListOf<CloudFrame>()
+
+    val loadingBars = { values: DoubleArray, emphasised: Int ->
+        values.mapIndexed { i, v -> ProfileBar(abs(v).toFloat(), i, if (i == emphasised) Emphasis.ACTIVE else Emphasis.NORMAL) }
+    }
+
+    frames += CloudFrame(
+        status = "Three measured variables generated from one hidden factor, plotted here as x₁ against x₂. Variable 2 was " +
+            "given a large private noise term, so it carries the factor faintly and its own idiosyncrasy loudly. That is " +
+            "the situation factor analysis was invented for — and the situation PCA has no vocabulary for.",
+        dots = plotted.map { Dot(it.toP(), 0) },
+        profile = fa.correlation.indices.map { ProfileBar(1f, it) },
+        profileLabel = "x₁, x₂, x₃",
+    )
+
+    frames += CloudFrame(
+        status = "The observed correlations: r₁₂ = ${"%.2f".format(fa.correlation[0][1])}, " +
+            "r₁₃ = ${"%.2f".format(fa.correlation[0][2])}, r₂₃ = ${"%.2f".format(fa.correlation[1][2])}. Both models are " +
+            "trying to explain these three numbers with one underlying quantity. They differ in what else they are " +
+            "obliged to explain.",
+        dots = plotted.map { Dot(it.toP(), 0, Emphasis.FADED) },
+        profile = listOf(
+            ProfileBar(fa.correlation[0][1].toFloat(), 0),
+            ProfileBar(fa.correlation[0][2].toFloat(), 1),
+            ProfileBar(fa.correlation[1][2].toFloat(), 2),
+        ),
+        profileLabel = "r₁₂, r₁₃, r₂₃",
+    )
+
+    frames += CloudFrame(
+        status = "PCA's first component has no noise term, so it has to account for the whole diagonal as well: its " +
+            "loadings come out ${fa.pcaLoadings.joinToString { "%.2f".format(it) }}, which claim to explain " +
+            "${pct(fa.pcaLoadings[0] * fa.pcaLoadings[0])}, ${pct(fa.pcaLoadings[1] * fa.pcaLoadings[1])} and " +
+            "${pct(fa.pcaLoadings[2] * fa.pcaLoadings[2])} of each variable's variance. Every one of those is inflated, " +
+            "because some of that variance is private to the variable and shared with nothing.",
+        dots = plotted.map { Dot(it.toP(), 0, Emphasis.FADED) },
+        profile = loadingBars(fa.pcaLoadings, 1),
+        profileLabel = "PCA loadings",
+    )
+
+    frames += CloudFrame(
+        status = "Factor analysis writes xᵢ = λᵢf + εᵢ and fits the uniquenesses ψᵢ alongside the loadings. It gives " +
+            "variable 2 a loading of ${"%.2f".format(fa.loadings[1])} and hands ${pct(fa.uniquenesses[1])} of its variance " +
+            "to ε — that variable is mostly its own noise, and the model is allowed to say so. With three variables and " +
+            "one factor the system is exactly identified, so this comes out of r₁₂r₁₃/r₂₃ and its two rotations in closed " +
+            "form, with nothing to converge.",
+        dots = plotted.map { Dot(it.toP(), 0) },
+        profile = fa.uniquenesses.mapIndexed { i, v -> ProfileBar(v.toFloat(), i, if (i == 1) Emphasis.ACTIVE else Emphasis.NORMAL) },
+        profileLabel = "uniqueness ψ per variable",
+    )
+
+    var faResidual = 0.0
+    var pcaResidual = 0.0
+    for (i in 0..2) for (j in 0..2) {
+        if (i == j) continue
+        faResidual += abs(fa.loadings[i] * fa.loadings[j] - fa.correlation[i][j])
+        pcaResidual += abs(fa.pcaLoadings[i] * fa.pcaLoadings[j] - fa.correlation[i][j])
+    }
+    frames += CloudFrame(
+        status = "Score them on the thing they are both modelling — the off-diagonal correlations. Factor analysis " +
+            "reproduces them with total absolute error ${"%.4f".format(faResidual)}; PCA's rank-1 reconstruction is off by " +
+            "${"%.3f".format(pcaResidual)}, because its component is being pulled towards explaining variance that is not " +
+            "shared. This is the whole difference: PCA summarises total variance, factor analysis models common variance.",
+        dots = plotted.map { Dot(it.toP(), 0) },
+        profile = loadingBars(fa.loadings, 1),
+        profileLabel = "FA loadings",
+        readout = "off-diagonal error: FA ${"%.4f".format(faResidual)} · PCA ${"%.3f".format(pcaResidual)}",
+    )
+
+    frames += CloudFrame(
+        status = "One honest caveat, measured on this sample: the true loadings were " +
+            "${trueLoadings.joinToString { "%.2f".format(it) }}, and factor analysis estimated variable 2's as " +
+            "${"%.2f".format(fa.loadings[1])} while PCA happened to land on ${"%.2f".format(fa.pcaLoadings[1])} — closer. " +
+            "An exactly-identified one-factor solution divides small correlations by each other, which is a " +
+            "high-variance estimator. Factor analysis is the right *model* here; that does not make it the better " +
+            "estimate of every parameter on every sample, and a run that claimed otherwise would be describing the " +
+            "textbook rather than the data.",
+        dots = plotted.map { Dot(it.toP(), 0) },
+        profile = loadingBars(trueLoadings, 1),
+        profileLabel = "true loadings",
+        readout = "λ₂: true ${"%.2f".format(trueLoadings[1])} · FA ${"%.2f".format(fa.loadings[1])} · PCA ${"%.2f".format(fa.pcaLoadings[1])}",
+    )
+    return frames
+}
+
+private fun tsneFrames(): List<CloudFrame> {
+    val input = unevenClusters
+    val steps = tsne(input)
+    val frames = mutableListOf<CloudFrame>()
+
+    val inputSeparation = separationRatio(input, ::unevenClusterLabel)
+    frames += CloudFrame(
+        status = "Three clusters, deliberately unequal: two tight ones sitting close together, and a loose one far away. " +
+            "The distances here are real — between-cluster distance is ${"%.1f".format(inputSeparation)}× the " +
+            "within-cluster distance — and the question is which of that survives an embedding.",
+        dots = input.mapIndexed { i, p -> Dot(p.toP(), unevenClusterLabel(i)) },
+        readout = "input separation ratio ${"%.2f".format(inputSeparation)}",
+    )
+
+    val affinities = tsneAffinities(input, 8.0)
+    val strongPairs = mutableListOf<Segment>()
+    val threshold = affinities.flatMap { it.toList() }.sortedDescending()[input.size * 4]
+    input.indices.forEach { i ->
+        (i + 1 until input.size).forEach { j ->
+            if (affinities[i][j] >= threshold) strongPairs += Segment(input[i].toP(), input[j].toP(), UnassignedColor, dashed = true)
+        }
+    }
+    frames += CloudFrame(
+        status = "t-SNE first turns distances into probabilities: pⱼ|ᵢ is how likely point i is to pick j as a neighbour, " +
+            "under a Gaussian whose width is solved per point by binary search so that every neighbourhood has the same " +
+            "entropy. That is what perplexity sets, and it is why a dense cluster and a sparse one are treated on equal " +
+            "terms — each point's σ adapts to its own surroundings.",
+        dots = input.mapIndexed { i, p -> Dot(p.toP(), unevenClusterLabel(i)) },
+        segments = strongPairs,
+        readout = "perplexity 8 · ${strongPairs.size} strongest pairs shown",
+    )
+
+    steps.drop(1).forEach { step ->
+        val phase = if (step.iteration <= 80) {
+            "Early exaggeration is on: P is multiplied by 4 for the first 80 iterations, which forces clusters apart " +
+                "before the repulsion has anything to push against. KL measured against the *un*-exaggerated P is " +
+                "${"%.2f".format(step.klDivergence)}, and it is allowed to rise here — the objective being optimised is " +
+                "not the one being reported."
+        } else {
+            "Exaggeration off, momentum up. Gradient descent on KL(P‖Q), where Q uses a Student-t with one degree of " +
+                "freedom — the heavy tail is what lets moderately-distant points sit far apart in the map without " +
+                "paying much, and it is the fix for the crowding problem. KL = ${"%.2f".format(step.klDivergence)}."
+        }
+        frames += CloudFrame(
+            status = "Iteration ${step.iteration}. $phase",
+            dots = step.embedding.mapIndexed { i, p -> Dot(p.toP(), unevenClusterLabel(i)) },
+            readout = "iteration ${step.iteration} · KL ${"%.2f".format(step.klDivergence)}",
+        )
+    }
+
+    val out = steps.last().embedding
+    val preservation = neighbourPreservation(input, out)
+    fun spread(points: List<Pt>, cluster: Int): Double {
+        val members = points.indices.filter { unevenClusterLabel(it) == cluster }
+        val cx = members.map { points[it].x }.average().toFloat()
+        val cy = members.map { points[it].y }.average().toFloat()
+        return members.map { dist(points[it], Pt(cx, cy)).toDouble() }.average()
+    }
+    fun gap(points: List<Pt>, a: Int, b: Int): Double {
+        fun centre(c: Int): Pt {
+            val members = points.indices.filter { unevenClusterLabel(it) == c }
+            return Pt(members.map { points[it].x }.average().toFloat(), members.map { points[it].y }.average().toFloat())
+        }
+        return dist(centre(a), centre(b)).toDouble()
+    }
+    val inputRatio = gap(input, 0, 2) / gap(input, 0, 1)
+    val outputRatio = gap(out, 0, 2) / gap(out, 0, 1)
+    frames += CloudFrame(
+        status = "It found the three groups and kept ${pct(preservation)} of each point's five nearest neighbours. Now the " +
+            "part every t-SNE plot gets over-read: the tight clusters went from a mean spread of " +
+            "${"%.3f".format(spread(input, 0))} and ${"%.3f".format(spread(input, 1))} to " +
+            "${"%.3f".format(spread(out, 0))} and ${"%.3f".format(spread(out, 1))}, while the loose one *shrank* from " +
+            "${"%.3f".format(spread(input, 2))} to ${"%.3f".format(spread(out, 2))}. Cluster size in a t-SNE map carries " +
+            "no information.",
+        dots = out.mapIndexed { i, p -> Dot(p.toP(), unevenClusterLabel(i)) },
+        readout = "${pct(preservation)} of 5-NN preserved",
+    )
+
+    frames += CloudFrame(
+        status = "Nor does the distance between clusters. In the input, cluster 2 is ${"%.1f".format(inputRatio)}× further " +
+            "from cluster 0 than cluster 1 is; in the map that ratio has collapsed to ${"%.1f".format(outputRatio)}×, and " +
+            "the overall separation ratio went from ${"%.2f".format(inputSeparation)} to " +
+            "${"%.2f".format(separationRatio(out, ::unevenClusterLabel))}. t-SNE optimises a neighbourhood objective and " +
+            "makes no promise about anything else — which is exactly what it is honest about and what readers of its " +
+            "output usually are not.",
+        dots = out.mapIndexed { i, p -> Dot(p.toP(), unevenClusterLabel(i)) },
+        readout = "gap ratio ${"%.1f".format(inputRatio)}× → ${"%.1f".format(outputRatio)}×",
+    )
+    return frames
+}
+
+private fun umapFrames(): List<CloudFrame> {
+    val input = unevenClusters
+    val result = umapLayout(input)
+    val frames = mutableListOf<CloudFrame>()
+
+    frames += CloudFrame(
+        status = "The same three uneven clusters t-SNE was run on, so the two methods can be compared on identical points " +
+            "rather than on identical claims.",
+        dots = input.mapIndexed { i, p -> Dot(p.toP(), unevenClusterLabel(i)) },
+    )
+
+    val edges = mutableListOf<Segment>()
+    input.indices.forEach { i ->
+        (i + 1 until input.size).forEach { j ->
+            if (result.graph[i][j] > 0.55) edges += Segment(input[i].toP(), input[j].toP(), UnassignedColor, dashed = true)
+        }
+    }
+    frames += CloudFrame(
+        status = "UMAP builds a weighted k-NN graph, and two details in how it does that are the whole difference from " +
+            "t-SNE. First, ρᵢ — the distance to the nearest neighbour — is subtracted before the exponential, so every " +
+            "point is connected to something with weight 1 and no point is ever left isolated by a density change. " +
+            "Second, σᵢ is solved so the weights sum to log₂k rather than to a fixed entropy.",
+        dots = input.mapIndexed { i, p -> Dot(p.toP(), unevenClusterLabel(i)) },
+        segments = edges,
+        readout = "${edges.size} edges above weight 0.55",
+    )
+
+    frames += CloudFrame(
+        status = "The two directed weights are then combined as a + b − ab: an edge survives if *either* endpoint counts " +
+            "the other as a neighbour. That union is why the graph stays connected across a density change, and it is the " +
+            "\"fuzzy simplicial set\" the paper's topology language is describing.",
+        dots = input.mapIndexed { i, p -> Dot(p.toP(), unevenClusterLabel(i), Emphasis.FADED) },
+        segments = edges,
+    )
+
+    result.snapshots.forEach { (epoch, layout) ->
+        frames += CloudFrame(
+            status = "Layout epoch $epoch. The optimisation is attraction along graph edges and repulsion between " +
+                "everything else — force-directed, on a cross-entropy objective rather than a KL divergence. The real " +
+                "implementation samples the repulsive term; with ${input.size} points it is computed exactly here, so " +
+                "there is no sampling noise in what you are watching.",
+            dots = layout.mapIndexed { i, p -> Dot(p.toP(), unevenClusterLabel(i)) },
+            readout = "epoch $epoch of 400",
+        )
+    }
+
+    val out = result.embedding
+    val umapPreservation = neighbourPreservation(input, out)
+    val tsneOut = tsne(input).last().embedding
+    val tsnePreservation = neighbourPreservation(input, tsneOut)
+    val inputSeparation = separationRatio(input, ::unevenClusterLabel)
+    val umapSeparation = separationRatio(out, ::unevenClusterLabel)
+    val tsneSeparation = separationRatio(tsneOut, ::unevenClusterLabel)
+    frames += CloudFrame(
+        status = "Scored against t-SNE on the same input: UMAP kept ${pct(umapPreservation)} of each point's five nearest " +
+            "neighbours to t-SNE's ${pct(tsnePreservation)}, and its between/within separation ratio is " +
+            "${"%.2f".format(umapSeparation)} against t-SNE's ${"%.2f".format(tsneSeparation)} — with the input's own " +
+            "ratio being ${"%.2f".format(inputSeparation)}. The global arrangement survived here and did not there, which " +
+            "is the claim usually made for UMAP, and it owes as much to the informed initialisation as to the objective.",
+        dots = out.mapIndexed { i, p -> Dot(p.toP(), unevenClusterLabel(i)) },
+        readout = "5-NN kept: UMAP ${pct(umapPreservation)} · t-SNE ${pct(tsnePreservation)}",
+    )
+
+    fun spread(points: List<Pt>, cluster: Int): Double {
+        val members = points.indices.filter { unevenClusterLabel(it) == cluster }
+        val cx = members.map { points[it].x }.average().toFloat()
+        val cy = members.map { points[it].y }.average().toFloat()
+        return members.map { dist(points[it], Pt(cx, cy)).toDouble() }.average()
+    }
+    frames += CloudFrame(
+        status = "The limit is worth stating as plainly as the win. Cluster spreads in this layout came out " +
+            "${"%.3f".format(spread(out, 0))}, ${"%.3f".format(spread(out, 1))} and ${"%.3f".format(spread(out, 2))}, " +
+            "against input spreads of ${"%.3f".format(spread(input, 0))}, ${"%.3f".format(spread(input, 1))} and " +
+            "${"%.3f".format(spread(input, 2))} — the loose cluster is drawn as the *tightest* one. UMAP holds on to more " +
+            "of the global arrangement than t-SNE does; neither preserves relative cluster size, and reading either map " +
+            "as a metric space is a mistake.",
+        dots = out.mapIndexed { i, p -> Dot(p.toP(), unevenClusterLabel(i)) },
+        readout = "relative cluster size: still not preserved",
+    )
+    return frames
+}
+
+private fun lleFrames(): List<CloudFrame> {
+    val curve = spiralCurve
+    val frames = mutableListOf<CloudFrame>()
+    val order = DoubleArray(curve.size) { it.toDouble() }
+    val curveSegments = (0 until curve.size - 1).map {
+        Segment(curve[it].toP(), curve[it + 1].toP(), UnassignedColor, dashed = true)
+    }
+
+    frames += CloudFrame(
+        status = "Forty points sampled along a spiral. They live in two dimensions but the thing that generated them has " +
+            "one — position along the curve — and recovering that parameter is the whole job. The dashed line is the true " +
+            "order, shown here and never given to the algorithm.",
+        dots = curve.map { Dot(it.toP(), 0) },
+        segments = curveSegments,
+    )
+
+    val k = 4
+    val result = lle(curve, k)
+    val neighbourSegments = result.neighbours.flatMapIndexed { i, nb ->
+        nb.map { Segment(curve[i].toP(), curve[it].toP(), CloudColors[2], dashed = false) }
+    }
+    val shortCircuits = result.neighbours.withIndex().sumOf { (i, nb) -> nb.count { abs(it - i) > 3 } }
+    frames += CloudFrame(
+        status = "Step 1: each point's $k nearest neighbours. This is the only place the geometry enters, and the " +
+            "assumption behind the whole method — that a small enough patch of a curved manifold is flat enough to treat " +
+            "as linear. On this spiral $shortCircuits of the ${result.neighbours.size * k} links reach more than three " +
+            "positions along the curve.",
+        dots = curve.map { Dot(it.toP(), 0) },
+        segments = neighbourSegments,
+        readout = "k = $k · $shortCircuits short-circuit links",
+    )
+
+    val focus = 20
+    val weights = result.neighbours[focus].map { result.weights[focus][it] }
+    frames += CloudFrame(
+        status = "Step 2: rebuild each point from its neighbours. Solve for the weights that minimise " +
+            "‖xᵢ − Σⱼwᵢⱼxⱼ‖² subject to Σⱼwᵢⱼ = 1 — for the highlighted point they come out " +
+            "${weights.joinToString { "%.2f".format(it) }}. The sum-to-one constraint is what makes those weights " +
+            "invariant to translation, rotation and scaling of the patch, and that invariance is what lets them be " +
+            "carried into a completely different space.",
+        dots = curve.mapIndexed { i, p ->
+            Dot(
+                p.toP(),
+                if (i == focus) 1 else 0,
+                when {
+                    i == focus -> Emphasis.QUERY
+                    i in result.neighbours[focus] -> Emphasis.ACTIVE
+                    else -> Emphasis.FADED
+                },
+            )
+        },
+        segments = result.neighbours[focus].map { Segment(curve[focus].toP(), curve[it].toP(), QueryColor) },
+        readout = "Σw = ${"%.2f".format(weights.sum())}",
+    )
+
+    fun lineLayout(values: DoubleArray): List<Pt> {
+        val lo = values.min()
+        val hi = values.max()
+        val span = if (hi - lo < 1e-9) 1.0 else hi - lo
+        return values.map { Pt((0.08 + 0.84 * (it - lo) / span).toFloat(), 0.5f) }
+    }
+
+    val lleLine = lineLayout(result.embedding)
+    val lleRho = absSpearman(result.embedding, order)
+    frames += CloudFrame(
+        status = "Step 3: find the coordinates that those same weights reconstruct as well as possible — the bottom " +
+            "eigenvectors of M = (I−W)ᵀ(I−W). The very bottom one is the constant vector and carries nothing, so the " +
+            "embedding is the next one up. Laid out on a line, with the dashed links joining points that were adjacent on " +
+            "the spiral: rank correlation with the true parameter is ${"%.2f".format(lleRho)}.",
+        dots = lleLine.map { Dot(it.toP(), 2) },
+        segments = (0 until curve.size - 1).map {
+            Segment(lleLine[it].toP(), lleLine[it + 1].toP(), UnassignedColor, dashed = true)
+        },
+        readout = "LLE ρ = ${"%.2f".format(lleRho)}",
+    )
+
+    val mean = meanOf(curve)
+    val pc1 = jacobiEigen(covariance2(curve)).vectors[0]
+    val projection = DoubleArray(curve.size) { i ->
+        (curve[i].x - mean.x) * pc1[0] + (curve[i].y - mean.y) * pc1[1]
+    }
+    val pcaLine = lineLayout(projection)
+    val pcaRho = absSpearman(projection, order)
+    frames += CloudFrame(
+        status = "PCA on the same points, laid out the same way, scores ${"%.2f".format(pcaRho)} — the links cross each " +
+            "other because a straight projection folds the spiral onto itself, mapping the inner turn and the outer turn " +
+            "to the same coordinate. No rotation fixes that; the structure is not linear, and a linear method has nothing " +
+            "to offer it.",
+        dots = pcaLine.map { Dot(it.toP(), 1) },
+        segments = (0 until curve.size - 1).map {
+            Segment(pcaLine[it].toP(), pcaLine[it + 1].toP(), UnassignedColor, dashed = true)
+        },
+        readout = "PCA ρ = ${"%.2f".format(pcaRho)} vs LLE ${"%.2f".format(lleRho)}",
+    )
+
+    val broken = lle(curve, 6)
+    val brokenLine = lineLayout(broken.embedding)
+    val brokenRho = absSpearman(broken.embedding, order)
+    val brokenShortCircuits = broken.neighbours.withIndex().sumOf { (i, nb) -> nb.count { abs(it - i) > 3 } }
+    frames += CloudFrame(
+        status = "And the failure mode, because k is not a tuning detail. At k = 6 the neighbourhoods start reaching " +
+            "across the gap between turns — $brokenShortCircuits short-circuit links against $shortCircuits at k = $k — " +
+            "the reconstruction weights stop describing a curve, and the recovered ordering falls apart at " +
+            "ρ = ${"%.2f".format(brokenRho)}. Every manifold method has this failure; it is the price of deciding what " +
+            "\"nearby\" means before you know the shape.",
+        dots = brokenLine.map { Dot(it.toP(), 1, Emphasis.FADED) },
+        segments = (0 until curve.size - 1).map {
+            Segment(brokenLine[it].toP(), brokenLine[it + 1].toP(), UnassignedColor, dashed = true)
+        },
+        readout = "k = 6 → ρ = ${"%.2f".format(brokenRho)}",
+    )
+    return frames
+}
+
 private val cloudConfigs = mapOf(
+    "kernel_pca" to CloudConfig(
+        intro = "Two concentric rings that no straight axis can separate, then the same data seen through an RBF kernel — and what happens when γ is wrong.",
+        legend = listOf(CloudColors[0] to "Inner ring", CloudColors[1] to "Outer ring", QueryColor to "Kernel width"),
+        build = ::kernelPcaFrames,
+    ),
+    "incremental_pca" to CloudConfig(
+        intro = "PCA fitted four rows at a time, with the angle between the running component and the full-batch answer measured at every step.",
+        legend = listOf(CloudColors[0] to "Seen", UnassignedColor to "Not yet seen", AxisColor to "Running PC1"),
+        build = ::incrementalPcaFrames,
+    ),
+    "svd" to CloudConfig(
+        intro = "The same axes PCA finds, taken straight from the data matrix — plus the optimality of truncation, and the centring trap.",
+        legend = listOf(CloudColors[0] to "Data", CloudColors[2] to "Rank-1 approximation", AxisColor to "v₁"),
+        build = ::svdFrames,
+    ),
+    "ica" to CloudConfig(
+        intro = "Two uniform sources put through a non-orthogonal mix: why PCA structurally cannot undo it, and how FastICA does.",
+        legend = listOf(CloudColors[0] to "Observed mixture", CloudColors[2] to "Recovered sources", QueryColor to "ICA directions"),
+        build = ::icaFrames,
+    ),
+    "factor_analysis" to CloudConfig(
+        intro = "One hidden factor behind three variables, one of them mostly noise — scored on the correlations both models are trying to explain.",
+        legend = listOf(CloudColors[0] to "x₁ vs x₂", CloudColors[1] to "Variable 2", CloudColors[2] to "Variable 3"),
+        build = ::factorAnalysisFrames,
+    ),
+    "tsne" to CloudConfig(
+        intro = "Gradient descent on KL(P‖Q) over three deliberately uneven clusters — and a measurement of exactly which distances the map destroys.",
+        legend = listOf(CloudColors[0] to "Tight cluster A", CloudColors[1] to "Tight cluster B", CloudColors[2] to "Loose cluster"),
+        build = ::tsneFrames,
+    ),
+    "umap" to CloudConfig(
+        intro = "The fuzzy k-NN graph, the force-directed layout, and a scored comparison against t-SNE on identical points.",
+        legend = listOf(CloudColors[0] to "Tight cluster A", CloudColors[1] to "Tight cluster B", CloudColors[2] to "Loose cluster"),
+        build = ::umapFrames,
+    ),
+    "lle" to CloudConfig(
+        intro = "A spiral unrolled by local reconstruction weights, scored against PCA on the same points — and the k that breaks it.",
+        legend = listOf(CloudColors[0] to "Curve", CloudColors[2] to "LLE coordinate", QueryColor to "Focus neighbourhood"),
+        build = ::lleFrames,
+    ),
     "k_medians" to CloudConfig(
         intro = "The same alternating loop as k-means over data with two strays, run once with means and once with medians.",
         legend = listOf(CloudColors[0] to "Cluster 0", CloudColors[1] to "Cluster 1", QueryColor to "Outlier"),

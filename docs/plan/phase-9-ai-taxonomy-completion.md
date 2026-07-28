@@ -1,21 +1,28 @@
 # Phase 9 — AI Taxonomy Completion
 
-Status: In progress — Track A complete (RL at 100% of the doc), B1–B5 done. 57 of 226 topics
-authored; taxonomy at 257, target 426. AI sections now: ML 58, DL 15, NLP 12, RL 74.
-Next: B6 (Dimensionality Reduction, 8 topics).
+Status: In progress — Track A complete (RL at 100% of the doc), B1–B6 done. 65 of 226 topics
+authored; taxonomy at 265, target 426. AI sections now: ML 66, DL 15, NLP 12, RL 74.
+**Doc coverage is now measured, not estimated: 183 of the doc's 357 entries (51%).**
+Next: B7 (Association Rules + Time Series, 9 topics).
 
-**Guards — one closed, one still open.** Phase 10 built the category-integrity assertion this plan
-specified: `CategoryIntegrityTest` is generic over all eight sections, so the ML restructure into
-`ml_regression` / `ml_classification` / `ml_bayesian` / `ml_ensemble` / `ml_clustering` is covered —
-no empty category, every `categoryId` resolving inside its own section, ids globally unique.
+**Both guards are now built.** Phase 10 landed the category-integrity assertion
+(`CategoryIntegrityTest`, generic over all eight sections), and B6 landed
+`AiTaxonomyCoverageTest` — the piece this plan specified five times and deferred five times.
 
-`AiTaxonomyCoverageTest` is still unbuilt and remains this phase's largest open risk. It cannot go
-green before the doc's entries are authored, so it belongs with the final batch rather than an
-earlier one. The harness to copy is `AlgoTaxonomyCoverageTest`, which phase 10 built for
-`docs/topics.algo.md`: the doc's headings and entry names verbatim as map keys, each mapped to the
-topic id or ids satisfying it, plus an entry-count constant so doc edits surface as a failure.
-Note the lesson from building it — the phase-10 plan's own claim of "92 doc entries" was wrong by
-three, and only writing the map out found that. Expect the same of this phase's 357/339 figures.
+It maps every one of `docs/topics.ai.md`'s 357 entries, nested by the doc's own `#` section and
+`**bold**` heading, to the topic id or ids serving it or to an explicit `emptyList()`. The entry
+count checked out at exactly 357, so the plan's headline figure was right where phase 10's "92 doc
+entries" claim was wrong by three. Four things are now pinned: the entry count, that every mapped id
+resolves in `TopicRegistry`, that every mapped id belongs to an AI section (with one recorded DSA
+exception, `edit_distance`), and the covered-entry count — which every batch has to move, and whose
+failure message prints the remaining backlog straight from the doc.
+
+The rule it applies is strict, and it lowered the headline number on purpose. An entry counts as
+covered only when a topic exists whose *subject is that entry*. Six app topics are umbrellas written
+before the doc was broken into sub-sections — `activation_functions`, `cnn`, `llms`,
+`word_embeddings`, `model_evaluation`, `naive_bayes` — and each stands in front of a whole block.
+They count as covering nothing. The baseline table's "~24 / ~26 / ~18" figures were produced by
+counting umbrellas as their blocks, which is exactly the estimate this test exists to replace.
 Depends on: Phase 5 (AI mode shell + content template), Phase 3 (simulation widgets), Phase 8 (premium gating)
 
 ## Goal
@@ -57,14 +64,16 @@ below.
 | B3 · Bayesian Algorithms | 7 | **Done** | No new widget; CNB sign bug caught |
 | B4 · Ensemble Methods | 9 | **Done** | No new widget; XGBoost and LightGBM arithmetic corrected |
 | B5 · Clustering | 10 | **Done** | No new widget; `twoMoons` geometry replaced |
-| B6 · Dimensionality Reduction | 8 | Next | |
+| B6 · Dimensionality Reduction | 8 | **Done** | New `DimReductionMath.kt`; no new widget. `ml_unsupervised` retired |
+| — · Guards | — | **Done** | `AiTaxonomyCoverageTest` + `DimReductionMathTest` |
 | B7–B10 | 38 | Planned | |
 | Track C (C1–C9) | 73 | Planned | `FeatureMapPlayer` still outstanding |
 | Track D (D1–D6) | 50 | Planned | |
-| **Total** | **226** | **57 done** | Taxonomy 200 → 257 of 426 |
+| **Total** | **226** | **65 done** | Taxonomy 200 → 265 of 426 |
 
-Sections against the doc: **RL 100%**, ML 58 topics of its eventual ~100, DL and NLP untouched at 15
-and 12.
+Sections against the doc, now measured by `AiTaxonomyCoverageTest` rather than counted by hand:
+**RL 71/71**, ML 74/113, DL 22/96, NLP 16/77 — **183 of 357 overall**. ML is 66 topics of its
+eventual ~100; DL and NLP are untouched at 15 and 12.
 
 ## Decisions taken before planning
 
@@ -89,16 +98,16 @@ Existing categories are kept where a doc heading matches; the two generic ML/DL/
 retired once their topics are redistributed.
 
 **Machine Learning — 12 categories.** Built so far: `ml_regression`, `ml_classification`,
-`ml_bayesian`, `ml_ensemble`, `ml_clustering`. Still to come: `ml_dimreduction`,
+`ml_bayesian`, `ml_ensemble`, `ml_clustering`, `ml_dimreduction`. Still to come:
 `ml_nn_foundations`, `ml_association`, `ml_timeseries`, `ml_preprocessing`, `ml_metrics`,
 `ml_rl_fundamentals`.
 
-`ml_supervised` and `ml_unsupervised` are being hollowed out a batch at a time rather than deleted up
-front, so that no category is ever empty mid-phase. They currently hold the leftovers —
-`ml_supervised`: `perceptron`, `bias_variance`, `regularization`, `model_evaluation`;
-`ml_unsupervised`: `pca`. B6 takes `pca`, B9 takes the evaluation and practice topics, and B10 takes
-`perceptron`. Both buckets should be gone by the end of Track B, and if either still exists then,
-something was missed.
+`ml_supervised` and `ml_unsupervised` were hollowed out a batch at a time rather than deleted up
+front, so that no category was ever empty mid-phase. **`ml_unsupervised` is now gone** — B5 took its
+clustering topics and B6 took `pca`, its last one. `ml_supervised` still holds `perceptron`,
+`bias_variance`, `regularization` and `model_evaluation`; B9 takes the evaluation and practice
+topics and B10 takes `perceptron`. It should be gone by the end of Track B, and if it still exists
+then, something was missed. `CategoryIntegrityTest` is what makes that safe to do incrementally.
 
 **Deep Learning — 11 categories** (`dl_basics`, `dl_activations`, `dl_cnn`, `dl_detection`,
 `dl_rnn`, `dl_transformers`, `dl_generative`, `dl_deep_rl`, `dl_optimizers`, `dl_regularization`,
@@ -385,10 +394,60 @@ Both spectral frames now report the measured accuracy for k-means and for spectr
 asserting either. Verified separately: k-medians' centre sits 0.083 away from k-means' on the
 outlier dataset, and mean shift finds exactly the 3 modes the data was built with.
 
-**B6 · Dimensionality Reduction** — 8 topics
-Kernel PCA · Incremental PCA · t-SNE · UMAP · SVD · ICA · Factor Analysis · LLE
-*Sims:* `PointCloudPlayer` (projection onto components, neighbour-preservation animation for
-t-SNE/UMAP, ICA unmixing two sources).
+**B6 · Dimensionality Reduction** — 8 topics — **Done**
+`svd` · `kernel_pca` · `incremental_pca` · `ica` · `factor_analysis` · `tsne` · `umap` · `lle`
+
+New category `ml_dimreduction` ("Dimensionality Reduction", icon `chart` — the scree plot, since
+`stack` already belongs to Ensemble Methods and would render the same glyph twice in one browser),
+led by the existing `pca` moved over from `ml_unsupervised`, which is now deleted. `svd` is free
+(it is the linear algebra the first four topics are special cases of); the rest premium. Ordered as
+the two families the block really contains: the linear factorizations first, then the three manifold
+methods, which answer a different question and are not substitutes for them.
+
+**No new widget, fifth batch running** — all eight configs went to `PointCloudPlayer`, and
+`CloudFrame` needed no new fields either (`profile`, added in B5, carries factor analysis's loadings
+and uniquenesses). One new support file, `DimReductionMath.kt`, holds the estimators: a cyclic
+Jacobi eigensolver (chosen because both kernel PCA and LLE need a full spectrum, from opposite ends
+of it), kernel PCA with the double-centred Gram matrix, an exact streaming-covariance incremental
+PCA, SVD via XᵀX for the n×2 case, FastICA with the tanh fixed point after whitening, closed-form
+one-factor analysis, a real t-SNE (per-point perplexity binary search, early exaggeration,
+Student-t Q, gradient descent on KL), UMAP's fuzzy simplicial set plus its layout with the repulsive
+term computed exactly rather than negative-sampled, and LLE's constrained reconstruction weights
+into the bottom eigenvectors of (I−W)ᵀ(I−W).
+
+**Verification found three problems before any copy was written, and one of them killed a premise.**
+- **Kernel PCA did not separate the rings at all** — 61–77% at every γ tried, against linear PCA's
+  75%. Two causes, both real. The ring dataset sampled angles at *even* spacing, making it exactly
+  rotationally symmetric, so the leading kernel components were the angular harmonics (visible as
+  near-degenerate eigenvalue pairs: 6.76 / 6.69) and carried no radius information. And the γ sweep
+  was calibrated to the wrong scale. Rebuilt on scikit-learn's `make_circles(factor=0.35,
+  noise=0.05)` geometry in its own coordinates with sampled angles: γ = 4 now separates at 100%
+  against linear PCA's 75%, and γ = 0.5 and γ = 16 land at 73% and 83%, which is what makes the
+  "the bandwidth is the model" frame a measurement rather than a claim.
+- **The factor-analysis story inverted.** The intended frame was "PCA absorbs noise into the
+  component, factor analysis does not". Measured, FA estimated the noisy variable's loading at 0.36
+  against a true 0.55, while PCA landed on 0.58 — *closer*. Writing the intended frame would have
+  been false. The lab now scores both on the thing they are both modelling, the off-diagonal
+  correlations: FA reproduces them with residual 0.0000 (exactly identified at p = 3, one factor)
+  against PCA's 0.85. And the last frame states the caveat outright — an exactly-identified solution
+  divides small correlations by each other and is a high-variance estimator, so being the right
+  *model* did not make it the better estimate of every parameter on this sample.
+- **`unevenClusters` escaped the unit square.** `SimulationFrameTest` caught it: the loose cluster's
+  Gaussian tail reached past 1.0, and unlike the embeddings this dataset is drawn directly. Fitted
+  at definition, which preserves aspect ratio so every ratio the labs report is unchanged.
+
+Two more measurements the copy is built on rather than around. t-SNE's distortion is shown as
+numbers: the two tight clusters go from mean spreads of 0.040 and 0.032 to 0.200 and 0.144 while the
+loose one *shrinks* from 0.117 to 0.101, and the far/near centroid-gap ratio collapses from 6.0× to
+1.2×. UMAP beats it on the same points — 80% of 5-NN preserved against 67%, separation ratio 6.55
+against 2.10 — and the closing frame says plainly that it does not preserve relative cluster size
+either. LLE recovers the spiral's parameter at ρ = 0.99 (k = 4) against PCA's 0.47, and collapses to
+ρ = 0.01 at k = 6, where 18 neighbour links short-circuit across turns instead of 2.
+
+New guard `DimReductionMathTest` (11 tests) pins all of it — the Eckart–Young identity, the ICA
+recovery to within 5°, the FA residual, the t-SNE size inversion, UMAP beating t-SNE on both
+metrics, the LLE k = 6 failure — so a future re-tune that quietly makes a topic pointless fails
+rather than ships.
 
 **B7 · Association Rules + Time Series** — 9 topics
 Apriori · Eclat · FP-Growth · Moving Average · Autoregression · ARIMA · SARIMA ·
@@ -548,28 +607,26 @@ monetization angle.
 
 ## Guards
 
-**Shipping and green (46 tests):**
+**Shipping and green (80 tests):**
 - `ContentCoverageTest` — every browsable topic has content, nothing resolves to `NotYetAvailable`,
   and every prerequisite and cross-link id resolves. It has caught real breakage every batch and is
   run (with `--rerun-tasks`) at the end of each one.
+- `CategoryIntegrityTest` (phase 10) — generic over all eight sections: every `categoryId` resolves
+  within its own section's `all` list, no category is empty, ids are globally unique. This is what
+  made deleting `ml_unsupervised` in B6 a safe edit rather than a careful one.
+- `SimulationFrameTest` (phase 10) — runs every frame builder on the JVM and asserts point-cloud
+  frames stay inside the unit square. Caught B6's `unevenClusters` overflow.
+- `AiTaxonomyCoverageTest` (B6) — the doc as code. 357 entries nested by section and heading, each
+  mapped to the topic ids serving it or to an explicit gap; pins the entry count, id resolution,
+  section membership, and the covered count. Its failure message prints the remaining backlog.
+- `DimReductionMathTest` (B6) — pins the properties B6's copy leans on, so a re-tune that makes a
+  topic pointless fails instead of shipping.
 
-**Specified here, and still not built after five batches:**
-- `AiTaxonomyCoverageTest` + a checked-in `AiTaxonomyMap.kt` mapping each `docs/topics.ai.md` entry
-  to the topic id serving it. Without it, "how much of the doc is covered?" is still a manual recount
-  — which is exactly how the ~24 / ~26 / ~18 "covered" figures in the baseline table were produced,
-  and they are estimates rather than measurements.
-- The category-integrity assertion: every `categoryId` resolves within its section's `all` list, and
-  no category is empty.
-
-**This slip is the plan's largest open risk, and it compounds.** Five batches have restructured ML's
-categories by hand with nothing checking the invariant, and `ml_supervised`/`ml_unsupervised` are
-mid-migration precisely where an empty or orphaned category would appear. The taxonomy map also gets
-more expensive to write the longer it waits, since every batch adds entries to backfill.
-
-**Recommendation: build both before B6**, not at the end of the phase. They are perhaps an hour of
-work, the category assertion is a dozen lines, and the taxonomy map turns the phase's headline
-question into a test result. Deferring them again should be a deliberate decision rather than a
-default.
+**Nothing specified here is now unbuilt.** The lesson from the five-batch slip is worth keeping:
+the taxonomy map cost about an hour, would have cost the same at any point, and immediately
+corrected the "~24 / ~26 / ~18 covered" estimates it replaced. Each remaining batch should update
+`expectedCoveredCount` in the same change that lands its topics — a batch that does not move that
+number closed no doc entry, which is worth noticing at the time rather than at the end.
 
 ## Risks / open items
 
@@ -577,21 +634,26 @@ default.
   widget. Three batches in, two config-driven sim types had shipped (`RegressionLab`,
   `DecisionSurface`) plus additive fields on `RlFrame` and `CloudFrame`. The pattern that emerged:
   existing widgets were each bound to one model shape, so a batch either fits an existing one exactly
-  or needs a new config-driven sibling. B3, B4 and B5 then needed nothing new, so the cost is
-  front-loaded per *family* rather than per batch. Check the remaining batches against what now
-  exists before assuming more.
+  or needs a new config-driven sibling. B3 through B6 then needed nothing new — four consecutive
+  batches on existing widgets — so the cost is front-loaded per *family* rather than per batch.
+  Check the remaining batches against what now exists before assuming more.
 - **`FeatureMapPlayer` is still net-new** and blocks C3 and C4. Build it while C1/C2 land.
-- **Verification keeps finding real defects, not wording problems.** Across five batches: an
+- **Verification keeps finding real defects, not wording problems.** Across six batches: an
   inverted Complement NB sign that produced confidently wrong classifications, MCMC step sizes whose
   "too large" case sat in the well-tuned regime, an XGBoost split gain that was negative where the
   narration took it, LightGBM leaf counts that contradicted the drawing, and a `twoMoons` geometry
   that made spectral clustering score 0.67 against k-means' 0.65 — erasing the reason that topic
-  exists. Every one of these reads plausibly and is wrong. **Numeric claims in a lab must be measured
-  before the copy around them is written**, and notes that could go either way should compute the
-  comparison rather than assert it.
+  exists. B6 added two more: a ring dataset whose even angular spacing made kernel PCA no better
+  than linear PCA, and a factor-analysis frame whose intended claim was measurably backwards. Every
+  one of these reads plausibly and is wrong. **Numeric claims in a lab must be measured before the
+  copy around them is written**, and notes that could go either way should compute the comparison
+  rather than assert it. Both of B6's were caught only because a throwaway probe printed the numbers
+  before any copy existed; that probe step is worth keeping as part of the batch routine.
 - **Topic-id collisions.** `TopicRegistry` collapses cross-listed ids first-wins (`perceptron`,
   `transformers`). Tracks C and D cross-list far more (backprop, LSTM, attention, RLHF, all seven
-  Deep RL entries). Without `AiTaxonomyMap` these stay accidental rather than reviewable.
+  Deep RL entries). `AiTaxonomyCoverageTest` now makes these reviewable — a cross-listed entry
+  appears under both doc sections with the same id, visibly — but it does not decide which section a
+  duplicate id should live in. Tracks C and D still have to make that call per topic.
 - **Browse-list length.** 426 topics changes the character of the category screens, and ML alone is
   heading for 12 categories. Per-category search exists (Phase 2); scroll performance and whether
   Home's Quick Access grid is still a sensible sole entry point are both unchecked.
@@ -600,11 +662,11 @@ default.
 
 ## Suggested order
 
-~~A1 → A2~~ → ~~B1 → B2 → B3 → B4 → B5~~ → **guards** → B6 → B7 → B8 → B9 → B10 → C1 → C2 →
+~~A1 → A2~~ → ~~B1 → B2 → B3 → B4 → B5~~ → ~~guards~~ → ~~B6~~ → **B7** → B8 → B9 → B10 → C1 → C2 →
 `FeatureMapPlayer` → C3 → C4 → C5 → C6 → C7 → C8 → C9 → D1 → D2 → D3 → D4 → D5 → D6.
 
-Struck-through batches are done. The `guards` step is inserted deliberately: see the Guards section
-for why it should not slip past B6.
+Struck-through batches are done. The guards step landed with B6 rather than before it, in the same
+session — both `AiTaxonomyCoverageTest` and B6's own `DimReductionMathTest`.
 
 ## Verification
 
