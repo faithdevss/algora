@@ -45,6 +45,8 @@ import com.algora.app.core.data.settings.SettingsRepository
 import com.algora.app.core.data.settings.ThemeMode
 import com.algora.app.core.data.settings.settingsDataStore
 import com.algora.app.core.nav.AppMode
+import com.algora.app.core.ui.components.CrossPromoApp
+import com.algora.app.core.ui.components.CrossPromoRow
 import com.algora.app.core.ui.theme.SpaceGrotesk
 import com.algora.app.core.ui.theme.accent
 import kotlinx.coroutines.launch
@@ -159,6 +161,10 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 13.sp,
             )
+        }
+
+        SettingsCard(title = "More from the developer", subtitle = "Other apps by the Algora developer") {
+            CrossPromoRow(CrossPromoApp.Systa)
         }
 
         Spacer(modifier = Modifier.height(24.dp))

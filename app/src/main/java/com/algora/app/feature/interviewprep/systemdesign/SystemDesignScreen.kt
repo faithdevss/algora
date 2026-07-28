@@ -37,6 +37,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.algora.app.core.ui.components.CrossPromoApp
+import com.algora.app.core.ui.components.CrossPromoCard
 import com.algora.app.core.ui.theme.SimColors
 
 @Composable
@@ -67,6 +69,16 @@ fun SystemDesignScreen(primer: SystemDesignPrimer, onBack: () -> Unit, onComplet
                     colors = ButtonDefaults.buttonColors(containerColor = SimColors.Green, contentColor = Color.White),
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                 ) { Text("Mark as reviewed") }
+            }
+            // Cross-promo sits after the CTA, so it never stands between the reader and the primer.
+            // Only on the general primer — the ML one ends somewhere Systa doesn't follow.
+            if (primer.id == SYSTEM_DESIGN_PRIMER_ID) {
+                item {
+                    CrossPromoCard(
+                        promo = CrossPromoApp.Systa,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 20.dp),
+                    )
+                }
             }
         }
     }

@@ -40,6 +40,25 @@ explicit accent too — the mock's ramps moved onto `AccentColor.topbarStart/top
 `Gradients.TopbarDsa`/`TopbarAi` are gone. Accent colours animate (320ms `tween`) so switching mode
 slides rather than snaps.
 
+**Cross-promo to the developer's other apps:** `core/ui/components/CrossPromo.kt` — a `CrossPromo`
+descriptor plus `CrossPromoCard` (full width, end-of-content) and `CrossPromoRow` (compact, Settings)
+that deep-link to Play via `market://details?id=…` with an `ActivityNotFoundException` fallback to
+the web listing. First entry is **Systa: Learn System Design** (`com.saimum.systa`), shown at the
+bottom of the general `system_design_primer` (after the "Mark as reviewed" CTA, so it never sits
+between the reader and the content) and as a "More from the developer" Settings card. Not shown on
+`ml_system_design_primer` — different subject. Play's ads policy is satisfied by the explicit
+"MORE FROM THE DEVELOPER" label and the end-of-content, non-interstitial placement; no `<queries>`
+manifest entry is needed because an implicit `ACTION_VIEW` is exempt from package-visibility
+filtering.
+
+**Target audience is 13+** (decided 2026-07-28), so Play's Families policy does not apply: ads stay
+personalized, and outbound links need no parental gate. The one hardening that came out of the
+review is in `core/ads/AdMobRewardedAds.kt` — `MobileAds.setRequestConfiguration()` now caps ad
+content at `MAX_AD_CONTENT_RATING_T` before `initialize()`. That file's comment is the marker for
+what would have to change if the audience is ever widened to include under-13s
+(`setTagForChildDirectedTreatment` / `setTagForUnderAgeOfConsent`, plus a parental gate on every
+external link).
+
 ## Phase Breakdown
 
 **Phase 0 — Foundation & App Shell**

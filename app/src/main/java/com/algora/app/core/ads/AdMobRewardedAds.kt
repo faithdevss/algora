@@ -8,6 +8,7 @@ import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.FullScreenContentCallback
 import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.MobileAds
+import com.google.android.gms.ads.RequestConfiguration
 import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import kotlinx.coroutines.CoroutineScope
@@ -34,7 +35,21 @@ class AdMobRewardedAds(context: Context, private val scope: CoroutineScope) : Re
 
     init {
         // initialize() does disk and network work — Google requires it off the main thread.
-        scope.launch(Dispatchers.IO) { MobileAds.initialize(context.applicationContext) }
+        scope.launch(Dispatchers.IO) {
+            // Algora's Play target audience is 13+, so no child-directed / under-age-of-consent
+            // tagging (either would force non-personalized ads and cut eCPM). The content-rating cap
+            // is a cheap safety net: a learning app should never serve a mature-rated ad, whatever
+            // the network would otherwise pick. Set before initialize() so the first request honours
+            // it. If the target audience is ever widened to include under-13s, this is the place to
+            // add setTagForChildDirectedTreatment / setTagForUnderAgeOfConsent — and outbound links
+            // (see core/ui/components/CrossPromo.kt) would then need a parental gate.
+            MobileAds.setRequestConfiguration(
+                RequestConfiguration.Builder()
+                    .setMaxAdContentRating(RequestConfiguration.MAX_AD_CONTENT_RATING_T)
+                    .build(),
+            )
+            MobileAds.initialize(context.applicationContext)
+        }
     }
 
     override fun preload(context: Context) {
