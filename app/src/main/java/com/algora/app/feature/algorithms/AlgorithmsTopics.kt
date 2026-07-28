@@ -36,28 +36,28 @@ private val sortingTopics = listOf(
     topic("bubble_sort", "Bubble Sort", sorting, "Repeatedly swaps adjacent out-of-order elements."),
     topic("selection_sort", "Selection Sort", sorting, "Repeatedly selects the minimum remaining element."),
     topic("insertion_sort", "Insertion Sort", sorting, "Builds a sorted prefix one element at a time."),
-    topic("merge_sort", "Merge Sort", sorting, "Divide-and-conquer sort that merges sorted halves."),
-    topic("quick_sort", "Quick Sort", sorting, "Divide-and-conquer sort that partitions around a pivot."),
-    topic("heap_sort", "Heap Sort", sorting, "Sorts by repeatedly extracting the max from a heap."),
-    topic("counting_sort", "Counting Sort", sorting, "Non-comparison sort counting occurrences per key."),
-    topic("radix_sort", "Radix Sort", sorting, "Non-comparison sort processing digits/keys in passes."),
+    topic("merge_sort", "Merge Sort", sorting, "Divide-and-conquer sort that merges sorted halves.", isPremium = true),
+    topic("quick_sort", "Quick Sort", sorting, "Divide-and-conquer sort that partitions around a pivot.", isPremium = true),
+    topic("heap_sort", "Heap Sort", sorting, "Sorts by repeatedly extracting the max from a heap.", isPremium = true),
+    topic("counting_sort", "Counting Sort", sorting, "Non-comparison sort counting occurrences per key.", isPremium = true),
+    topic("radix_sort", "Radix Sort", sorting, "Non-comparison sort processing digits/keys in passes.", isPremium = true),
 )
 
 private val searchingTopics = listOf(
     topic("linear_search", "Linear Search", searching, "Checks every element in sequence."),
     topic("binary_search", "Binary Search", searching, "Halves a sorted search space each step."),
-    topic("jump_search", "Jump Search", searching, "Skips ahead in fixed blocks, then scans linearly."),
-    topic("interpolation_search", "Interpolation Search", searching, "Estimates position from value distribution in sorted data."),
-    topic("exponential_search", "Exponential Search", searching, "Finds a bounding range, then binary searches within it."),
+    topic("jump_search", "Jump Search", searching, "Skips ahead in fixed blocks, then scans linearly.", isPremium = true),
+    topic("interpolation_search", "Interpolation Search", searching, "Estimates position from value distribution in sorted data.", isPremium = true),
+    topic("exponential_search", "Exponential Search", searching, "Finds a bounding range, then binary searches within it.", isPremium = true),
 )
 
 private val recursionTopics = listOf(
     topic("factorial", "Factorial", recursion, "Classic base-case + recursive-case warm-up."),
     topic("fibonacci_recursive", "Fibonacci", recursion, "Naive recursive definition — and why it's exponential."),
-    topic("n_queens", "N-Queens", recursion, "Backtracking placement of non-attacking queens."),
-    topic("sudoku_solver", "Sudoku Solver", recursion, "Constraint-based backtracking search."),
-    topic("subset_sum", "Subset Sum", recursion, "Backtracking search for a target-sum subset."),
-    topic("permutation_generation", "Permutation Generation", recursion, "Recursively builds every ordering of a set."),
+    topic("n_queens", "N-Queens", recursion, "Backtracking placement of non-attacking queens.", isPremium = true),
+    topic("sudoku_solver", "Sudoku Solver", recursion, "Constraint-based backtracking search.", isPremium = true),
+    topic("subset_sum", "Subset Sum", recursion, "Backtracking search for a target-sum subset.", isPremium = true),
+    topic("permutation_generation", "Permutation Generation", recursion, "Recursively builds every ordering of a set.", isPremium = true),
 )
 
 private val divideConquerTopics = listOf(
@@ -65,17 +65,17 @@ private val divideConquerTopics = listOf(
     topic("strassens_algorithm", "Strassen's Algorithm", divideConquer, "Faster-than-cubic matrix multiplication.", isPremium = true),
     topic("karatsubas_algorithm", "Karatsuba's Algorithm", divideConquer, "Sub-quadratic multiplication of large integers.", isPremium = true),
     topic("quickselect", "Quickselect", divideConquer, "Finds the k-th smallest element in linear expected time.", isPremium = true),
-    topic("median_of_medians", "Median of Medians", divideConquer, "Guarantees linear worst-case selection."),
+    topic("median_of_medians", "Median of Medians", divideConquer, "Guarantees linear worst-case selection.", isPremium = true),
     topic("tower_of_hanoi", "Tower of Hanoi", divideConquer, "Classic recursive disk-moving puzzle."),
 )
 
 private val greedyTopics = listOf(
     topic("fractional_knapsack", "Fractional Knapsack", greedy, "Greedy value-per-weight packing."),
     topic("huffman_coding", "Huffman Coding", greedy, "Builds an optimal prefix-free encoding."),
-    topic("kruskals_mst", "Kruskal's MST", greedy, "Builds a minimum spanning tree by adding cheapest edges."),
-    topic("prims_mst", "Prim's MST", greedy, "Grows a minimum spanning tree from a starting node."),
-    topic("dijkstras_algorithm", "Dijkstra's Algorithm", greedy, "Greedy shortest paths from a single source."),
-    topic("job_sequencing", "Job Sequencing with Deadlines", greedy, "Greedy scheduling to maximize completed jobs."),
+    topic("kruskals_mst", "Kruskal's MST", greedy, "Builds a minimum spanning tree by adding cheapest edges.", isPremium = true),
+    topic("prims_mst", "Prim's MST", greedy, "Grows a minimum spanning tree from a starting node.", isPremium = true),
+    topic("dijkstras_algorithm", "Dijkstra's Algorithm", greedy, "Greedy shortest paths from a single source.", isPremium = true),
+    topic("job_sequencing", "Job Sequencing with Deadlines", greedy, "Greedy scheduling to maximize completed jobs.", isPremium = true),
 )
 
 private val dpTopics = listOf(

@@ -258,12 +258,16 @@ fun HomeScreen(
             modifier = Modifier.padding(top = 22.dp, bottom = 14.dp),
         )
 
-        // 2×2 grid
+        // 2-column grid. An odd card count keeps its half-width column rather than stretching —
+        // the mock's cards are always half the row.
         Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
             cards.chunked(2).forEach { rowCards ->
                 Row(horizontalArrangement = Arrangement.spacedBy(13.dp), modifier = Modifier.fillMaxWidth()) {
                     rowCards.forEach { card ->
                         QuickAccessCard(card, modifier = Modifier.weight(1f)) { onNavigate(card.route) }
+                    }
+                    if (rowCards.size == 1) {
+                        Spacer(modifier = Modifier.weight(1f))
                     }
                 }
             }
@@ -402,7 +406,7 @@ private fun QuickAccessCard(card: QuickCard, modifier: Modifier = Modifier, onCl
 private val dsaCards = listOf(
     QuickCard(Screen.DataStructures.route, "Data Structures", "Build your foundation", "stack", Gradients.Green),
     QuickCard(Screen.Algorithms.route, "Algorithms", "Master problem solving", "chip", Gradients.Blue),
-    QuickCard(Screen.InterviewPrep.route, "Interview Prep", "Practice for interviews", "help", Gradients.Amber),
+    // Interview Prep lives in the Practice tab, not here — one entry point per surface.
     QuickCard(Screen.Analysis.route, "Analysis", "Time & Space efficiency", "trend", Gradients.Violet),
 )
 

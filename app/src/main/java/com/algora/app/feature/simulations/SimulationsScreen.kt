@@ -22,16 +22,24 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.algora.app.core.data.TopicRegistry
+import com.algora.app.core.data.entitlement.EntitlementRepository
+import com.algora.app.core.data.entitlement.entitlementDataStore
 import com.algora.app.core.data.model.SimulationType
 import com.algora.app.core.data.model.Topic
+import com.algora.app.core.ui.components.AdUnlockableLockIcon
+import com.algora.app.core.ui.components.LockAmber
 import com.algora.app.core.ui.components.resolveIcon
 import com.algora.app.core.ui.theme.SpaceGrotesk
 import com.algora.app.feature.topics.content.TopicContentProvider
@@ -82,6 +90,13 @@ fun SimulationsScreen(onTopicClick: (String) -> Unit, modifier: Modifier = Modif
         }
     }
 
+    // A premium topic's lab is premium too (SimulationDetailScreen enforces it) — the catalog row
+    // has to say so up front, and the padlock must vanish the moment premium or an ad unlock lands.
+    val context = LocalContext.current
+    val entitlements = remember { EntitlementRepository(context.entitlementDataStore) }
+    val isPremium by entitlements.isPremium.collectAsState(initial = false)
+    val adUnlocks by entitlements.adUnlocks.collectAsState(initial = emptyMap())
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
@@ -99,18 +114,23 @@ fun SimulationsScreen(onTopicClick: (String) -> Unit, modifier: Modifier = Modif
         }
 
         items(entries, key = { it.topic.id }) { entry ->
-            SimulationRow(entry = entry, onClick = { onTopicClick(entry.topic.id) })
+            SimulationRow(
+                entry = entry,
+                isLocked = entry.topic.isPremium && !isPremium && entry.topic.id !in adUnlocks,
+                onClick = { onTopicClick(entry.topic.id) },
+            )
         }
     }
 }
 
 @Composable
-private fun SimulationRow(entry: SimEntry, onClick: () -> Unit) {
+private fun SimulationRow(entry: SimEntry, isLocked: Boolean, onClick: () -> Unit) {
     val accent = Color(entry.topic.accentColor)
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 5.dp)
+            .alpha(if (isLocked) 0.72f else 1f)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
@@ -132,18 +152,29 @@ private fun SimulationRow(entry: SimEntry, onClick: () -> Unit) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(entry.topic.name, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, fontSize = 15.5.sp)
                 Text(
-                    entry.label,
+                    if (isLocked) "Premium · ${entry.label}" else entry.label,
                     fontSize = 12.5.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (isLocked) LockAmber else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .background(accent, RoundedCornerShape(11.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = "Run", tint = Color.White, modifier = Modifier.size(20.dp))
+            if (isLocked) {
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .background(LockAmber.copy(alpha = 0.16f), RoundedCornerShape(11.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    AdUnlockableLockIcon(size = 20.dp)
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .background(accent, RoundedCornerShape(11.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Filled.PlayArrow, contentDescription = "Run", tint = Color.White, modifier = Modifier.size(20.dp))
+                }
             }
         }
     }

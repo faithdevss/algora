@@ -50,17 +50,17 @@ private val coreTopics = listOf(
         "Nodes chained by next-pointers",
         iconName = "link", accentColor = 0xFF7C3AED,
     ),
-    topic("doubly_linked_list", "Doubly Linked List", core, "Nodes chained both forward and backward."),
+    topic("doubly_linked_list", "Doubly Linked List", core, "Nodes chained both forward and backward.", isPremium = true),
     topic("stack", "Stack", core, "Last-in, first-out access at one end."),
     topic("queue", "Queue", core, "First-in, first-out access at two ends."),
-    topic("hash_table", "Hash Table / Hash Map", core, "Key-value lookup backed by a hash function."),
+    topic("hash_table", "Hash Table / Hash Map", core, "Key-value lookup backed by a hash function.", isPremium = true),
 )
 
 private val nonLinearTopics = listOf(
     topic("tree", "Tree", nonLinear, "Hierarchical nodes with parent/child links."),
     topic("binary_search_tree", "Binary Search Tree", nonLinear, "Ordered binary tree for fast lookup, insert, delete."),
-    topic("heap", "Heap (Min / Max)", nonLinear, "Complete binary tree keeping the smallest or largest at the root."),
-    topic("trie", "Trie (Prefix Tree)", nonLinear, "Tree keyed by string prefixes, built for fast lookup."),
+    topic("heap", "Heap (Min / Max)", nonLinear, "Complete binary tree keeping the smallest or largest at the root.", isPremium = true),
+    topic("trie", "Trie (Prefix Tree)", nonLinear, "Tree keyed by string prefixes, built for fast lookup.", isPremium = true),
     topic(
         "graph", "Graph", nonLinear,
         "Nodes connected by edges, directed or undirected",
