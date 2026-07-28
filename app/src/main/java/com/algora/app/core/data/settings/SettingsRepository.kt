@@ -26,12 +26,20 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         }
     }
 
-    val accent: Flow<AccentColor> = dataStore.data.map { prefs ->
-        AccentColor.fromId(prefs[SettingsKeys.ACCENT])
+    /**
+     * `null` means "Auto" — the accent follows the active app mode (see `AppMode.accent`). That is
+     * also the default for a fresh install, so DSA opens indigo and AI opens pink without the user
+     * choosing anything. An explicit pick is stored by id and overrides the mode in both modes.
+     */
+    val accent: Flow<AccentColor?> = dataStore.data.map { prefs ->
+        when (val id = prefs[SettingsKeys.ACCENT]) {
+            null, AccentColor.AUTO_ID -> null
+            else -> AccentColor.fromId(id)
+        }
     }
 
-    suspend fun setAccent(accent: AccentColor) {
-        dataStore.edit { prefs -> prefs[SettingsKeys.ACCENT] = accent.id }
+    suspend fun setAccent(accent: AccentColor?) {
+        dataStore.edit { prefs -> prefs[SettingsKeys.ACCENT] = accent?.id ?: AccentColor.AUTO_ID }
     }
 
     val bookmarks: Flow<Set<String>> =

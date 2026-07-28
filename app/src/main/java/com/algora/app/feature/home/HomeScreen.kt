@@ -52,6 +52,7 @@ import com.algora.app.core.nav.Screen
 import com.algora.app.core.nav.SettingsRoute
 import com.algora.app.core.ui.components.resolveIcon
 import com.algora.app.core.ui.theme.Gradients
+import com.algora.app.core.ui.theme.LocalAccent
 import com.algora.app.core.ui.theme.SpaceGrotesk
 import com.algora.app.feature.algorithms.AlgorithmsTopics
 import com.algora.app.feature.analysis.AnalysisTopics
@@ -106,11 +107,11 @@ fun HomeScreen(
     val featured = remember(mode, completedIds, isPremium, adUnlocks) {
         pickFeatured(mode, completedIds, isPremium, adUnlocks)
     }
-    val topbar = if (mode == AppMode.DSA) {
-        Gradients.TopbarDsa
-    } else {
-        Gradients.TopbarAi
-    }
+    // Driven by the accent in effect rather than by `mode` directly. On the default Auto setting the
+    // accent already tracks the mode, so this still renders the mock's TopbarDsa/TopbarAi ramps —
+    // but a user who picked an accent now gets a header in it instead of a fixed indigo.
+    val activeAccent = LocalAccent.current
+    val topbar = listOf(Color(activeAccent.topbarStart), Color(activeAccent.topbarEnd))
 
     Column(
         modifier = Modifier

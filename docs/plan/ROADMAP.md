@@ -21,10 +21,24 @@ Each phase gets planned in detail in its own session: `/clear`, load this file +
 | 2 | Topic Browser & Content Scale-out | Done — all 81 DSA topics authored, nothing falls through to ComingSoon |
 | 3 | Interactive Simulation Library | Done — 30 widget types built (DS sims, recursion tree, DP grid, sorting, search, tree, pathfinding, hashing, classifier playground, graph algorithms, array walks, 2D point cloud, token strip, neural net, RL grid-world/bandit/DQN/policy-gradient/game-search/offline-imitation/multi-agent/exploration, linked structures, environments, shared PlaybackTransport). **All 176 topics wired; nothing resolves to ComingSoon.** Per-widget inventory in the phase-3 doc |
 | 4 | Algorithm Analysis Module | Done — all 17 Analysis tool ids built (11 distinct tools; see phase-4 doc) |
-| 5 | AI Mode | Done — mode switch, AI nav, and full 7-section content for all 87 ML/DL/NLP/RL topics. The multi-layer/backprop sim it deferred now ships via `NeuralNetPlayer` (`neural_network_basics`, `backpropagation`). Still open: per-mode theming of the whole shell — `AppMode` reaches nav/Home/Progress, but `Theme.kt` has no per-mode scheme, so only the Home topbar gradient switches |
+| 5 | AI Mode | Done — mode switch, AI nav, and full 7-section content for all 87 ML/DL/NLP/RL topics. The multi-layer/backprop sim it deferred now ships via `NeuralNetPlayer` (`neural_network_basics`, `backpropagation`). Per-mode shell theming is now done too (see the note below) |
 | 6 | Interview Prep Module | Done — timed quiz mode + 4 quizzes + all 5 pattern guides + behavioral bank (STAR) + system design primer; all 11 topics have content |
 | 7 | Engagement & Polish | Persisted dark mode + streaks + bookmarks/continue + flashcards + difficulty chips + multi-language code toggle + SM-2 spaced repetition + prerequisite-graph UI done; multi-language snippets for remaining topics deferred |
 | 8 | Monetization | Done — lifetime IAP (Play Billing 8) + rewarded-ad 24h per-topic unlock gate the 143 `isPremium` topics; paywall screen built from the mock's `isPremium` block. Real Play Console / AdMob ids still to be swapped in (fakes active in debug) |
+
+**Per-mode shell theming (closes the last Phase-5 item):** `mode` is hoisted out of `AlgoraApp` into
+`MainActivity` (as `rememberSaveable`, so it survives rotation) and fed to `AlgoraTheme`, so the
+whole M3 `colorScheme` — not just the Home header — recolours with DSA/AI. This is reconciled with
+the user-selectable accent added in Phase 7 rather than overriding it: `SettingsRepository.accent`
+is now `Flow<AccentColor?>` where **null = "Auto"** (stored as `AccentColor.AUTO_ID`, and the default
+for a fresh install), resolved as `accentChoice ?: mode.accent` via the `AppMode.accent` extension
+(`core/ui/theme/ModeAccent.kt` — DSA → Indigo, AI → Pink, chosen so Auto reproduces the mock's
+`TopbarDsa`/`TopbarAi` ramps exactly). An explicit swatch wins in both modes. Settings gains a sixth
+"Auto" swatch painted indigo→pink; the row now sizes swatches by weight so six fit a narrow screen.
+The Home topbar reads `LocalAccent` instead of a hardcoded per-mode gradient, so it follows an
+explicit accent too — the mock's ramps moved onto `AccentColor.topbarStart/topbarEnd` and
+`Gradients.TopbarDsa`/`TopbarAi` are gone. Accent colours animate (320ms `tween`) so switching mode
+slides rather than snaps.
 
 ## Phase Breakdown
 

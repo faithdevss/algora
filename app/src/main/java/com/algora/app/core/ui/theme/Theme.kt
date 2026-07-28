@@ -1,14 +1,19 @@
 package com.algora.app.core.ui.theme
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import com.algora.app.core.data.settings.AccentColor
+
+private val accentSpec = tween<Color>(durationMillis = 320)
 
 private fun lightColors(accent: Color, accent2: Color) = lightColorScheme(
     primary = accent,
@@ -50,7 +55,10 @@ val LocalCategoryAccents = staticCompositionLocalOf { CategoryAccents.all }
  */
 val LocalDarkTheme = staticCompositionLocalOf { false }
 
-/** The user's chosen accent, for surfaces that need the raw pair rather than the M3 roles. */
+/**
+ * The accent in effect, for surfaces that need the raw pair rather than the M3 roles. Already
+ * resolved: on the Auto setting this is the active mode's accent, not the user's stored choice.
+ */
 val LocalAccent = staticCompositionLocalOf { AccentColor.DEFAULT }
 
 @Composable
@@ -59,8 +67,10 @@ fun AlgoraTheme(
     accent: AccentColor = AccentColor.DEFAULT,
     content: @Composable () -> Unit,
 ) {
-    val accentColor = Color(accent.argb)
-    val accent2 = Color(accent.gradientEnd)
+    // Animated so flipping DSA ↔ AI (or picking a swatch) slides the whole shell to the new accent
+    // instead of snapping it a frame after the header gradient has already crossfaded.
+    val accentColor by animateColorAsState(Color(accent.argb), accentSpec, label = "accent")
+    val accent2 by animateColorAsState(Color(accent.gradientEnd), accentSpec, label = "accent2")
     val colorScheme = if (darkTheme) darkColors(accentColor, accent2) else lightColors(accentColor, accent2)
 
     CompositionLocalProvider(

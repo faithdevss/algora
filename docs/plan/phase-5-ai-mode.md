@@ -37,13 +37,21 @@ Ported from the mock's `isHome` block: gradient topbar (DSA gradient / AI pink�
 `TopicContent.crossLinks: List<CrossLink>` (optional). Rendered as tappable chips under Key Takeaways. Seeded: Linear Regression ↔ The Perceptron, Graph → Monte Carlo Tree Search.
 
 ## Deferred
-Full 7-section content for the remaining AI topics; perceptron multi-layer / backprop sim; per-mode theming of the whole shell (only the Home topbar gradient switches today).
+~~Full 7-section content for the remaining AI topics; perceptron multi-layer / backprop sim; per-mode theming of the whole shell (only the Home topbar gradient switches today).~~ **All three are now done** — see the status updates below.
 
 > **Status update (2026-07-27).** Content is complete for all 87 AI topics, and the multi-layer /
 > backprop sim shipped in Phase 3 sub-phase N as `NeuralNetPlayer` — `neural_network_basics` runs a
 > real 2-3-1 forward pass and `backpropagation` runs the chain rule back through it. Per-mode
-> theming is the only Phase 5 item still open: `AppMode` reaches the nav graph, Home and Progress,
-> but `Theme.kt` still builds one scheme, so the shell does not recolour with the mode.
+> theming was the only Phase 5 item still open: `AppMode` reached the nav graph, Home and Progress,
+> but `Theme.kt` still built one scheme, so the shell did not recolour with the mode.
+>
+> **Status update (2026-07-28). Phase 5 is fully closed.** Per-mode theming shipped: `mode` is
+> hoisted into `MainActivity` and passed to `AlgoraTheme`, so the whole colour scheme follows the
+> mode. It composes with (rather than overrides) the Phase 7 accent picker — `accent` is now
+> nullable, `null` = the new default "Auto" option, resolved as `accentChoice ?: mode.accent`
+> (`core/ui/theme/ModeAccent.kt`: DSA → Indigo, AI → Pink, picked to match the mock's
+> `TopbarDsa`/`TopbarAi`). See the "Per-mode shell theming" note in `ROADMAP.md` for the full
+> file-by-file summary.
 
 Progress: the whole Machine Learning family is now authored — Linear Regression, Logistic
 Regression, Decision Trees, SVM, k-NN, Naive Bayes, K-Means, Hierarchical Clustering, PCA, DBSCAN
@@ -74,6 +82,5 @@ CartPole, Mountain Car, Atari, MuJoCo, StarCraft II, Dota 2.
 **All AI-mode topic content is now authored: every Machine Learning, Deep Learning, NLP, and
 Reinforcement Learning topic across all four taxonomies has full 7-section content, verified
 registered in `TopicContentProvider` (87 AI rows).** Nothing in the AI browser falls through to
-ComingSoon. The remaining Phase 5 items are non-content: the perceptron multi-layer / backprop sim,
-and per-mode theming of the whole shell. (The first of those is now done — see the status update
-above; per-mode theming remains.)
+ComingSoon. The remaining Phase 5 items were non-content: the perceptron multi-layer / backprop sim,
+and per-mode theming of the whole shell. Both are now done — see the status updates above.

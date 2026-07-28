@@ -22,6 +22,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -30,7 +31,6 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.algora.app.core.billing.BillingProvider
-import com.algora.app.core.data.settings.AccentColor
 import com.algora.app.core.data.settings.SettingsRepository
 import com.algora.app.core.data.settings.ThemeMode
 import com.algora.app.core.data.settings.settingsDataStore
@@ -47,6 +47,7 @@ import com.algora.app.core.nav.Screen
 import com.algora.app.core.nav.SimulationsRoute
 import com.algora.app.core.ui.components.resolveIcon
 import com.algora.app.core.ui.theme.AlgoraTheme
+import com.algora.app.core.ui.theme.accent
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,7 +57,10 @@ class MainActivity : ComponentActivity() {
             val context = LocalContext.current
             val settings = remember { SettingsRepository(context.settingsDataStore) }
             val themeMode by settings.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
-            val accent by settings.accent.collectAsState(initial = AccentColor.DEFAULT)
+            // null accent = the "Auto" setting, resolved against the live mode below. Mode is
+            // hoisted this high precisely so the theme — not just the Home header — can see it.
+            val accentChoice by settings.accent.collectAsState(initial = null)
+            var mode by rememberSaveable { mutableStateOf(AppMode.DSA) }
             LaunchedEffect(Unit) { settings.recordActivityToday() }
             // Connecting on launch re-syncs entitlement with Play, so a refund or account switch
             // takes effect without the user opening the paywall.
@@ -76,23 +80,21 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
-            AlgoraTheme(darkTheme = dark, accent = accent) {
-                AlgoraApp()
+            AlgoraTheme(darkTheme = dark, accent = accentChoice ?: mode.accent) {
+                AlgoraApp(mode = mode, onModeChange = { mode = it })
             }
         }
     }
 }
 
 @Composable
-fun AlgoraApp() {
+fun AlgoraApp(mode: AppMode, onModeChange: (AppMode) -> Unit) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     // Topic/sim detail keeps the bottom bar (mock shows nav on topic pages). Only the flashcard
     // review screen, which owns its own back affordance, goes full-screen.
     val onFullScreen = currentDestination?.hierarchy?.any { it.route == ReviewRoute.ROUTE } == true
-
-    var mode by remember { mutableStateOf(AppMode.DSA) }
 
     // Fixed four-destination bar from docs/design/Algora.dc.html (navDefs) — identical in both modes.
     fun navigate(route: String) {
@@ -127,7 +129,7 @@ fun AlgoraApp() {
                                     NavTab.LEARNING -> navigate(Screen.Home.route)
                                     NavTab.SIMULATIONS -> navigate(SimulationsRoute.ROUTE)
                                     NavTab.PRACTICE -> {
-                                        mode = AppMode.DSA
+                                        onModeChange(AppMode.DSA)
                                         navigate(PracticeRoute.ROUTE)
                                     }
                                     NavTab.PROGRESS -> navigate(ProgressRoute.ROUTE)
@@ -152,7 +154,7 @@ fun AlgoraApp() {
         NavGraph(
             navController = navController,
             mode = mode,
-            onModeChange = { mode = it },
+            onModeChange = onModeChange,
             modifier = Modifier.padding(innerPadding),
         )
     }

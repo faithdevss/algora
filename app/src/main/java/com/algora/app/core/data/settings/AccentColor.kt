@@ -12,8 +12,13 @@ enum class AccentColor(
     val label: String,
     val argb: Long,
     val gradientEnd: Long,
+    val topbarStart: Long = argb,
+    val topbarEnd: Long = gradientEnd,
 ) {
-    INDIGO("indigo", "Indigo", 0xFF4F46E5, 0xFF7C3AED),
+    // INDIGO and PINK carry the mock's own topbar ramps (`TopbarDsa` / `TopbarAi`) verbatim, because
+    // those two are what the Auto setting resolves to — so Auto reproduces the mock exactly, and a
+    // deliberately picked accent gets a header derived from that accent instead of a stale indigo.
+    INDIGO("indigo", "Indigo", 0xFF4F46E5, 0xFF7C3AED, topbarEnd = 0xFF6D28D9),
     VIOLET("violet", "Violet", 0xFF7C3AED, 0xFFA78BFA),
     SKY("sky", "Sky", 0xFF0EA5E9, 0xFF4F46E5),
     EMERALD("emerald", "Emerald", 0xFF059669, 0xFF34D399),
@@ -21,6 +26,13 @@ enum class AccentColor(
 
     companion object {
         val DEFAULT = INDIGO
+
+        /**
+         * Stored id for "let the accent follow the active [com.algora.app.core.nav.AppMode]".
+         * Not an enum entry — it resolves to a real accent only once a mode is known, so the data
+         * layer represents it as a null [AccentColor] rather than a sixth colour.
+         */
+        const val AUTO_ID = "auto"
 
         fun fromId(id: String?): AccentColor = entries.firstOrNull { it.id == id } ?: DEFAULT
     }

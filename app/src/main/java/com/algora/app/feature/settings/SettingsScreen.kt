@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -42,11 +44,14 @@ import com.algora.app.core.data.settings.AccentColor
 import com.algora.app.core.data.settings.SettingsRepository
 import com.algora.app.core.data.settings.ThemeMode
 import com.algora.app.core.data.settings.settingsDataStore
+import com.algora.app.core.nav.AppMode
 import com.algora.app.core.ui.theme.SpaceGrotesk
+import com.algora.app.core.ui.theme.accent
 import kotlinx.coroutines.launch
 
 // Appearance settings: theme mode (System/Light/Dark) and the accent swatch set from the
-// docs/design/Algora.dc.html `accent` prop (#4f46e5, #7c3aed, #0ea5e9, #059669, #db2777).
+// docs/design/Algora.dc.html `accent` prop (#4f46e5, #7c3aed, #0ea5e9, #059669, #db2777), plus an
+// Auto option (the default) that hands the accent over to the active DSA/AI mode.
 // Both persist to DataStore and are applied by AlgoraTheme at the root.
 @Composable
 fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
@@ -54,7 +59,8 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val settings = remember { SettingsRepository(context.settingsDataStore) }
     val scope = rememberCoroutineScope()
     val themeMode by settings.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
-    val accent by settings.accent.collectAsState(initial = AccentColor.DEFAULT)
+    // null = the Auto option: the accent tracks the DSA/AI mode instead of a fixed swatch.
+    val accent by settings.accent.collectAsState(initial = null)
 
     Column(
         modifier = modifier
@@ -135,7 +141,10 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
         }
 
         SettingsCard(title = "Accent color", subtitle = "Tints buttons, progress and highlights") {
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                AutoAccentSwatch(selected = accent == null) {
+                    scope.launch { settings.setAccent(null) }
+                }
                 AccentColor.entries.forEach { option ->
                     AccentSwatch(
                         option = option,
@@ -145,7 +154,7 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             }
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                accent.label,
+                accent?.label ?: "Auto — indigo in DSA mode, pink in AI mode",
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 13.sp,
@@ -216,32 +225,64 @@ private fun ModeChip(
 }
 
 @Composable
-private fun AccentSwatch(
+private fun RowScope.AccentSwatch(
     option: AccentColor,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val color = Color(option.argb)
+    SwatchCircle(
+        ring = Color(option.argb),
+        fill = listOf(Color(option.argb), Color(option.gradientEnd)),
+        selected = selected,
+        contentDescription = "${option.label} selected",
+        onClick = onClick,
+    )
+}
+
+/**
+ * The Auto option. Painted with both mode accents so the swatch itself says what it does — indigo
+ * (DSA) bleeding into pink (AI) — rather than needing the caption underneath to explain it.
+ */
+@Composable
+private fun RowScope.AutoAccentSwatch(selected: Boolean, onClick: () -> Unit) {
+    val dsa = Color(AppMode.DSA.accent.argb)
+    val ai = Color(AppMode.AI.accent.argb)
+    SwatchCircle(
+        ring = MaterialTheme.colorScheme.primary,
+        fill = listOf(dsa, ai),
+        selected = selected,
+        contentDescription = "Auto accent selected",
+        onClick = onClick,
+    )
+}
+
+// Swatches share a row and size themselves by weight, so six of them still fit a narrow screen.
+@Composable
+private fun RowScope.SwatchCircle(
+    ring: Color,
+    fill: List<Color>,
+    selected: Boolean,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
     Box(
         modifier = Modifier
-            .size(44.dp)
+            .weight(1f)
+            .aspectRatio(1f)
             .border(
                 width = if (selected) 2.dp else 0.dp,
-                color = if (selected) color else Color.Transparent,
+                color = if (selected) ring else Color.Transparent,
                 shape = CircleShape,
             )
             .padding(4.dp)
-            .background(
-                Brush.linearGradient(listOf(color, Color(option.gradientEnd))),
-                CircleShape,
-            )
+            .background(Brush.linearGradient(fill), CircleShape)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         if (selected) {
             Icon(
                 Icons.Filled.Check,
-                contentDescription = "${option.label} selected",
+                contentDescription = contentDescription,
                 tint = Color.White,
                 modifier = Modifier.size(18.dp),
             )
