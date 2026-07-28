@@ -63,6 +63,10 @@ object PrerequisiteGraph {
         // Pathfinding: Dijkstra is UCS under another name, and IDA* is A* with the frontier removed
         "uniform_cost_search" to listOf("dijkstras_algorithm"),
         "ida_star" to listOf("a_star_search", "dfs"),
+        // Computational geometry — the orientation test first, then everything built on a hull
+        "convex_hull" to listOf("polygon_area"),
+        "line_intersection" to listOf("polygon_area"),
+        "rotating_calipers" to listOf("convex_hull", "two_pointer"),
         // Sorting, continued
         "bucket_sort" to listOf("insertion_sort", "counting_sort"),
         // ML regression: the plain fit, then the penalties, then the estimators that change the loss

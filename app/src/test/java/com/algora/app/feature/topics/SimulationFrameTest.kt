@@ -35,4 +35,8 @@ class SimulationFrameTest {
     @Test
     fun `every pathfinding config builds frames inside the grid`() =
         check("Pathfinding", pathfindingTopicIds, ::pathfindingFrameCount)
+
+    @Test
+    fun `every point-cloud config builds frames inside the unit square`() =
+        check("PointCloud", pointCloudTopicIds, ::pointCloudFrameCount)
 }

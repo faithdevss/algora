@@ -74,5 +74,9 @@ internal val closestPairOfPointsContent = TopicContent(
     crossLinks = listOf(
         CrossLink("merge_sort", "Merge Sort"),
         CrossLink("kd_tree", "K-D Tree / Quad Tree / Octree"),
+        // The taxonomy lists this under Divide and Conquer and under Computational Geometry; the
+        // topic stays here and points at the geometry group rather than being duplicated into it.
+        CrossLink("convex_hull", "Convex Hull"),
+        CrossLink("rotating_calipers", "Rotating Calipers"),
     ),
 )

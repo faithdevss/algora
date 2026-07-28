@@ -3,7 +3,13 @@ package com.algora.app.feature.algorithms
 import com.algora.app.core.data.model.Category
 import com.algora.app.core.data.model.Section
 
-// Colors/icons pulled verbatim from docs/design/Algora.dc.html's cats() for Algorithms (9 numbered groups).
+// Colors/icons pulled verbatim from docs/design/Algora.dc.html's cats() for Algorithms.
+//
+// The mock ships nine numbered groups and labels the last one '9–11 · Miscellaneous & Advanced' —
+// its own record that it folded three taxonomy groups into one bucket rather than that those groups
+// do not exist. Phase 10 unfolds them (Math & Number Theory, String Algorithms, Bit Manipulation)
+// and adds Computational Geometry, which docs/topics.algo.md lists and the mock never had a slot
+// for. Colors and icons continue the mock's cats() ramp cycling; no new icon assets.
 object AlgorithmsCategories {
     val sorting = Category("algo_sorting", "1 · Sorting", Section.ALGORITHMS, 0xFF3B82F6, "stack")
     val searching = Category("algo_searching", "2 · Searching", Section.ALGORITHMS, 0xFF06B6D4, "search")
@@ -13,7 +19,11 @@ object AlgorithmsCategories {
     val dynamicProgramming = Category("algo_dp", "6 · Dynamic Programming", Section.ALGORITHMS, 0xFFEC4899, "stack")
     val graphAlgorithms = Category("algo_graph", "7 · Graph Algorithms", Section.ALGORITHMS, 0xFF3B82F6, "share")
     val pathfinding = Category("algo_pathfinding", "8 · Pathfinding", Section.ALGORITHMS, 0xFF06B6D4, "map")
+    val geometry = Category("algo_geometry", "12 · Computational Geometry", Section.ALGORITHMS, 0xFF06B6D4, "globe")
     val miscAdvanced = Category("algo_misc", "9 · Misc & Advanced", Section.ALGORITHMS, 0xFF8B5CF6, "chip")
 
-    val all = listOf(sorting, searching, recursion, divideConquer, greedy, dynamicProgramming, graphAlgorithms, pathfinding, miscAdvanced)
+    val all = listOf(
+        sorting, searching, recursion, divideConquer, greedy, dynamicProgramming, graphAlgorithms,
+        pathfinding, geometry, miscAdvanced,
+    )
 }

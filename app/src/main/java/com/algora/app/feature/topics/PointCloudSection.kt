@@ -2136,9 +2136,18 @@ private fun bananaLogDensity(x: Float, y: Float): Double {
     return -0.5 * (a * a + b * b)
 }
 
+// The target's own coordinates run roughly x ∈ [−3.4, 3.4], y ∈ [−2.6, 3.4], while ScatterCanvas
+// maps [0, 1] onto the plot area. Everything this lab draws goes through here; without it only the
+// sliver of the chain that happened to land inside the unit square was ever on screen.
+private fun mcmcPlot(p: P) =
+    P(((p.x + 4.2f) / 8.4f).coerceIn(0f, 1f), ((p.y + 3.4f) / 7.6f).coerceIn(0f, 1f))
+
 private fun mcmcFrames(): List<CloudFrame> {
     val rng = Lcg(20240719)
     val frames = mutableListOf<CloudFrame>()
+
+    fun dot(p: P, group: Int, emphasis: Emphasis = Emphasis.NORMAL) = Dot(mcmcPlot(p), group, emphasis)
+    fun seg(a: P, b: P, color: Color, dashed: Boolean = false) = Segment(mcmcPlot(a), mcmcPlot(b), color, dashed)
 
     // Background contour: sample the target on a lattice and keep the high-density cells, so the
     // chain has something visible to be exploring.
@@ -2147,7 +2156,7 @@ private fun mcmcFrames(): List<CloudFrame> {
         while (gx <= 3.4f) {
             var gy = -2.6f
             while (gy <= 3.4f) {
-                if (bananaLogDensity(gx, gy) > -2.2) add(Dot(P(gx, gy), -1, Emphasis.FADED))
+                if (bananaLogDensity(gx, gy) > -2.2) add(dot(P(gx, gy), -1, Emphasis.FADED))
                 gy += 0.28f
             }
             gx += 0.28f
@@ -2187,7 +2196,7 @@ private fun mcmcFrames(): List<CloudFrame> {
     frames.add(
         CloudFrame(
             status = "Metropolis-Hastings needs only the ratio of densities at two points, and the unknown constant cancels in that ratio. Start anywhere — here deliberately far out in the tail.",
-            dots = contour + Dot(start, 0, Emphasis.QUERY),
+            dots = contour + dot(start, 0, Emphasis.QUERY),
         ),
     )
 
@@ -2202,9 +2211,9 @@ private fun mcmcFrames(): List<CloudFrame> {
                 } else {
                     "Step $step: proposal rejected, so the chain stays put and the current point is recorded a second time. A rejection is a sample, not a wasted iteration."
                 },
-                dots = contour + chain.take(step).map { Dot(it, 0, Emphasis.NORMAL) },
-                centroids = listOf(Dot(proposed, if (moved) 2 else 3, Emphasis.QUERY)),
-                segments = listOf(Segment(current, proposed, if (moved) CloudColors[2] else UnassignedColor, dashed = !moved)),
+                dots = contour + chain.take(step).map { dot(it, 0, Emphasis.NORMAL) },
+                centroids = listOf(dot(proposed, if (moved) 2 else 3, Emphasis.QUERY)),
+                segments = listOf(seg(current, proposed, if (moved) CloudColors[2] else UnassignedColor, dashed = !moved)),
             ),
         )
     }
@@ -2213,8 +2222,8 @@ private fun mcmcFrames(): List<CloudFrame> {
     frames.add(
         CloudFrame(
             status = "After $burnIn steps the chain has found the ridge, but those early samples were drawn while it was still travelling. They are not from the posterior and have to be discarded — that is burn-in, and forgetting it biases everything downstream.",
-            dots = contour + chain.take(burnIn).map { Dot(it, 3, Emphasis.FADED) },
-            segments = chain.take(burnIn).zipWithNext().map { (a, b) -> Segment(a, b, UnassignedColor) },
+            dots = contour + chain.take(burnIn).map { dot(it, 3, Emphasis.FADED) },
+            segments = chain.take(burnIn).zipWithNext().map { (a, b) -> seg(a, b, UnassignedColor) },
             readout = "burn-in: $burnIn samples discarded",
         ),
     )
@@ -2222,8 +2231,8 @@ private fun mcmcFrames(): List<CloudFrame> {
     frames.add(
         CloudFrame(
             status = "Post burn-in, the chain traces the target's shape. Acceptance rate over the whole run was ${"%.0f".format(accepted * 100f / accepts.size)}% — for a random-walk proposal the rule of thumb is roughly 25%, and being far from it in either direction means the step size is wrong.",
-            dots = contour + chain.drop(burnIn).map { Dot(it, 0, Emphasis.NORMAL) },
-            segments = chain.drop(burnIn).zipWithNext().map { (a, b) -> Segment(a, b, CloudColors[0]) },
+            dots = contour + chain.drop(burnIn).map { dot(it, 0, Emphasis.NORMAL) },
+            segments = chain.drop(burnIn).zipWithNext().map { (a, b) -> seg(a, b, CloudColors[0]) },
             readout = "acceptance ${"%.0f".format(accepted * 100f / accepts.size)}%",
         ),
     )
@@ -2232,8 +2241,8 @@ private fun mcmcFrames(): List<CloudFrame> {
     frames.add(
         CloudFrame(
             status = "Step size too small: ${"%.0f".format(tinyAccepted * 100f / tinyAccepts.size)}% of proposals accepted, which sounds excellent and is not. The chain barely moves, consecutive samples are almost identical, and the effective sample size is a small fraction of the ${tiny.size} iterations.",
-            dots = contour + tiny.map { Dot(it, 1, Emphasis.NORMAL) },
-            segments = tiny.zipWithNext().map { (a, b) -> Segment(a, b, CloudColors[1]) },
+            dots = contour + tiny.map { dot(it, 1, Emphasis.NORMAL) },
+            segments = tiny.zipWithNext().map { (a, b) -> seg(a, b, CloudColors[1]) },
             readout = "acceptance ${"%.0f".format(tinyAccepted * 100f / tinyAccepts.size)}% · barely explores",
         ),
     )
@@ -2242,8 +2251,8 @@ private fun mcmcFrames(): List<CloudFrame> {
     frames.add(
         CloudFrame(
             status = "Step size too large: ${"%.0f".format(hugeAccepted * 100f / hugeAccepts.size)}% accepted. Almost every proposal lands somewhere implausible and is rejected, so the chain sticks in place for long stretches — the opposite failure, with the same symptom of highly correlated samples.",
-            dots = contour + huge.map { Dot(it, 3, Emphasis.NORMAL) },
-            segments = huge.zipWithNext().map { (a, b) -> Segment(a, b, CloudColors[3]) },
+            dots = contour + huge.map { dot(it, 3, Emphasis.NORMAL) },
+            segments = huge.zipWithNext().map { (a, b) -> seg(a, b, CloudColors[3]) },
             readout = "acceptance ${"%.0f".format(hugeAccepted * 100f / hugeAccepts.size)}% · sticks",
         ),
     )
@@ -2251,9 +2260,344 @@ private fun mcmcFrames(): List<CloudFrame> {
     frames.add(
         CloudFrame(
             status = "This is why tuning matters and why modern samplers avoid it: Hamiltonian Monte Carlo uses the gradient to propose distant points that are still likely, and NUTS picks its own trajectory length. Both are the same accept/reject skeleton with a better proposal.",
-            dots = contour + chain.drop(burnIn).map { Dot(it, 0, Emphasis.NORMAL) },
+            dots = contour + chain.drop(burnIn).map { dot(it, 0, Emphasis.NORMAL) },
             readout = "${chain.size - burnIn} usable samples",
         ),
+    )
+    return frames
+}
+
+// ── Computational geometry ───────────────────────────────────────────────────
+// The geometry topics are points plus drawn segments, which the scatter renderer already covers:
+// Segment is the hull-under-construction and the caliper, Emphasis.ACTIVE is the vertex under test,
+// and Emphasis.FADED is a point the scan has discarded. No new frame fields were needed.
+
+// Twelve points, seven of them on the hull. Chosen so the Graham scan pops five times — once per
+// interior point — rather than sailing through, and so no three are collinear.
+private val hullPoints = listOf(
+    P(0.32f, 0.15f), P(0.70f, 0.18f), P(0.88f, 0.45f), P(0.78f, 0.78f),
+    P(0.45f, 0.85f), P(0.18f, 0.72f), P(0.10f, 0.30f),
+    P(0.36f, 0.50f), P(0.52f, 0.32f), P(0.60f, 0.62f), P(0.55f, 0.50f), P(0.25f, 0.45f),
+)
+
+private fun geoCross(o: P, a: P, b: P): Float =
+    (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x)
+
+private fun geoDist(a: P, b: P): Float =
+    kotlin.math.sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y))
+
+private fun hullSegments(chain: List<P>, closed: Boolean, color: Color): List<Segment> {
+    val pairs = if (closed && chain.size > 2) chain.zipWithNext() + (chain.last() to chain.first()) else chain.zipWithNext()
+    return pairs.map { (a, b) -> Segment(a, b, color) }
+}
+
+private fun grahamHull(points: List<P>): List<P> {
+    val anchor = points.minWith(compareBy({ it.y }, { it.x }))
+    val sorted = points.filter { it !== anchor }.sortedWith(
+        compareBy(
+            { kotlin.math.atan2(it.y - anchor.y, it.x - anchor.x) },
+            { geoDist(anchor, it) },
+        ),
+    )
+    val stack = mutableListOf(anchor)
+    for (p in sorted) {
+        while (stack.size >= 2 && geoCross(stack[stack.size - 2], stack.last(), p) <= 0f) {
+            stack.removeAt(stack.lastIndex)
+        }
+        stack += p
+    }
+    return stack
+}
+
+private fun convexHullFrames(): List<CloudFrame> {
+    val points = hullPoints
+    val frames = mutableListOf<CloudFrame>()
+    val anchor = points.minWith(compareBy({ it.y }, { it.x }))
+
+    fun dots(stack: List<P>, active: P?, discarded: Set<P>) = points.map { p ->
+        Dot(
+            p,
+            group = if (p in stack) 0 else 1,
+            emphasis = when {
+                p === active -> Emphasis.QUERY
+                p in discarded -> Emphasis.FADED
+                else -> Emphasis.NORMAL
+            },
+        )
+    }
+
+    frames += CloudFrame(
+        status = "Twelve points. The hull is the smallest convex polygon containing all of them — the shape a rubber band takes.",
+        dots = points.map { Dot(it, 1) },
+    )
+    frames += CloudFrame(
+        status = "Anchor at the lowest point (ties broken leftmost). Being extremal in any direction guarantees it is on the hull.",
+        dots = points.map { Dot(it, if (it === anchor) 0 else 1, if (it === anchor) Emphasis.QUERY else Emphasis.NORMAL) },
+    )
+
+    val sorted = points.filter { it !== anchor }.sortedWith(
+        compareBy(
+            { kotlin.math.atan2(it.y - anchor.y, it.x - anchor.x) },
+            { geoDist(anchor, it) },
+        ),
+    )
+    frames += CloudFrame(
+        status = "Sort the other eleven by polar angle around the anchor. This is the O(n log n) term — everything after it is linear.",
+        dots = points.map { Dot(it, if (it === anchor) 0 else 1) },
+        segments = sorted.map { Segment(anchor, it, UnassignedColor, dashed = true) },
+    )
+
+    val stack = mutableListOf(anchor)
+    val discarded = mutableSetOf<P>()
+    var pops = 0
+    for (p in sorted) {
+        while (stack.size >= 2 && geoCross(stack[stack.size - 2], stack.last(), p) <= 0f) {
+            val popped = stack.removeAt(stack.lastIndex)
+            discarded += popped
+            pops++
+            frames += CloudFrame(
+                status = "The last two on the stack plus this point turn right, so the middle one bulges inward — pop it. " +
+                    "Each point is popped at most once overall, which is why the scan is linear.",
+                dots = dots(stack, p, discarded),
+                segments = hullSegments(stack + p, closed = false, color = CloudColors[3]),
+                readout = "popped: $pops",
+            )
+        }
+        stack += p
+        frames += CloudFrame(
+            status = "Left turn — the chain stays convex, so push. Hull so far: ${stack.size} vertices.",
+            dots = dots(stack, p, discarded),
+            segments = hullSegments(stack, closed = false, color = CloudColors[0]),
+        )
+    }
+
+    frames += CloudFrame(
+        status = "Hull closed: ${stack.size} vertices from ${points.size} points, ${points.size - stack.size} discarded, $pops pops. " +
+            "The sort cost O(n log n); the scan itself touched each point twice at most.",
+        dots = dots(stack, null, discarded),
+        segments = hullSegments(stack, closed = true, color = CloudColors[0]),
+        readout = "h = ${stack.size}, n = ${points.size}",
+    )
+
+    // Jarvis march on the same points, summarised rather than stepped — the contrast is the cost model.
+    val jarvisTests = stack.size * points.size
+    frames += CloudFrame(
+        status = "Jarvis march finds the same hull with no sort at all: from the leftmost point, repeatedly take the most " +
+            "counter-clockwise point. That is one sweep per hull vertex — ${stack.size} × ${points.size} = $jarvisTests orientation tests here. " +
+            "It wins when the hull is small and degrades to O(n²) when every point is on it.",
+        dots = dots(stack, null, discarded),
+        segments = hullSegments(stack, closed = true, color = CloudColors[2]),
+        readout = "Graham O(n log n) · Jarvis O(n·h)",
+    )
+    return frames
+}
+
+private fun rotatingCalipersFrames(): List<CloudFrame> {
+    val points = hullPoints
+    val hull = grahamHull(points)
+    val h = hull.size
+    val frames = mutableListOf<CloudFrame>()
+
+    fun dots(active: Set<P>) = points.map { p ->
+        Dot(
+            p,
+            group = if (p in hull) 0 else 1,
+            emphasis = when {
+                p in active -> Emphasis.QUERY
+                p in hull -> Emphasis.NORMAL
+                else -> Emphasis.FADED
+            },
+        )
+    }
+
+    val outline = hullSegments(hull, closed = true, color = CloudColors[0])
+
+    frames += CloudFrame(
+        status = "The two farthest points of a set are always both hull vertices, so the ${points.size} points reduce to $h candidates " +
+            "before any distance is measured.",
+        dots = dots(emptySet()),
+        segments = outline,
+    )
+    frames += CloudFrame(
+        status = "Brute force would still compare all ${points.size * (points.size - 1) / 2} pairs. Calipers compare only antipodal " +
+            "pairs, of which a convex $h-gon has O(h).",
+        dots = dots(emptySet()),
+        segments = outline,
+        readout = "${points.size * (points.size - 1) / 2} pairs → O(h) pairs",
+    )
+
+    var best = 0f
+    var bestPair = hull[0] to hull[1]
+    var q = 1
+    for (p in 0 until h) {
+        val next = (p + 1) % h
+        while (kotlin.math.abs(geoCross(hull[p], hull[next], hull[(q + 1) % h])) >
+            kotlin.math.abs(geoCross(hull[p], hull[next], hull[q]))
+        ) {
+            q = (q + 1) % h
+        }
+        val edge = Segment(hull[p], hull[next], CloudColors[1])
+        var improved = false
+        for (candidate in listOf(hull[p], hull[next])) {
+            val d = geoDist(candidate, hull[q])
+            if (d > best) {
+                best = d
+                bestPair = candidate to hull[q]
+                improved = true
+            }
+        }
+        frames += CloudFrame(
+            status = "Edge ${p + 1} of $h: rotate until the opposite caliper rests on the vertex farthest from it. " +
+                if (improved) "This antipodal pair is the longest so far — record it."
+                else "This pair is shorter than the best so far; keep walking.",
+            dots = dots(setOf(hull[p], hull[next], hull[q])),
+            segments = outline + edge + Segment(hull[p], hull[q], CloudColors[3], dashed = true),
+            readout = "best so far ${"%.3f".format(best)}",
+        )
+    }
+
+    frames += CloudFrame(
+        status = "Diameter ${"%.3f".format(best)}. Both pointers went around the hull exactly once — the opposite vertex never " +
+            "moves backwards, because the support function is unimodal on a convex polygon. That monotonicity is the whole saving, " +
+            "and it is the reason the hull is a precondition rather than an optimisation.",
+        dots = points.map { p ->
+            Dot(p, if (p in hull) 0 else 1, if (p === bestPair.first || p === bestPair.second) Emphasis.QUERY else if (p in hull) Emphasis.NORMAL else Emphasis.FADED)
+        },
+        segments = outline + Segment(bestPair.first, bestPair.second, CloudColors[2]),
+        readout = "diameter = ${"%.3f".format(best)}",
+    )
+    return frames
+}
+
+private fun polygonAreaFrames(): List<CloudFrame> {
+    // A deliberately non-convex polygon: the reflex vertex is what shows the negative terms
+    // cancelling rather than the formula only working on convex shapes.
+    val poly = listOf(
+        P(0.15f, 0.15f), P(0.85f, 0.15f), P(0.85f, 0.50f), P(0.50f, 0.35f), P(0.15f, 0.70f),
+    )
+    val frames = mutableListOf<CloudFrame>()
+    val outline = hullSegments(poly, closed = true, color = CloudColors[0])
+    val origin = P(0f, 0f)
+
+    fun vertexDots(active: Int?) = poly.mapIndexed { i, p ->
+        Dot(p, 0, if (i == active) Emphasis.QUERY else Emphasis.NORMAL)
+    }
+
+    frames += CloudFrame(
+        status = "A simple polygon — no edge crosses another — but not a convex one. The shoelace formula does not care.",
+        dots = vertexDots(null),
+        segments = outline,
+    )
+
+    var sum = 0f
+    for (i in poly.indices) {
+        val a = poly[i]
+        val b = poly[(i + 1) % poly.size]
+        val term = a.x * b.y - b.x * a.y
+        sum += term
+        frames += CloudFrame(
+            status = "Edge ${i + 1}: x${i + 1}·y${(i + 1) % poly.size + 1} − x${(i + 1) % poly.size + 1}·y${i + 1} = ${"%.4f".format(term)}. " +
+                (if (term < 0) "Negative — this edge faces back toward the origin, and the overshoot will cancel." else "Positive — this edge sweeps away from the origin.") +
+                " Running total ${"%.4f".format(sum)}.",
+            dots = vertexDots(i),
+            segments = outline + Segment(origin, a, UnassignedColor, dashed = true) + Segment(origin, b, UnassignedColor, dashed = true) +
+                Segment(a, b, if (term < 0) CloudColors[3] else CloudColors[2]),
+            readout = "Σ = ${"%.4f".format(sum)}",
+        )
+    }
+
+    val perimeter = poly.indices.sumOf { i -> geoDist(poly[i], poly[(i + 1) % poly.size]).toDouble() }
+    frames += CloudFrame(
+        status = "Area = |Σ| / 2 = ${"%.4f".format(kotlin.math.abs(sum) / 2f)}. The sum came out positive, so these vertices are " +
+            "listed counter-clockwise — that sign is free orientation information, and throwing it away with abs() too early is a common loss.",
+        dots = vertexDots(null),
+        segments = outline,
+        readout = "area = ${"%.4f".format(kotlin.math.abs(sum) / 2f)} · CCW",
+    )
+    frames += CloudFrame(
+        status = "Perimeter needs a separate pass and a square root per edge: ${"%.4f".format(perimeter)}. The cheaper-looking quantity " +
+            "is the more expensive one.",
+        dots = vertexDots(null),
+        segments = outline,
+        readout = "perimeter = ${"%.4f".format(perimeter)}",
+    )
+    return frames
+}
+
+private fun lineIntersectionFrames(): List<CloudFrame> {
+    val frames = mutableListOf<CloudFrame>()
+
+    fun orientation(a: P, b: P, c: P): Int {
+        val v = geoCross(a, b, c)
+        return when {
+            v > 1e-6f -> 1
+            v < -1e-6f -> -1
+            else -> 0
+        }
+    }
+
+    fun withinBox(a: P, b: P, c: P) =
+        b.x >= minOf(a.x, c.x) - 1e-6f && b.x <= maxOf(a.x, c.x) + 1e-6f &&
+            b.y >= minOf(a.y, c.y) - 1e-6f && b.y <= maxOf(a.y, c.y) + 1e-6f
+
+    fun case(p1: P, p2: P, q1: P, q2: P, title: String, note: String) {
+        val o1 = orientation(p1, p2, q1)
+        val o2 = orientation(p1, p2, q2)
+        val o3 = orientation(q1, q2, p1)
+        val o4 = orientation(q1, q2, p2)
+        val proper = o1 != o2 && o3 != o4
+        val collinearHit = (o1 == 0 && withinBox(p1, q1, p2)) || (o2 == 0 && withinBox(p1, q2, p2)) ||
+            (o3 == 0 && withinBox(q1, p1, q2)) || (o4 == 0 && withinBox(q1, p2, q2))
+        val hit = proper || collinearHit
+
+        frames += CloudFrame(
+            status = "$title — orientations (${o1}, ${o2}, ${o3}, ${o4}). " +
+                (if (proper) "Both segments straddle the other's line, so they cross. " else if (collinearHit) "The straddle test says no, but a zero orientation sends it to the containment check, which says yes. " else "No straddle and no collinear containment. ") +
+                note,
+            dots = listOf(
+                Dot(p1, 0), Dot(p2, 0),
+                Dot(q1, 1, Emphasis.ACTIVE), Dot(q2, 1, Emphasis.ACTIVE),
+            ),
+            segments = listOf(
+                Segment(p1, p2, CloudColors[0]),
+                Segment(q1, q2, if (hit) CloudColors[2] else CloudColors[3]),
+            ),
+            readout = if (hit) "intersects" else "no intersection",
+        )
+    }
+
+    case(
+        P(0.15f, 0.25f), P(0.85f, 0.75f), P(0.20f, 0.80f), P(0.80f, 0.20f),
+        "Proper crossing",
+        "This is the case the four cross products were designed for, and the only one they settle alone.",
+    )
+    case(
+        P(0.15f, 0.20f), P(0.45f, 0.35f), P(0.60f, 0.70f), P(0.85f, 0.85f),
+        "Clearly apart",
+        "Two orientations agree on each test, so neither segment separates the other's endpoints.",
+    )
+    case(
+        P(0.15f, 0.30f), P(0.55f, 0.30f), P(0.55f, 0.30f), P(0.85f, 0.70f),
+        "Touching at an endpoint",
+        "Whether this counts is a policy decision — for polygon clipping usually yes, for a self-intersection check on a closed outline usually no, since consecutive edges always share one.",
+    )
+    case(
+        P(0.15f, 0.55f), P(0.65f, 0.55f), P(0.40f, 0.55f), P(0.90f, 0.55f),
+        "Collinear and overlapping",
+        "Every orientation is zero and the sign test is blind here; only the bounding-box containment check finds the overlap.",
+    )
+    case(
+        P(0.15f, 0.85f), P(0.35f, 0.85f), P(0.60f, 0.85f), P(0.90f, 0.85f),
+        "Collinear and disjoint",
+        "All four orientations are zero again — the same input to the sign test, the opposite answer. The containment check is doing all the work.",
+    )
+
+    frames += CloudFrame(
+        status = "Five cases, one primitive: the sign of a cross product, plus a bounding-box test when that sign is zero. " +
+            "No division, no square roots, and on integer coordinates no rounding error at all — which is exactly why nothing here computes a slope.",
+        dots = emptyList(),
+        segments = emptyList(),
+        readout = "4 cross products, O(1)",
     )
     return frames
 }
@@ -2506,10 +2850,62 @@ private val cloudConfigs = mapOf(
         ),
         build = ::monteCarloFrames,
     ),
+    "convex_hull" to CloudConfig(
+        intro = "Graham scan on twelve points: sort by polar angle, then push and pop on the sign of a cross product. " +
+            "The five pops are exactly the five interior points. Jarvis march's cost model closes it out.",
+        legend = listOf(
+            CloudColors[0] to "On the hull",
+            QueryColor to "Under test",
+            CloudColors[3] to "Popped — interior",
+        ),
+        build = ::convexHullFrames,
+    ),
+    "rotating_calipers" to CloudConfig(
+        intro = "Two parallel lines gripping the hull and rotating together. Every stop is an antipodal pair, the " +
+            "diameter is the longest of them, and the opposite pointer never once moves backwards.",
+        legend = listOf(
+            CloudColors[0] to "Hull",
+            CloudColors[1] to "Current edge",
+            QueryColor to "Antipodal pair",
+        ),
+        build = ::rotatingCalipersFrames,
+    ),
+    "polygon_area" to CloudConfig(
+        intro = "The shoelace sum over a non-convex polygon, one edge at a time, with the triangle each term measures " +
+            "drawn back to the origin — so the negative terms are seen cancelling rather than asserted to.",
+        legend = listOf(
+            CloudColors[2] to "Positive term",
+            CloudColors[3] to "Negative term",
+            QueryColor to "Current vertex",
+        ),
+        build = ::polygonAreaFrames,
+    ),
+    "line_intersection" to CloudConfig(
+        intro = "Five segment pairs run through the same four cross products: a proper crossing, a clear miss, an " +
+            "endpoint touch, a collinear overlap and a collinear miss. The last three are where naive tests fail.",
+        legend = listOf(
+            CloudColors[0] to "Segment p",
+            CloudColors[2] to "Intersects",
+            CloudColors[3] to "No intersection",
+        ),
+        build = ::lineIntersectionFrames,
+    ),
 )
 
 private fun cloudConfigFor(topicId: String): CloudConfig =
     cloudConfigs[topicId] ?: cloudConfigs.getValue("kmeans")
+
+internal val pointCloudTopicIds: Set<String> get() = cloudConfigs.keys
+
+internal fun pointCloudFrameCount(topicId: String): Int {
+    val frames = cloudConfigFor(topicId).build()
+    frames.forEach { frame ->
+        // The canvas maps [0,1] onto the plot area; anything outside silently draws off-frame.
+        val stray = (frame.dots + frame.centroids).map { it.point }.filter { it.x !in -0.05f..1.05f || it.y !in -0.05f..1.05f }
+        require(stray.isEmpty()) { "$topicId plots ${stray.size} point(s) outside the unit square" }
+    }
+    return frames.size
+}
 
 // ── UI ───────────────────────────────────────────────────────────────────────
 

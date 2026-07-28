@@ -201,12 +201,12 @@ category guard load-bearing rather than nice-to-have.
 | Batch | Topics | Status | Notes |
 |---|---|---|---|
 | D1 · Existing-category gap-fill | 7 | **Done** | Plus `SimulationFrameTest` — see below |
-| D2 · Computational Geometry | 4 | Next | |
-| D3 · String Algorithms | 5 (+3 moved) | Planned | `TreeVisualizer` failure-link support unverified |
+| D2 · Computational Geometry | 4 | **Done** | Needed no new `CloudFrame` fields; found a live `mcmc` bug |
+| D3 · String Algorithms | 5 (+3 moved) | Next | `TreeVisualizer` failure-link support unverified |
 | D4 · Math & Number Theory | 7 | Planned | |
 | D5 · Bit Manipulation | 4 | Planned | New `BitBoardPlayer` widget |
 | Guards | — | Planned | Taxonomy + category guards land at the end, not with D1 — see below |
-| **Total** | **27** | **7 done** | Algorithms 67 → 94; app taxonomy 257 → 284 |
+| **Total** | **27** | **11 done** | Algorithms 67 → 94; app taxonomy 257 → 284 |
 
 ### Deviations from the plan as written
 
@@ -244,6 +244,35 @@ to match their neighbours:
   visible instead of asserted. IDA* runs its own f-bounded DFS, emitting a frame per expansion and
   folding pruned branches into the parent's status; on this map it takes two iterations, threshold
   7 then 9.
+
+### D2, as built
+
+Category `algo_geometry` (`12 · Computational Geometry`, `globe`, `#06B6D4`) with `polygon_area`
+free and the other three premium. `closest_pair_of_points` stayed in `algo_divide_conquer` and gained
+cross-links to `convex_hull` and `rotating_calipers`, as planned.
+
+**The plan predicted three new `PointCloudSection` frame-builder features; none were needed.**
+`Segment` already carries the hull under construction and the caliper, `Emphasis.QUERY` is the vertex
+under test, and `Emphasis.FADED` is a point the scan discarded. `CloudFrame` was not touched.
+
+- `convex_hull` runs a real Graham scan over twelve points positioned so the five pops are exactly
+  the five interior points, then states Jarvis march's O(n·h) against it on the same input.
+- `rotating_calipers` builds the hull, then walks the two-pointer antipodal sweep, one frame per hull
+  edge, closing on the measured diameter.
+- `polygon_area` uses a *non-convex* polygon and draws each shoelace term's triangle back to the
+  origin, so the negative terms are watched cancelling instead of being asserted to cancel.
+- `line_intersection` runs five segment pairs through the same four cross products: proper crossing,
+  clear miss, endpoint touch, collinear overlap, collinear miss. The last three are the ones a
+  straddle-only test gets wrong.
+
+**`SimulationFrameTest` found a live bug in an existing topic on its first extension.** The
+point-cloud check asserts every plotted point lies in the unit square, because `ScatterCanvas` maps
+`[0,1]` onto the plot area with no autoscaling. `mcmc` (Phase 9) works in its target's own
+coordinates — roughly x ∈ [−3.4, 3.4], y ∈ [−2.6, 3.4] — so all but a sliver of that lab had been
+rendering off-canvas since it landed. Fixed by routing every dot and segment in `mcmcFrames` through
+an `mcmcPlot()` mapping. This is exactly the class of defect the test was added for: it is invisible
+in a build, invisible in a review, and only visible by opening that one topic and knowing what the
+picture was supposed to look like.
 
 ## Out of scope
 

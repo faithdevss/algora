@@ -30,6 +30,7 @@ private val greedy = AlgorithmsCategories.greedy
 private val dp = AlgorithmsCategories.dynamicProgramming
 private val graphAlgo = AlgorithmsCategories.graphAlgorithms
 private val pathfinding = AlgorithmsCategories.pathfinding
+private val geometry = AlgorithmsCategories.geometry
 private val misc = AlgorithmsCategories.miscAdvanced
 
 private val sortingTopics = listOf(
@@ -117,6 +118,15 @@ private val pathfindingTopics = listOf(
     topic("ida_star", "IDA*", pathfinding, "A*'s answer on a stack instead of a frontier — linear memory.", isPremium = true),
 )
 
+// closest_pair_of_points stays in Divide and Conquer — the doc lists it under both headings — and
+// cross-links here instead of moving.
+private val geometryTopics = listOf(
+    topic("polygon_area", "Area & Perimeter", geometry, "Shoelace formula: a polygon's area from its vertices alone."),
+    topic("convex_hull", "Convex Hull", geometry, "The tightest enclosing polygon — Graham scan and Jarvis march.", isPremium = true),
+    topic("line_intersection", "Line Segment Intersection", geometry, "Four orientation tests, plus the collinear cases they miss.", isPremium = true),
+    topic("rotating_calipers", "Rotating Calipers", geometry, "Sweeps antipodal pairs around a hull for the diameter in linear time.", isPremium = true),
+)
+
 private val miscTopics = listOf(
     topic("top_k_elements", "Top-K Elements", misc, "Finds the k largest/smallest elements efficiently.", isPremium = true),
     topic("sliding_window", "Sliding Window", misc, "Maintains a moving subrange to avoid recomputation.", isPremium = true),
@@ -135,7 +145,7 @@ private val miscTopics = listOf(
 object AlgorithmsTopics {
     val topics: List<Topic> =
         sortingTopics + searchingTopics + recursionTopics + divideConquerTopics + greedyTopics +
-            dpTopics + graphAlgoTopics + pathfindingTopics + miscTopics
+            dpTopics + graphAlgoTopics + pathfindingTopics + geometryTopics + miscTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }
