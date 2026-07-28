@@ -38,6 +38,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.algora.app.core.data.TopicRegistry
+import com.algora.app.core.data.model.Topic
+import com.algora.app.core.data.progress.ProgressRepository
+import com.algora.app.core.data.progress.progressDataStore
+import com.algora.app.core.data.progress.todayEpochDay
 import com.algora.app.core.data.settings.SettingsRepository
 import com.algora.app.core.data.settings.settingsDataStore
 import com.algora.app.core.nav.AppMode
@@ -49,6 +53,15 @@ import com.algora.app.core.nav.SettingsRoute
 import com.algora.app.core.ui.components.resolveIcon
 import com.algora.app.core.ui.theme.Gradients
 import com.algora.app.core.ui.theme.SpaceGrotesk
+import com.algora.app.feature.algorithms.AlgorithmsTopics
+import com.algora.app.feature.analysis.AnalysisTopics
+import com.algora.app.feature.datastructures.DataStructuresTopics
+import com.algora.app.feature.deeplearning.DeepLearningTopics
+import com.algora.app.feature.interviewprep.InterviewPrepTopics
+import com.algora.app.feature.machinelearning.MachineLearningTopics
+import com.algora.app.feature.nlp.NlpTopics
+import com.algora.app.feature.reinforcementlearning.ReinforcementLearningTopics
+import com.algora.app.feature.topics.content.TopicContentProvider
 
 private data class QuickCard(
     val route: String,
@@ -83,8 +96,16 @@ fun HomeScreen(
     val bookmarks by settings.bookmarks.collectAsState(initial = emptySet())
     val lastOpened by settings.lastOpened.collectAsState(initial = null)
 
+    val progress = remember { ProgressRepository(context.progressDataStore) }
+    val completedIds by progress.completedTopicIds.collectAsState(initial = emptySet())
+    val adUnlocks by entitlements.adUnlocks.collectAsState(initial = emptyMap())
+
     val cards = if (mode == AppMode.DSA) dsaCards else aiCards
-    val featured = if (mode == AppMode.DSA) dsaFeatured else aiFeatured
+    // Null once every runnable lab in this mode is done — the card disappears rather than sending
+    // the user back to a topic they've finished.
+    val featured = remember(mode, completedIds, isPremium, adUnlocks) {
+        pickFeatured(mode, completedIds, isPremium, adUnlocks)
+    }
     val topbar = if (mode == AppMode.DSA) {
         Gradients.TopbarDsa
     } else {
@@ -163,58 +184,8 @@ fun HomeScreen(
         }
 
         // Featured lab
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 14.dp)
-                .background(
-                    Brush.linearGradient(
-                        if (mode == AppMode.DSA) Gradients.FeaturedDsa
-                        else Gradients.FeaturedAi,
-                    ),
-                    RoundedCornerShape(22.dp),
-                )
-                .clickable { onTopicClick(featured.topicId) }
-                .padding(18.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "FEATURED LAB",
-                        color = Color.White.copy(alpha = 0.75f),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.5.sp,
-                    )
-                    Text(
-                        featured.name,
-                        color = Color.White,
-                        fontFamily = SpaceGrotesk,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp,
-                        modifier = Modifier.padding(top = 3.dp),
-                    )
-                    Text(featured.sub, color = Color.White.copy(alpha = 0.82f), fontSize = 13.sp)
-                    Row(
-                        modifier = Modifier
-                            .padding(top = 13.dp)
-                            .background(Color.White, RoundedCornerShape(11.dp))
-                            .padding(horizontal = 15.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("Open interactive", color = Color(0xFF161A22), fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = Color(0xFF161A22), modifier = Modifier.size(18.dp))
-                    }
-                }
-                Box(
-                    modifier = Modifier
-                        .size(74.dp)
-                        .background(Color.White.copy(alpha = 0.16f), RoundedCornerShape(20.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(resolveIcon(featured.iconName), contentDescription = null, tint = Color.White, modifier = Modifier.size(36.dp))
-                }
-            }
+        if (featured != null) {
+            FeaturedLabCard(mode = mode, featured = featured, onClick = { onTopicClick(featured.topicId) })
         }
 
         val continueTopic = lastOpened?.let { TopicRegistry.find(it) }
@@ -417,5 +388,93 @@ private val aiCards = listOf(
     QuickCard(Screen.ReinforcementLearning.route, "Reinforcement Learning", "Trial & error", "game", Gradients.Orange),
 )
 
-private val dsaFeatured = Featured("singly_linked_list", "Singly Linked List", "Chains of Data", "link")
-private val aiFeatured = Featured("linear_regression", "Linear Regression", "Fitting a Line to Data", "trend")
+@Composable
+private fun FeaturedLabCard(mode: AppMode, featured: Featured, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 14.dp)
+            .background(
+                Brush.linearGradient(
+                    if (mode == AppMode.DSA) Gradients.FeaturedDsa
+                    else Gradients.FeaturedAi,
+                ),
+                RoundedCornerShape(22.dp),
+            )
+            .clickable(onClick = onClick)
+            .padding(18.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "FEATURED LAB",
+                    color = Color.White.copy(alpha = 0.75f),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.5.sp,
+                )
+                Text(
+                    featured.name,
+                    color = Color.White,
+                    fontFamily = SpaceGrotesk,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    modifier = Modifier.padding(top = 3.dp),
+                )
+                Text(featured.sub, color = Color.White.copy(alpha = 0.82f), fontSize = 13.sp)
+                Row(
+                    modifier = Modifier
+                        .padding(top = 13.dp)
+                        .background(Color.White, RoundedCornerShape(11.dp))
+                        .padding(horizontal = 15.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Open interactive", color = Color(0xFF161A22), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = Color(0xFF161A22), modifier = Modifier.size(18.dp))
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .size(74.dp)
+                    .background(Color.White.copy(alpha = 0.16f), RoundedCornerShape(20.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(resolveIcon(featured.iconName), contentDescription = null, tint = Color.White, modifier = Modifier.size(36.dp))
+            }
+        }
+    }
+}
+
+private val dsaTopicIds: Set<String> =
+    (DataStructuresTopics.topics + AlgorithmsTopics.topics + AnalysisTopics.topics + InterviewPrepTopics.topics)
+        .mapTo(mutableSetOf()) { it.id }
+
+private val aiTopicIds: Set<String> =
+    (MachineLearningTopics.topics + DeepLearningTopics.topics + NlpTopics.topics + ReinforcementLearningTopics.topics)
+        .mapTo(mutableSetOf()) { it.id }
+
+// Candidate labs for the featured card: every topic in the active mode that actually ships a
+// runnable simulation, in registry order so the rotation below is stable across launches.
+private fun labPool(mode: AppMode): List<Topic> {
+    val modeIds = if (mode == AppMode.DSA) dsaTopicIds else aiTopicIds
+    return TopicContentProvider.runnableSimulations.mapNotNull { (topicId, _) ->
+        TopicRegistry.find(topicId)?.takeIf { it.id in modeIds }
+    }
+}
+
+// The card used to be two hardcoded topics. Now it rotates once a day through the labs the user has
+// not finished, skipping anything still behind the paywall — "Open interactive" should always open
+// something interactive. Returns null when nothing qualifies, and the caller drops the card.
+private fun pickFeatured(
+    mode: AppMode,
+    completedIds: Set<String>,
+    isPremium: Boolean,
+    adUnlocks: Map<String, Long>,
+): Featured? {
+    val pool = labPool(mode).filter { topic ->
+        topic.id !in completedIds && (!topic.isPremium || isPremium || topic.id in adUnlocks)
+    }
+    if (pool.isEmpty()) return null
+    val topic = pool[todayEpochDay().mod(pool.size)]
+    return Featured(topic.id, topic.name, topic.tagline, topic.iconName)
+}
