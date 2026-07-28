@@ -42,6 +42,8 @@ internal fun SimulationHost(topicId: String, type: SimulationType) {
         SimulationType.LinkedStructurePlayer -> LinkedStructureSection(topicId)
         SimulationType.EnvironmentPlayer -> EnvironmentSection(topicId)
         SimulationType.RegressionExplorer -> RegressionSimulationSection()
+        SimulationType.RegressionLab -> RegressionLabSection(topicId)
+        SimulationType.DecisionSurface -> DecisionSurfaceSection(topicId)
         SimulationType.PerceptronVisualizer -> PerceptronSimulationSection()
         SimulationType.ClassifierPlayground -> ClassifierPlaygroundSection(classifierConfigFor(topicId))
         SimulationType.RecursionTreeVisualizer -> RecursionTreeSection(topicId)

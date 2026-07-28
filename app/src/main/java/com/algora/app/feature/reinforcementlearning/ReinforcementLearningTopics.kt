@@ -26,6 +26,7 @@ private fun topic(
 )
 
 private val foundations = ReinforcementLearningCategories.foundations
+private val tabular = ReinforcementLearningCategories.tabular
 private val dqn = ReinforcementLearningCategories.dqn
 private val policyGradient = ReinforcementLearningCategories.policyGradient
 private val continuousControl = ReinforcementLearningCategories.continuousControl
@@ -35,9 +36,32 @@ private val marl = ReinforcementLearningCategories.marl
 private val advanced = ReinforcementLearningCategories.advanced
 private val benchmarks = ReinforcementLearningCategories.benchmarks
 
+// Ordered as a reading path, not alphabetically: the vocabulary (agent/environment, the tuple, the
+// policy) comes before the quantities defined over it (V, Q, γ), which come before the two problems
+// that motivate the rest of the section (exploration, partial observability).
 private val foundationsTopics = listOf(
+    topic("agent_environment", "Agent & Environment", foundations, "The loop everything else in RL is defined over.", difficulty = Difficulty.BEGINNER),
+    topic("state_action_reward", "State, Action, Reward", foundations, "The three signals that cross the interface, and what each must contain.", difficulty = Difficulty.BEGINNER),
+    topic("policy", "The Policy (π)", foundations, "The thing being learned — a mapping from states to actions.", difficulty = Difficulty.BEGINNER),
     topic("mdp", "MDP", foundations, "States, actions, rewards and transitions — the RL contract.", difficulty = Difficulty.BEGINNER),
+    topic("value_function", "Value Function (V)", foundations, "How good a state is, under a specific policy.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("q_function", "Q-Function (Q)", foundations, "How good an action is, which is what you need to act.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("discount_factor", "Horizon & Discount Factor (γ)", foundations, "The one knob that decides how far ahead the agent cares.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("exploration_exploitation", "Exploration vs Exploitation", foundations, "Why acting on your best estimate is how you stay wrong.", isPremium = true, difficulty = Difficulty.BEGINNER),
     topic("q_learning", "Q-Learning (off-policy)", foundations, "Learn action values from experience without a model.", difficulty = Difficulty.INTERMEDIATE),
+    topic("pomdp", "Partially Observable MDP", foundations, "When the observation is not the state, and memory becomes mandatory.", isPremium = true, difficulty = Difficulty.ADVANCED),
+)
+
+// The classical core. Q-Learning lives in Foundations rather than here because it is the bridge the
+// rest of the section is built on, but it belongs to this family conceptually.
+private val tabularTopics = listOf(
+    topic("bellman_equation", "Bellman Equation", tabular, "The consistency condition every value function must satisfy.", difficulty = Difficulty.INTERMEDIATE),
+    topic("dynamic_programming", "Dynamic Programming", tabular, "Solving an MDP exactly, when you already have the model.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("policy_iteration", "Policy Iteration", tabular, "Evaluate a policy, act greedily on it, repeat until nothing changes.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("value_iteration", "Value Iteration", tabular, "One backup per sweep with the improvement folded in.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("monte_carlo_rl", "Monte Carlo Methods", tabular, "Learn from complete episodes, with no model and no bootstrapping.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("td_learning", "Temporal Difference (TD) Learning", tabular, "Update every step from an estimate of an estimate.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("sarsa", "SARSA", tabular, "On-policy control that accounts for the exploration it actually does.", isPremium = true, difficulty = Difficulty.ADVANCED),
 )
 
 private val dqnTopics = listOf(
@@ -123,7 +147,7 @@ private val benchmarksTopics = listOf(
 
 object ReinforcementLearningTopics {
     val topics: List<Topic> =
-        foundationsTopics + dqnTopics + policyGradientTopics + continuousControlTopics +
+        foundationsTopics + tabularTopics + dqnTopics + policyGradientTopics + continuousControlTopics +
             modelBasedTopics + explorationTopics + marlTopics + advancedTopics + benchmarksTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }

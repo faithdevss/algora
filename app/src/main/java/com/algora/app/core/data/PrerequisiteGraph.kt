@@ -56,6 +56,24 @@ object PrerequisiteGraph {
         "max_flow" to listOf("bfs", "graph"),
         // Sorting, continued
         "bucket_sort" to listOf("insertion_sort", "counting_sort"),
+        // ML regression: the plain fit, then the penalties, then the estimators that change the loss
+        "polynomial_regression" to listOf("linear_regression"),
+        "ridge_regression" to listOf("polynomial_regression", "bias_variance"),
+        "lasso_regression" to listOf("ridge_regression"),
+        "elasticnet_regression" to listOf("lasso_regression", "ridge_regression"),
+        "lars" to listOf("lasso_regression"),
+        "stepwise_regression" to listOf("linear_regression", "model_evaluation"),
+        "robust_regression" to listOf("linear_regression"),
+        "quantile_regression" to listOf("linear_regression"),
+        "bayesian_ridge" to listOf("ridge_regression", "naive_bayes"),
+        "poisson_regression" to listOf("linear_regression", "logistic_regression"),
+        "isotonic_regression" to listOf("linear_regression"),
+        // ML classification: the kernel and discriminant families
+        "svm_rbf" to listOf("svm"),
+        "nu_svc" to listOf("svm_rbf"),
+        "lda" to listOf("logistic_regression", "naive_bayes"),
+        "qda" to listOf("lda", "bias_variance"),
+        "passive_aggressive" to listOf("perceptron", "svm"),
         // ML: the practice layer sits on top of a first model
         "bias_variance" to listOf("linear_regression"),
         "regularization" to listOf("linear_regression", "bias_variance"),
@@ -67,6 +85,25 @@ object PrerequisiteGraph {
         "dropout" to listOf("neural_network_basics", "regularization"),
         "transfer_learning" to listOf("cnn"),
         "diffusion_models" to listOf("neural_network_basics"),
+        // RL: the vocabulary comes before the quantities defined over it, which come before control
+        "state_action_reward" to listOf("agent_environment"),
+        "policy" to listOf("state_action_reward"),
+        "mdp" to listOf("state_action_reward", "policy"),
+        "discount_factor" to listOf("state_action_reward"),
+        "value_function" to listOf("mdp", "discount_factor"),
+        "q_function" to listOf("value_function"),
+        "q_learning" to listOf("q_function", "exploration_exploitation"),
+        "exploration_exploitation" to listOf("agent_environment"),
+        "pomdp" to listOf("mdp"),
+        // RL tabular: the equation, then the two ways to solve it with a model, then the two
+        // without one, then control
+        "bellman_equation" to listOf("value_function"),
+        "dynamic_programming" to listOf("bellman_equation"),
+        "policy_iteration" to listOf("dynamic_programming"),
+        "value_iteration" to listOf("policy_iteration"),
+        "monte_carlo_rl" to listOf("bellman_equation", "policy"),
+        "td_learning" to listOf("monte_carlo_rl", "dynamic_programming"),
+        "sarsa" to listOf("td_learning", "q_function"),
         // NLP
         "bpe" to listOf("tokenization"),
         "ner" to listOf("tokenization", "rnn_lstm"),

@@ -157,6 +157,31 @@ private val banditConfigs = mapOf(
             }
         },
     ),
+    // Pure greedy — deliberately the broken strategy. Each arm is sampled once, then the agent
+    // commits forever to whichever looked best. When a good arm's single sample happens to lose,
+    // its estimate never gets another chance to be corrected, and the counts show the agent
+    // pouring every remaining pull into an arm it has no evidence is best. That silent lock-in is
+    // the whole argument for exploring on purpose.
+    "exploration_exploitation" to BanditConfig(
+        intro = "Pure exploitation, so you can watch it fail. Every arm is tried exactly once, then the agent always plays its current best estimate — and stops collecting the evidence that would tell it otherwise.",
+        extraLabel = "always argmax — no exploration at all",
+        choose = { estimates, counts, _, _ ->
+            val untried = counts.indexOfFirst { it == 0 }
+            if (untried >= 0) {
+                untried to "untried — the only exploration this strategy ever does"
+            } else {
+                val best = estimates.indices.maxByOrNull { estimates[it] }!!
+                val neglected = counts.indices.filter { counts[it] <= 1 }
+                val reason = if (neglected.isEmpty()) {
+                    "highest estimate (${"%.2f".format(estimates[best])})"
+                } else {
+                    "highest estimate (${"%.2f".format(estimates[best])}) — arm${if (neglected.size > 1) "s" else ""} " +
+                        neglected.joinToString(", ") { "#${it + 1}" } + " still judged on one sample"
+                }
+                best to reason
+            }
+        },
+    ),
 )
 
 private fun banditConfigFor(topicId: String): BanditConfig =

@@ -25,6 +25,7 @@ Each phase gets planned in detail in its own session: `/clear`, load this file +
 | 6 | Interview Prep Module | Done — timed quiz mode + 4 quizzes + all 5 pattern guides + behavioral bank (STAR) + system design primer; all 11 topics have content |
 | 7 | Engagement & Polish | Persisted dark mode + streaks + bookmarks/continue + flashcards + difficulty chips + multi-language code toggle + SM-2 spaced repetition + prerequisite-graph UI done; multi-language snippets for remaining topics deferred |
 | 8 | Monetization | Done — lifetime IAP (Play Billing 8) + rewarded-ad 24h per-topic unlock gate the 143 `isPremium` topics; paywall screen built from the mock's `isPremium` block. Real Play Console / AdMob ids still to be swapped in (fakes active in debug) |
+| 9 | AI Taxonomy Completion | In progress — author the 226 AI topics `docs/topics.ai.md` lists but the app lacks (200 → 426 topics). Track A done (A1 Core Concepts + A2 Tabular Methods, 15 topics): **Reinforcement Learning now covers 100% of the doc**, 74 topics. B1 (Regression, 11) and B2 (Classification, 5) done — the ML category restructure is underway (`ml_regression`, `ml_classification`) and two config-driven simulation types were added, `RegressionLab` and `DecisionSurface`. Taxonomy at 231. Detail in `docs/plan/phase-9-ai-taxonomy-completion.md` |
 
 **Per-mode shell theming (closes the last Phase-5 item):** `mode` is hoisted out of `AlgoraApp` into
 `MainActivity` (as `rememberSaveable`, so it survives rotation) and fed to `AlgoraTheme`, so the
@@ -117,6 +118,9 @@ Dark mode, bookmarks + "continue where left off," spaced-repetition review sched
 
 **Phase 8 — Monetization**
 Premium gate over the existing `isPremium` topics: one-time lifetime IAP via Play Billing, or a rewarded ad for 24h access to a single topic. Entitlement lives in its own DataStore; paywall + locked-topic screens ported from the mock's `isPremium` block. Detail in `docs/plan/phase-8-monetization.md`.
+
+**Phase 9 — AI Taxonomy Completion**
+`docs/topics.ai.md` lists 357 entries (339 unique) across ML/DL/NLP/RL; the app ships 102 AI topics. RL is near-complete (56/71 — only Core Concepts and Tabular Methods are missing); ML/DL/NLP are 16/15/12 against 113/96/77. Author the missing **226** topics at the existing bar (full 7-section content + bespoke simulation + registry entry), in 28 category-sized batches. Two decisions taken up front: ML/DL/NLP **categories expand from two each to match the doc's sub-sections** (following the mock's own nine-category RL precedent — this supersedes the "no new categories were invented" note above, which was scoped to the 2026-07-28 expansion), and **no content shortcuts** — `ContentCoverageTest` stays green per batch. One new simulation widget (`FeatureMapPlayer`, for CNNs and object detection) is the phase's only net-new widget. Detail in `docs/plan/phase-9-ai-taxonomy-completion.md`.
 
 **Explicitly deferred (not a phase yet):** real auth/cloud sync/server-side receipt validation — entitlement stays device-local (spoofable on rooted devices, accepted). Only revisit if static/local turns out insufficient.
 

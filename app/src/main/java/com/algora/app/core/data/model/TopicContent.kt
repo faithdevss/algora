@@ -79,6 +79,16 @@ sealed interface SimulationType {
     data object LinkedStructurePlayer : SimulationType
     data object EnvironmentPlayer : SimulationType
     data object RegressionExplorer : SimulationType
+
+    // The mock's hand-tuned regression lab is RegressionExplorer and stays bound to Linear
+    // Regression alone. RegressionLab is the config-driven version behind the other Regression
+    // topics — same chrome, a real estimator per topic.
+    data object RegressionLab : SimulationType
+
+    // ClassifierPlayground's model is a straight line, so it cannot show a kernel boundary, a
+    // conic, class-conditional ellipses or support vectors. DecisionSurface renders an arbitrary
+    // decision function by sampling it on a grid.
+    data object DecisionSurface : SimulationType
     data object PerceptronVisualizer : SimulationType
     data object ClassifierPlayground : SimulationType
     data object RecursionTreeVisualizer : SimulationType

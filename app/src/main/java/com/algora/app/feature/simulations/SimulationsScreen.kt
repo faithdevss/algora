@@ -66,6 +66,8 @@ internal fun simLabel(type: SimulationType): String = when (type) {
     SimulationType.LinkedStructurePlayer -> "Linked structure player"
     SimulationType.EnvironmentPlayer -> "Environment player"
     SimulationType.RegressionExplorer -> "Regression explorer"
+    SimulationType.RegressionLab -> "Regression lab · estimators"
+    SimulationType.DecisionSurface -> "Decision surface · boundaries"
     SimulationType.PerceptronVisualizer -> "Perceptron playground"
     SimulationType.ClassifierPlayground -> "Classifier playground"
     SimulationType.RecursionTreeVisualizer -> "Recursion tree · call stack"
