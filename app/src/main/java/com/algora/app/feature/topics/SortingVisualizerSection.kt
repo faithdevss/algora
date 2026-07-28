@@ -312,6 +312,63 @@ private fun radixSortFrames(): List<SortFrame> {
     return b.frames
 }
 
+private fun bucketSortFrames(): List<SortFrame> {
+    // Values spread across 0..79 so the scatter into 8 buckets stays roughly even.
+    val input = listOf(29, 5, 68, 41, 12, 77, 33, 54)
+    val b = SortBuilder(input)
+    val n = input.size
+    val min = input.min()
+    val max = input.max()
+    val buckets = List(n) { mutableListOf<Int>() }
+
+    b.frame("Start — $n buckets for $n values, each covering an equal slice of the range $min–$max.")
+
+    input.forEachIndexed { index, value ->
+        val slot = ((value - min).toLong() * n / (max - min + 1L)).toInt()
+        buckets[slot].add(value)
+        b.frame(
+            "$value → bucket $slot (range ${min + slot * (max - min + 1) / n}–${min + (slot + 1) * (max - min + 1) / n - 1}). " +
+                "One pass, no comparisons yet.",
+            compared = setOf(index),
+        )
+    }
+
+    b.frame(
+        "Scatter done: " + buckets.mapIndexed { i, bucket -> "b$i=${bucket.ifEmpty { "–" }}" }
+            .joinToString(" ") { it.replace(" ", "") },
+    )
+
+    var write = 0
+    buckets.forEachIndexed { slot, bucket ->
+        if (bucket.isEmpty()) return@forEachIndexed
+        // Insertion sort inside the bucket — cheap because buckets are tiny.
+        for (i in 1 until bucket.size) {
+            val value = bucket[i]
+            var j = i - 1
+            while (j >= 0 && bucket[j] > value) {
+                bucket[j + 1] = bucket[j]
+                j--
+            }
+            bucket[j + 1] = value
+        }
+        val start = write
+        for (value in bucket) {
+            b.values[write] = value
+            write++
+        }
+        b.frame(
+            "Bucket $slot sorted internally (${bucket.joinToString(", ")}) and copied out. Buckets are already " +
+                "in value order, so concatenating them needs no merge.",
+            moved = (start until write).toSet(),
+            sorted = (0 until start).toSet(),
+            range = (start until write).toSet(),
+        )
+    }
+
+    b.done("Sorted. Linear on evenly spread input — but pile every value into one bucket and this degrades to the insertion sort inside it.")
+    return b.frames
+}
+
 private val sortConfigs = mapOf(
     "bubble_sort" to SortConfig(
         intro = "Bubble sort on 8 values. Each pass walks the array swapping out-of-order neighbours, so the largest remaining value bubbles to the end — that tail is locked in green.",
@@ -352,6 +409,11 @@ private val sortConfigs = mapOf(
         intro = "Radix sort runs one stable bucket pass per digit, least significant first. After the last pass the array is fully ordered.",
         rangeLabel = "Pass result",
         build = ::radixSortFrames,
+    ),
+    "bucket_sort" to SortConfig(
+        intro = "Bucket sort scatters 8 values into 8 range-buckets, sorts each with insertion sort, then concatenates. The blue window is the bucket just written back.",
+        rangeLabel = "Bucket written",
+        build = ::bucketSortFrames,
     ),
 )
 

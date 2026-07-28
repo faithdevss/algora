@@ -692,7 +692,175 @@ private fun suffixTreeFrames(): List<TreeFrame> {
     return b.frames + c.frames
 }
 
+// ── Lowest common ancestor: lift the deeper node, then descend together ──────
+
+private fun lcaFrames(): List<TreeFrame> {
+    val b = TreeBuilder()
+
+    // A
+    // ├── B ── D ── H
+    // │   └── E
+    // └── C ── F
+    //     └── G
+    val a = b.add("A", null, 0)
+    val bb = b.add("B", a, 0)
+    val c = b.add("C", a, 1)
+    val d = b.add("D", bb, 0)
+    val e = b.add("E", bb, 1)
+    val f = b.add("F", c, 0)
+    val g = b.add("G", c, 1)
+    val h = b.add("H", d, 0)
+
+    val parent = mapOf(bb to a, c to a, d to bb, e to bb, f to c, g to c, h to d)
+    val depth = mapOf(a to 0, bb to 1, c to 1, d to 2, e to 2, f to 2, g to 2, h to 3)
+
+    b.frame("Root the tree and record every node's depth. A is at depth 0, H at depth 3.", marked = setOf(a))
+
+    // ── Query 1: H and E, one deeper than the other ──
+    b.frame(
+        "Query LCA(H, E). H sits at depth ${depth[h]}, E at depth ${depth[e]} — they cannot be compared until " +
+            "they are level.",
+        active = setOf(h, e),
+    )
+    b.frame(
+        "Lift H by the depth difference (${depth[h]!! - depth[e]!!} level, one jump of 2⁰) to D. Both are now at " +
+            "depth ${depth[e]}.",
+        active = setOf(d, e),
+        path = setOf(h),
+    )
+    b.frame(
+        "D ≠ E, so step both up together: D → B and E → B. Their parents are the same node, which means the " +
+            "previous step landed just below the meeting point.",
+        active = setOf(bb),
+        path = setOf(d, e, h),
+    )
+    b.frame(
+        "LCA(H, E) = B. Path length between them is depth[H] + depth[E] − 2·depth[B] = 3 + 2 − 2 = 3 edges.",
+        marked = setOf(bb),
+        path = setOf(h, d, e),
+    )
+
+    // ── Query 2: across the two halves ──
+    b.frame(
+        "Query LCA(E, G). Same depth already, so no lifting is needed — jump straight to descending together.",
+        active = setOf(e, g),
+    )
+    b.frame(
+        "E ≠ G, and their parents B and C differ too, so both climb. Binary lifting would take the largest jump " +
+            "whose ancestors still disagree, never overshooting the answer.",
+        active = setOf(bb, c),
+        path = setOf(e, g),
+    )
+    b.frame(
+        "Now up[0][B] = up[0][C] = A, so the ancestors finally agree. The LCA is that shared parent.",
+        marked = setOf(a),
+        path = setOf(e, g, bb, c),
+    )
+    b.frame(
+        "LCA(E, G) = A — the root, because the two nodes live in different halves of the tree. With the jump " +
+            "table precomputed, each of these queries costs O(log n) regardless of tree height.",
+        marked = setOf(a),
+        path = setOf(e, g, bb, c),
+    )
+
+    // Keep the compiler honest about the unused-but-documented structure.
+    check(parent.getValue(h) == d)
+    return b.frames
+}
+
+// ── Tree DP: maximum-weight independent set, post-order ──────────────────────
+
+private fun treeDpFrames(): List<TreeFrame> {
+    val b = TreeBuilder()
+    val weight = linkedMapOf<String, Int>("A" to 3, "B" to 2, "C" to 4, "D" to 5, "E" to 1, "F" to 6)
+
+    val a = b.add("A·3", null, 0)
+    val bb = b.add("B·2", a, 0)
+    val c = b.add("C·4", a, 1)
+    val d = b.add("D·5", bb, 0)
+    val e = b.add("E·1", bb, 1)
+    val f = b.add("F·6", c, 0)
+
+    val ids = mapOf("A" to a, "B" to bb, "C" to c, "D" to d, "E" to e, "F" to f)
+    val dp0 = mutableMapOf<String, Int>()
+    val dp1 = mutableMapOf<String, Int>()
+
+    fun show(name: String) {
+        b.relabel(ids.getValue(name), "$name ${dp0[name]}/${dp1[name]}")
+    }
+
+    b.frame(
+        "Maximum-weight independent set: pick nodes with the largest total weight, never two that are joined by " +
+            "an edge. Labels are node·weight.",
+        marked = setOf(a),
+    )
+
+    // Leaves first — post-order is what makes each parent's inputs ready.
+    for (leaf in listOf("D", "E", "F")) {
+        dp0[leaf] = 0
+        dp1[leaf] = weight.getValue(leaf)
+        show(leaf)
+        b.frame(
+            "Leaf $leaf: not taking it is worth 0, taking it is worth ${weight[leaf]}. Labels now read " +
+                "\"not-taken / taken\".",
+            active = setOf(ids.getValue(leaf)),
+        )
+    }
+
+    dp1["B"] = weight.getValue("B") + dp0.getValue("D") + dp0.getValue("E")
+    dp0["B"] = maxOf(dp0.getValue("D"), dp1.getValue("D")) + maxOf(dp0.getValue("E"), dp1.getValue("E"))
+    show("B")
+    b.frame(
+        "B's children are finished, so B can be resolved. Taking B forbids D and E: 2 + 0 + 0 = ${dp1["B"]}. " +
+            "Not taking B leaves each child free to do whichever is better: 5 + 1 = ${dp0["B"]}.",
+        active = setOf(bb),
+        path = setOf(d, e),
+    )
+
+    dp1["C"] = weight.getValue("C") + dp0.getValue("F")
+    dp0["C"] = maxOf(dp0.getValue("F"), dp1.getValue("F"))
+    show("C")
+    b.frame(
+        "Same rule at C: taking it gives 4 + 0 = ${dp1["C"]}, skipping it lets F be taken for ${dp0["C"]}. " +
+            "Note the subtree already prefers the child over the parent here.",
+        active = setOf(c),
+        path = setOf(f),
+    )
+
+    dp1["A"] = weight.getValue("A") + dp0.getValue("B") + dp0.getValue("C")
+    dp0["A"] = maxOf(dp0.getValue("B"), dp1.getValue("B")) + maxOf(dp0.getValue("C"), dp1.getValue("C"))
+    show("A")
+    b.frame(
+        "The root combines both subtrees: take A for 3 + ${dp0["B"]} + ${dp0["C"]} = ${dp1["A"]}, or skip it for " +
+            "${dp0["A"]}. Every subtree was solved exactly once, so this whole pass is O(n).",
+        active = setOf(a),
+        path = setOf(bb, c),
+    )
+
+    val best = maxOf(dp0.getValue("A"), dp1.getValue("A"))
+    b.frame(
+        "Answer ${best}: take A, D, E and F — 3 + 5 + 1 + 6. No two of them are adjacent, and the greedy " +
+            "alternative of taking the heaviest node first would have blocked its neighbours for less.",
+        marked = setOf(a, d, e, f),
+        path = setOf(bb, c),
+    )
+
+    return b.frames
+}
+
 private val treeConfigs = mapOf(
+    "lca" to TreeConfig(
+        intro = "Two LCA queries on an 8-node tree: one where the nodes sit at different depths and must be " +
+            "levelled first, one where they are already level and only need to climb together.",
+        markedLabel = "LCA",
+        build = ::lcaFrames,
+    ),
+    "tree_dp" to TreeConfig(
+        intro = "Maximum-weight independent set. Labels turn into \"not-taken / taken\" as the post-order pass " +
+            "resolves each subtree — children are always finished before their parent is touched.",
+        markedLabel = "Chosen set",
+        build = ::treeDpFrames,
+    ),
     "binary_search_tree" to TreeConfig(
         intro = "Inserting 50, 30, 70, 20, 40, 60, 80, then searching for 60. Every operation walks one root-to-leaf path, comparing once per level.",
         markedLabel = "Placed / found",

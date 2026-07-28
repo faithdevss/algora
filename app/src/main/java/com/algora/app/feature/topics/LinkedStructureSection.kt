@@ -339,7 +339,150 @@ private fun skipListFrames(): List<LinkFrame> {
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
+// ── Deque: both ends are cheap, and the monotonic-deque payoff ───────────────
+
+private fun dequeFrames(): List<LinkFrame> {
+    val frames = mutableListOf<LinkFrame>()
+
+    fun row(list: List<String>, marks: Map<Int, LinkMark> = emptyMap()) =
+        list.mapIndexed { i, v -> LinkNode(v, marks[i] ?: LinkMark.IDLE) }
+
+    val contents = mutableListOf("20", "30", "40")
+
+    frames += LinkFrame(
+        nodes = row(contents),
+        status = "A deque exposes four operations instead of a queue's two: push and pop at the front, push and " +
+            "pop at the back. Nothing shifts — only the head index and the size move.",
+        backward = true,
+        readout = "front ${contents.first()} · back ${contents.last()}",
+    )
+
+    contents.add(0, "10")
+    frames += LinkFrame(
+        nodes = row(contents, mapOf(0 to LinkMark.ACTIVE)),
+        status = "pushFront(10): head steps backward one slot — in a circular buffer that is " +
+            "head = (head − 1 + capacity) mod capacity, wrapping to the array's end rather than shifting " +
+            "everything right.",
+        backward = true,
+        readout = "O(1) · nothing else moved",
+    )
+
+    contents.add("50")
+    frames += LinkFrame(
+        nodes = row(contents, mapOf(contents.lastIndex to LinkMark.ACTIVE)),
+        status = "pushBack(50): written at slot (head + size) mod capacity. Both ends are symmetric, which a " +
+            "plain array-backed queue is not — pushing at its front is O(n).",
+        backward = true,
+        readout = "O(1) · size ${contents.size}",
+    )
+
+    val poppedFront = contents.removeAt(0)
+    frames += LinkFrame(
+        nodes = row(contents, mapOf(0 to LinkMark.PATH)),
+        status = "popFront() returns $poppedFront and advances head. Used this way the deque is a queue.",
+        backward = true,
+        readout = "FIFO view",
+    )
+
+    val poppedBack = contents.removeAt(contents.lastIndex)
+    frames += LinkFrame(
+        nodes = row(contents, mapOf(contents.lastIndex to LinkMark.PATH)),
+        status = "popBack() returns $poppedBack and just decrements size. Push and pop at the same end and the " +
+            "deque is a stack — one structure, both disciplines.",
+        backward = true,
+        readout = "LIFO view",
+    )
+
+    // The reason a deque is worth its own topic: sliding-window maximum in O(n).
+    val values = listOf(1, 3, -1, -3, 5, 3, 6, 7)
+    val k = 3
+    val window = ArrayDeque<Int>()
+    val answers = mutableListOf<Int>()
+
+    frames += LinkFrame(
+        nodes = values.map { LinkNode(it.toString(), LinkMark.GHOST) },
+        status = "The payoff: sliding-window maximum over these 8 values with k = $k. The deque will hold " +
+            "indices whose values strictly decrease, so its front is always the current window's maximum.",
+        readout = "brute force would rescan k values per window",
+    )
+
+    for (i in values.indices) {
+        if (window.isNotEmpty() && window.first() <= i - k) {
+            val expired = window.removeFirst()
+            frames += LinkFrame(
+                nodes = values.mapIndexed { p, v ->
+                    LinkNode(v.toString(), if (p == expired) LinkMark.PATH else if (p in window) LinkMark.ACTIVE else LinkMark.GHOST)
+                },
+                status = "Index $expired has fallen out of the window, so it leaves the front. That is one " +
+                    "removal, not a rescan.",
+                readout = "deque: ${window.map { values[it] }}",
+            )
+        }
+
+        val dropped = mutableListOf<Int>()
+        while (window.isNotEmpty() && values[window.last()] <= values[i]) dropped += window.removeLast()
+        if (dropped.isNotEmpty()) {
+            frames += LinkFrame(
+                nodes = values.mapIndexed { p, v ->
+                    LinkNode(
+                        v.toString(),
+                        when {
+                            p == i -> LinkMark.RESULT
+                            p in dropped -> LinkMark.PATH
+                            p in window -> LinkMark.ACTIVE
+                            else -> LinkMark.GHOST
+                        },
+                    )
+                },
+                status = "${values[i]} arrives and dominates ${dropped.joinToString(", ") { values[it].toString() }} " +
+                    "— those can never be the maximum again while ${values[i]} is in the window, so they are " +
+                    "popped off the back for good.",
+                readout = "each index enters and leaves at most once",
+            )
+        }
+
+        window.addLast(i)
+        if (i >= k - 1) {
+            answers += values[window.first()]
+            frames += LinkFrame(
+                nodes = values.mapIndexed { p, v ->
+                    LinkNode(
+                        v.toString(),
+                        when {
+                            p == window.first() -> LinkMark.RESULT
+                            p in (i - k + 1)..i -> LinkMark.ACTIVE
+                            else -> LinkMark.GHOST
+                        },
+                    )
+                },
+                status = "Window [${i - k + 1}..$i] — the deque's front is index ${window.first()}, so the " +
+                    "maximum is ${values[window.first()]}. Read, not computed.",
+                readout = "maxima so far: ${answers.joinToString(", ")}",
+            )
+        }
+    }
+
+    frames += LinkFrame(
+        nodes = values.map { LinkNode(it.toString(), LinkMark.RESULT) },
+        status = "Maxima: ${answers.joinToString(", ")}. Every index was pushed once and popped once, so the " +
+            "whole sweep is O(n) — against O(n·k) for rescanning each window.",
+        readout = "${values.size} pushes, ${values.size} pops, ${answers.size} answers",
+    )
+
+    return frames
+}
+
 private val linkConfigs = mapOf(
+    "deque" to LinkConfig(
+        intro = "Four O(1) end operations first, then the reason the structure earns its keep: a monotonic deque " +
+            "answering sliding-window maximum in one pass.",
+        legend = listOf(
+            LinkActive to "In deque",
+            LinkResult to "Window max",
+            LinkPath to "Popped",
+        ),
+        build = ::dequeFrames,
+    ),
     "doubly_linked_list" to LinkConfig(
         intro = "Two pointers per node, drawn above and below the row. The lab spends its frames on the two " +
             "operations that separate it from a singly linked list, then counts both over the same script.",

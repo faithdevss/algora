@@ -40,6 +40,36 @@ explicit accent too — the mock's ramps moved onto `AccentColor.topbarStart/top
 `Gradients.TopbarDsa`/`TopbarAi` are gone. Accent colours animate (320ms `tween`) so switching mode
 slides rather than snaps.
 
+**Content expansion (2026-07-28):** the taxonomy grew from 176 to **200 topics** — 12 DSA/algorithms
+and 12 AI — all fully authored (7 sections, cross-links, prerequisites) and all with a *bespoke*
+simulation config rather than a fallback. New DSA topics: `deque`, `sparse_table` (Data Structures);
+`bucket_sort` (the one row the mock's `cats()` listed but the app never had); `kmp`, `rabin_karp`,
+`manacher` (Misc & Advanced); `topological_sort`, `max_flow`, `articulation_points`, `lca` (Graph
+Algorithms); `bitmask_dp`, `tree_dp` (DP). New AI topics: `random_forest`, `gradient_boosting`,
+`bias_variance`, `regularization`, `model_evaluation` (ML); `batch_normalization`, `dropout`,
+`transfer_learning`, `diffusion_models` (DL); `bpe`, `ner`, `rag` (NLP). **No new categories were
+invented** — the mock's `cats()` is the authority on the category list, so every new topic slots into
+an existing group. Gating follows the established split (foundational free, advanced premium); only
+`deque` is free. Simulations reuse the existing widgets via new config entries + frame builders:
+`ArrayWalkSection` (KMP's LPS build + scan, Rabin-Karp rolling hash *including a real collision*,
+Manacher radii, sparse-table levels), `SortingVisualizerSection` (bucket scatter/sort/concatenate),
+`GraphAlgorithmSection` (Kahn's in-degrees, Ford-Fulkerson over three augmenting paths where the
+third exists only because of residual capacity, disc/low cut vertices), `TreeVisualizerSection` (two
+LCA queries, tree-DP labels turning into "not-taken / taken"), `DpGridSection` (Held-Karp TSP with
+mask rows), `LinkedStructureSection` (deque ends + the monotonic sliding-window-maximum payoff),
+`PointCloudSection` (bootstrap/vote, residual-fitting stumps, bias-variance refits, λ sweep,
+threshold sweep with live P/R/F1, ring → noise → ring diffusion), `NeuralNetSection` (batch stats,
+dropout masks, freeze-then-fine-tune), `TokenStripSection` (BPE merges, BIO/Viterbi, RAG pipeline).
+The problem bank gained a fifth content file (`ProblemContentAdvanced.kt`) with **4 new pattern
+groups and 11 problems** — string matching, advanced graphs, state-compression DP, and model
+evaluation/ensembles — taking it to 102 problems across 23 groups. Six thin RL/DL topics (`ppo`,
+`sac`, `ddpg`, `actor_critic`, `prioritized_replay`, `gradient_descent_variants`) were deepened with
+a third "why this exists" paragraph, extra steps/formulas/notation, and a second full code block
+(PPO's whole update loop, SAC's tanh log-prob correction, DDPG's two losses + Polyak, n-step
+actor-critic, a sum-tree buffer, Adam from scratch). New guard: `core/data/ContentCoverageTest.kt`
+asserts every browsable topic has content, no topic resolves to `NotYetAvailable`, and every
+prerequisite and cross-link id resolves — 46 unit tests pass.
+
 **Cross-promo to the developer's other apps:** `core/ui/components/CrossPromo.kt` — a `CrossPromo`
 descriptor plus `CrossPromoCard` (full width, end-of-content) and `CrossPromoRow` (compact, Settings)
 that deep-link to Play via `market://details?id=…` with an `ActivityNotFoundException` fallback to

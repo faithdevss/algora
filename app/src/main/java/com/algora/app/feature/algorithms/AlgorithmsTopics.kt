@@ -41,6 +41,7 @@ private val sortingTopics = listOf(
     topic("heap_sort", "Heap Sort", sorting, "Sorts by repeatedly extracting the max from a heap.", isPremium = true),
     topic("counting_sort", "Counting Sort", sorting, "Non-comparison sort counting occurrences per key.", isPremium = true),
     topic("radix_sort", "Radix Sort", sorting, "Non-comparison sort processing digits/keys in passes.", isPremium = true),
+    topic("bucket_sort", "Bucket Sort", sorting, "Scatters values into buckets, sorts each, then concatenates.", isPremium = true),
 )
 
 private val searchingTopics = listOf(
@@ -87,6 +88,8 @@ private val dpTopics = listOf(
     topic("coin_change", "Coin Change", dp, "Minimum coins (or ways) to make a target amount.", isPremium = true),
     topic("fibonacci_dp", "Fibonacci (Dynamic Programming)", dp, "Memoized/tabulated Fibonacci — linear instead of exponential.", isPremium = true),
     topic("rod_cutting", "Rod Cutting", dp, "Optimal way to cut a rod to maximize revenue.", isPremium = true),
+    topic("bitmask_dp", "Bitmask DP", dp, "Uses a subset bitmask as the DP state — the classic TSP formulation.", isPremium = true),
+    topic("tree_dp", "Tree DP", dp, "Combines children's answers into a parent's during a post-order pass.", isPremium = true),
 )
 
 private val graphAlgoTopics = listOf(
@@ -96,6 +99,10 @@ private val graphAlgoTopics = listOf(
     topic("floyd_warshall", "Floyd-Warshall Algorithm", graphAlgo, "All-pairs shortest paths via dynamic programming.", isPremium = true),
     topic("tarjans_algorithm", "Tarjan's Algorithm", graphAlgo, "Finds strongly connected components in one DFS pass.", isPremium = true),
     topic("kosarajus_algorithm", "Kosaraju's Algorithm", graphAlgo, "Finds strongly connected components via two DFS passes.", isPremium = true),
+    topic("topological_sort", "Topological Sort", graphAlgo, "Orders a DAG so every edge points forward.", isPremium = true),
+    topic("max_flow", "Max Flow (Ford-Fulkerson)", graphAlgo, "Pushes augmenting paths until the network saturates.", isPremium = true),
+    topic("articulation_points", "Articulation Points & Bridges", graphAlgo, "Finds the vertices and edges whose removal disconnects a graph.", isPremium = true),
+    topic("lca", "Lowest Common Ancestor", graphAlgo, "The deepest node that is an ancestor of two given nodes.", isPremium = true),
 )
 
 private val pathfindingTopics = listOf(
@@ -113,6 +120,9 @@ private val miscTopics = listOf(
     topic("monte_carlo_method", "Monte Carlo Method", misc, "Randomized sampling to approximate a numeric answer.", isPremium = true),
     topic("mos_algorithm", "Mo's Algorithm", misc, "Offline query reordering for efficient range queries.", isPremium = true),
     topic("difference_array", "Difference Array", misc, "Applies range updates in O(1), resolved with a prefix sum.", isPremium = true),
+    topic("kmp", "KMP String Matching", misc, "Reuses a prefix table so the text pointer never backs up.", isPremium = true),
+    topic("rabin_karp", "Rabin-Karp", misc, "Rolling hash turns substring comparison into arithmetic.", isPremium = true),
+    topic("manacher", "Manacher's Algorithm", misc, "Finds the longest palindromic substring in linear time.", isPremium = true),
 )
 
 object AlgorithmsTopics {

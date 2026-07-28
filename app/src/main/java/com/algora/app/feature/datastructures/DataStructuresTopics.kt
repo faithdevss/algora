@@ -53,6 +53,7 @@ private val coreTopics = listOf(
     topic("doubly_linked_list", "Doubly Linked List", core, "Nodes chained both forward and backward.", isPremium = true),
     topic("stack", "Stack", core, "Last-in, first-out access at one end."),
     topic("queue", "Queue", core, "First-in, first-out access at two ends."),
+    topic("deque", "Deque (Double-Ended Queue)", core, "Push and pop at both ends in O(1)."),
     topic("hash_table", "Hash Table / Hash Map", core, "Key-value lookup backed by a hash function.", isPremium = true),
 )
 
@@ -76,6 +77,7 @@ private val advancedTopics = listOf(
     topic("b_tree", "B-Tree / B+ Tree", advanced, "Balanced multi-way trees built for disk/database access.", isPremium = true),
     topic("suffix_tree", "Suffix Tree / Suffix Array", advanced, "Indexes every suffix of a string for fast substring search.", isPremium = true),
     topic("skip_list", "Skip List", advanced, "Layered linked lists giving probabilistic logarithmic search.", isPremium = true),
+    topic("sparse_table", "Sparse Table", advanced, "O(1) idempotent range queries on immutable data.", isPremium = true),
 )
 
 private val specializedTopics = listOf(

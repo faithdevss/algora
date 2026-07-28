@@ -394,6 +394,110 @@ private fun subsetSumFrames(): List<DpFrame> {
     return b.frames
 }
 
+// ── Bitmask DP: Held-Karp travelling salesman over 4 cities ──────────────────
+
+// Only masks that contain the start city 0 are reachable, so the grid shows those 8 rows.
+private val tspMasks = (0 until 16).filter { it and 1 == 1 }
+
+private fun tspMaskLabel(row: Int): String {
+    val mask = tspMasks[row]
+    val members = (0 until 4).filter { mask and (1 shl it) != 0 }
+    return members.joinToString(",", prefix = "{", postfix = "}")
+}
+
+private fun bitmaskDpFrames(): List<DpFrame> {
+    val n = 4
+    val cost = arrayOf(
+        intArrayOf(0, 10, 15, 20),
+        intArrayOf(10, 0, 35, 25),
+        intArrayOf(15, 35, 0, 30),
+        intArrayOf(20, 25, 30, 0),
+    )
+    val inf = Int.MAX_VALUE / 2
+    val full = (1 shl n) - 1
+    val b = DpBuilder(rows = tspMasks.size, cols = n)
+    val dp = Array(1 shl n) { IntArray(n) { inf } }
+    val from = Array(1 shl n) { IntArray(n) { -1 } }
+
+    fun row(mask: Int) = tspMasks.indexOf(mask)
+
+    dp[1][0] = 0
+    b.fill(row(1), 0, "0", "Start at city 0 with only city 0 visited: dp[{0}][0] = 0. Every tour begins here.")
+
+    // Masks only grow, so ascending numeric order is already a valid processing order.
+    for (mask in tspMasks) {
+        for (last in 0 until n) {
+            if (mask and (1 shl last) == 0) continue
+            if (mask == 1 && last == 0) continue
+            if (last == 0) continue                      // city 0 is only re-entered when closing the tour
+
+            val without = mask and (1 shl last).inv()
+            var best = inf
+            var bestPrev = -1
+            for (prev in 0 until n) {
+                if (without and (1 shl prev) == 0) continue
+                if (dp[without][prev] >= inf) continue
+                val candidate = dp[without][prev] + cost[prev][last]
+                if (candidate < best) {
+                    best = candidate
+                    bestPrev = prev
+                }
+            }
+            if (best >= inf) continue
+
+            dp[mask][last] = best
+            from[mask][last] = bestPrev
+            b.fill(
+                row(mask), last, best.toString(),
+                "dp[${tspMaskLabel(row(mask))}][$last] = dp[${tspMaskLabel(row(without))}][$bestPrev] + " +
+                    "cost[$bestPrev][$last] = ${dp[without][bestPrev]} + ${cost[bestPrev][last]} = $best. " +
+                    "The subset is one bit larger than the row it read from.",
+            )
+        }
+    }
+
+    var bestLast = 1
+    var bestTotal = inf
+    for (last in 1 until n) {
+        val total = dp[full][last] + cost[last][0]
+        if (total < bestTotal) {
+            bestTotal = total
+            bestLast = last
+        }
+    }
+
+    // Walk the choices back to recover the tour, tracing the cells that produced it.
+    val tour = mutableListOf<Int>()
+    var mask = full
+    var last = bestLast
+    val traced = mutableListOf<Int>()
+    while (last != -1 && mask != 0) {
+        traced += b.key(row(mask), last)
+        tour += last
+        val prev = from[mask][last]
+        mask = mask and (1 shl last).inv()
+        last = prev
+        if (last == 0) {
+            traced += b.key(row(mask), 0)
+            tour += 0
+            break
+        }
+    }
+    tour.reverse()
+    traced.reverse()
+
+    val tourText = (tour + 0).joinToString(" → ")
+    b.trace(traced) { cell ->
+        val cellMask = tspMasks[cell / 4]
+        val cellLast = cell % 4
+        "Traceback: dp[${tspMaskLabel(tspMasks.indexOf(cellMask))}][$cellLast]. Closing the tour costs " +
+            "cost[$bestLast][0] = ${cost[bestLast][0]}, giving $tourText for a total of $bestTotal — " +
+            "found by filling 20 cells instead of enumerating 6 tours, a gap that becomes 2ⁿ·n² vs n! as n grows."
+    }
+
+    return b.frames
+}
+
 private val dpConfigs = mapOf(
     "fibonacci_dp" to DpConfig(
         rows = 1, cols = 10,
@@ -456,6 +560,15 @@ private val dpConfigs = mapOf(
         corner = "wt",
         intro = "0/1 knapsack — items (wt, val) = (1,6), (2,10), (3,12), capacity 5. Each cell is the best value achievable; the traceback marks the items chosen.",
         build = ::knapsackFrames,
+    ),
+    "bitmask_dp" to DpConfig(
+        rows = 8, cols = 4,
+        rowHeader = { tspMaskLabel(it) },
+        colHeader = { "at $it" },
+        corner = "visited",
+        intro = "Held-Karp TSP over four cities. A row is a subset of visited cities encoded as a bitmask, a " +
+            "column is the city you are standing on — 2ⁿ·n states instead of n! tours.",
+        build = ::bitmaskDpFrames,
     ),
     "subset_sum" to DpConfig(
         rows = 5, cols = 10,

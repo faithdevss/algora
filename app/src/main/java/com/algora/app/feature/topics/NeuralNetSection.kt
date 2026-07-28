@@ -813,7 +813,274 @@ private val curveLegend = listOf(
     AccentA to "Alternative",
 )
 
+// ── Batch normalization ──────────────────────────────────────────────────────
+
+private fun batchNormFrames(): List<NetFrame> {
+    // One feature, eight samples in the mini-batch. Deliberately off-centre and wide.
+    val batch = listOf(6.2f, 9.4f, 4.8f, 11.1f, 7.6f, 10.3f, 5.5f, 8.9f)
+    val frames = mutableListOf<NetFrame>()
+
+    val mean = batch.average().toFloat()
+    val variance = batch.map { (it - mean) * (it - mean) }.average().toFloat()
+    val sd = sqrt(variance + 1e-5f)
+    val normalized = batch.map { (it - mean) / sd }
+    val gamma = 1.4f
+    val beta = 0.3f
+    val scaled = normalized.map { gamma * it + beta }
+
+    frames += NetFrame(
+        status = "Pre-activations for one feature across a mini-batch of ${batch.size}. They sit far from zero " +
+            "and span a wide range — pushed through a sigmoid, most of these would land in its flat tails where " +
+            "gradients vanish.",
+        bars = listOf(NetBar("x (pre-activation)", batch, AccentB)),
+        readout = "range ${"%.1f".format(batch.min())} – ${"%.1f".format(batch.max())}",
+    )
+
+    frames += NetFrame(
+        status = "Step 1: batch statistics. μ = ${"%.2f".format(mean)}, σ² = ${"%.2f".format(variance)}. Note " +
+            "these are computed across the batch dimension, per feature — not across the features of one sample.",
+        bars = listOf(
+            NetBar("x", batch, AccentB),
+            NetBar("μ and σ", listOf(mean, sd), NeutralColor, captions = listOf("μ", "σ")),
+        ),
+        readout = "μ = ${"%.2f".format(mean)} · σ = ${"%.2f".format(sd)}",
+    )
+
+    frames += NetFrame(
+        status = "Step 2: normalize. x̂ = (x − μ)/√(σ² + ε) gives zero mean and unit variance. The ε is only " +
+            "there so a batch with no variation cannot divide by zero.",
+        bars = listOf(
+            NetBar("x", batch, NeutralColor),
+            NetBar("x̂ (normalized)", normalized, ForwardColor),
+        ),
+        readout = "mean ${"%.2f".format(normalized.average())} · variance ≈ 1.00",
+    )
+
+    frames += NetFrame(
+        status = "Step 3: scale and shift with learned γ = $gamma and β = $beta. Without them the layer could " +
+            "only ever emit zero-mean unit-variance activations; with them it can learn to undo its own " +
+            "normalization when that is what the network needs.",
+        bars = listOf(
+            NetBar("x̂", normalized, NeutralColor),
+            NetBar("y = γx̂ + β", scaled, OutputColor),
+        ),
+        readout = "γ and β are trained like any other weight",
+    )
+
+    // Loss curves: the practical payoff is a higher usable learning rate.
+    val withBn = List(24) { i -> i.toFloat() to (1.6f * exp(-0.22f * i) + 0.06f) }
+    val withoutBn = List(24) { i -> i.toFloat() to (1.6f * exp(-0.07f * i) + 0.12f) }
+    frames += NetFrame(
+        status = "Because activations stay well-conditioned layer after layer, the loss surface is smoother and a " +
+            "larger learning rate stays stable. That — not the original \"internal covariate shift\" story — is " +
+            "the effect that survives scrutiny.",
+        plot = CurvePlot(
+            label = "training loss",
+            curves = listOf(
+                Curve("with BatchNorm", withBn, ForwardColor),
+                Curve("without", withoutBn, NeutralColor),
+            ),
+            xRange = 0f..23f,
+            yRange = 0f..1.8f,
+        ),
+        readout = "same architecture, same steps, higher usable learning rate",
+    )
+
+    val runningMean = 0.9f * 8.0f + 0.1f * mean
+    frames += NetFrame(
+        status = "At inference there is no batch to average over — a single prediction must not depend on whichever " +
+            "other samples happened to be alongside it. So the layer switches to the running estimates kept " +
+            "during training (μ ≈ ${"%.2f".format(runningMean)}). Forgetting to switch modes is the classic bug.",
+        bars = listOf(
+            NetBar("training: batch stats", listOf(mean, sd), ForwardColor, captions = listOf("μ_B", "σ_B")),
+            NetBar("inference: running stats", listOf(runningMean, sd), OutputColor, captions = listOf("μ", "σ")),
+        ),
+        readout = "small batches make μ_B noisy — layer norm is the usual substitute",
+    )
+    return frames
+}
+
+// ── Dropout ──────────────────────────────────────────────────────────────────
+
+private fun dropoutFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+    val p = 0.5f
+    val keep = 1 - p
+    val hidden = listOf(0.8f, 1.2f, 0.4f, 1.6f, 0.9f, 0.3f)
+
+    fun layers(mask: List<Boolean>?, scale: Boolean): List<NetLayer> {
+        val values = hidden.mapIndexed { i, v ->
+            when {
+                mask == null -> v
+                !mask[i] -> 0f
+                scale -> v / keep
+                else -> v
+            }
+        }
+        return listOf(
+            NetLayer("input", listOf(NetNode(1.0f, NodeMood.FORWARD), NetNode(0.6f, NodeMood.FORWARD))),
+            NetLayer(
+                "hidden",
+                values.mapIndexed { i, v ->
+                    NetNode(v, if (mask != null && !mask[i]) NodeMood.IDLE else NodeMood.FORWARD)
+                },
+            ),
+            NetLayer("output", listOf(NetNode(values.sum() * 0.2f, NodeMood.OUTPUT))),
+        )
+    }
+
+    frames += NetFrame(
+        status = "The full hidden layer. Trained as-is, units can specialize as a fixed committee — one detector " +
+            "that only works because a particular neighbour is always there to correct it.",
+        layers = layers(null, scale = false),
+        readout = "sum of activations ${"%.2f".format(hidden.sum())}",
+    )
+
+    val masks = listOf(
+        listOf(true, false, true, true, false, true),
+        listOf(false, true, true, false, true, true),
+        listOf(true, true, false, true, true, false),
+    )
+
+    masks.forEachIndexed { step, mask ->
+        val kept = mask.count { it }
+        frames += NetFrame(
+            status = "Training step ${step + 1}: each unit is kept independently with probability ${1 - p}. " +
+                "${hidden.size - kept} of ${hidden.size} are zeroed for this step — and the backward pass reuses " +
+                "exactly this mask, not a fresh one.",
+            layers = layers(mask, scale = false),
+            readout = "a different sub-network every step",
+        )
+        if (step == 0) {
+            frames += NetFrame(
+                status = "Zeroing half the units also halves what reaches the next layer, which would shift every " +
+                    "downstream statistic. Inverted dropout fixes that immediately: divide the survivors by " +
+                    "${1 - p}, so the expected sum is unchanged.",
+                layers = layers(mask, scale = true),
+                readout = "E[output] restored — inference then needs no correction at all",
+            )
+        }
+    }
+
+    frames += NetFrame(
+        status = "At evaluation, dropout is off: the full network runs with no mask and no rescaling, which " +
+            "behaves like averaging over all those sub-networks. Leaving it on silently degrades your metrics.",
+        layers = layers(null, scale = false),
+        readout = "training: sample a sub-network · inference: use all of it",
+    )
+
+    val overfit = List(20) { i -> i.toFloat() to (0.9f * exp(-0.18f * i) + 0.05f + 0.02f * i) }
+    val regularized = List(20) { i -> i.toFloat() to (0.95f * exp(-0.14f * i) + 0.16f) }
+    frames += NetFrame(
+        status = "On validation data the difference shows as the gap that does not reopen. Dropout attacks " +
+            "variance, so it helps an overfitting model and actively hurts an underfitting one.",
+        plot = CurvePlot(
+            label = "validation loss",
+            curves = listOf(
+                Curve("no dropout", overfit, NeutralColor),
+                Curve("dropout p = $p", regularized, ForwardColor),
+            ),
+            xRange = 0f..19f,
+            yRange = 0f..1.1f,
+        ),
+        readout = "p ≈ 0.5 for dense layers, 0.1–0.3 for conv and embeddings",
+    )
+    return frames
+}
+
+// ── Transfer learning ────────────────────────────────────────────────────────
+
+private fun transferLearningFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+
+    fun stack(trainable: Set<Int>, headLabel: String, headValues: List<Float>): List<NetLayer> = listOf(
+        NetLayer("conv1 (edges)", List(4) { NetNode(0.5f, if (0 in trainable) NodeMood.BACKWARD else NodeMood.IDLE) }),
+        NetLayer("conv2 (textures)", List(4) { NetNode(0.7f, if (1 in trainable) NodeMood.BACKWARD else NodeMood.IDLE) }),
+        NetLayer("conv3 (parts)", List(3) { NetNode(0.9f, if (2 in trainable) NodeMood.BACKWARD else NodeMood.IDLE) }),
+        NetLayer(headLabel, headValues.map { NetNode(it, NodeMood.OUTPUT) }),
+    )
+
+    frames += NetFrame(
+        status = "A backbone pretrained on a large dataset. Its early layers learned edges and textures — " +
+            "structure that has nothing to do with the original label set, which is exactly why it transfers.",
+        layers = stack(emptySet(), "head (1000 classes)", List(4) { 0.25f }),
+        readout = "frozen weights shown grey",
+    )
+
+    frames += NetFrame(
+        status = "Step 1: throw away the old head and attach a new one shaped to your labels — 3 classes here, " +
+            "randomly initialized. Everything below it is untouched.",
+        layers = stack(emptySet(), "new head (3 classes)", listOf(0.33f, 0.33f, 0.34f)),
+        readout = "only the head has random weights now",
+    )
+
+    frames += NetFrame(
+        status = "Step 2: freeze the backbone and train only the head. Gradients stop at the head's input, so " +
+            "this is fast and safe — a random head's early gradients are large and would otherwise wreck the " +
+            "pretrained features.",
+        layers = stack(setOf(3), "new head (training)", listOf(0.62f, 0.21f, 0.17f)),
+        readout = "backbone frozen · head learning at lr 1e-3",
+    )
+
+    frames += NetFrame(
+        status = "Step 3: unfreeze the top of the backbone and continue at a far smaller learning rate. Later " +
+            "layers are the task-specific ones, so they are the ones worth adapting; the earliest layers stay " +
+            "frozen because edges are edges in any domain.",
+        layers = stack(setOf(2, 3), "head (fine-tuning)", listOf(0.81f, 0.11f, 0.08f)),
+        readout = "lr 1e-5 · deeper layers get the smaller rates",
+    )
+
+    val scratch = List(22) { i -> i.toFloat() to (1.5f * exp(-0.05f * i) + 0.55f) }
+    val transfer = List(22) { i -> i.toFloat() to (1.5f * exp(-0.35f * i) + 0.14f) }
+    frames += NetFrame(
+        status = "On a few thousand labels the difference is not subtle: from scratch the model plateaus well " +
+            "above where transfer starts. Push the learning rate up during fine-tuning and you get catastrophic " +
+            "forgetting instead — the pretrained knowledge is overwritten before the new task is learned.",
+        plot = CurvePlot(
+            label = "validation loss",
+            curves = listOf(
+                Curve("from scratch", scratch, NeutralColor),
+                Curve("transfer", transfer, ForwardColor),
+            ),
+            xRange = 0f..21f,
+            yRange = 0f..2.1f,
+        ),
+        readout = "the further the domain shift, the more layers you unfreeze",
+    )
+    return frames
+}
+
 private val netConfigs = mapOf(
+    "batch_normalization" to NetConfig(
+        intro = "One feature across a mini-batch of eight, normalized for real: batch statistics, the normalized " +
+            "values, the learned γ/β restore, and the switch to running statistics at inference.",
+        legend = listOf(
+            AccentB to "Raw pre-activation",
+            ForwardColor to "Normalized",
+            OutputColor to "After γ, β",
+        ),
+        build = ::batchNormFrames,
+    ),
+    "dropout" to NetConfig(
+        intro = "Three training steps with three different masks, the 1/(1−p) rescale that keeps the expected " +
+            "output honest, and the full network at inference.",
+        legend = listOf(
+            ForwardColor to "Active unit",
+            NeutralColor to "Dropped",
+            OutputColor to "Output",
+        ),
+        build = ::dropoutFrames,
+    ),
+    "transfer_learning" to NetConfig(
+        intro = "A pretrained backbone with a new head: freeze, train the head, then unfreeze the top layers at a " +
+            "much smaller learning rate. Grey layers are frozen.",
+        legend = listOf(
+            NeutralColor to "Frozen",
+            BackwardColor to "Training",
+            OutputColor to "Task head",
+        ),
+        build = ::transferLearningFrames,
+    ),
     "neural_network_basics" to NetConfig(
         intro = "One forward pass through a 2-3-1 network, unit by unit, with every weighted sum and activation " +
             "computed on screen.",

@@ -38,6 +38,39 @@ object PrerequisiteGraph {
         "edit_distance" to listOf("longest_common_subsequence"),
         "coin_change" to listOf("fibonacci_dp"),
         "knapsack_01" to listOf("coin_change"),
+        "bitmask_dp" to listOf("knapsack_01", "subset_sum"),
+        "tree_dp" to listOf("tree", "dfs"),
+        // Linear structures, continued
+        "deque" to listOf("queue", "stack"),
+        "sliding_window" to listOf("deque"),
+        // Static range queries
+        "sparse_table" to listOf("binary_search", "prefix_sum"),
+        "lca" to listOf("tree", "sparse_table"),
+        // String algorithms
+        "kmp" to listOf("string"),
+        "rabin_karp" to listOf("string", "hash_table"),
+        "manacher" to listOf("kmp"),
+        // Graph algorithms, continued
+        "topological_sort" to listOf("dfs", "queue"),
+        "articulation_points" to listOf("dfs"),
+        "max_flow" to listOf("bfs", "graph"),
+        // Sorting, continued
+        "bucket_sort" to listOf("insertion_sort", "counting_sort"),
+        // ML: the practice layer sits on top of a first model
+        "bias_variance" to listOf("linear_regression"),
+        "regularization" to listOf("linear_regression", "bias_variance"),
+        "model_evaluation" to listOf("logistic_regression"),
+        "random_forest" to listOf("decision_trees"),
+        "gradient_boosting" to listOf("decision_trees", "gradient_descent_variants"),
+        // DL: training techniques presuppose the training loop
+        "batch_normalization" to listOf("neural_network_basics", "backpropagation"),
+        "dropout" to listOf("neural_network_basics", "regularization"),
+        "transfer_learning" to listOf("cnn"),
+        "diffusion_models" to listOf("neural_network_basics"),
+        // NLP
+        "bpe" to listOf("tokenization"),
+        "ner" to listOf("tokenization", "rnn_lstm"),
+        "rag" to listOf("word_embeddings", "llms"),
     )
 
     fun prereqsOf(topicId: String): List<String> = prerequisites[topicId].orEmpty()

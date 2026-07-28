@@ -836,7 +836,359 @@ private val sccLegend = listOf(
     GroupColors[0] to "Component",
 )
 
+// ── Topological sort / max flow / cut vertices ───────────────────────────────
+
+// A DAG with two independent roots, so the ready queue holds more than one node at a time and the
+// order is visibly non-unique.
+private val dagGraph = GraphDef(
+    nodes = listOf(
+        GNode("A", 0.08f, 0.20f),
+        GNode("B", 0.08f, 0.80f),
+        GNode("C", 0.38f, 0.50f),
+        GNode("D", 0.68f, 0.18f),
+        GNode("E", 0.68f, 0.82f),
+        GNode("F", 0.94f, 0.50f),
+    ),
+    edges = listOf(
+        GEdge("A", "C", directed = true),
+        GEdge("B", "C", directed = true),
+        GEdge("C", "D", directed = true),
+        GEdge("C", "E", directed = true),
+        GEdge("D", "F", directed = true),
+        GEdge("E", "F", directed = true),
+    ),
+)
+
+// Four nodes, five capacities. Small enough that every residual value fits in the status line.
+private val flowGraph = GraphDef(
+    nodes = listOf(
+        GNode("S", 0.08f, 0.50f),
+        GNode("A", 0.45f, 0.15f),
+        GNode("B", 0.45f, 0.85f),
+        GNode("T", 0.92f, 0.50f),
+    ),
+    edges = listOf(
+        GEdge("S", "A", 3, directed = true),
+        GEdge("S", "B", 2, directed = true),
+        GEdge("A", "B", 1, directed = true),
+        GEdge("A", "T", 2, directed = true),
+        GEdge("B", "T", 3, directed = true),
+    ),
+)
+
+// A triangle hanging off a second triangle by a single edge: one bridge, two cut vertices.
+private val cutGraph = GraphDef(
+    nodes = listOf(
+        GNode("A", 0.10f, 0.18f),
+        GNode("B", 0.10f, 0.82f),
+        GNode("C", 0.40f, 0.50f),
+        GNode("D", 0.70f, 0.50f),
+        GNode("E", 0.94f, 0.18f),
+        GNode("F", 0.94f, 0.82f),
+    ),
+    edges = listOf(
+        GEdge("A", "B"),
+        GEdge("A", "C"),
+        GEdge("B", "C"),
+        GEdge("C", "D"),
+        GEdge("D", "E"),
+        GEdge("D", "F"),
+        GEdge("E", "F"),
+    ),
+)
+
+private fun topologicalSortFrames(): List<GraphAlgoFrame> {
+    val def = dagGraph
+    val frames = mutableListOf<GraphAlgoFrame>()
+    val inDegree = def.ids.associateWith { id -> def.edges.count { it.to == id } }.toMutableMap()
+    val emitted = mutableListOf<String>()
+    val done = mutableSetOf<String>()
+
+    fun badges() = inDegree.mapValues { (id, d) -> if (id in done) "✓" else d.toString() }
+
+    frames += GraphAlgoFrame(
+        status = "In-degree is the number of unmet dependencies. A and B have none, so they are ready " +
+            "immediately; C waits on both of them.",
+        badges = badges(),
+    )
+
+    val ready = ArrayDeque(def.ids.filter { inDegree.getValue(it) == 0 })
+    frames += GraphAlgoFrame(
+        status = "Queue seeded with ${ready.joinToString(", ")}. Two nodes are ready at once, which is why this " +
+            "DAG has several valid orders rather than one.",
+        nodeMarks = ready.associateWith { NodeMark.FRONTIER },
+        badges = badges(),
+    )
+
+    while (ready.isNotEmpty()) {
+        val u = ready.removeFirst()
+        emitted += u
+        done += u
+
+        val outgoing = def.edges.withIndex().filter { it.value.from == u }
+        frames += GraphAlgoFrame(
+            status = "Pop $u and append it to the order (${emitted.joinToString(" → ")}). Now relax its " +
+                "${outgoing.size} outgoing edge${if (outgoing.size == 1) "" else "s"}.",
+            nodeMarks = buildMap {
+                putAll(done.associateWith { NodeMark.DONE })
+                putAll(ready.associateWith { NodeMark.FRONTIER })
+                put(u, NodeMark.ACTIVE)
+            },
+            badges = badges(),
+            edgeMarks = outgoing.associate { it.index to EdgeMark.ACTIVE },
+        )
+
+        val freed = mutableListOf<String>()
+        for ((_, edge) in outgoing) {
+            val left = inDegree.getValue(edge.to) - 1
+            inDegree[edge.to] = left
+            if (left == 0) {
+                ready += edge.to
+                freed += edge.to
+            }
+        }
+
+        if (freed.isNotEmpty()) {
+            frames += GraphAlgoFrame(
+                status = "${freed.joinToString(" and ")} now ${if (freed.size == 1) "has" else "have"} in-degree 0 " +
+                    "— every dependency satisfied, so ${if (freed.size == 1) "it joins" else "they join"} the queue.",
+                nodeMarks = buildMap {
+                    putAll(done.associateWith { NodeMark.DONE })
+                    putAll(ready.associateWith { NodeMark.FRONTIER })
+                    putAll(freed.associateWith { NodeMark.UPDATED })
+                },
+                badges = badges(),
+                edgeMarks = outgoing.associate { it.index to EdgeMark.ACCEPTED },
+            )
+        }
+    }
+
+    frames += GraphAlgoFrame(
+        status = "Order: ${emitted.joinToString(" → ")}. All ${def.ids.size} nodes were emitted, so the graph is " +
+            "acyclic — had the queue emptied early, the leftovers would have been sitting on a cycle.",
+        nodeMarks = def.ids.associateWith { NodeMark.DONE },
+        badges = emitted.withIndex().associate { (i, id) -> id to "#${i + 1}" },
+        edgeMarks = def.edges.indices.associateWith { EdgeMark.ACCEPTED },
+    )
+
+    return frames
+}
+
+private fun maxFlowFrames(): List<GraphAlgoFrame> {
+    val def = flowGraph
+    val frames = mutableListOf<GraphAlgoFrame>()
+    val capacity = def.edges.map { it.weight ?: 0 }.toMutableList()
+    val flow = MutableList(def.edges.size) { 0 }
+
+    fun edgeIndex(from: String, to: String) =
+        def.edges.indexOfFirst { it.from == from && it.to == to }
+
+    fun residualLine() = def.edges.indices.joinToString("  ") { i ->
+        "${def.edges[i].from}→${def.edges[i].to} ${capacity[i] - flow[i]}/${capacity[i]}"
+    }
+
+    frames += GraphAlgoFrame(
+        status = "Every edge starts empty. Labels are capacities; the goal is to push as much as possible from " +
+            "S to T. Residual now: ${residualLine()}.",
+        nodeMarks = mapOf("S" to NodeMark.FRONTIER, "T" to NodeMark.FRONTIER),
+    )
+
+    // Three augmenting paths, the last one only reachable because of the A→B edge.
+    val paths = listOf(
+        listOf("S", "A", "T"),
+        listOf("S", "B", "T"),
+        listOf("S", "A", "B", "T"),
+    )
+
+    var total = 0
+    for ((round, path) in paths.withIndex()) {
+        val indices = path.zipWithNext().map { (a, b) -> edgeIndex(a, b) }
+        val bottleneck = indices.minOf { capacity[it] - flow[it] }
+
+        frames += GraphAlgoFrame(
+            status = "Augmenting path ${round + 1}: ${path.joinToString(" → ")}. The narrowest edge on it has " +
+                "$bottleneck unit${if (bottleneck == 1) "" else "s"} of spare capacity, so that is all this path can carry.",
+            nodeMarks = path.associateWith { NodeMark.ACTIVE },
+            edgeMarks = indices.associateWith { EdgeMark.ACTIVE },
+            badges = mapOf("S" to "source", "T" to "sink"),
+        )
+
+        indices.forEach { flow[it] += bottleneck }
+        total += bottleneck
+
+        frames += GraphAlgoFrame(
+            status = "Push $bottleneck along it — total flow is now $total. Each unit pushed also opens $bottleneck " +
+                "unit${if (bottleneck == 1) "" else "s"} of backward residual, which is what lets a later path " +
+                "reroute an earlier decision. Residual: ${residualLine()}.",
+            nodeMarks = path.associateWith { NodeMark.UPDATED },
+            edgeMarks = indices.associateWith { EdgeMark.ACCEPTED },
+            badges = mapOf("T" to "flow $total"),
+        )
+    }
+
+    val saturated = def.edges.indices.filter { capacity[it] - flow[it] == 0 }
+    frames += GraphAlgoFrame(
+        status = "No path from S to T has spare capacity left, so the flow of $total is maximum. The saturated " +
+            "edges S→B, A→T and A→B form the minimum cut — same number, read from the other side.",
+        nodeMarks = def.ids.associateWith { NodeMark.DONE },
+        edgeMarks = saturated.associateWith { EdgeMark.REJECTED },
+        badges = mapOf("T" to "max flow $total"),
+    )
+
+    return frames
+}
+
+private fun articulationPointsFrames(): List<GraphAlgoFrame> {
+    val def = cutGraph
+    val frames = mutableListOf<GraphAlgoFrame>()
+    val adj = def.ids.associateWith { id ->
+        def.edges.mapNotNull {
+            when (id) {
+                it.from -> it.to
+                it.to -> it.from
+                else -> null
+            }
+        }
+    }
+
+    val disc = mutableMapOf<String, Int>()
+    val low = mutableMapOf<String, Int>()
+    val cuts = mutableSetOf<String>()
+    val bridges = mutableListOf<Pair<String, String>>()
+    var timer = 0
+
+    fun edgeIndex(a: String, b: String) = def.edges.indexOfFirst {
+        (it.from == a && it.to == b) || (it.from == b && it.to == a)
+    }
+
+    fun badges() = def.ids.associateWith { id ->
+        if (id in disc) "${disc[id]}/${low[id]}" else "·"
+    }
+
+    frames += GraphAlgoFrame(
+        status = "Each node will be stamped disc/low: the time DFS first reached it, and the earliest node its " +
+            "subtree can climb back to using one back edge.",
+        badges = badges(),
+    )
+
+    fun dfs(u: String, parent: String?) {
+        disc[u] = timer
+        low[u] = timer
+        timer++
+        frames += GraphAlgoFrame(
+            status = "Visit $u at time ${disc[u]}. low[$u] starts equal to its own discovery time.",
+            nodeMarks = disc.keys.associateWith { if (it == u) NodeMark.ACTIVE else NodeMark.FRONTIER },
+            badges = badges(),
+        )
+
+        var children = 0
+        for (v in adj.getValue(u)) {
+            if (v == parent) continue
+            val index = edgeIndex(u, v)
+            if (v in disc) {
+                if (disc.getValue(v) < low.getValue(u)) {
+                    low[u] = disc.getValue(v)
+                    frames += GraphAlgoFrame(
+                        status = "$u → $v is a back edge to an ancestor discovered at ${disc[v]}, so low[$u] drops " +
+                            "to ${low[u]} — $u's subtree can bypass its parent.",
+                        nodeMarks = mapOf(u to NodeMark.ACTIVE, v to NodeMark.UPDATED),
+                        badges = badges(),
+                        edgeMarks = mapOf(index to EdgeMark.ACTIVE),
+                    )
+                }
+                continue
+            }
+
+            children++
+            dfs(v, u)
+
+            if (low.getValue(v) < low.getValue(u)) low[u] = low.getValue(v)
+
+            val isBridge = low.getValue(v) > disc.getValue(u)
+            val isCut = parent != null && low.getValue(v) >= disc.getValue(u)
+            if (isBridge) bridges += u to v
+            if (isCut) cuts += u
+
+            frames += GraphAlgoFrame(
+                status = buildString {
+                    append("Back at $u after $v: low[$u] = ${low[u]}, low[$v] = ${low[v]}, disc[$u] = ${disc[u]}. ")
+                    when {
+                        isBridge && isCut -> append("low[$v] > disc[$u], so $u–$v is a bridge and $u is a cut vertex.")
+                        isBridge -> append("low[$v] > disc[$u], so $u–$v is a bridge.")
+                        isCut -> append("low[$v] ≥ disc[$u], so $v's subtree cannot escape past $u — $u is a cut vertex.")
+                        else -> append("low[$v] < disc[$u]: $v's subtree reaches above $u, so nothing is cut here.")
+                    }
+                },
+                nodeMarks = buildMap {
+                    putAll(disc.keys.associateWith { NodeMark.FRONTIER })
+                    put(u, NodeMark.ACTIVE)
+                    putAll(cuts.associateWith { NodeMark.DONE })
+                },
+                badges = badges(),
+                edgeMarks = mapOf(index to if (isBridge) EdgeMark.REJECTED else EdgeMark.ACCEPTED),
+            )
+        }
+
+        if (parent == null && children > 1) {
+            cuts += u
+            frames += GraphAlgoFrame(
+                status = "$u is the DFS root with $children separate children, which is the root's own rule for " +
+                    "being a cut vertex.",
+                nodeMarks = cuts.associateWith { NodeMark.DONE },
+                badges = badges(),
+            )
+        }
+    }
+
+    dfs("A", null)
+
+    frames += GraphAlgoFrame(
+        status = "Cut vertices: ${cuts.sorted().joinToString(", ")}. Bridge: " +
+            bridges.joinToString(", ") { "${it.first}–${it.second}" } +
+            ". Removing either triangle's link node splits the graph; the edges inside a triangle are never " +
+            "bridges because the third side routes around them.",
+        nodeMarks = def.ids.associateWith { if (it in cuts) NodeMark.DONE else NodeMark.IDLE },
+        badges = badges(),
+        edgeMarks = bridges.associate { edgeIndex(it.first, it.second) to EdgeMark.REJECTED },
+    )
+
+    return frames
+}
+
 private val graphAlgoConfigs = mapOf(
+    "topological_sort" to GraphAlgoConfig(
+        intro = "Kahn's algorithm on a DAG. Badges are remaining in-degrees — a node joins the queue the moment " +
+            "its count hits zero, and the emitted count at the end is the cycle check.",
+        def = dagGraph,
+        legend = listOf(
+            NodeMarkColors.getValue(NodeMark.ACTIVE) to "Popped",
+            NodeMarkColors.getValue(NodeMark.FRONTIER) to "Ready",
+            NodeMarkColors.getValue(NodeMark.DONE) to "Emitted",
+        ),
+        build = ::topologicalSortFrames,
+    ),
+    "max_flow" to GraphAlgoConfig(
+        intro = "Ford-Fulkerson with BFS-chosen paths. Edge labels are capacities; the third augmenting path can " +
+            "only exist because the first two left residual capacity behind.",
+        def = flowGraph,
+        legend = listOf(
+            NodeMarkColors.getValue(NodeMark.ACTIVE) to "On path",
+            EdgeMarkColors.getValue(EdgeMark.ACCEPTED) to "Flow pushed",
+            EdgeMarkColors.getValue(EdgeMark.REJECTED) to "Saturated (min cut)",
+        ),
+        build = ::maxFlowFrames,
+    ),
+    "articulation_points" to GraphAlgoConfig(
+        intro = "One DFS, badges showing disc/low per node. The ≥ test marks cut vertices, the strict > test " +
+            "marks the single bridge holding the two triangles together.",
+        def = cutGraph,
+        legend = listOf(
+            NodeMarkColors.getValue(NodeMark.ACTIVE) to "Current",
+            NodeMarkColors.getValue(NodeMark.DONE) to "Cut vertex",
+            EdgeMarkColors.getValue(EdgeMark.REJECTED) to "Bridge",
+        ),
+        build = ::articulationPointsFrames,
+    ),
     "bellman_ford" to GraphAlgoConfig(
         intro = "Bellman–Ford on a directed graph with negative edges. Badges show the current distance from A; " +
             "watch a node that already looks settled get corrected later — the reason Dijkstra breaks here.",

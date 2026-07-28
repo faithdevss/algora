@@ -33,6 +33,7 @@ private val preprocessingTopics = listOf(
     topic("stemming", "Stemming (Porter Stemmer)", preprocessing, "Chop words down to a crude root form.", difficulty = Difficulty.BEGINNER),
     topic("lemmatization", "Lemmatization", preprocessing, "Map words to their dictionary lemma using morphology.", isPremium = true),
     topic("bow_tfidf", "Bag-of-Words / TF-IDF", preprocessing, "Represent documents as weighted word-count vectors.", isPremium = true),
+    topic("bpe", "Byte-Pair Encoding", preprocessing, "Learn a subword vocabulary by merging the most frequent pair.", isPremium = true),
 )
 
 private val modelingTopics = listOf(
@@ -41,6 +42,8 @@ private val modelingTopics = listOf(
     topic("attention", "Attention", modeling, "Let the model weigh every token against every other.", isPremium = true),
     topic("transformers", "Transformers", modeling, "Stacked self-attention — the backbone of modern NLP.", isPremium = true),
     topic("llms", "LLMs", modeling, "Transformers scaled to billions of parameters.", isPremium = true),
+    topic("ner", "Named Entity Recognition", modeling, "Tag each token as person, place, organization or nothing.", isPremium = true),
+    topic("rag", "Retrieval-Augmented Generation", modeling, "Retrieve relevant passages and condition the model on them.", isPremium = true),
 )
 
 object NlpTopics {

@@ -39,6 +39,9 @@ private val fundamentalsTopics = listOf(
     topic("backpropagation", "Backpropagation", fundamentals, "The chain rule applied to train every weight in a network.", isPremium = true),
     topic("activation_functions", "Activation Functions", fundamentals, "Non-linearities (ReLU, sigmoid, tanh) that give networks their power.", isPremium = true),
     topic("gradient_descent_variants", "Gradient Descent Variants", fundamentals, "SGD, Momentum, RMSProp, Adam and friends.", isPremium = true),
+    topic("batch_normalization", "Batch Normalization", fundamentals, "Re-centre and re-scale activations so deep stacks stay trainable.", isPremium = true),
+    topic("dropout", "Dropout", fundamentals, "Randomly silence neurons during training so none becomes indispensable.", isPremium = true),
+    topic("transfer_learning", "Transfer Learning", fundamentals, "Reuse a pretrained network's features and retrain only the head.", isPremium = true),
 )
 
 private val architecturesTopics = listOf(
@@ -48,6 +51,7 @@ private val architecturesTopics = listOf(
     topic("autoencoders", "Autoencoders", architectures, "Encode-then-reconstruct networks for compression and denoising.", isPremium = true),
     topic("gans", "GANs", architectures, "A generator and discriminator locked in an adversarial game.", isPremium = true),
     topic("transformers", "Transformers", architectures, "Self-attention architecture behind modern LLMs.", isPremium = true),
+    topic("diffusion_models", "Diffusion Models", architectures, "Learn to reverse a noising process and sample images from noise.", isPremium = true),
 )
 
 object DeepLearningTopics {

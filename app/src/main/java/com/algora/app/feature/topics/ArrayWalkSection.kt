@@ -1652,9 +1652,421 @@ private fun fractionalKnapsackFrames(): List<WalkFrame> {
     return frames
 }
 
+// ── String matching ──────────────────────────────────────────────────────────
+
+private fun kmpFrames(): List<WalkFrame> {
+    val text = "ABABDABABC"
+    val pattern = "ABABC"
+    val frames = mutableListOf<WalkFrame>()
+    val m = pattern.length
+    val lps = IntArray(m)
+
+    fun lpsRow(filledUpTo: Int, active: Int? = null) = lps.mapIndexed { i, v ->
+        when {
+            i == active -> CellView(v.toString(), CellMark.ACTIVE)
+            i <= filledUpTo -> CellView(v.toString(), CellMark.WINDOW)
+            else -> CellView("·", CellMark.DIM)
+        }
+    }
+
+    fun patternRow(matched: Int, active: Int? = null) = pattern.mapIndexed { i, c ->
+        CellView(
+            c.toString(),
+            when {
+                i == active -> CellMark.ACTIVE
+                i < matched -> CellMark.WINDOW
+                else -> CellMark.IDLE
+            },
+        )
+    }
+
+    frames += WalkFrame(
+        status = "Phase 1 builds the LPS table over the pattern alone: for each position, how long is the longest " +
+            "prefix that is also a suffix ending there.",
+        cells = pattern.map { CellView(it.toString()) },
+        aux = lpsRow(-1),
+        auxLabel = "LPS",
+    )
+
+    var len = 0
+    var k = 1
+    while (k < m) {
+        if (pattern[k] == pattern[len]) {
+            len++
+            lps[k] = len
+            frames += WalkFrame(
+                status = "P[$k] = '${pattern[k]}' matches P[${len - 1}] = '${pattern[len - 1]}', so the shared " +
+                    "prefix grows to $len. lps[$k] = $len.",
+                cells = patternRow(matched = len, active = k),
+                pointers = mapOf(k to "k", (len - 1) to "len"),
+                aux = lpsRow(k - 1, active = k),
+                auxLabel = "LPS",
+            )
+            k++
+        } else if (len > 0) {
+            frames += WalkFrame(
+                status = "P[$k] = '${pattern[k]}' breaks the run. Fall back to lps[${len - 1}] = ${lps[len - 1]} " +
+                    "instead of restarting — the shorter prefix may still extend.",
+                cells = patternRow(matched = len, active = k),
+                pointers = mapOf(k to "k"),
+                aux = lpsRow(k - 1),
+                auxLabel = "LPS",
+            )
+            len = lps[len - 1]
+        } else {
+            lps[k] = 0
+            frames += WalkFrame(
+                status = "No prefix of the pattern ends at P[$k], so lps[$k] = 0.",
+                cells = patternRow(matched = 0, active = k),
+                pointers = mapOf(k to "k"),
+                aux = lpsRow(k, active = k),
+                auxLabel = "LPS",
+            )
+            k++
+        }
+    }
+
+    frames += WalkFrame(
+        status = "Table complete: [${lps.joinToString(", ")}]. Phase 2 now scans the text — and i will never " +
+            "move backward.",
+        cells = text.map { CellView(it.toString()) },
+        aux = lpsRow(m - 1),
+        auxLabel = "LPS",
+    )
+
+    var j = 0
+    for (i in text.indices) {
+        while (j > 0 && text[i] != pattern[j]) {
+            val fallback = lps[j - 1]
+            frames += WalkFrame(
+                status = "Mismatch: T[$i] = '${text[i]}' ≠ P[$j] = '${pattern[j]}'. The first $fallback " +
+                    "characters are already matched, so j drops to $fallback and i stays put.",
+                cells = text.mapIndexed { p, c ->
+                    CellView(c.toString(), if (p == i) CellMark.ACTIVE else if (p in (i - j) until i) CellMark.WINDOW else CellMark.IDLE)
+                },
+                pointers = mapOf(i to "i"),
+                aux = patternRow(matched = fallback, active = fallback),
+                auxLabel = "pattern (j = $fallback after fallback)",
+                readout = "text pointer stays at $i",
+            )
+            j = fallback
+        }
+        if (text[i] == pattern[j]) j++
+        frames += WalkFrame(
+            status = if (j == 0) {
+                "T[$i] = '${text[i]}' does not start the pattern. Move on."
+            } else {
+                "T[$i] = '${text[i]}' matches P[${j - 1}] — $j character${if (j == 1) "" else "s"} of the pattern now aligned."
+            },
+            cells = text.mapIndexed { p, c ->
+                CellView(c.toString(), if (p == i) CellMark.ACTIVE else if (p > i - j && p < i) CellMark.WINDOW else CellMark.IDLE)
+            },
+            pointers = mapOf(i to "i"),
+            aux = patternRow(matched = j, active = if (j < m) j else null),
+            auxLabel = "pattern (j = $j)",
+        )
+        if (j == m) {
+            val start = i - m + 1
+            frames += WalkFrame(
+                status = "Full match at index $start. j falls back to lps[${m - 1}] = ${lps[m - 1]} so overlapping " +
+                    "occurrences are still found.",
+                cells = text.mapIndexed { p, c ->
+                    CellView(c.toString(), if (p in start..i) CellMark.RESULT else CellMark.DIM)
+                },
+                pointers = mapOf(start to "hit"),
+                aux = patternRow(matched = m),
+                auxLabel = "pattern matched",
+                readout = "match at $start · text scanned once",
+            )
+            j = lps[j - 1]
+        }
+    }
+
+    return frames
+}
+
+private fun rabinKarpFrames(): List<WalkFrame> {
+    val text = "31415926"
+    val pattern = "415"
+    val base = 10L
+    val mod = 13L
+    val m = pattern.length
+    val frames = mutableListOf<WalkFrame>()
+
+    var high = 1L
+    repeat(m - 1) { high = high * base % mod }
+
+    var patternHash = 0L
+    for (c in pattern) patternHash = (patternHash * base + (c - '0')) % mod
+
+    frames += WalkFrame(
+        status = "Hash the pattern once: \"$pattern\" as a base-$base number mod $mod is $patternHash. Every text " +
+            "window will be compared against this single number.",
+        cells = text.map { CellView(it.toString(), CellMark.IDLE) },
+        aux = pattern.map { CellView(it.toString(), CellMark.RESULT) },
+        auxLabel = "pattern hash = $patternHash",
+    )
+
+    var windowHash = 0L
+    for (i in 0 until m) windowHash = (windowHash * base + (text[i] - '0')) % mod
+
+    for (i in 0..text.length - m) {
+        val window = text.substring(i, i + m)
+        val collision = windowHash == patternHash && window != pattern
+        val hit = window == pattern
+        frames += WalkFrame(
+            status = when {
+                hit -> "Window \"$window\" hashes to $windowHash — equal to the pattern's. Verified character by " +
+                    "character: a real match at index $i."
+                collision -> "Window \"$window\" also hashes to $windowHash. Equal hashes are not equal strings, " +
+                    "so the check rejects it — this is why verification is mandatory."
+                else -> "Window \"$window\" hashes to $windowHash ≠ $patternHash. Skip it without comparing a " +
+                    "single character."
+            },
+            cells = text.mapIndexed { p, c ->
+                CellView(
+                    c.toString(),
+                    when {
+                        hit && p in i until i + m -> CellMark.RESULT
+                        p in i until i + m -> CellMark.WINDOW
+                        else -> CellMark.DIM
+                    },
+                )
+            },
+            pointers = mapOf(i to "i"),
+            readout = "hash $windowHash vs $patternHash" + if (hit) " · match" else "",
+        )
+
+        if (i < text.length - m) {
+            val outgoing = text[i] - '0'
+            val incoming = text[i + m] - '0'
+            windowHash = (windowHash - outgoing * high % mod + mod) % mod
+            windowHash = (windowHash * base + incoming) % mod
+            frames += WalkFrame(
+                status = "Roll: drop '$outgoing' from the front, shift, add '$incoming' at the back. One " +
+                    "subtraction and one multiply — the window's hash never gets recomputed from scratch.",
+                cells = text.mapIndexed { p, c ->
+                    CellView(
+                        c.toString(),
+                        when (p) {
+                            i -> CellMark.ACTIVE
+                            i + m -> CellMark.ACTIVE
+                            in i + 1 until i + m -> CellMark.WINDOW
+                            else -> CellMark.DIM
+                        },
+                    )
+                },
+                pointers = mapOf(i to "out", (i + m) to "in"),
+                readout = "new hash $windowHash",
+            )
+        }
+    }
+
+    return frames
+}
+
+private fun manacherFrames(): List<WalkFrame> {
+    val s = "abacaba"
+    val t = buildString {
+        append('#')
+        for (ch in s) { append(ch); append('#') }
+    }
+    val p = IntArray(t.length)
+    val frames = mutableListOf<WalkFrame>()
+
+    fun radiusRow(upTo: Int, active: Int? = null) = p.mapIndexed { i, v ->
+        when {
+            i == active -> CellView(v.toString(), CellMark.ACTIVE)
+            i <= upTo -> CellView(v.toString(), CellMark.WINDOW)
+            else -> CellView("·", CellMark.DIM)
+        }
+    }
+
+    frames += WalkFrame(
+        status = "\"$s\" becomes \"$t\". With separators every palindrome has odd length, so one loop handles " +
+            "both the even and odd cases.",
+        cells = t.map { CellView(it.toString()) },
+        aux = radiusRow(-1),
+        auxLabel = "p (radius)",
+    )
+
+    var c = 0
+    var r = 0
+    for (i in t.indices) {
+        val mirror = 2 * c - i
+        val seeded = i < r
+        if (seeded) p[i] = minOf(r - i, p[mirror])
+        val seed = p[i]
+
+        while (i - p[i] - 1 >= 0 && i + p[i] + 1 < t.length && t[i - p[i] - 1] == t[i + p[i] + 1]) p[i]++
+
+        val grown = p[i] - seed
+        frames += WalkFrame(
+            status = when {
+                seeded && grown == 0 ->
+                    "i = $i sits inside the palindrome centred at $c, so its mirror at $mirror hands over " +
+                        "radius $seed for free. Direct comparison adds nothing."
+                seeded ->
+                    "Mirror at $mirror seeds radius $seed; expanding past the right edge adds $grown more, " +
+                        "so p[$i] = ${p[i]}."
+                else ->
+                    "i = $i is outside every known palindrome, so it expands from scratch to radius ${p[i]}."
+            },
+            cells = t.mapIndexed { pos, ch ->
+                CellView(
+                    ch.toString(),
+                    when {
+                        pos == i -> CellMark.ACTIVE
+                        pos in (i - p[i])..(i + p[i]) -> CellMark.WINDOW
+                        else -> CellMark.IDLE
+                    },
+                )
+            },
+            pointers = buildMap {
+                put(i, "i")
+                if (seeded) put(mirror, "mirror")
+            },
+            aux = radiusRow(i - 1, active = i),
+            auxLabel = "p (radius)",
+            readout = "right edge r = $r",
+        )
+
+        if (i + p[i] > r) {
+            c = i
+            r = i + p[i]
+        }
+    }
+
+    val best = p.indices.maxBy { p[it] }
+    val start = (best - p[best]) / 2
+    frames += WalkFrame(
+        status = "Largest radius is ${p[best]} at centre $best, which maps back to \"${s.substring(start, start + p[best])}\" " +
+            "in the original string. The right edge only ever moved right, so the whole scan was linear.",
+        cells = t.mapIndexed { pos, ch ->
+            CellView(ch.toString(), if (pos in (best - p[best])..(best + p[best])) CellMark.RESULT else CellMark.DIM)
+        },
+        pointers = mapOf(best to "centre"),
+        aux = radiusRow(t.length - 1, active = best),
+        auxLabel = "p (radius)",
+        readout = "longest palindrome: ${s.substring(start, start + p[best])}",
+    )
+
+    return frames
+}
+
+private fun sparseTableFrames(): List<WalkFrame> {
+    val a = listOf(5, 2, 4, 7, 1, 3, 6, 8)
+    val n = a.size
+    val levels = 4                                   // log2(8) + 1
+    val table = Array(levels) { IntArray(n) }
+    val frames = mutableListOf<WalkFrame>()
+
+    for (i in 0 until n) table[0][i] = a[i]
+
+    frames += WalkFrame(
+        status = "Level 0 is the array itself: every interval of length 1. Each level above combines two blocks " +
+            "from the level below.",
+        cells = a.map { CellView(it.toString()) },
+        aux = a.map { CellView(it.toString(), CellMark.WINDOW) },
+        auxLabel = "table[0] — blocks of length 1",
+    )
+
+    for (k in 1 until levels) {
+        val len = 1 shl k
+        val half = len shr 1
+        for (i in 0..n - len) table[k][i] = minOf(table[k - 1][i], table[k - 1][i + half])
+        frames += WalkFrame(
+            status = "Level $k covers blocks of length $len: table[$k][i] = min(table[${k - 1}][i], " +
+                "table[${k - 1}][i + $half]). Only ${n - len + 1} starting positions still fit.",
+            cells = a.mapIndexed { i, v ->
+                CellView(v.toString(), if (i <= n - len) CellMark.WINDOW else CellMark.DIM)
+            },
+            aux = (0 until n).map { i ->
+                if (i <= n - len) CellView(table[k][i].toString(), CellMark.WINDOW) else CellView("·", CellMark.DIM)
+            },
+            auxLabel = "table[$k] — min over blocks of length $len",
+        )
+    }
+
+    val l = 2
+    val r = 6
+    val length = r - l + 1
+    var k = 0
+    while ((1 shl (k + 1)) <= length) k++
+    val leftBlock = table[k][l]
+    val rightStart = r - (1 shl k) + 1
+    val rightBlock = table[k][rightStart]
+
+    frames += WalkFrame(
+        status = "Query [$l, $r] spans $length elements. The largest power of two that fits is ${1 shl k}, so " +
+            "k = $k — two blocks of that size cover the range.",
+        cells = a.mapIndexed { i, v -> CellView(v.toString(), if (i in l..r) CellMark.WINDOW else CellMark.DIM) },
+        pointers = mapOf(l to "l", r to "r"),
+        auxLabel = "k = $k",
+        aux = (0 until n).map { i ->
+            if (i <= n - (1 shl k)) CellView(table[k][i].toString(), CellMark.WINDOW) else CellView("·", CellMark.DIM)
+        },
+    )
+
+    frames += WalkFrame(
+        status = "Block A starts at $l, block B ends at $r. They overlap at index" +
+            (if (rightStart <= l + (1 shl k) - 1) "es ${rightStart}–${l + (1 shl k) - 1}" else " nothing") +
+            " — harmless, because min(x, x) = x. That overlap is exactly why sums cannot use this structure.",
+        cells = a.mapIndexed { i, v ->
+            CellView(
+                v.toString(),
+                when {
+                    i in l until l + (1 shl k) && i in rightStart..r -> CellMark.ACTIVE
+                    i in l until l + (1 shl k) -> CellMark.WINDOW
+                    i in rightStart..r -> CellMark.WINDOW
+                    else -> CellMark.DIM
+                },
+            )
+        },
+        pointers = mapOf(l to "A", rightStart to "B"),
+        readout = "min(A = $leftBlock, B = $rightBlock)",
+    )
+
+    frames += WalkFrame(
+        status = "Answer = min($leftBlock, $rightBlock) = ${minOf(leftBlock, rightBlock)} — two array lookups, " +
+            "regardless of how wide the range was. Updating any element, though, means rebuilding every level.",
+        cells = a.mapIndexed { i, v ->
+            CellView(v.toString(), if (v == minOf(leftBlock, rightBlock) && i in l..r) CellMark.RESULT else if (i in l..r) CellMark.WINDOW else CellMark.DIM)
+        },
+        pointers = mapOf(l to "l", r to "r"),
+        readout = "min over [$l, $r] = ${minOf(leftBlock, rightBlock)} in O(1)",
+    )
+
+    return frames
+}
+
 // ── Config ───────────────────────────────────────────────────────────────────
 
 private val walkConfigs = mapOf(
+    "kmp" to WalkConfig(
+        intro = "First the LPS table is built from the pattern alone, then the text is scanned. Watch the text " +
+            "pointer i on the second phase: it only ever moves forward, even on a mismatch.",
+        legend = pointerLegend,
+        build = ::kmpFrames,
+    ),
+    "rabin_karp" to WalkConfig(
+        intro = "Base-10 hashes mod 13 over a digit string. Most windows are rejected on a number comparison " +
+            "alone — and one collision shows why a hash hit still has to be verified.",
+        legend = pointerLegend,
+        build = ::rabinKarpFrames,
+    ),
+    "manacher" to WalkConfig(
+        intro = "Radii for every centre of \"#a#b#a#c#a#b#a#\". Centres inside a known palindrome inherit their " +
+            "mirror's radius instead of expanding from zero.",
+        legend = pointerLegend,
+        build = ::manacherFrames,
+    ),
+    "sparse_table" to WalkConfig(
+        intro = "Four levels of power-of-two minima are built, then one query is answered with two overlapping " +
+            "blocks. The overlap is what restricts the structure to idempotent operations.",
+        legend = pointerLegend,
+        build = ::sparseTableFrames,
+    ),
     "prefix_sum" to WalkConfig(
         intro = "One pass builds P, then every range sum is a single subtraction. Watch the query at the end pay " +
             "nothing for the width of the range.",

@@ -5,9 +5,11 @@ package com.algora.app.feature.practice.problems
 object ProblemRegistry {
     // Aggregated here rather than at file scope: top-level properties initialise in declaration
     // order, so an aggregate living beside its parts is fragile.
-    val patterns: List<ProblemPattern> = interviewPatterns + corePatterns + structurePatterns + aiPatterns
+    val patterns: List<ProblemPattern> =
+        interviewPatterns + corePatterns + structurePatterns + advancedPatterns + aiPatterns
     val all: List<PracticeProblem> =
-        interviewPatternProblems + coreTechniqueProblems + extraPatternProblems + structureProblems + aiProblems
+        interviewPatternProblems + coreTechniqueProblems + extraPatternProblems + structureProblems +
+            advancedProblems + aiProblems
 
     private val byId: Map<String, PracticeProblem> = all.associateBy { it.id }
 

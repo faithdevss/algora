@@ -970,7 +970,467 @@ private fun monteCarloFrames(): List<CloudFrame> {
     return frames
 }
 
+// ── Ensembles: random forest and gradient boosting ───────────────────────────
+
+private fun randomForestFrames(): List<CloudFrame> {
+    val points = boxyClasses
+    val query = P(0.46f, 0.52f)
+    val rng = Lcg(41)
+    val frames = mutableListOf<CloudFrame>()
+
+    frames += CloudFrame(
+        status = "One deep tree on this data would carve it into pure boxes and memorize the noise. A forest " +
+            "instead grows many trees, each on a different random view, and lets them vote.",
+        dots = points.map { Dot(it, it.label) } + Dot(query, -1, Emphasis.QUERY),
+    )
+
+    // Three trees, each a bootstrap sample plus one axis-aligned split. Real trees are deeper; the
+    // point here is that different samples produce different boundaries.
+    val trees = listOf(
+        Triple("y", 0.45f, 0),   // split on y: below is class 0
+        Triple("x", 0.55f, 1),   // split on x: left is class 1
+        Triple("y", 0.58f, 0),
+    )
+
+    val votes = mutableListOf<Int>()
+    trees.forEachIndexed { index, (axis, threshold, lowSide) ->
+        // Bootstrap: n draws with replacement, so roughly a third of the rows never appear.
+        val drawn = List(points.size) { points[(rng.next() * points.size).toInt().coerceAtMost(points.lastIndex)] }
+        val inBag = drawn.toSet()
+
+        frames += CloudFrame(
+            status = "Tree ${index + 1} draws its own bootstrap sample: ${inBag.size} distinct rows of " +
+                "${points.size}. The faded points are out-of-bag — this tree never sees them, so they can score " +
+                "it later for free.",
+            dots = points.map { Dot(it, it.label, if (it in inBag) Emphasis.NORMAL else Emphasis.FADED) } +
+                Dot(query, -1, Emphasis.QUERY),
+            readout = "${points.size - inBag.size} rows out-of-bag",
+        )
+
+        val split = if (axis == "y") {
+            Segment(P(0f, threshold), P(1f, threshold), AxisColor)
+        } else {
+            Segment(P(threshold, 0f), P(threshold, 1f), AxisColor)
+        }
+        val vote = if (axis == "y") {
+            if (query.y < threshold) lowSide else 1 - lowSide
+        } else {
+            if (query.x < threshold) lowSide else 1 - lowSide
+        }
+        votes += vote
+
+        frames += CloudFrame(
+            status = "Restricted to a random subset of features, tree ${index + 1} splits on $axis = $threshold " +
+                "and sends the query point to class $vote. A different sample would have chosen a different cut " +
+                "— that disagreement is the whole asset.",
+            dots = points.map { Dot(it, it.label, if (it in inBag) Emphasis.NORMAL else Emphasis.FADED) } +
+                Dot(query, -1, Emphasis.QUERY),
+            segments = listOf(split),
+            regions = listOf(
+                if (axis == "y") Region(0f, 0f, 1f, threshold, groupColor(lowSide).copy(alpha = 0.12f))
+                else Region(0f, 0f, threshold, 1f, groupColor(lowSide).copy(alpha = 0.12f)),
+            ),
+            readout = "tree ${index + 1} votes class $vote",
+        )
+    }
+
+    val tally = votes.groupingBy { it }.eachCount()
+    val winner = tally.maxBy { it.value }
+    frames += CloudFrame(
+        status = "Votes: ${tally.entries.sortedBy { it.key }.joinToString(", ") { "class ${it.key} × ${it.value}" }}. " +
+            "The majority wins. Each tree alone is high-variance; because their errors are decorrelated, the " +
+            "average is far steadier than any single one.",
+        dots = points.map { Dot(it, it.label) } + Dot(query, -1, Emphasis.QUERY),
+        rings = listOf(Ring(query, 0.09f, groupColor(winner.key))),
+        readout = "forest predicts class ${winner.key} (${winner.value}/${votes.size})",
+    )
+    return frames
+}
+
+private fun gradientBoostingFrames(): List<CloudFrame> {
+    val points = correlatedCloud
+    val frames = mutableListOf<CloudFrame>()
+    val lr = 0.5f
+
+    // Prediction is piecewise constant over three x-bands — a stump per round, as in real boosting.
+    val bands = listOf(0f to 0.35f, 0.35f to 0.7f, 0.7f to 1f)
+    fun bandOf(p: P) = bands.indexOfFirst { p.x >= it.first && p.x < it.second }.coerceAtLeast(0)
+
+    var prediction = FloatArray(points.size) { points.map { p -> p.y }.average().toFloat() }
+    val bandValue = FloatArray(bands.size) { points.map { p -> p.y }.average().toFloat() }
+
+    fun predictionSegments() = bands.mapIndexed { i, (x0, x1) ->
+        Segment(P(x0, bandValue[i]), P(x1, bandValue[i]), groupColor(2))
+    }
+
+    fun residualSegments() = points.mapIndexed { i, p ->
+        Segment(p, P(p.x, prediction[i]), QueryColor, dashed = true)
+    }
+
+    fun mse() = points.indices.sumOf { i -> ((points[i].y - prediction[i]) * (points[i].y - prediction[i])).toDouble() } / points.size
+
+    frames += CloudFrame(
+        status = "Round 0 is a single constant: the mean of y. Every dashed line is a residual — what the " +
+            "ensemble still gets wrong on that point.",
+        dots = points.map { Dot(it, 0) },
+        segments = predictionSegments() + residualSegments(),
+        readout = "MSE ${"%.4f".format(mse())}",
+    )
+
+    repeat(4) { round ->
+        // Fit a stump to the residuals: one constant correction per band.
+        val corrections = FloatArray(bands.size)
+        for (b in bands.indices) {
+            val members = points.indices.filter { bandOf(points[it]) == b }
+            if (members.isEmpty()) continue
+            corrections[b] = members.map { points[it].y - prediction[it] }.average().toFloat()
+        }
+
+        frames += CloudFrame(
+            status = "Round ${round + 1} fits a shallow tree to those residuals, not to y. Its three leaves are " +
+                "the mean residual in each band: ${corrections.joinToString(", ") { "%.3f".format(it) }}.",
+            dots = points.map { Dot(it, 0, Emphasis.FADED) },
+            segments = predictionSegments() + residualSegments(),
+            readout = "fitting the errors, not the target",
+        )
+
+        for (b in bands.indices) bandValue[b] += lr * corrections[b]
+        prediction = FloatArray(points.size) { bandValue[bandOf(points[it])] }
+
+        frames += CloudFrame(
+            status = "Add it at learning rate $lr — shrunken, so no single tree dominates. The step is small on " +
+                "purpose: more rounds at a smaller rate generalizes better than fewer large ones.",
+            dots = points.map { Dot(it, 0) },
+            segments = predictionSegments() + residualSegments(),
+            readout = "MSE ${"%.4f".format(mse())} after ${round + 1} round${if (round == 0) "" else "s"}",
+        )
+    }
+
+    frames += CloudFrame(
+        status = "Four rounds in, the staircase tracks the trend. Keep going and it would eventually fit the " +
+            "noise too — unlike a forest, boosting can overfit with too many rounds, which is why early " +
+            "stopping on validation loss is standard.",
+        dots = points.map { Dot(it, 0) },
+        segments = predictionSegments(),
+        readout = "final MSE ${"%.4f".format(mse())}",
+    )
+    return frames
+}
+
+// ── Bias-variance and regularization ─────────────────────────────────────────
+
+private fun biasVarianceFrames(): List<CloudFrame> {
+    val points = correlatedCloud
+    val frames = mutableListOf<CloudFrame>()
+    val rng = Lcg(53)
+
+    frames += CloudFrame(
+        status = "The same data, fitted three ways. Nothing changes but model capacity.",
+        dots = points.map { Dot(it, 0) },
+    )
+
+    // High bias: a flat line that ignores the trend.
+    val meanY = points.map { it.y }.average().toFloat()
+    frames += CloudFrame(
+        status = "High bias: a constant. It is wrong in the same direction no matter which sample you train it " +
+            "on, and no amount of extra data will fix that — the model simply cannot express a slope.",
+        dots = points.map { Dot(it, 0) },
+        segments = listOf(Segment(P(0.04f, meanY), P(0.96f, meanY), groupColor(1))) +
+            points.map { Segment(it, P(it.x, meanY), QueryColor, dashed = true) },
+        readout = "underfit · train error high, test error high",
+    )
+
+    // High variance: a curve threaded through every point.
+    val sorted = points.sortedBy { it.x }
+    frames += CloudFrame(
+        status = "High variance: enough capacity to pass through every point. Training error is nearly zero, but " +
+            "the wiggles encode this sample's noise, not the underlying trend.",
+        dots = points.map { Dot(it, 0) },
+        segments = sorted.zipWithNext().map { (a, b) -> Segment(a, b, groupColor(3)) },
+        readout = "overfit · train error ~0, test error high",
+    )
+
+    // Show variance directly: refit the flexible model on bootstrap resamples.
+    repeat(3) { round ->
+        val resample = List(points.size) { points[(rng.next() * points.size).toInt().coerceAtMost(points.lastIndex)] }
+            .distinct().sortedBy { it.x }
+        frames += CloudFrame(
+            status = "Refit ${round + 1} of the flexible model on a resample of the same source. The curve moves " +
+                "substantially — that instability across samples *is* variance, measured rather than described.",
+            dots = points.map { Dot(it, 0, if (it in resample) Emphasis.NORMAL else Emphasis.FADED) },
+            segments = resample.zipWithNext().map { (a, b) -> Segment(a, b, groupColor(3)) },
+            readout = "different sample → different fit",
+        )
+    }
+
+    // Balanced: least-squares line.
+    val meanX = points.map { it.x }.average().toFloat()
+    val slope = points.sumOf { ((it.x - meanX) * (it.y - meanY)).toDouble() }
+        .div(points.sumOf { ((it.x - meanX) * (it.x - meanX)).toDouble() }).toFloat()
+    val intercept = meanY - slope * meanX
+    frames += CloudFrame(
+        status = "Between them sits the fit that minimizes the sum: some bias, some variance, lowest expected " +
+            "error. Diagnose before treating — a uniformly high error means bias, a large train-test gap means " +
+            "variance, and the two fixes are opposites.",
+        dots = points.map { Dot(it, 0) },
+        segments = listOf(Segment(P(0.04f, intercept + slope * 0.04f), P(0.96f, intercept + slope * 0.96f), groupColor(2))),
+        readout = "bias² + variance + noise, minimized as a sum",
+    )
+    return frames
+}
+
+private fun regularizationFrames(): List<CloudFrame> {
+    val points = correlatedCloud
+    val frames = mutableListOf<CloudFrame>()
+    val sorted = points.sortedBy { it.x }
+    val meanX = points.map { it.x }.average().toFloat()
+    val meanY = points.map { it.y }.average().toFloat()
+    val slope = points.sumOf { ((it.x - meanX) * (it.y - meanY)).toDouble() }
+        .div(points.sumOf { ((it.x - meanX) * (it.x - meanX)).toDouble() }).toFloat()
+    val intercept = meanY - slope * meanX
+
+    frames += CloudFrame(
+        status = "λ = 0: no penalty. The optimizer is free to use large coefficients, and with enough of them it " +
+            "threads every point — including the noise.",
+        dots = points.map { Dot(it, 0) },
+        segments = sorted.zipWithNext().map { (a, b) -> Segment(a, b, groupColor(3)) },
+        readout = "‖w‖ large · train error ~0",
+    )
+
+    // Blend the wiggly interpolation toward the straight fit as lambda grows.
+    listOf(0.35f to "λ small", 0.7f to "λ moderate", 1f to "λ large").forEach { (pull, label) ->
+        val blended = sorted.map { p ->
+            val lineY = intercept + slope * p.x
+            P(p.x, p.y + (lineY - p.y) * pull)
+        }
+        frames += CloudFrame(
+            status = when (label) {
+                "λ small" -> "Raise λ and every weight is charged for its size. The curve keeps the real trend but " +
+                    "gives up the sharpest wiggles first — those cost the most weight for the least error reduction."
+                "λ moderate" -> "More penalty, more shrinkage. This is the region where validation error usually " +
+                    "bottoms out: enough flexibility for the signal, not enough for the noise."
+                else -> "λ large: the penalty dominates the loss and the model collapses toward its intercept. " +
+                    "Bias is now the problem — over-regularizing is just underfitting by another route."
+            },
+            dots = points.map { Dot(it, 0, if (pull == 1f) Emphasis.FADED else Emphasis.NORMAL) },
+            segments = blended.zipWithNext().map { (a, b) -> Segment(a, b, groupColor(2)) },
+            readout = "$label · ‖w‖ shrinking",
+        )
+    }
+
+    frames += CloudFrame(
+        status = "L2 shrinks every weight smoothly toward zero; L1 would drive some of them exactly to zero and " +
+            "drop those features entirely. Either way λ is chosen on validation data — never on the training " +
+            "loss, which always prefers λ = 0.",
+        dots = points.map { Dot(it, 0) },
+        segments = listOf(Segment(P(0.04f, intercept + slope * 0.04f), P(0.96f, intercept + slope * 0.96f), groupColor(2))),
+        readout = "L2 → small weights · L1 → sparse weights",
+    )
+    return frames
+}
+
+private fun modelEvaluationFrames(): List<CloudFrame> {
+    // One feature (x) drives the score; the two classes overlap, so no threshold is perfect.
+    val points = Lcg(67).let { rng ->
+        blob(rng, 0.34f, 0.50f, 9, 0.34f, 0, spreadY = 0.7f) + blob(rng, 0.64f, 0.50f, 9, 0.34f, 1, spreadY = 0.7f)
+    }
+    val frames = mutableListOf<CloudFrame>()
+
+    fun confusion(threshold: Float): IntArray {
+        var tp = 0; var fp = 0; var fn = 0; var tn = 0
+        points.forEach { p ->
+            val positive = p.x >= threshold
+            when {
+                positive && p.label == 1 -> tp++
+                positive && p.label == 0 -> fp++
+                !positive && p.label == 1 -> fn++
+                else -> tn++
+            }
+        }
+        return intArrayOf(tp, fp, fn, tn)
+    }
+
+    frames += CloudFrame(
+        status = "Two overlapping classes scored along x. Any threshold splits them somewhere — and because the " +
+            "classes overlap, every choice trades one kind of error for the other.",
+        dots = points.map { Dot(it, it.label) },
+        readout = "${points.count { it.label == 1 }} positives · ${points.count { it.label == 0 }} negatives",
+    )
+
+    listOf(0.30f, 0.50f, 0.72f).forEach { threshold ->
+        val (tp, fp, fn, tn) = confusion(threshold).toList()
+        val precision = if (tp + fp == 0) 0.0 else tp.toDouble() / (tp + fp)
+        val recall = if (tp + fn == 0) 0.0 else tp.toDouble() / (tp + fn)
+        val f1 = if (precision + recall == 0.0) 0.0 else 2 * precision * recall / (precision + recall)
+        val accuracy = (tp + tn).toDouble() / points.size
+
+        frames += CloudFrame(
+            status = when {
+                threshold < 0.4f -> "Threshold ${"%.2f".format(threshold)} — flag almost everything. Recall is " +
+                    "high because few positives are missed, but the false positives pile up. This is the " +
+                    "operating point a cancer screen wants."
+                threshold < 0.6f -> "Threshold ${"%.2f".format(threshold)} — the balanced point. F1 is the " +
+                    "harmonic mean, so it punishes trading one metric away for the other."
+                else -> "Threshold ${"%.2f".format(threshold)} — flag only the confident cases. Precision rises, " +
+                    "recall falls: what a spam filter wants, where a false positive loses real mail."
+            },
+            dots = points.map { p ->
+                Dot(p, p.label, if ((p.x >= threshold) != (p.label == 1)) Emphasis.ACTIVE else Emphasis.NORMAL)
+            },
+            segments = listOf(Segment(P(threshold, 0f), P(threshold, 1f), AxisColor)),
+            regions = listOf(Region(threshold, 0f, 1f, 1f, groupColor(1).copy(alpha = 0.10f))),
+            readout = "TP $tp · FP $fp · FN $fn · TN $tn → P ${"%.2f".format(precision)} " +
+                "R ${"%.2f".format(recall)} F1 ${"%.2f".format(f1)} acc ${"%.2f".format(accuracy)}",
+        )
+    }
+
+    // AUC: probability a random positive outranks a random negative.
+    val positives = points.filter { it.label == 1 }
+    val negatives = points.filter { it.label == 0 }
+    var wins = 0.0
+    positives.forEach { p -> negatives.forEach { n -> wins += if (p.x > n.x) 1.0 else if (p.x == n.x) 0.5 else 0.0 } }
+    val auc = wins / (positives.size * negatives.size)
+
+    frames += CloudFrame(
+        status = "Sweeping the threshold traces the ROC curve; its area is the probability that a random positive " +
+            "scores above a random negative — ${"%.2f".format(auc)} here. That number is threshold-free, which " +
+            "makes it good for comparing models and useless for choosing an operating point.",
+        dots = points.map { Dot(it, it.label) },
+        readout = "ROC-AUC ${"%.2f".format(auc)} · accuracy alone would hide all of this on imbalanced data",
+    )
+    return frames
+}
+
+// ── Diffusion: destroy the data, then learn the way back ─────────────────────
+
+private fun diffusionFrames(): List<CloudFrame> {
+    // A ring is the clearest "data manifold": noise obviously destroys it, denoising obviously restores it.
+    val ring = List(20) {
+        val angle = 2.0 * Math.PI * it / 20
+        P((0.5 + 0.30 * kotlin.math.cos(angle)).toFloat(), (0.5 + 0.30 * kotlin.math.sin(angle)).toFloat())
+    }
+    val rng = Lcg(89)
+    val noise = ring.map { P(rng.jitter(1.6f), rng.jitter(1.6f)) }
+    val frames = mutableListOf<CloudFrame>()
+
+    fun noised(alphaBar: Double) = ring.mapIndexed { i, p ->
+        val keep = sqrt(alphaBar).toFloat()
+        val add = sqrt(1 - alphaBar).toFloat()
+        P(
+            (keep * p.x + add * (0.5f + noise[i].x)).coerceIn(0.03f, 0.97f),
+            (keep * p.y + add * (0.5f + noise[i].y)).coerceIn(0.03f, 0.97f),
+        )
+    }
+
+    frames += CloudFrame(
+        status = "x₀ — the real data. Everything the model needs to learn is the shape of this manifold.",
+        dots = ring.map { Dot(it, 2) },
+        readout = "t = 0 · ᾱ = 1.00",
+    )
+
+    val schedule = listOf(0.85, 0.6, 0.3, 0.08, 0.0)
+    schedule.forEach { alphaBar ->
+        frames += CloudFrame(
+            status = "Forward step: x_t = √ᾱ·x₀ + √(1−ᾱ)·ε with ᾱ = ${"%.2f".format(alphaBar)}. This process is " +
+                "fixed — no learning happens here, and the closed form means any timestep is reachable in one " +
+                "shot, which is what makes training cheap.",
+            dots = noised(alphaBar).map { Dot(it, 0, Emphasis.FADED) },
+            readout = "ᾱ = ${"%.2f".format(alphaBar)} · signal fading",
+        )
+    }
+
+    frames += CloudFrame(
+        status = "At ᾱ = 0 the sample is pure Gaussian noise. Sampling starts here, from nothing but N(0, I).",
+        dots = noised(0.0).map { Dot(it, 0, Emphasis.ACTIVE) },
+        readout = "x_T ~ N(0, I)",
+    )
+
+    listOf(0.08, 0.3, 0.6, 0.85, 1.0).forEach { alphaBar ->
+        frames += CloudFrame(
+            status = when {
+                alphaBar < 0.2 -> "Reverse step: the network is asked for ε̂ — its estimate of the noise in this " +
+                    "sample — and a fraction of it is subtracted. The loss it was trained on was exactly " +
+                    "‖ε − ε̂‖², nothing more elaborate."
+                alphaBar < 0.7 -> "Structure re-emerges as the estimated noise is removed step by step. Each step " +
+                    "is small, which is why sampling is iterative and expensive compared to a GAN's single pass."
+                else -> "The samples land back on the ring. A trained model reaches a *new* point on the manifold " +
+                    "rather than the original — that is generation, not reconstruction."
+            },
+            dots = noised(alphaBar).map { Dot(it, if (alphaBar >= 1.0) 2 else 1) },
+            readout = "ᾱ = ${"%.2f".format(alphaBar)} · denoising",
+        )
+    }
+
+    frames += CloudFrame(
+        status = "Training is stable because there is no adversary to balance — just a regression onto noise. " +
+            "The cost is at sampling time, which is why DDIM and distillation exist to cut the step count.",
+        dots = ring.map { Dot(it, 2) },
+        readout = "fixed forward process · learned reverse process",
+    )
+    return frames
+}
+
 private val cloudConfigs = mapOf(
+    "random_forest" to CloudConfig(
+        intro = "Three trees, three bootstrap samples, three different cuts — then a vote on the yellow query " +
+            "point. Faded points are out-of-bag for the tree being grown.",
+        legend = listOf(
+            CloudColors[0] to "Class 0",
+            CloudColors[1] to "Class 1",
+            QueryColor to "Query point",
+        ),
+        build = ::randomForestFrames,
+    ),
+    "gradient_boosting" to CloudConfig(
+        intro = "Four boosting rounds on a regression problem. The dashed lines are residuals — each new stump " +
+            "is fitted to those, not to the target, and added at a shrunken learning rate.",
+        legend = listOf(
+            CloudColors[2] to "Ensemble prediction",
+            QueryColor to "Residual",
+            CloudColors[0] to "Data",
+        ),
+        build = ::gradientBoostingFrames,
+    ),
+    "bias_variance" to CloudConfig(
+        intro = "One dataset fitted at three capacities, with the flexible model refitted on resamples so the " +
+            "variance is visible as movement rather than asserted in prose.",
+        legend = listOf(
+            CloudColors[1] to "High bias",
+            CloudColors[3] to "High variance",
+            CloudColors[2] to "Balanced",
+        ),
+        build = ::biasVarianceFrames,
+    ),
+    "regularization" to CloudConfig(
+        intro = "The same overfit curve as λ increases. Watch which structure the penalty gives up first — the " +
+            "sharp wiggles cost the most weight for the least error reduction.",
+        legend = listOf(
+            CloudColors[3] to "λ = 0 (overfit)",
+            CloudColors[2] to "Penalized fit",
+            CloudColors[0] to "Data",
+        ),
+        build = ::regularizationFrames,
+    ),
+    "model_evaluation" to CloudConfig(
+        intro = "Two overlapping classes and a moving decision threshold. Precision, recall and F1 are recomputed " +
+            "at each position, so the tradeoff is arithmetic rather than assertion.",
+        legend = listOf(
+            CloudColors[0] to "Negative",
+            CloudColors[1] to "Positive",
+            QueryColor to "Misclassified",
+        ),
+        build = ::modelEvaluationFrames,
+    ),
+    "diffusion_models" to CloudConfig(
+        intro = "A ring of data destroyed by the fixed forward process, then walked back by the learned reverse " +
+            "one. The forward half involves no learning at all.",
+        legend = listOf(
+            CloudColors[2] to "Data manifold",
+            CloudColors[0] to "Noised sample",
+            CloudColors[1] to "Denoising",
+        ),
+        build = ::diffusionFrames,
+    ),
     "kmeans" to CloudConfig(
         intro = "k-means alternates two steps: assign each point to the nearest centroid, then move each centroid to " +
             "the mean of what it captured. The seeding here is poor on purpose.",

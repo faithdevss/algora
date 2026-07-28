@@ -46,6 +46,11 @@ private val supervisedTopics = listOf(
     topic("svm", "Support Vector Machines", supervised, "Find the maximum-margin separating hyperplane.", isPremium = true),
     topic("knn", "k-Nearest Neighbors", supervised, "Classify by a majority vote of the closest points.", isPremium = true),
     topic("naive_bayes", "Naive Bayes", supervised, "Probabilistic classifier assuming feature independence.", isPremium = true),
+    topic("random_forest", "Random Forest", supervised, "Bagged decision trees that vote, each seeing a random slice of the data.", isPremium = true),
+    topic("gradient_boosting", "Gradient Boosting", supervised, "Trees added one at a time, each fitting the previous ensemble's errors.", isPremium = true),
+    topic("bias_variance", "Bias-Variance Tradeoff", supervised, "Why underfitting and overfitting pull in opposite directions.", isPremium = true),
+    topic("regularization", "Regularization (L1 / L2)", supervised, "Penalize large weights so the model stops memorizing noise.", isPremium = true),
+    topic("model_evaluation", "Model Evaluation", supervised, "Precision, recall, F1, ROC-AUC and the thresholds behind them.", isPremium = true),
 )
 
 private val unsupervisedTopics = listOf(

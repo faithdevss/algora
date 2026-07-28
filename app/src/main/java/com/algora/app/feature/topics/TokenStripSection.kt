@@ -613,7 +613,305 @@ private fun llmFrames(): List<TokenFrame> {
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
+// ── Byte-pair encoding: learn the merges, then replay them ───────────────────
+
+private fun bpeFrames(): List<TokenFrame> {
+    // Word -> frequency. "low"/"lower"/"newest"/"widest" is the canonical BPE worked example.
+    val corpus = linkedMapOf("low" to 5, "lower" to 2, "newest" to 6, "widest" to 3)
+    var vocab = corpus.mapValues { it.value }
+        .mapKeys { (word, _) -> word.map { it.toString() } + "</w>" }
+    val merges = mutableListOf<Pair<String, String>>()
+    val frames = mutableListOf<TokenFrame>()
+
+    frames += TokenFrame(
+        status = "Start from characters. The vocabulary is just the alphabet, so nothing can ever be out of " +
+            "vocabulary — the question is only how many pieces a word costs.",
+        chips = vocab.keys.first().map { Chip(it) },
+        chipsLabel = "\"low\" as characters",
+        rows = corpus.map { (word, freq) -> word to "×$freq" },
+    )
+
+    repeat(4) { round ->
+        val pairs = mutableMapOf<Pair<String, String>, Int>()
+        for ((symbols, freq) in vocab) {
+            for (i in 0 until symbols.size - 1) {
+                val pair = symbols[i] to symbols[i + 1]
+                pairs[pair] = (pairs[pair] ?: 0) + freq
+            }
+        }
+        val ranked = pairs.entries.sortedByDescending { it.value }
+        val best = ranked.firstOrNull()?.key ?: return@repeat
+        val bestCount = pairs.getValue(best)
+
+        frames += TokenFrame(
+            status = "Round ${round + 1}: count every adjacent pair, weighted by how often its word appears. " +
+                "\"${best.first}${best.second}\" leads with $bestCount occurrences.",
+            chips = ranked.take(4).map { (pair, count) ->
+                Chip(pair.first + pair.second, sub = count.toString(), mark = if (pair == best) ChipMark.ACTIVE else ChipMark.IDLE)
+            },
+            chipsLabel = "top adjacent pairs",
+            readout = "vocabulary size ${8 + round}",
+        )
+
+        merges += best
+        vocab = vocab.mapKeys { (symbols, _) ->
+            val out = mutableListOf<String>()
+            var i = 0
+            while (i < symbols.size) {
+                if (i < symbols.size - 1 && symbols[i] == best.first && symbols[i + 1] == best.second) {
+                    out += best.first + best.second
+                    i += 2
+                } else {
+                    out += symbols[i]
+                    i++
+                }
+            }
+            out
+        }
+
+        val sample = vocab.keys.first { it.joinToString("").startsWith("newest") || it.size <= 4 }
+        frames += TokenFrame(
+            status = "Merge it everywhere. \"${best.first}${best.second}\" is now one symbol, and the vocabulary " +
+                "grew by exactly one entry — that is the knob: one merge, one token.",
+            chips = sample.map { Chip(it, mark = if (it == best.first + best.second) ChipMark.RESULT else ChipMark.IDLE) },
+            chipsLabel = "a word after ${round + 1} merge${if (round == 0) "" else "s"}",
+            rows = merges.mapIndexed { i, (a, b) -> "merge ${i + 1}" to "$a + $b → $a$b" },
+        )
+    }
+
+    // Encoding an unseen word replays the merge list in order.
+    var unseen = "lowest".map { it.toString() } + "</w>"
+    frames += TokenFrame(
+        status = "Encoding is not a fresh search: the learned merges are replayed in the order they were found. " +
+            "Take \"lowest\" — a word the corpus never contained.",
+        chips = unseen.map { Chip(it) },
+        chipsLabel = "\"lowest\" as characters",
+    )
+    merges.forEachIndexed { index, (a, b) ->
+        val out = mutableListOf<String>()
+        var i = 0
+        var applied = false
+        while (i < unseen.size) {
+            if (i < unseen.size - 1 && unseen[i] == a && unseen[i + 1] == b) {
+                out += a + b
+                applied = true
+                i += 2
+            } else {
+                out += unseen[i]
+                i++
+            }
+        }
+        unseen = out
+        if (applied) {
+            frames += TokenFrame(
+                status = "Merge ${index + 1} ($a + $b) applies, so \"lowest\" absorbs a piece the corpus learned " +
+                    "from other words.",
+                chips = unseen.map { Chip(it, mark = if (it == a + b) ChipMark.RESULT else ChipMark.IDLE) },
+                chipsLabel = "encoding in progress",
+            )
+        }
+    }
+
+    frames += TokenFrame(
+        status = "\"lowest\" ends as ${unseen.size} pieces built entirely from parts learned elsewhere. Frequent " +
+            "words collapse to a single token, rare ones decompose — and the sequence length that follows is " +
+            "what drives attention cost downstream.",
+        chips = unseen.map { Chip(it, mark = ChipMark.RESULT) },
+        chipsLabel = "final tokens",
+        readout = "${unseen.size} tokens · nothing out-of-vocabulary",
+    )
+    return frames
+}
+
+// ── Named entity recognition: BIO tags and why transitions matter ────────────
+
+private fun nerFrames(): List<TokenFrame> {
+    val tokens = listOf("Ada", "Lovelace", "joined", "Analytical", "Engine", "Ltd", "in", "London")
+    val gold = listOf("B-PER", "I-PER", "O", "B-ORG", "I-ORG", "I-ORG", "O", "B-LOC")
+    val frames = mutableListOf<TokenFrame>()
+
+    frames += TokenFrame(
+        status = "The task is to find spans, but spans are awkward to predict directly. BIO tagging turns it into " +
+            "ordinary per-token classification.",
+        chips = tokens.map { Chip(it) },
+        chipsLabel = "tokens",
+    )
+
+    frames += TokenFrame(
+        status = "Three tag shapes: B- starts an entity, I- continues the one before it, O is outside any entity. " +
+            "With 3 entity types that is 2×3 + 1 = 7 labels in total.",
+        chips = tokens.mapIndexed { i, t -> Chip(t, sub = gold[i], mark = if (gold[i] == "O") ChipMark.DIM else ChipMark.IDLE) },
+        chipsLabel = "gold BIO tags",
+    )
+
+    // Emission scores: what the encoder alone thinks, per token, before transitions are considered.
+    frames += TokenFrame(
+        status = "A BiLSTM or transformer encoder reads the whole sentence and emits a score per label per token. " +
+            "\"Engine\" is genuinely ambiguous in isolation — it could start its own entity or continue one.",
+        chips = tokens.mapIndexed { i, t -> Chip(t, mark = if (i == 4) ChipMark.ACTIVE else ChipMark.IDLE) },
+        chipsLabel = "encoder pass",
+        bars = listOf(
+            BarRow("emissions for \"Engine\"", listOf(0.42f, 0.38f, 0.12f, 0.08f), HeatColor,
+                captions = listOf("I-ORG", "B-ORG", "O", "I-PER")),
+        ),
+        readout = "argmax per token would take I-ORG here — narrowly",
+    )
+
+    frames += TokenFrame(
+        status = "Taking the argmax token by token is what produces illegal output: O followed by I-PER, or an " +
+            "I-ORG continuing a person. Nothing in a per-token decision knows the sequence has to be coherent.",
+        chips = listOf(
+            Chip("Ada", sub = "B-PER"), Chip("Lovelace", sub = "I-PER"), Chip("joined", sub = "O"),
+            Chip("Analytical", sub = "O", mark = ChipMark.ACTIVE),
+            Chip("Engine", sub = "I-ORG", mark = ChipMark.ACTIVE),
+            Chip("Ltd", sub = "I-ORG"), Chip("in", sub = "O"), Chip("London", sub = "B-LOC"),
+        ),
+        chipsLabel = "greedy per-token argmax — invalid",
+        readout = "O → I-ORG is not a legal transition",
+    )
+
+    frames += TokenFrame(
+        status = "A CRF layer adds learned transition scores on top of the emissions, with impossible transitions " +
+            "driven to −∞. Viterbi then decodes the best *whole sequence* rather than the best isolated guesses.",
+        heat = Heat(
+            rowLabels = listOf("O", "B-ORG", "I-ORG", "B-PER"),
+            colLabels = listOf("O", "B-ORG", "I-ORG", "B-PER"),
+            values = listOf(
+                listOf(0.6f, 0.5f, 0.0f, 0.5f),
+                listOf(0.4f, 0.1f, 0.9f, 0.1f),
+                listOf(0.4f, 0.2f, 0.8f, 0.1f),
+                listOf(0.3f, 0.2f, 0.0f, 0.1f),
+            ),
+            focusRow = 0,
+        ),
+        readout = "row O → column I-ORG scores 0: that path can never win",
+    )
+
+    frames += TokenFrame(
+        status = "Decoded sequence: two multi-token entities and one single-token one. Spans are read off the " +
+            "B/I runs — Ada Lovelace (PER), Analytical Engine Ltd (ORG), London (LOC).",
+        chips = tokens.mapIndexed { i, t ->
+            Chip(t, sub = gold[i], mark = if (gold[i] == "O") ChipMark.DIM else ChipMark.RESULT)
+        },
+        chipsLabel = "Viterbi output",
+        readout = "3 entities · scored by exact-span F1, not per-token accuracy",
+    )
+
+    frames += TokenFrame(
+        status = "That last detail matters: a model that tags \"Analytical Engine\" but drops \"Ltd\" scores well " +
+            "per token and gets zero credit for that span. Boundaries are part of the answer.",
+        chips = listOf(
+            Chip("Analytical", sub = "B-ORG", mark = ChipMark.RESULT),
+            Chip("Engine", sub = "I-ORG", mark = ChipMark.RESULT),
+            Chip("Ltd", sub = "O", mark = ChipMark.ACTIVE),
+        ),
+        chipsLabel = "clipped span — counts as a miss",
+        readout = "6 of 8 tokens right · 2 of 3 entities right",
+    )
+    return frames
+}
+
+// ── Retrieval-augmented generation ───────────────────────────────────────────
+
+private fun ragFrames(): List<TokenFrame> {
+    val query = "What is the refund window?"
+    val chunks = listOf(
+        "Refunds are accepted within 30 days of delivery." to 0.91f,
+        "Returns must include the original packaging." to 0.74f,
+        "Our warehouse ships orders within 2 business days." to 0.38f,
+        "The 2019 refund policy allowed 14 days." to 0.69f,
+    )
+    val frames = mutableListOf<TokenFrame>()
+
+    frames += TokenFrame(
+        status = "The question is about a private, changeable policy. A model's weights cannot be trusted for " +
+            "this: the answer was either never in the training data or has since changed.",
+        chips = query.split(" ").map { Chip(it) },
+        chipsLabel = "query",
+    )
+
+    frames += TokenFrame(
+        status = "The corpus was chunked into passages ahead of time and each chunk embedded into a vector. " +
+            "Chunk size and overlap are quietly the highest-leverage knobs here — cut mid-thought and the " +
+            "retrieved passage answers nothing.",
+        chips = chunks.map { Chip(it.first.take(22) + "…") },
+        chipsLabel = "indexed chunks",
+        readout = "one embedding per chunk, stored in an ANN index",
+    )
+
+    frames += TokenFrame(
+        status = "Embed the query and score every chunk by cosine similarity. Dense retrieval catches paraphrase " +
+            "— \"refund window\" matches \"within 30 days\" without sharing a word.",
+        bars = listOf(
+            BarRow("cosine similarity", chunks.map { it.second }, HeatColor,
+                captions = listOf("30-day", "packaging", "shipping", "2019 policy")),
+        ),
+        readout = "top-k retrieval · often blended with BM25 keyword scores",
+    )
+
+    val ranked = chunks.sortedByDescending { it.second }.take(3)
+    frames += TokenFrame(
+        status = "The shortlist is then reranked by a cross-encoder, which reads query and passage together " +
+            "instead of comparing two precomputed vectors. Slower per pair, much better at spotting that the " +
+            "2019 chunk is about a superseded policy.",
+        chips = ranked.mapIndexed { i, (text, score) ->
+            Chip(text.take(20) + "…", sub = "%.2f".format(score), mark = if (i == 0) ChipMark.RESULT else ChipMark.IDLE)
+        },
+        chipsLabel = "reranked",
+        readout = "bi-encoder for recall · cross-encoder for precision",
+    )
+
+    frames += TokenFrame(
+        status = "The prompt carries the passages plus an instruction to answer only from them and cite the " +
+            "source. Without that instruction the model happily blends retrieved text with remembered text.",
+        rows = listOf(
+            "system" to "Answer using ONLY the sources. Cite as [n].",
+            "[1]" to ranked[0].first,
+            "[2]" to ranked[1].first,
+            "question" to query,
+        ),
+        readout = "k · chunk_size must fit the context window",
+    )
+
+    frames += TokenFrame(
+        status = "Answer: \"Refunds are accepted within 30 days of delivery [1].\" The citation is what makes it " +
+            "checkable — and if the right passage had not been retrieved, no amount of generation quality could " +
+            "have recovered it. Retrieval quality caps answer quality.",
+        chips = "Refunds are accepted within 30 days of delivery [1]".split(" ").map { Chip(it, mark = ChipMark.RESULT) },
+        chipsLabel = "grounded answer",
+        readout = "update the index, not the weights",
+    )
+    return frames
+}
+
 private val tokenConfigs = mapOf(
+    "bpe" to TokenConfig(
+        intro = "Four merge rounds learned from a tiny corpus, then those same merges replayed to encode a word " +
+            "the corpus never contained.",
+        legend = listOf(
+            ChipActive to "Winning pair",
+            ChipResult to "Merged token",
+        ),
+        build = ::bpeFrames,
+    ),
+    "ner" to TokenConfig(
+        intro = "BIO tagging over one sentence: emissions from the encoder, why greedy per-token argmax produces " +
+            "illegal sequences, and what the CRF transition matrix fixes.",
+        legend = listOf(
+            ChipActive to "Ambiguous / wrong",
+            ChipResult to "Entity token",
+        ),
+        build = ::nerFrames,
+    ),
+    "rag" to TokenConfig(
+        intro = "One question through the whole pipeline: chunk, embed, retrieve, rerank, prompt, cite — " +
+            "including the retrieved chunk that is relevant but out of date.",
+        legend = listOf(
+            ChipActive to "Candidate",
+            ChipResult to "Used in answer",
+        ),
+        build = ::ragFrames,
+    ),
     "tokenization" to TokenConfig(
         intro = "From a raw string to integer ids. Watch the two words the vocabulary has never seen get broken into " +
             "pieces instead of becoming <unk>.",
