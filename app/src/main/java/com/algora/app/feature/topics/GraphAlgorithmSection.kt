@@ -1241,6 +1241,234 @@ private fun bayesNetworkFrames(): List<GraphAlgoFrame> {
 private fun GraphDefAllDone(def: GraphDef): Map<String, NodeMark> =
     def.ids.associateWith { NodeMark.DONE }
 
+// Two triangles hinged at C. Every degree is even (C is 4, the rest are 2), so an Eulerian circuit
+// exists — and the hinge is exactly where Hierholzer has to splice.
+private val eulerGraph = GraphDef(
+    nodes = listOf(
+        GNode("A", 0.10f, 0.18f),
+        GNode("B", 0.10f, 0.82f),
+        GNode("C", 0.50f, 0.50f),
+        GNode("D", 0.90f, 0.18f),
+        GNode("E", 0.90f, 0.82f),
+    ),
+    edges = listOf(
+        GEdge("A", "B"),
+        GEdge("B", "C"),
+        GEdge("C", "A"),
+        GEdge("C", "D"),
+        GEdge("D", "E"),
+        GEdge("E", "C"),
+    ),
+)
+
+// A Hamiltonian cycle exists (A-B-D-F-E-C-A) but alphabetical neighbour order walks into three dead
+// ends first, so the backtracking is real rather than decorative.
+private val hamiltonGraph = GraphDef(
+    nodes = listOf(
+        GNode("A", 0.06f, 0.50f),
+        GNode("B", 0.32f, 0.14f),
+        GNode("C", 0.32f, 0.86f),
+        GNode("D", 0.68f, 0.14f),
+        GNode("E", 0.68f, 0.86f),
+        GNode("F", 0.94f, 0.50f),
+    ),
+    edges = listOf(
+        GEdge("A", "B"),
+        GEdge("A", "C"),
+        GEdge("B", "C"),
+        GEdge("B", "D"),
+        GEdge("C", "E"),
+        GEdge("D", "E"),
+        GEdge("D", "F"),
+        GEdge("E", "F"),
+    ),
+)
+
+private fun undirectedAdjacency(def: GraphDef): Map<String, List<String>> =
+    def.ids.associateWith { id ->
+        def.edges.mapNotNull { e ->
+            when (id) {
+                e.from -> e.to
+                e.to -> e.from
+                else -> null
+            }
+        }.sorted()
+    }
+
+// The parity gate first, then Hierholzer: walk until stuck, then splice a sub-circuit in at the
+// vertex that still has unused edges. The splice is the algorithm, so it gets its own frames.
+private fun eulerianFrames(): List<GraphAlgoFrame> {
+    val def = eulerGraph
+    val adj = undirectedAdjacency(def)
+    val degree = adj.mapValues { it.value.size }
+    val frames = mutableListOf<GraphAlgoFrame>()
+
+    val odd = degree.filterValues { it % 2 == 1 }.keys
+    frames += GraphAlgoFrame(
+        status = "Degrees first — that is the whole existence test. Badges are deg(v): C is 4, every other vertex is 2.",
+        badges = degree.mapValues { it.value.toString() },
+    )
+    frames += GraphAlgoFrame(
+        status = if (odd.isEmpty()) {
+            "Zero odd-degree vertices, and all six edges sit in one component ⇒ an Eulerian circuit exists. " +
+                "Two odd vertices would have forced an open path between them; four, as in Königsberg, and there is nothing to find."
+        } else {
+            "${odd.size} odd-degree vertices: ${odd.sorted().joinToString(", ")}."
+        },
+        nodeMarks = def.ids.associateWith { NodeMark.DONE },
+        badges = degree.mapValues { if (it.value % 2 == 0) "even" else "odd" },
+    )
+
+    val edgeIndexOf = HashMap<Pair<String, String>, Int>()
+    def.edges.forEachIndexed { i, e ->
+        edgeIndexOf[e.from to e.to] = i
+        edgeIndexOf[e.to to e.from] = i
+    }
+    val used = BooleanArray(def.edges.size)
+
+    // Walk greedily from [from], consuming unused edges, until no edge leaves the current vertex.
+    fun walkUntilStuck(from: String, circuitLabel: String): List<String> {
+        val walk = mutableListOf(from)
+        var at = from
+        while (true) {
+            val next = adj.getValue(at).firstOrNull { !used[edgeIndexOf.getValue(at to it)] } ?: break
+            val id = edgeIndexOf.getValue(at to next)
+            used[id] = true
+            val from = at
+            walk += next
+            at = next
+            frames += GraphAlgoFrame(
+                status = "$circuitLabel: consume $from–$next — walk is now ${walk.joinToString(" → ")}.",
+                nodeMarks = walk.associateWith { NodeMark.DONE } + (at to NodeMark.ACTIVE),
+                edgeMarks = used.indices.filter { used[it] }.associateWith { EdgeMark.ACCEPTED } + (id to EdgeMark.ACTIVE),
+            )
+        }
+        frames += GraphAlgoFrame(
+            status = "Stuck at $at. With every degree even you can only ever get stuck where you started, so " +
+                "${walk.joinToString(" → ")} is a closed circuit — it just is not all of the graph yet.",
+            nodeMarks = walk.associateWith { NodeMark.DONE },
+            edgeMarks = used.indices.filter { used[it] }.associateWith { EdgeMark.ACCEPTED },
+        )
+        return walk
+    }
+
+    var circuit = walkUntilStuck("A", "First circuit")
+
+    while (used.any { !it }) {
+        val hinge = circuit.first { v -> adj.getValue(v).any { !used[edgeIndexOf.getValue(v to it)] } }
+        frames += GraphAlgoFrame(
+            status = "${used.count { !it }} edge(s) unused. Scan the circuit for a vertex that still has one: $hinge does. " +
+                "Run the same walk from there and splice the result in.",
+            nodeMarks = circuit.associateWith { NodeMark.DONE } + (hinge to NodeMark.FRONTIER),
+            edgeMarks = used.indices.filter { used[it] }.associateWith { EdgeMark.ACCEPTED },
+        )
+        val sub = walkUntilStuck(hinge, "Sub-circuit from $hinge")
+        val at = circuit.indexOf(hinge)
+        circuit = circuit.subList(0, at) + sub + circuit.subList(at + 1, circuit.size)
+        frames += GraphAlgoFrame(
+            status = "Splice at $hinge: ${circuit.joinToString(" → ")}. Splicing is O(1) with a linked structure, which " +
+                "is why Hierholzer is O(V + E) while Fleury's bridge test costs O(E²).",
+            nodeMarks = def.ids.associateWith { NodeMark.DONE },
+            edgeMarks = used.indices.filter { used[it] }.associateWith { EdgeMark.ACCEPTED },
+        )
+    }
+
+    frames += GraphAlgoFrame(
+        status = "Eulerian circuit: ${circuit.joinToString(" → ")}. All ${def.edges.size} edges used exactly once, " +
+            "and the walk closes where it began.",
+        nodeMarks = def.ids.associateWith { NodeMark.DONE },
+        edgeMarks = def.edges.indices.associateWith { EdgeMark.ACCEPTED },
+    )
+    return frames
+}
+
+// Backtracking for a Hamiltonian circuit, one frame per extension and per undo.
+private fun hamiltonianFrames(): List<GraphAlgoFrame> {
+    val def = hamiltonGraph
+    val adj = undirectedAdjacency(def)
+    val frames = mutableListOf<GraphAlgoFrame>()
+    val start = "A"
+
+    fun edgeIndicesAlong(path: List<String>): Map<Int, EdgeMark> =
+        path.zipWithNext().mapNotNull { (u, v) ->
+            def.edges.withIndex()
+                .firstOrNull { (_, e) -> (e.from == u && e.to == v) || (e.from == v && e.to == u) }
+                ?.index
+        }.associateWith { EdgeMark.ACCEPTED }
+
+    frames += GraphAlgoFrame(
+        status = "Degrees are 2, 3, 3, 3, 3, 2 — and unlike the Eulerian case that tells you nothing. Dirac's condition " +
+            "wants every degree ≥ 3 and fails here, yet a Hamiltonian circuit does exist. Only search settles it.",
+        badges = adj.mapValues { it.value.size.toString() },
+    )
+
+    val path = mutableListOf(start)
+    val visited = mutableSetOf(start)
+    var deadEnds = 0
+    var solution: List<String>? = null
+
+    fun extend(): Boolean {
+        if (path.size == def.ids.size) {
+            val closes = start in adj.getValue(path.last())
+            frames += GraphAlgoFrame(
+                status = if (closes) {
+                    "All ${def.ids.size} vertices placed and ${path.last()}–$start is an edge — the circuit closes."
+                } else {
+                    "All ${def.ids.size} vertices placed as ${path.joinToString(" → ")}, but ${path.last()} has no edge back to $start. " +
+                        "That is a Hamiltonian path and not a circuit — backtrack."
+                },
+                nodeMarks = path.associateWith { if (closes) NodeMark.DONE else NodeMark.UPDATED },
+                badges = path.withIndex().associate { (i, id) -> id to "#${i + 1}" },
+                edgeMarks = edgeIndicesAlong(if (closes) path + start else path),
+            )
+            if (!closes) deadEnds++
+            return closes
+        }
+        val candidates = adj.getValue(path.last()).filter { it !in visited }
+        if (candidates.isEmpty()) {
+            deadEnds++
+            frames += GraphAlgoFrame(
+                status = "${path.last()} has no unvisited neighbour and only ${path.size} of ${def.ids.size} vertices are placed. " +
+                    "Dead end — undo the last step.",
+                nodeMarks = path.associateWith { NodeMark.FRONTIER } + (path.last() to NodeMark.ACTIVE),
+                badges = path.withIndex().associate { (i, id) -> id to "#${i + 1}" },
+                edgeMarks = edgeIndicesAlong(path),
+            )
+            return false
+        }
+        for (next in candidates) {
+            path += next
+            visited += next
+            frames += GraphAlgoFrame(
+                status = "Extend to $next: ${path.joinToString(" → ")}.",
+                nodeMarks = path.associateWith { NodeMark.FRONTIER } + (next to NodeMark.ACTIVE),
+                badges = path.withIndex().associate { (i, id) -> id to "#${i + 1}" },
+                edgeMarks = edgeIndicesAlong(path),
+            )
+            if (extend()) return true
+            path.removeAt(path.lastIndex)
+            visited -= next
+        }
+        return false
+    }
+
+    if (extend()) solution = path.toList()
+
+    val found = solution
+    frames += GraphAlgoFrame(
+        status = if (found == null) {
+            "No Hamiltonian circuit on this graph."
+        } else {
+            "Circuit ${(found + start).joinToString(" → ")}, found after $deadEnds dead end(s). Six vertices is small; " +
+                "the same search is O(n!) and Held-Karp's bitmask DP is what pushes it to about twenty."
+        },
+        nodeMarks = def.ids.associateWith { NodeMark.DONE },
+        badges = (found ?: path).withIndex().associate { (i, id) -> id to "#${i + 1}" },
+        edgeMarks = edgeIndicesAlong((found ?: path) + start),
+    )
+    return frames
+}
+
 private val graphAlgoConfigs = mapOf(
     "bayesian_networks" to GraphAlgoConfig(
         intro = "The sprinkler network: how the missing edges buy the parameter saving, and the two ways conditioning changes what is independent of what.",
@@ -1338,10 +1566,48 @@ private val graphAlgoConfigs = mapOf(
         ),
         build = ::graphVariantsFrames,
     ),
+    "eulerian_path" to GraphAlgoConfig(
+        intro = "Two triangles hinged at C. Badges start as degrees, because the degrees decide existence outright — " +
+            "then Hierholzer walks until stuck and splices the leftover circuit in at the hinge.",
+        def = eulerGraph,
+        legend = listOf(
+            NodeMarkColors.getValue(NodeMark.ACTIVE) to "Current vertex",
+            NodeMarkColors.getValue(NodeMark.FRONTIER) to "Splice point",
+            EdgeMarkColors.getValue(EdgeMark.ACCEPTED) to "Edge used",
+        ),
+        build = ::eulerianFrames,
+    ),
+    "hamiltonian_path" to GraphAlgoConfig(
+        intro = "The same question about vertices instead of edges, and no counting argument to settle it. Badges are " +
+            "position in the path; the frames include every dead end the search has to undo before the circuit appears.",
+        def = hamiltonGraph,
+        legend = listOf(
+            NodeMarkColors.getValue(NodeMark.ACTIVE) to "Just extended",
+            NodeMarkColors.getValue(NodeMark.FRONTIER) to "On the path",
+            NodeMarkColors.getValue(NodeMark.UPDATED) to "Path but no closing edge",
+        ),
+        build = ::hamiltonianFrames,
+    ),
 )
 
 private fun graphAlgoConfigFor(topicId: String): GraphAlgoConfig =
     graphAlgoConfigs[topicId] ?: graphAlgoConfigs.getValue("bellman_ford")
+
+internal val graphAlgoTopicIds: Set<String> get() = graphAlgoConfigs.keys
+
+// Frames name nodes and edges by id/index, so a typo resolves to nothing and just renders blank.
+internal fun graphAlgoFrameCount(topicId: String): Int {
+    val config = graphAlgoConfigFor(topicId)
+    val frames = config.build()
+    val ids = config.def.ids.toSet()
+    frames.forEach { frame ->
+        val unknown = (frame.nodeMarks.keys + frame.badges.keys + frame.groups.keys) - ids
+        require(unknown.isEmpty()) { "$topicId marks nodes not in its graph: $unknown" }
+        val badEdge = (frame.edgeMarks.keys + frame.hiddenEdges).filter { it !in config.def.edges.indices }
+        require(badEdge.isEmpty()) { "$topicId marks edge indices outside its edge list: $badEdge" }
+    }
+    return frames.size
+}
 
 // ── UI ───────────────────────────────────────────────────────────────────────
 

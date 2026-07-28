@@ -629,6 +629,196 @@ private fun mergeIntervalsFrames(): List<WalkFrame> {
     return frames
 }
 
+// Earliest-finish-first, then the same data under earliest-start-first, then the duration trap.
+// The point of the topic is that three plausible sort keys are wrong, so the frames run them.
+private fun activitySelectionFrames(): List<WalkFrame> {
+    val raw = listOf(1 to 4, 3 to 5, 0 to 6, 5 to 7, 3 to 9, 5 to 9, 6 to 10, 8 to 11)
+    val frames = mutableListOf<WalkFrame>()
+
+    fun label(a: Pair<Int, Int>) = "${a.first}–${a.second}"
+
+    // One greedy sweep under an arbitrary sort key, emitting a frame per decision.
+    fun sweep(order: List<Pair<Int, Int>>, keyName: String, emitFrames: Boolean): List<Pair<Int, Int>> {
+        val taken = mutableListOf<Pair<Int, Int>>()
+        var lastFinish = Int.MIN_VALUE
+        order.forEachIndexed { index, activity ->
+            val fits = activity.first >= lastFinish
+            if (fits) {
+                taken += activity
+                lastFinish = activity.second
+            }
+            if (emitFrames) {
+                frames += WalkFrame(
+                    status = if (fits) {
+                        "${label(activity)} starts at ${activity.first} ≥ last finish " +
+                            "${if (taken.size == 1) "(nothing taken yet)" else "${taken[taken.size - 2].second}"} — take it. Last finish is now ${activity.second}."
+                    } else {
+                        "${label(activity)} starts at ${activity.first}, before the last finish $lastFinish — it overlaps, so skip it and never look at it again."
+                    },
+                    cells = order.mapIndexed { i, a ->
+                        CellView(
+                            label(a),
+                            when {
+                                i == index -> if (fits) CellMark.DONE else CellMark.DIM
+                                a in taken -> CellMark.DONE
+                                i < index -> CellMark.DIM
+                                else -> CellMark.IDLE
+                            },
+                        )
+                    },
+                    pointers = mapOf(index to keyName),
+                    intervals = order.map {
+                        IntervalView(it.first, it.second, if (it in taken) CellMark.DONE else if (it == activity) CellMark.ACTIVE else CellMark.IDLE)
+                    },
+                    readout = "taken: ${taken.size}",
+                )
+            }
+        }
+        return taken
+    }
+
+    frames += WalkFrame(
+        status = "Eight activities on one resource. The bar chart is the overlap; the question is how many of them can run.",
+        cells = raw.map { CellView(label(it), CellMark.IDLE) },
+        intervals = raw.map { IntervalView(it.first, it.second, CellMark.IDLE) },
+    )
+
+    val byFinish = raw.sortedBy { it.second }
+    frames += WalkFrame(
+        status = "Sort by finish time: ${byFinish.joinToString(", ") { label(it) }}. Every decision from here is a single comparison against one number.",
+        cells = byFinish.map { CellView(label(it), CellMark.WINDOW) },
+        intervals = byFinish.map { IntervalView(it.first, it.second, CellMark.WINDOW) },
+    )
+
+    val chosen = sweep(byFinish, "f", emitFrames = true)
+    frames += WalkFrame(
+        status = "${chosen.size} activities selected: ${chosen.joinToString(", ") { label(it) }}. One pass, one variable, and this is provably a maximum-size set.",
+        cells = chosen.map { CellView(label(it), CellMark.RESULT) },
+        intervals = raw.map { IntervalView(it.first, it.second, if (it in chosen) CellMark.RESULT else CellMark.DIM) },
+        readout = "optimum = ${chosen.size}",
+    )
+
+    // Same eight activities, sorted by start instead. The frames are suppressed — only the count matters.
+    val byStart = raw.sortedBy { it.first }
+    val startAnswer = sweep(byStart, "s", emitFrames = false)
+    frames += WalkFrame(
+        status = "Earliest start first on the identical set takes ${startAnswer.joinToString(", ") { label(it) }} — " +
+            "${startAnswer.size} activities, not ${chosen.size}. 0–6 wins the sort and blocks three shorter activities behind it.",
+        cells = byStart.map { CellView(label(it), if (it in startAnswer) CellMark.ACTIVE else CellMark.DIM) },
+        intervals = byStart.map { IntervalView(it.first, it.second, if (it in startAnswer) CellMark.ACTIVE else CellMark.DIM) },
+        readout = "earliest start = ${startAnswer.size}",
+    )
+
+    // Shortest duration needs its own three-activity counterexample; it happens to tie on the set above.
+    val trap = listOf(0 to 5, 4 to 6, 5 to 10)
+    val byDuration = trap.sortedBy { it.second - it.first }
+    val durationAnswer = sweep(byDuration, "d", emitFrames = false)
+    frames += WalkFrame(
+        status = "Shortest duration first, on a set built to break it: 4–6 has length 2, wins the sort, and conflicts with " +
+            "both 0–5 and 5–10. It selects ${durationAnswer.size}; finish-time order selects 2.",
+        cells = byDuration.map { CellView(label(it), if (it in durationAnswer) CellMark.ACTIVE else CellMark.DIM) },
+        intervals = byDuration.map { IntervalView(it.first, it.second, if (it in durationAnswer) CellMark.ACTIVE else CellMark.DIM) },
+        readout = "shortest duration = ${durationAnswer.size} vs 2",
+    )
+    return frames
+}
+
+// Greedy and DP on the same {1,3,4} / target 6 instance, so the two-coin answer greed misses is
+// visible rather than asserted.
+private fun coinChangeGreedyFrames(): List<WalkFrame> {
+    val coins = listOf(4, 3, 1)          // descending — greedy's consumption order
+    val target = 6
+    val frames = mutableListOf<WalkFrame>()
+
+    // The row is the amount axis 0..6; the pointer is what greed still has left to make.
+    fun amountRow(remaining: Int) = (0..target).map { a ->
+        CellView(
+            a.toString(),
+            when {
+                a == remaining -> CellMark.ACTIVE
+                a > remaining -> CellMark.DIM
+                else -> CellMark.IDLE
+            },
+        )
+    }
+
+    frames += WalkFrame(
+        status = "On {1, 5, 10, 25}, greedy change is correct: 68¢ becomes 25+25+10+5+1+1+1 and no shorter answer exists. " +
+            "That is a fact about the coins, not about the algorithm.",
+        cells = (0..target).map { CellView(it.toString(), CellMark.IDLE) },
+        readout = "now try {1, 3, 4} at 6",
+    )
+
+    var remaining = target
+    val taken = mutableListOf<Int>()
+    frames += WalkFrame(
+        status = "Coins {1, 3, 4}, target 6. Greedy takes the largest coin that fits, repeatedly.",
+        cells = amountRow(remaining),
+        pointers = mapOf(remaining to "left"),
+    )
+    while (remaining > 0) {
+        val before = remaining
+        val coin = coins.first { it <= remaining }
+        taken += coin
+        remaining -= coin
+        frames += WalkFrame(
+            status = "Largest coin that fits in $before is $coin — take it. Remaining $remaining, coins used ${taken.size}.",
+            cells = amountRow(remaining),
+            pointers = mapOf(remaining to "left"),
+            readout = "greedy: ${taken.joinToString(" + ")} = ${taken.size} coins",
+        )
+    }
+    val greedyCount = taken.size
+
+    // Same instance, tabulated.
+    val unreachable = target + 1
+    val dp = IntArray(target + 1) { unreachable }
+    dp[0] = 0
+    fun dpRow(upTo: Int, active: Int? = null) = (0..target).map { a ->
+        CellView(
+            if (dp[a] == unreachable) "∞" else dp[a].toString(),
+            when {
+                a == active -> CellMark.ACTIVE
+                a <= upTo -> CellMark.WINDOW
+                else -> CellMark.DIM
+            },
+        )
+    }
+
+    frames += WalkFrame(
+        status = "Greed answered $greedyCount coins. Now tabulate: dp[a] is the fewest coins that make exactly a.",
+        cells = (0..target).map { CellView(it.toString(), CellMark.IDLE) },
+        aux = dpRow(0),
+        auxLabel = "dp (fewest coins)",
+    )
+    for (a in 1..target) {
+        var bestCoin = 0
+        for (coin in coins) {
+            if (coin <= a && dp[a - coin] + 1 < dp[a]) {
+                dp[a] = dp[a - coin] + 1
+                bestCoin = coin
+            }
+        }
+        frames += WalkFrame(
+            status = "dp[$a] = 1 + dp[${a - bestCoin}] = ${dp[a]}, taking a $bestCoin.",
+            cells = (0..target).map { CellView(it.toString(), if (it == a) CellMark.ACTIVE else if (it < a) CellMark.WINDOW else CellMark.IDLE) },
+            pointers = mapOf(a to "a"),
+            aux = dpRow(a - 1, active = a),
+            auxLabel = "dp (fewest coins)",
+        )
+    }
+
+    frames += WalkFrame(
+        status = "dp[6] = ${dp[target]} — the split 3 + 3. Greed took ${taken.joinToString(" + ")}, $greedyCount coins, because taking the 4 " +
+            "left a remainder that only 1s can fill. The rule never had to be wrong; these denominations are simply not canonical.",
+        cells = (0..target).map { CellView(it.toString(), if (it == target) CellMark.RESULT else CellMark.DIM) },
+        aux = dpRow(target, active = target),
+        auxLabel = "dp (fewest coins)",
+        readout = "greedy $greedyCount coins · optimal ${dp[target]} coins",
+    )
+    return frames
+}
+
 private fun longestUniqueWindowFrames(): List<WalkFrame> {
     val s = "abcabcbb".toList()
     val frames = mutableListOf<WalkFrame>()
@@ -2231,10 +2421,36 @@ private val walkConfigs = mapOf(
         ),
         build = ::fractionalKnapsackFrames,
     ),
+    "activity_selection" to WalkConfig(
+        intro = "Sort by finish time, sweep once, take anything that starts after the last thing taken. The last two " +
+            "frames run earliest-start and shortest-duration on the same idea so the wrong sort keys are seen losing.",
+        legend = listOf(
+            ActiveFill to "Considering",
+            DoneFill to "Selected",
+            ResultFill to "Final schedule",
+        ),
+        build = ::activitySelectionFrames,
+    ),
+    "coin_change_greedy" to WalkConfig(
+        intro = "Greedy change-making and the DP table, on the same {1, 3, 4} coins and the same target of 6. Greed " +
+            "commits to the 4 and pays three coins; the table finds 3 + 3.",
+        legend = listOf(
+            ActiveFill to "Remaining amount",
+            WindowFill to "Tabulated",
+            ResultFill to "Answer",
+        ),
+        build = ::coinChangeGreedyFrames,
+    ),
 )
 
 private fun walkConfigFor(topicId: String): WalkConfig =
     walkConfigs[topicId] ?: walkConfigs.getValue("two_pointer")
+
+// Frames are precomputed and Compose-free, so SimulationFrameTest can run every configured builder
+// on the JVM. Without this a builder that throws only surfaces by opening the topic in the app.
+internal val arrayWalkTopicIds: Set<String> get() = walkConfigs.keys
+
+internal fun arrayWalkFrameCount(topicId: String): Int = walkConfigFor(topicId).build().size
 
 // ── UI ───────────────────────────────────────────────────────────────────────
 

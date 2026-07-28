@@ -195,6 +195,169 @@ private fun dStarFrames(): List<PathFrame> {
     return frames
 }
 
+// UCS's separation from Dijkstra is not the relaxation — it is the goal test and the lazy successor
+// function. To make the goal test visible the two direct approaches to the goal carry a toll, so the
+// goal gets generated at a high cost long before the cheap route around reaches it.
+private val tolledEdges = setOf(key(2, 6) to GOAL, key(3, 7) to GOAL)
+private const val TOLL = 9
+
+private fun stepCost(from: Int, to: Int) = if ((from to to) in tolledEdges) TOLL else 1
+
+private fun ucsFrames(): List<PathFrame> {
+    val walls = baseWalls
+    val frames = mutableListOf<PathFrame>()
+    val dist = HashMap<Int, Int>()
+    val cameFrom = HashMap<Int, Int>()
+    val visited = linkedSetOf<Int>()
+    val open = linkedSetOf(START)
+    dist[START] = 0
+    var goalFirstSeenAt: Int? = null
+
+    frames += PathFrame(
+        emptySet(), setOf(START), null, emptySet(), walls,
+        "Uniform cost search: f = g, nothing else. The two cells that touch the goal from the left and below charge a " +
+            "toll of $TOLL; every other move costs 1.",
+    )
+
+    while (open.isNotEmpty()) {
+        val current = open.minByOrNull { dist.getValue(it) }!!
+        open.remove(current)
+
+        // Goal test on POP, not on generation — this is the line the whole topic turns on.
+        if (current == GOAL) {
+            val path = linkedSetOf(GOAL)
+            var node = GOAL
+            while (node != START) {
+                node = cameFrom.getValue(node)
+                path.add(node)
+            }
+            frames += PathFrame(
+                visited.toSet(), open.toSet(), current, path, walls,
+                "Goal popped at cost ${dist.getValue(GOAL)} after ${visited.size} expansions. It was first generated at cost " +
+                    "${goalFirstSeenAt ?: dist.getValue(GOAL)} — testing at generation time would have returned that path and called it done.",
+            )
+            return frames
+        }
+        visited.add(current)
+
+        val generated = mutableListOf<String>()
+        neighbours(current, walls).forEach { next ->
+            val candidate = dist.getValue(current) + stepCost(current, next)
+            if (candidate < (dist[next] ?: Int.MAX_VALUE)) {
+                val improving = dist.containsKey(next)
+                dist[next] = candidate
+                cameFrom[next] = current
+                if (next !in visited) open.add(next)
+                if (next == GOAL && goalFirstSeenAt == null) goalFirstSeenAt = candidate
+                generated += if (improving) "lowered (${rowOf(next)}, ${colOf(next)}) to $candidate" else "(${rowOf(next)}, ${colOf(next)}) at $candidate"
+            }
+        }
+
+        frames += PathFrame(
+            visited.toSet(), open.toSet(), current, emptySet(), walls,
+            "Pop (${rowOf(current)}, ${colOf(current)}) at cost ${dist.getValue(current)} — that cost is now final. " +
+                if (generated.isEmpty()) "Its successors are all settled or already cheaper." else "Successors: ${generated.joinToString("; ")}.",
+        )
+    }
+    frames += PathFrame(visited.toSet(), emptySet(), null, emptySet(), walls, "No path exists.")
+    return frames
+}
+
+// IDA*: f-bounded DFS, restarted at the minimum overshoot. Frames are emitted per expansion only —
+// pruned branches are folded into the parent's status, which is also how a reader should think of them.
+private fun idaStarFrames(): List<PathFrame> {
+    val walls = baseWalls
+    val frames = mutableListOf<PathFrame>()
+    val h = { k: Int -> manhattan(k, GOAL) }
+    var threshold = h(START)
+    var iteration = 0
+    var totalExpansions = 0
+
+    frames += PathFrame(
+        emptySet(), emptySet(), START, emptySet(), walls,
+        "IDA* keeps no frontier at all — only the current path on the recursion stack. The first threshold is " +
+            "h(start) = $threshold, the cheapest the answer could possibly be.",
+    )
+
+    while (iteration < 12) {
+        iteration++
+        val touched = linkedSetOf<Int>()
+        val path = mutableListOf(START)
+        var nextThreshold = Int.MAX_VALUE
+        var expansions = 0
+
+        frames += PathFrame(
+            emptySet(), emptySet(), START, setOf(START), walls,
+            "Iteration $iteration: depth-first search, abandoning any cell with f = g + h greater than $threshold.",
+        )
+
+        fun search(g: Int): Boolean {
+            val node = path.last()
+            touched.add(node)
+            expansions++
+            totalExpansions++
+
+            if (node == GOAL) {
+                frames += PathFrame(
+                    touched.toSet(), emptySet(), node, path.toSet(), walls,
+                    "Goal reached at g = $g under threshold $threshold. Manhattan distance never overestimates, so this " +
+                        "first goal is already optimal — $totalExpansions expansions in total across $iteration iteration(s).",
+                )
+                return true
+            }
+
+            val pruned = mutableListOf<Int>()
+            val open = mutableListOf<Int>()
+            for (next in neighbours(node, walls)) {
+                if (next in path) continue          // the only cycle check a stack affords
+                val f = g + 1 + h(next)
+                if (f > threshold) {
+                    pruned += f
+                    nextThreshold = minOf(nextThreshold, f)
+                } else {
+                    open += next
+                }
+            }
+
+            frames += PathFrame(
+                touched.toSet(), open.toSet(), node, path.toSet(), walls,
+                "At (${rowOf(node)}, ${colOf(node)}): g = $g, h = ${h(node)}, f = ${g + h(node)}. " +
+                    if (pruned.isEmpty()) "All ${open.size} successor(s) fit under the threshold."
+                    else "${pruned.size} successor(s) pruned at f = ${pruned.distinct().sorted().joinToString("/")}; ${open.size} left to try.",
+            )
+
+            for (next in open) {
+                path += next
+                if (search(g + 1)) return true
+                path.removeAt(path.lastIndex)
+            }
+
+            if (open.isEmpty()) {
+                frames += PathFrame(
+                    touched.toSet(), emptySet(), node, path.toSet(), walls,
+                    "Dead end at (${rowOf(node)}, ${colOf(node)}) — every successor is either a wall, already on the path, " +
+                        "or over budget. Pop the stack.",
+                )
+            }
+            return false
+        }
+
+        if (search(0)) return frames
+
+        if (nextThreshold == Int.MAX_VALUE) {
+            frames += PathFrame(touched.toSet(), emptySet(), null, emptySet(), walls, "Nothing left to raise the threshold to — no path exists.")
+            return frames
+        }
+        frames += PathFrame(
+            touched.toSet(), emptySet(), null, emptySet(), walls,
+            "Iteration $iteration failed after $expansions expansions. The smallest f it had to prune was $nextThreshold, so that " +
+                "becomes the next threshold — never a guess, and never a fixed increment. Everything so far is discarded and re-expanded.",
+        )
+        threshold = nextThreshold
+    }
+    return frames
+}
+
 private val pathConfigs = mapOf(
     "dijkstras_algorithm" to PathConfig(
         intro = "Dijkstra on a walled grid, every step costing 1. With no sense of direction it expands in rings until the goal happens to fall inside one.",
@@ -208,10 +371,32 @@ private val pathConfigs = mapOf(
         intro = "D* is A* for a map that changes underneath you: plan, start driving, discover an obstacle, then repair the affected part of the plan instead of starting over.",
         build = ::dStarFrames,
     ),
+    "uniform_cost_search" to PathConfig(
+        intro = "UCS is Dijkstra's relaxation with a goal test bolted on and the graph generated as it goes. The two " +
+            "approaches to the goal charge a toll, so the goal is generated cheaply-looking-expensive long before the " +
+            "real answer arrives — which is exactly why the test happens on pop.",
+        build = ::ucsFrames,
+    ),
+    "ida_star" to PathConfig(
+        intro = "The same map and the same Manhattan heuristic as A*, but no frontier: a depth-first search bounded by " +
+            "f = g + h, restarted at the smallest f it had to prune. Watch the threshold rise and the search start over.",
+        build = ::idaStarFrames,
+    ),
 )
 
 private fun pathConfigFor(topicId: String): PathConfig =
     pathConfigs[topicId] ?: pathConfigs.getValue("a_star_search")
+
+internal val pathfindingTopicIds: Set<String> get() = pathConfigs.keys
+
+internal fun pathfindingFrameCount(topicId: String): Int {
+    val frames = pathConfigFor(topicId).build()
+    frames.forEach { frame ->
+        val cells = frame.visited + frame.frontier + frame.path + frame.walls + listOfNotNull(frame.current)
+        require(cells.all { it in 0 until GRID_ROWS * GRID_COLS }) { "$topicId references a cell outside the grid" }
+    }
+    return frames.size
+}
 
 @Composable
 fun PathfindingGridSection(topicId: String) {

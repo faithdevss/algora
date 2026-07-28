@@ -498,6 +498,69 @@ private fun bitmaskDpFrames(): List<DpFrame> {
     return b.frames
 }
 
+private val partitionItems = listOf(1, 5, 11, 5)
+private const val PARTITION_TOTAL = 22
+private const val PARTITION_HALF = PARTITION_TOTAL / 2
+
+// Partition reduces to subset-sum at half the total, so the table is the subset-sum table with the
+// target derived rather than given. The status text carries the reduction, not just the recurrence.
+private fun partitionFrames(): List<DpFrame> {
+    val target = PARTITION_HALF
+    val b = DpBuilder(rows = partitionItems.size + 1, cols = target + 1)
+    val dp = Array(partitionItems.size + 1) { BooleanArray(target + 1) }
+
+    dp[0][0] = true
+    b.fill(0, 0, "T", "Total is $PARTITION_TOTAL — even, so a split is not ruled out. Each half must sum to $target. dp[0][0] = true: the empty subset makes 0.")
+    for (t in 1..target) {
+        b.fill(0, t, "·", "dp[0][$t] = false — nothing chosen yet, so $t is out of reach.")
+    }
+
+    for (i in 1..partitionItems.size) {
+        val item = partitionItems[i - 1]
+        for (t in 0..target) {
+            val skip = dp[i - 1][t]
+            val take = t >= item && dp[i - 1][t - item]
+            dp[i][t] = skip || take
+            val status = when {
+                take && skip -> "dp[$i][$t]: reachable both ways — without the $item, or by taking it on top of ${t - item}."
+                take -> "dp[$i][$t] = true by taking the $item: ${t - item} was already reachable."
+                skip -> "dp[$i][$t] = true without the $item — the earlier items already reach $t."
+                else -> "dp[$i][$t] = false: $t is unreachable from the first $i item(s)."
+            }
+            b.fill(i, t, if (dp[i][t]) "T" else "·", status)
+        }
+    }
+
+    val chosen = mutableListOf<Int>()
+    val path = mutableListOf<Int>()
+    var t = target
+    for (i in partitionItems.size downTo 1) {
+        path += b.key(i, t)
+        if (!dp[i - 1][t]) {
+            chosen += partitionItems[i - 1]
+            t -= partitionItems[i - 1]
+        }
+    }
+    path += b.key(0, t)
+    val first = chosen.reversed()
+    val second = partitionItems.toMutableList().also { rest -> first.forEach { rest.remove(it) } }
+
+    b.trace(path) { cell ->
+        val r = cell / (target + 1)
+        val c = cell % (target + 1)
+        if (r == 0) {
+            "Split found: {${first.joinToString(", ")}} = $target and {${second.joinToString(", ")}} = $target. " +
+                "The table is O(n·T/2) cells — pseudo-polynomial, which is why this stays NP-complete."
+        } else {
+            "At dp[$r][$c]: " + (
+                if (!dp[r - 1][c]) "unreachable without the ${partitionItems[r - 1]}, so it goes in the first half."
+                else "still reachable without the ${partitionItems[r - 1]}, so it goes in the second half."
+                )
+        }
+    }
+    return b.frames
+}
+
 private val dpConfigs = mapOf(
     "fibonacci_dp" to DpConfig(
         rows = 1, cols = 10,
@@ -579,10 +642,33 @@ private val dpConfigs = mapOf(
             "the traceback recovers which items were actually chosen.",
         build = ::subsetSumFrames,
     ),
+    "partition_problem" to DpConfig(
+        rows = partitionItems.size + 1, cols = PARTITION_HALF + 1,
+        rowHeader = { if (it == 0) "ε" else partitionItems[it - 1].toString() },
+        colHeader = { it.toString() },
+        corner = "item",
+        intro = "Can {1, 5, 11, 5} be split into two equal halves? The total is 22, so the question becomes whether " +
+            "any subset reaches exactly 11 — subset-sum with the target derived from the input rather than given.",
+        build = ::partitionFrames,
+    ),
 )
 
 private fun dpConfigFor(topicId: String): DpConfig =
     dpConfigs[topicId] ?: dpConfigs.getValue("fibonacci_dp")
+
+internal val dpGridTopicIds: Set<String> get() = dpConfigs.keys
+
+// Also checks the declared table shape against what the builder actually wrote — a cols mismatch
+// silently reshapes every cell key, which is invisible until the grid renders wrong.
+internal fun dpGridFrameCount(topicId: String): Int {
+    val config = dpConfigFor(topicId)
+    val frames = config.build()
+    val maxKey = frames.flatMap { it.values.keys }.maxOrNull() ?: 0
+    require(maxKey < config.rows * config.cols) {
+        "$topicId writes cell key $maxKey, outside a ${config.rows}×${config.cols} table"
+    }
+    return frames.size
+}
 
 @Composable
 fun DpGridSection(topicId: String) {

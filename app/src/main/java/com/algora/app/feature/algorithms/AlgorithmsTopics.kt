@@ -77,6 +77,8 @@ private val greedyTopics = listOf(
     topic("prims_mst", "Prim's MST", greedy, "Grows a minimum spanning tree from a starting node.", isPremium = true),
     topic("dijkstras_algorithm", "Dijkstra's Algorithm", greedy, "Greedy shortest paths from a single source.", isPremium = true),
     topic("job_sequencing", "Job Sequencing with Deadlines", greedy, "Greedy scheduling to maximize completed jobs.", isPremium = true),
+    topic("activity_selection", "Activity Selection", greedy, "Earliest-finish-first scheduling of non-overlapping intervals.", isPremium = true),
+    topic("coin_change_greedy", "Coin Change (Greedy)", greedy, "Largest coin first — and the coin systems where that is wrong.", isPremium = true),
 )
 
 private val dpTopics = listOf(
@@ -90,6 +92,7 @@ private val dpTopics = listOf(
     topic("rod_cutting", "Rod Cutting", dp, "Optimal way to cut a rod to maximize revenue.", isPremium = true),
     topic("bitmask_dp", "Bitmask DP", dp, "Uses a subset bitmask as the DP state — the classic TSP formulation.", isPremium = true),
     topic("tree_dp", "Tree DP", dp, "Combines children's answers into a parent's during a post-order pass.", isPremium = true),
+    topic("partition_problem", "Partition Problem", dp, "Splits a set into two halves of equal sum — subset-sum on half the total.", isPremium = true),
 )
 
 private val graphAlgoTopics = listOf(
@@ -103,11 +106,15 @@ private val graphAlgoTopics = listOf(
     topic("max_flow", "Max Flow (Ford-Fulkerson)", graphAlgo, "Pushes augmenting paths until the network saturates.", isPremium = true),
     topic("articulation_points", "Articulation Points & Bridges", graphAlgo, "Finds the vertices and edges whose removal disconnects a graph.", isPremium = true),
     topic("lca", "Lowest Common Ancestor", graphAlgo, "The deepest node that is an ancestor of two given nodes.", isPremium = true),
+    topic("eulerian_path", "Eulerian Path & Circuit", graphAlgo, "Uses every edge exactly once — decided by degree parity alone.", isPremium = true),
+    topic("hamiltonian_path", "Hamiltonian Path & Circuit", graphAlgo, "Visits every vertex exactly once — no cheap test, only search.", isPremium = true),
 )
 
 private val pathfindingTopics = listOf(
     topic("a_star_search", "A* Search", pathfinding, "Heuristic-guided shortest-path search.", isPremium = true),
     topic("d_star_algorithm", "D* Algorithm", pathfinding, "Incremental replanning search for changing environments.", isPremium = true),
+    topic("uniform_cost_search", "Uniform Cost Search", pathfinding, "Dijkstra as a goal-directed search over a generated state space.", isPremium = true),
+    topic("ida_star", "IDA*", pathfinding, "A*'s answer on a stack instead of a frontier — linear memory.", isPremium = true),
 )
 
 private val miscTopics = listOf(

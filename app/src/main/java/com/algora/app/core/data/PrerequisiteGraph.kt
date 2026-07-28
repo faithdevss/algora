@@ -40,6 +40,10 @@ object PrerequisiteGraph {
         "knapsack_01" to listOf("coin_change"),
         "bitmask_dp" to listOf("knapsack_01", "subset_sum"),
         "tree_dp" to listOf("tree", "dfs"),
+        "partition_problem" to listOf("subset_sum"),
+        // Greedy, continued — both gap-fill topics are about when the greedy choice is safe
+        "activity_selection" to listOf("fractional_knapsack"),
+        "coin_change_greedy" to listOf("fractional_knapsack", "coin_change"),
         // Linear structures, continued
         "deque" to listOf("queue", "stack"),
         "sliding_window" to listOf("deque"),
@@ -54,6 +58,11 @@ object PrerequisiteGraph {
         "topological_sort" to listOf("dfs", "queue"),
         "articulation_points" to listOf("dfs"),
         "max_flow" to listOf("bfs", "graph"),
+        "eulerian_path" to listOf("graph", "dfs"),
+        "hamiltonian_path" to listOf("eulerian_path", "n_queens"),
+        // Pathfinding: Dijkstra is UCS under another name, and IDA* is A* with the frontier removed
+        "uniform_cost_search" to listOf("dijkstras_algorithm"),
+        "ida_star" to listOf("a_star_search", "dfs"),
         // Sorting, continued
         "bucket_sort" to listOf("insertion_sort", "counting_sort"),
         // ML regression: the plain fit, then the penalties, then the estimators that change the loss
