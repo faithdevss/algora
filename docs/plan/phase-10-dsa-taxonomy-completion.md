@@ -1,6 +1,6 @@
 # Phase 10 — DSA Taxonomy Completion
 
-Status: Planned — not started.
+Status: **Complete** — all five batches and both guards landed 2026-07-29.
 Depends on: Phase 2 (topic browser + content template), Phase 3 (simulation widgets), Phase 8 (premium gating).
 
 ## Goal
@@ -205,7 +205,7 @@ category guard load-bearing rather than nice-to-have.
 | D3 · String Algorithms | 5 (+3 moved) | **Done** | `TreeVisualizer` did need failure-link support; added |
 | D4 · Math & Number Theory | 7 | **Done** | Every worked example pinned by a `require` in its builder |
 | D5 · Bit Manipulation | 4 | **Done** | `BitBoardPlayer` built; `algo_misc` renumbered to 13 |
-| Guards | — | Planned | Taxonomy + category guards land at the end, not with D1 — see below |
+| Guards | — | **Done** | Algo taxonomy + category integrity built; AI entry map deferred — see below |
 | **Total** | **27** | **27 done** | Measured: Algorithms 66 → 93; browsable topics 253 → 280 |
 
 ### Deviations from the plan as written
@@ -351,6 +351,40 @@ and a caption naming the operation — the same config-map shape as `RegressionL
 Every numeric claim in the four builders was verified before writing (`44 & 43 = 40`,
 `44 & −44 = 4`, popcount(156) = 4, `4^1^2^1^2 = 4`, prefix-XOR of positions 1–3 of (3,8,2,6,4) = 12),
 and the XOR builder pins its two results with `require`.
+
+### Guards, as built
+
+**`AlgoTaxonomyCoverageTest`.** `docs/topics.algo.md` as code: every entry the doc lists, keyed by
+the doc's own heading and entry name verbatim so the file can be diffed against the doc by eye,
+mapped to the topic id or ids that satisfy it. Five assertions — the entry count matches a
+checked-in constant, no entry maps to nothing, every mapped id resolves in `TopicRegistry`, every
+mapped id belongs to a DSA section (an AI topic satisfying a DSA entry means the map drifted, not
+that coverage improved), and the app remains a strict superset of the doc, which pins the direction
+of the gap so nobody can delete app topics to make a coverage number look better.
+
+**The doc has 89 entries, not the 92 the plan claimed.** Counted bullet by bullet: the plan
+over-counted Graph Algorithms (14, not 16) and String Algorithms (10, not 11). The map holds all 89.
+
+**`CategoryIntegrityTest`.** Four assertions across all eight sections: every topic's `categoryId`
+resolves to a category in its own section, no category is empty, category ids are globally unique,
+and each category declares the `Section` matching the list holding it. Both failure modes it guards
+are live rather than theoretical — a topic with a mistyped `categoryId` exists in the registry, opens
+by deep link, and is invisible in the browser; a category left behind by a reorganisation renders as
+an empty row. Phase 9 moved ML topics into five new categories and this phase moved three topics out
+of `algo_misc`, which is exactly the edit that produces an orphan.
+
+**The AI entry-level map is deliberately not built, and this is a reduction in the planned scope.**
+The plan asked for the AI taxonomy to be wired into the same harness. It cannot be green today:
+`docs/topics.ai.md` lists roughly 380 entries and Phase 9 has authored a fraction of them by design,
+so a coverage guard over it would fail on everything Phase 9 has not reached yet — and a red guard
+teaches nothing. What *is* covered for AI is category integrity, which runs over all four AI sections
+here. The AI entry map belongs with Phase 9's final batch, and the harness shape to copy is this
+file.
+
+**`SimulationFrameTest`, unplanned, earned its place twice.** It found the `mcmc` off-canvas bug in
+D2 and it now runs 131 simulation configs across eight widgets on every build. Its limit is worth
+stating: it checks structure, not narration. The Aho-Corasick transition bug in D3 passed it, which
+is why the builders that state a specific number now pin it with a `require`.
 
 ## Count correction
 

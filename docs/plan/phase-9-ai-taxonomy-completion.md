@@ -4,8 +4,18 @@ Status: In progress — Track A complete (RL at 100% of the doc), B1–B5 done. 
 authored; taxonomy at 257, target 426. AI sections now: ML 58, DL 15, NLP 12, RL 74.
 Next: B6 (Dimensionality Reduction, 8 topics).
 
-**Outstanding, and slipping:** both guards this plan specifies as "New" — `AiTaxonomyCoverageTest`
-and the category-integrity assertion — are still unbuilt after five batches. See the Guards section.
+**Guards — one closed, one still open.** Phase 10 built the category-integrity assertion this plan
+specified: `CategoryIntegrityTest` is generic over all eight sections, so the ML restructure into
+`ml_regression` / `ml_classification` / `ml_bayesian` / `ml_ensemble` / `ml_clustering` is covered —
+no empty category, every `categoryId` resolving inside its own section, ids globally unique.
+
+`AiTaxonomyCoverageTest` is still unbuilt and remains this phase's largest open risk. It cannot go
+green before the doc's entries are authored, so it belongs with the final batch rather than an
+earlier one. The harness to copy is `AlgoTaxonomyCoverageTest`, which phase 10 built for
+`docs/topics.algo.md`: the doc's headings and entry names verbatim as map keys, each mapped to the
+topic id or ids satisfying it, plus an entry-count constant so doc edits surface as a failure.
+Note the lesson from building it — the phase-10 plan's own claim of "92 doc entries" was wrong by
+three, and only writing the map out found that. Expect the same of this phase's 357/339 figures.
 Depends on: Phase 5 (AI mode shell + content template), Phase 3 (simulation widgets), Phase 8 (premium gating)
 
 ## Goal
