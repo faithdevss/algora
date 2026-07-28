@@ -29,6 +29,8 @@ private fun topic(
 
 private val regression = MachineLearningCategories.regression
 private val classification = MachineLearningCategories.classification
+private val bayesian = MachineLearningCategories.bayesian
+private val ensemble = MachineLearningCategories.ensemble
 private val supervised = MachineLearningCategories.supervised
 private val unsupervised = MachineLearningCategories.unsupervised
 
@@ -66,15 +68,42 @@ private val classificationTopics = listOf(
     topic("passive_aggressive", "Passive Aggressive Classifier", classification, "Ignore what you got right; fix what you got wrong, exactly.", isPremium = true, difficulty = Difficulty.ADVANCED),
 )
 
+// The generic `naive_bayes` entry leads the category as the shared idea; the five variants that
+// follow differ only in the likelihood they assume, which is the point worth making.
+private val bayesianTopics = listOf(
+    topic("naive_bayes", "Naive Bayes", bayesian, "Probabilistic classifier assuming feature independence.", isPremium = true),
+    topic("gaussian_nb", "Gaussian Naive Bayes", bayesian, "Continuous features, one mean and variance per feature per class.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("multinomial_nb", "Multinomial Naive Bayes", bayesian, "Word counts, and the text classifier that refuses to die.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("bernoulli_nb", "Bernoulli Naive Bayes", bayesian, "Presence and absence — and absence is evidence too.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("complement_nb", "Complement Naive Bayes", bayesian, "Estimate from every other class, to survive imbalance.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("categorical_nb", "Categorical Naive Bayes", bayesian, "Unordered discrete features, with a table per feature.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("bayesian_networks", "Bayesian Networks", bayesian, "Drop the naive assumption: encode which dependencies actually exist.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("mcmc", "Markov Chain Monte Carlo (MCMC)", bayesian, "Sample a posterior you cannot integrate, by building a chain that visits it.", isPremium = true, difficulty = Difficulty.ADVANCED),
+)
+
+// Ordered as the two families they belong to: averaging independent models (bagging, forests, extra
+// trees, voting, stacking) then correcting sequential errors (boosting), with the three production
+// GBM implementations last.
+private val ensembleTopics = listOf(
+    topic("bagging", "Bagging (Bootstrap Aggregating)", ensemble, "Resample, refit, average — the variance-reduction recipe everything else builds on.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("random_forest", "Random Forests", ensemble, "Bagged decision trees that vote, each seeing a random slice of the data.", isPremium = true),
+    topic("extra_trees", "Extra Trees Classifier", ensemble, "Draw the split at random instead of searching for it — worse trees, better forest.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("voting", "Voting Classifiers", ensemble, "Combine independent models by counting votes or averaging confidence.", isPremium = true, difficulty = Difficulty.BEGINNER),
+    topic("stacking", "Stacking & Blending", ensemble, "Learn the combination rule, and the leakage trap that ruins it.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("adaboost", "AdaBoost", ensemble, "Re-weight toward what you got wrong, then vote by competence.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("gradient_boosting", "Gradient Boosting Machines (GBM)", ensemble, "Trees added one at a time, each fitting the previous ensemble's errors.", isPremium = true),
+    topic("xgboost", "XGBoost (Extreme Gradient Boosting)", ensemble, "Second-order gradients and a regularized objective, written as an optimization.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("lightgbm", "LightGBM", ensemble, "Leaf-wise growth and histogram binning — the speed comes from both.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("catboost", "CatBoost", ensemble, "Oblivious trees, and an encoding of categoricals that does not leak the target.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("isolation_forest", "Isolation Forest (Anomaly Detection)", ensemble, "Anomalies are easy to separate — so count how many random cuts it takes.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+)
+
 private val supervisedTopics = listOf(
     topic(
         "perceptron", "The Perceptron", supervised,
         "The first artificial neuron",
         iconName = "robot", accentColor = 0xFF6366F1, difficulty = Difficulty.BEGINNER,
     ),
-    topic("naive_bayes", "Naive Bayes", supervised, "Probabilistic classifier assuming feature independence.", isPremium = true),
-    topic("random_forest", "Random Forest", supervised, "Bagged decision trees that vote, each seeing a random slice of the data.", isPremium = true),
-    topic("gradient_boosting", "Gradient Boosting", supervised, "Trees added one at a time, each fitting the previous ensemble's errors.", isPremium = true),
     topic("bias_variance", "Bias-Variance Tradeoff", supervised, "Why underfitting and overfitting pull in opposite directions.", isPremium = true),
     topic("regularization", "Regularization (L1 / L2)", supervised, "Penalize large weights so the model stops memorizing noise.", isPremium = true),
     topic("model_evaluation", "Model Evaluation", supervised, "Precision, recall, F1, ROC-AUC and the thresholds behind them.", isPremium = true),
@@ -88,7 +117,7 @@ private val unsupervisedTopics = listOf(
 )
 
 object MachineLearningTopics {
-    val topics: List<Topic> = regressionTopics + classificationTopics + supervisedTopics + unsupervisedTopics
+    val topics: List<Topic> = regressionTopics + classificationTopics + bayesianTopics + ensembleTopics + supervisedTopics + unsupervisedTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }

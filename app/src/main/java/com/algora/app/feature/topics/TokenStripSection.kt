@@ -884,7 +884,356 @@ private fun ragFrames(): List<TokenFrame> {
     return frames
 }
 
+// ── Naive Bayes variants ─────────────────────────────────────────────────────
+// The four discrete variants share one corpus and one test document, so what changes between them is
+// only the likelihood. Arithmetic comes from NaiveBayesFrames.kt.
+
+private fun nbDocChips(doc: List<String>, activeIndex: Int = -1) = doc.mapIndexed { i, term ->
+    Chip(term, mark = if (i == activeIndex) ChipMark.ACTIVE else ChipMark.IDLE)
+}
+
+private fun multinomialFrames(): List<TokenFrame> {
+    val model = fitMultinomial()
+    val doc = nbTestDoc
+    val frames = mutableListOf<TokenFrame>()
+
+    frames.add(
+        TokenFrame(
+            status = "Five training documents, two classes. Multinomial NB treats a document as a bag of counts: how many times each vocabulary term occurred, with position discarded entirely.",
+            chips = nbDocChips(doc),
+            chipsLabel = "Document to classify",
+            bars = listOf(
+                BarRow("Counts · sports", nbVocabulary.map { model.counts.getValue(1).getValue(it).toFloat() }, BarPositive, nbVocabulary),
+                BarRow("Counts · politics", nbVocabulary.map { model.counts.getValue(0).getValue(it).toFloat() }, BarNegative, nbVocabulary),
+            ),
+        ),
+    )
+
+    frames.add(
+        TokenFrame(
+            status = "Laplace smoothing adds α = 1 to every count before dividing. Without it, a term unseen in a class gives probability zero — and one zero anywhere annihilates the entire product, no matter how much other evidence there was.",
+            chips = nbDocChips(doc),
+            chipsLabel = "Document to classify",
+            rows = nbVocabulary.map { term ->
+                term to "sports ${nbFmt(exp(model.logLikelihood.getValue(1).getValue(term)))} · politics ${nbFmt(exp(model.logLikelihood.getValue(0).getValue(term)))}"
+            },
+        ),
+    )
+
+    var sports = model.logPrior.getValue(1)
+    var politics = model.logPrior.getValue(0)
+    frames.add(
+        TokenFrame(
+            status = "Start from the log priors: 3 of 5 documents are sports, 2 of 5 are politics. Logs throughout, because multiplying dozens of small probabilities underflows to zero in floating point.",
+            chips = nbDocChips(doc),
+            chipsLabel = "Document to classify",
+            rows = listOf(
+                "log P(sports)" to nbFmt(sports),
+                "log P(politics)" to nbFmt(politics),
+            ),
+        ),
+    )
+
+    doc.forEachIndexed { i, term ->
+        sports += model.logLikelihood.getValue(1).getValue(term)
+        politics += model.logLikelihood.getValue(0).getValue(term)
+        frames.add(
+            TokenFrame(
+                status = "Add log P(\"$term\" | class) for token ${i + 1}. Each occurrence counts separately — that is what makes it multinomial rather than Bernoulli.",
+                chips = nbDocChips(doc, i),
+                chipsLabel = "Document to classify",
+                rows = listOf(
+                    "+ log P($term | sports)" to nbFmt(model.logLikelihood.getValue(1).getValue(term)),
+                    "+ log P($term | politics)" to nbFmt(model.logLikelihood.getValue(0).getValue(term)),
+                    "running sports" to nbFmt(sports),
+                    "running politics" to nbFmt(politics),
+                ),
+            ),
+        )
+    }
+
+    val (pSports, pPolitics) = softmaxTwo(sports, politics)
+    frames.add(
+        TokenFrame(
+            status = "Result: ${if (sports > politics) "sports" else "politics"}, at ${nbFmt(maxOf(pSports, pPolitics) * 100, 1)}% posterior. Note how extreme that confidence is on three tokens — naive Bayes ranks well but its probabilities are badly calibrated, because multiplying dependent evidence as if it were independent double-counts it.",
+            chips = doc.map { Chip(it, mark = ChipMark.RESULT) },
+            chipsLabel = "Document to classify",
+            bars = listOf(BarRow("Posterior", listOf(pSports.toFloat(), pPolitics.toFloat()), BarPositive, listOf("sports", "politics"))),
+            readout = "argmax = ${if (sports > politics) "sports" else "politics"}",
+        ),
+    )
+    return frames
+}
+
+private fun bernoulliFrames(): List<TokenFrame> {
+    val model = fitBernoulli()
+    val multinomial = fitMultinomial()
+    val doc = nbTestDoc
+    val frames = mutableListOf<TokenFrame>()
+
+    frames.add(
+        TokenFrame(
+            status = "Bernoulli NB asks a different question of each term: not \"how many times\", but \"present or not\". The document below contains \"goal\" twice, and Bernoulli will record that as simply present.",
+            chips = nbDocChips(doc),
+            chipsLabel = "Document to classify",
+            bars = listOf(
+                BarRow("P(term present | sports)", nbVocabulary.map { model.presence.getValue(1).getValue(it).toFloat() }, BarPositive, nbVocabulary),
+                BarRow("P(term present | politics)", nbVocabulary.map { model.presence.getValue(0).getValue(it).toFloat() }, BarNegative, nbVocabulary),
+            ),
+        ),
+    )
+
+    frames.add(
+        TokenFrame(
+            status = "The consequence, and the real difference: Bernoulli scores every term in the vocabulary, including the ones that are absent. An absent term contributes log(1 − P(term | class)) — so \"vote\" not appearing is itself evidence for sports.",
+            chips = nbVocabulary.map { term ->
+                Chip(term, sub = if (term in doc) "present" else "absent", mark = if (term in doc) ChipMark.ACTIVE else ChipMark.DIM)
+            },
+            chipsLabel = "Whole vocabulary, scored",
+        ),
+    )
+
+    var sports = model.logPrior.getValue(1)
+    var politics = model.logPrior.getValue(0)
+    nbVocabulary.forEachIndexed { i, term ->
+        val sportsTerm = bernoulliTermContribution(model, 1, term, doc)
+        val politicsTerm = bernoulliTermContribution(model, 0, term, doc)
+        sports += sportsTerm
+        politics += politicsTerm
+        val present = term in doc
+        frames.add(
+            TokenFrame(
+                status = if (present) {
+                    "\"$term\" is present. Add log P(present | class) — once, however many times it occurred."
+                } else {
+                    "\"$term\" is absent, and multinomial NB would ignore it completely. Bernoulli adds log(1 − P(present | class)), so its absence moves the score by ${nbFmt(sportsTerm - politicsTerm)} in favour of ${if (sportsTerm > politicsTerm) "sports" else "politics"}."
+                },
+                chips = nbVocabulary.mapIndexed { j, t ->
+                    Chip(t, sub = if (t in doc) "present" else "absent", mark = if (j == i) ChipMark.ACTIVE else if (t in doc) ChipMark.IDLE else ChipMark.DIM)
+                },
+                chipsLabel = "Whole vocabulary, scored",
+                rows = listOf(
+                    "sports contribution" to nbFmt(sportsTerm),
+                    "politics contribution" to nbFmt(politicsTerm),
+                    "running sports" to nbFmt(sports),
+                    "running politics" to nbFmt(politics),
+                ),
+            ),
+        )
+    }
+
+    var mSports = multinomial.logPrior.getValue(1)
+    var mPolitics = multinomial.logPrior.getValue(0)
+    doc.forEach { term ->
+        mSports += multinomial.logLikelihood.getValue(1).getValue(term)
+        mPolitics += multinomial.logLikelihood.getValue(0).getValue(term)
+    }
+    val (bSports, _) = softmaxTwo(sports, politics)
+    val (mnSports, _) = softmaxTwo(mSports, mPolitics)
+    frames.add(
+        TokenFrame(
+            status = "Both variants pick ${if (sports > politics) "sports" else "politics"} here, but from different evidence: Bernoulli ${nbFmt(bSports * 100, 1)}% against multinomial's ${nbFmt(mnSports * 100, 1)}%. Bernoulli suits short documents with a small vocabulary, where absence is informative; multinomial suits longer text, where repetition carries the signal.",
+            chips = doc.map { Chip(it, mark = ChipMark.RESULT) },
+            chipsLabel = "Document to classify",
+            bars = listOf(
+                BarRow("P(sports)", listOf(bSports.toFloat(), mnSports.toFloat()), BarPositive, listOf("Bernoulli", "Multinomial")),
+            ),
+        ),
+    )
+    return frames
+}
+
+private fun complementFrames(): List<TokenFrame> {
+    val corpus = nbImbalancedCorpus
+    val multinomial = fitMultinomial(corpus)
+    val complement = fitComplement(corpus)
+    val doc = listOf("goal", "match")
+    val frames = mutableListOf<TokenFrame>()
+
+    val sportsDocs = corpus.count { it.label == 1 }
+    val politicsDocs = corpus.count { it.label == 0 }
+
+    frames.add(
+        TokenFrame(
+            status = "The same task with a lopsided corpus: $politicsDocs politics documents against $sportsDocs sports. Imbalance hurts multinomial NB twice over — through the prior, and through the per-class totals that its likelihood divides by.",
+            chips = nbDocChips(doc),
+            chipsLabel = "Document to classify",
+            rows = listOf(
+                "log P(sports)" to nbFmt(multinomial.logPrior.getValue(1)),
+                "log P(politics)" to nbFmt(multinomial.logPrior.getValue(0)),
+                "tokens seen · sports" to "${multinomial.totals.getValue(1)}",
+                "tokens seen · politics" to "${multinomial.totals.getValue(0)}",
+            ),
+        ),
+    )
+
+    frames.add(
+        TokenFrame(
+            status = "Complement NB inverts the estimation. For each class it counts how often a term appears in every OTHER class, then negates — a term common outside the class is evidence against it. Because every class's complement is drawn from a similarly large pool, the majority's size advantage disappears.",
+            chips = nbDocChips(doc),
+            chipsLabel = "Document to classify",
+            bars = listOf(
+                BarRow("Complement counts · sports", nbVocabulary.map { complement.complementCounts.getValue(1).getValue(it).toFloat() }, BarPositive, nbVocabulary),
+                BarRow("Complement counts · politics", nbVocabulary.map { complement.complementCounts.getValue(0).getValue(it).toFloat() }, BarNegative, nbVocabulary),
+            ),
+        ),
+    )
+
+    frames.add(
+        TokenFrame(
+            status = "Weights are then L1-normalized per class. That second correction is what stops a class with more training tokens accumulating larger magnitudes purely by having been seen more.",
+            chips = nbDocChips(doc),
+            chipsLabel = "Document to classify",
+            bars = listOf(
+                BarRow("Normalized weights · sports", nbVocabulary.map { complement.weights.getValue(1).getValue(it).toFloat() }, BarPositive, nbVocabulary),
+                BarRow("Normalized weights · politics", nbVocabulary.map { complement.weights.getValue(0).getValue(it).toFloat() }, BarNegative, nbVocabulary),
+            ),
+        ),
+    )
+
+    var mSports = multinomial.logPrior.getValue(1)
+    var mPolitics = multinomial.logPrior.getValue(0)
+    var cSports = 0.0
+    var cPolitics = 0.0
+    doc.forEach { term ->
+        mSports += multinomial.logLikelihood.getValue(1).getValue(term)
+        mPolitics += multinomial.logLikelihood.getValue(0).getValue(term)
+        cSports += complement.weights.getValue(1).getValue(term)
+        cPolitics += complement.weights.getValue(0).getValue(term)
+    }
+
+    // CNB assigns the class with the LOWEST complement score — least evidence against it.
+    val cnbPick = if (cSports < cPolitics) "sports" else "politics"
+    val mnbPick = if (mSports > mPolitics) "sports" else "politics"
+
+    frames.add(
+        TokenFrame(
+            status = "The document is unambiguously sports. Multinomial says $mnbPick, complement says $cnbPick. " +
+                when {
+                    mnbPick == "sports" && cnbPick == "sports" ->
+                        "Both get it right: a 4-to-1 skew on five vocabulary terms is not yet enough to flip multinomial. The correction matters at real corpus scale, where the rare class's smoothing denominator swamps its signal. Note the two scores are not comparable — MNB's is a log-posterior, CNB's a sum of normalized weights, and only the ordering within each row means anything."
+                    cnbPick == "sports" ->
+                        "The majority class dragged multinomial to the wrong answer, and CNB's complement estimation plus per-class normalization is what recovered it."
+                    else ->
+                        "CNB is the one that got it wrong here — the correction is aimed at large skewed corpora, and on five terms and ten documents it has too little to work with."
+                },
+            chips = doc.map { Chip(it, mark = ChipMark.RESULT) },
+            chipsLabel = "Document to classify",
+            rows = listOf(
+                "MNB · sports" to nbFmt(mSports),
+                "MNB · politics" to nbFmt(mPolitics),
+                "CNB · sports (lower wins)" to nbFmt(cSports),
+                "CNB · politics (lower wins)" to nbFmt(cPolitics),
+            ),
+            readout = "MNB → $mnbPick · CNB → $cnbPick",
+        ),
+    )
+    return frames
+}
+
+private fun categoricalFrames(): List<TokenFrame> {
+    val model = fitCategorical()
+    val row = catTestRow
+    val frames = mutableListOf<TokenFrame>()
+
+    frames.add(
+        TokenFrame(
+            status = "Categorical NB handles features that are unordered labels — \"sunny\" is not greater than \"rain\", and encoding them as 0/1/2 and reaching for a Gaussian would invent an ordering that does not exist. Instead each feature gets its own table.",
+            chips = row.mapIndexed { i, v -> Chip(v, sub = catFeatureNames[i]) },
+            chipsLabel = "Row to classify",
+            rows = listOf(
+                "training rows" to "${catTraining.size}",
+                "play = yes" to "${model.classCounts.getValue(1)}",
+                "play = no" to "${model.classCounts.getValue(0)}",
+            ),
+        ),
+    )
+
+    catFeatureNames.forEachIndexed { featureIndex, name ->
+        val values = catFeatureValues[featureIndex]
+        frames.add(
+            TokenFrame(
+                status = "Table for $name: a count for every value, in every class. With ${values.size} values and 2 classes that is ${values.size * 2} parameters for this feature alone — and the parameter count grows with the number of distinct values, which is why high-cardinality features need care.",
+                chips = row.mapIndexed { i, v ->
+                    Chip(v, sub = catFeatureNames[i], mark = if (i == featureIndex) ChipMark.ACTIVE else ChipMark.IDLE)
+                },
+                chipsLabel = "Row to classify",
+                bars = listOf(
+                    BarRow("$name · yes", values.map { model.rawCounts.getValue(1)[featureIndex].getValue(it).toFloat() }, BarPositive, values),
+                    BarRow("$name · no", values.map { model.rawCounts.getValue(0)[featureIndex].getValue(it).toFloat() }, BarNegative, values),
+                ),
+            ),
+        )
+    }
+
+    var yes = model.logPrior.getValue(1)
+    var no = model.logPrior.getValue(0)
+    row.forEachIndexed { featureIndex, value ->
+        val yesTerm = model.logTables.getValue(1)[featureIndex].getValue(value)
+        val noTerm = model.logTables.getValue(0)[featureIndex].getValue(value)
+        yes += yesTerm
+        no += noTerm
+        val rawYes = model.rawCounts.getValue(1)[featureIndex].getValue(value)
+        frames.add(
+            TokenFrame(
+                status = if (rawYes == 0) {
+                    "${catFeatureNames[featureIndex]} = \"$value\" never co-occurs with play=yes in the training data. Unsmoothed that would be P = 0, which would zero out the whole product regardless of the other three features. Laplace smoothing makes it small instead of fatal."
+                } else {
+                    "${catFeatureNames[featureIndex]} = \"$value\": add log P(value | class) for each class. Features are combined as if independent given the class — that is the naive assumption, and it is why only one table per feature is needed rather than a joint table over all four."
+                },
+                chips = row.mapIndexed { i, v ->
+                    Chip(v, sub = catFeatureNames[i], mark = if (i == featureIndex) ChipMark.ACTIVE else if (i < featureIndex) ChipMark.RESULT else ChipMark.IDLE)
+                },
+                chipsLabel = "Row to classify",
+                rows = listOf(
+                    "+ log P($value | yes)" to nbFmt(yesTerm),
+                    "+ log P($value | no)" to nbFmt(noTerm),
+                    "running yes" to nbFmt(yes),
+                    "running no" to nbFmt(no),
+                ),
+            ),
+        )
+    }
+
+    val (pYes, pNo) = softmaxTwo(yes, no)
+    frames.add(
+        TokenFrame(
+            status = "Prediction: play = ${if (yes > no) "yes" else "no"}, at ${nbFmt(maxOf(pYes, pNo) * 100, 1)}%. A joint table over all four features would need ${catFeatureValues.fold(1) { acc, v -> acc * v.size }} cells per class and ${catTraining.size} training rows to fill them; the naive assumption reduces that to ${catFeatureValues.sumOf { it.size }} per class.",
+            chips = row.mapIndexed { i, v -> Chip(v, sub = catFeatureNames[i], mark = ChipMark.RESULT) },
+            chipsLabel = "Row to classify",
+            bars = listOf(BarRow("Posterior", listOf(pYes.toFloat(), pNo.toFloat()), BarPositive, listOf("yes", "no"))),
+            readout = "argmax = play ${if (yes > no) "yes" else "no"}",
+        ),
+    )
+    return frames
+}
+
+private val nbLegend = listOf(
+    ChipActive to "Current",
+    ChipResult to "Scored",
+)
+
 private val tokenConfigs = mapOf(
+    "multinomial_nb" to TokenConfig(
+        intro = "One document classified end to end: counts, Laplace smoothing, log priors, then a running sum per class.",
+        legend = nbLegend,
+        build = ::multinomialFrames,
+    ),
+    "bernoulli_nb" to TokenConfig(
+        intro = "The same document under a presence/absence likelihood — including the terms that are not there, which is the whole difference.",
+        legend = nbLegend,
+        build = ::bernoulliFrames,
+    ),
+    "complement_nb" to TokenConfig(
+        intro = "An 8-to-2 imbalanced corpus, scored by multinomial and complement side by side.",
+        legend = nbLegend,
+        build = ::complementFrames,
+    ),
+    "categorical_nb" to TokenConfig(
+        intro = "Unordered discrete features: one count table per feature, Laplace smoothing, and a zero cell that would otherwise be fatal.",
+        legend = nbLegend,
+        build = ::categoricalFrames,
+    ),
     "bpe" to TokenConfig(
         intro = "Four merge rounds learned from a tiny corpus, then those same merges replayed to encode a word " +
             "the corpus never contained.",

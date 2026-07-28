@@ -1370,7 +1370,535 @@ private fun diffusionFrames(): List<CloudFrame> {
     return frames
 }
 
+// ── Ensembles ────────────────────────────────────────────────────────────────
+// Bagging, boosting and stacking all combine weak models, and the interesting differences are in
+// *how*: independently and in parallel, sequentially on the previous errors, or through a second
+// model that learns the combination. Each builder below runs its real mechanic on the same 2D data
+// so the three are directly comparable.
+
+// One axis-aligned decision stump — the weak learner every one of these is built from.
+private class Stump(val axis: Int, val threshold: Float, val lowLabel: Int) {
+    fun predict(p: P): Int = if ((if (axis == 0) p.x else p.y) < threshold) lowLabel else 1 - lowLabel
+    fun segment(): Segment = if (axis == 1) {
+        Segment(P(0f, threshold), P(1f, threshold), AxisColor)
+    } else {
+        Segment(P(threshold, 0f), P(threshold, 1f), AxisColor)
+    }
+}
+
+// Exhaustive search for the stump with the lowest weighted error. Small data, so brute force is both
+// exact and instant — and it means the frames show the genuinely best split, not a chosen one.
+private fun bestStump(points: List<P>, weights: FloatArray): Pair<Stump, Float> {
+    var best = Stump(0, 0.5f, 0)
+    var bestError = Float.MAX_VALUE
+    for (axis in 0..1) {
+        var t = 0.05f
+        while (t <= 0.95f) {
+            for (lowLabel in 0..1) {
+                val stump = Stump(axis, t, lowLabel)
+                var error = 0f
+                points.forEachIndexed { i, p -> if (stump.predict(p) != p.label) error += weights[i] }
+                if (error < bestError) { bestError = error; best = stump }
+            }
+            t += 0.025f
+        }
+    }
+    return best to bestError
+}
+
+private fun adaBoostFrames(): List<CloudFrame> {
+    val points = twoClasses
+    val n = points.size
+    val weights = FloatArray(n) { 1f / n }
+    val frames = mutableListOf<CloudFrame>()
+    val stumps = mutableListOf<Pair<Stump, Float>>() // stump and its alpha
+
+    frames += CloudFrame(
+        status = "AdaBoost trains weak learners in sequence. Every point starts with equal weight ${"%.3f".format(1f / n)}, and each round re-weights toward whatever the previous round got wrong.",
+        dots = points.map { Dot(it, it.label) },
+    )
+
+    repeat(4) { round ->
+        val (stump, error) = bestStump(points, weights)
+        // Guard the degenerate cases: a perfect or coin-flip stump makes alpha blow up or vanish.
+        val safeError = error.coerceIn(1e-4f, 0.4999f)
+        val alpha = 0.5f * kotlin.math.ln((1f - safeError) / safeError)
+        stumps += stump to alpha
+
+        val wrong = points.indices.filter { stump.predict(points[it]) != points[it].label }.toSet()
+        frames += CloudFrame(
+            status = "Round ${round + 1}: the best stump available under the current weights still gets ${wrong.size} points wrong, for a weighted error of ${"%.3f".format(error)}. Its vote gets weight α = ${"%.3f".format(alpha)} — lower error earns a louder vote.",
+            dots = points.mapIndexed { i, p -> Dot(p, p.label, if (i in wrong) Emphasis.ACTIVE else Emphasis.NORMAL) },
+            segments = listOf(stump.segment()),
+            readout = "α₍${round + 1}₎ = ${"%.3f".format(alpha)}",
+        )
+
+        // Misclassified points are scaled up, correct ones down, then renormalized.
+        var total = 0f
+        points.indices.forEach { i ->
+            weights[i] *= kotlin.math.exp(if (i in wrong) alpha else -alpha)
+            total += weights[i]
+        }
+        points.indices.forEach { weights[it] /= total }
+        val heaviest = weights.indices.maxByOrNull { weights[it] }!!
+
+        frames += CloudFrame(
+            status = "Re-weight: the ${wrong.size} misses are scaled up by e^α and everything else down by e^−α, then renormalized. The heaviest point now carries ${"%.3f".format(weights[heaviest])}, against ${"%.3f".format(1f / n)} at the start — the next stump is effectively fitting a different dataset.",
+            dots = points.mapIndexed { i, p ->
+                Dot(p, p.label, if (weights[i] > 1.4f / n) Emphasis.ACTIVE else Emphasis.FADED)
+            },
+            readout = "max weight ${"%.3f".format(weights[heaviest])}",
+        )
+    }
+
+    val correct = points.count { p ->
+        val score = stumps.sumOf { (s, a) -> (if (s.predict(p) == 1) a else -a).toDouble() }
+        (if (score >= 0) 1 else 0) == p.label
+    }
+    frames += CloudFrame(
+        status = "The final prediction is the sign of Σ αₜ·hₜ(x) — a weighted vote, not a majority. Four stumps that were each barely better than chance now classify $correct of $n correctly. Note the ensemble is additive in the same sense gradient boosting is; AdaBoost is that algorithm with an exponential loss.",
+        dots = points.map { Dot(it, it.label) },
+        segments = stumps.map { (s, _) -> s.segment() },
+        readout = "$correct/$n correct from ${stumps.size} stumps",
+    )
+    return frames
+}
+
+private fun baggingFrames(): List<CloudFrame> {
+    val points = boxyClasses
+    val rng = Lcg(53)
+    val frames = mutableListOf<CloudFrame>()
+
+    frames += CloudFrame(
+        status = "Bagging attacks variance, not bias. The recipe is deliberately dull: resample the data, fit the same model, average. It helps exactly when the base model is unstable — a deep tree — and does almost nothing for a stable one like linear regression.",
+        dots = points.map { Dot(it, it.label) },
+    )
+
+    val oobCounts = IntArray(points.size)
+    repeat(3) { round ->
+        val drawn = List(points.size) { points[(rng.next() * points.size).toInt().coerceAtMost(points.lastIndex)] }
+        val inBag = drawn.toSet()
+        points.indices.forEach { if (points[it] !in inBag) oobCounts[it]++ }
+        val weights = FloatArray(points.size) { if (points[it] in inBag) 1f else 0f }
+        val (stump, _) = bestStump(points.filter { it in inBag }, FloatArray(inBag.size) { 1f / inBag.size })
+
+        frames += CloudFrame(
+            status = "Sample ${round + 1}: n draws with replacement gives ${inBag.size} distinct rows of ${points.size}. Each row's chance of being missed is (1 − 1/n)ⁿ → 1/e, so about 37% land out-of-bag — the faded points, which score this model for free with no validation split.",
+            dots = points.map { Dot(it, it.label, if (it in inBag) Emphasis.NORMAL else Emphasis.FADED) },
+            segments = listOf(stump.segment()),
+            readout = "${points.size - inBag.size} of ${points.size} out-of-bag",
+        )
+        weights.size // keep the local alive for readability parity with the boosting builder
+    }
+
+    frames += CloudFrame(
+        status = "Every model here saw all the features — that is what separates plain bagging from a random forest, which also samples a random subset of features at each split. The extra decorrelation is why a forest usually beats bagged trees on the same data.",
+        dots = points.map { Dot(it, it.label) },
+        readout = "bagging: rows only · forest: rows + features",
+    )
+    return frames
+}
+
+private fun extraTreesFrames(): List<CloudFrame> {
+    val points = boxyClasses
+    val rng = Lcg(67)
+    val frames = mutableListOf<CloudFrame>()
+    val uniform = FloatArray(points.size) { 1f / points.size }
+
+    val (best, bestError) = bestStump(points, uniform)
+    frames += CloudFrame(
+        status = "A normal tree searches every candidate threshold on every feature and keeps the best. Here that is the split below, at weighted error ${"%.3f".format(bestError)} — optimal, and expensive, and fitted tightly to this particular sample.",
+        dots = points.map { Dot(it, it.label) },
+        segments = listOf(best.segment()),
+        readout = "best-split error ${"%.3f".format(bestError)}",
+    )
+
+    val randomSplits = List(3) {
+        val axis = if (rng.next() < 0.5f) 0 else 1
+        val threshold = 0.15f + rng.next() * 0.7f
+        val stump = Stump(axis, threshold, 0)
+        var error = 0f
+        points.forEachIndexed { i, p -> if (stump.predict(p) != p.label) error += uniform[i] }
+        val flipped = if (error > 0.5f) Stump(axis, threshold, 1) else stump
+        var fixedError = 0f
+        points.forEachIndexed { i, p -> if (flipped.predict(p) != p.label) fixedError += uniform[i] }
+        flipped to fixedError
+    }
+
+    randomSplits.forEachIndexed { index, (stump, error) ->
+        frames += CloudFrame(
+            status = "Extra Trees does not search. It draws the threshold at random on a random feature and takes it — this one has error ${"%.3f".format(error)} against the optimal ${"%.3f".format(bestError)}. Individually worse, and drawn without ever looking at the labels to choose the cut point.",
+            dots = points.map { Dot(it, it.label) },
+            segments = listOf(best.segment(), stump.segment()),
+            readout = "random ${"%.3f".format(error)} vs best ${"%.3f".format(bestError)}",
+        )
+    }
+
+    frames += CloudFrame(
+        status = "The trade is deliberate: each tree is worse, but they are far less correlated with each other, and an average's variance falls with the correlation between its terms. It is also much faster — no threshold search at all — which is often the reason it gets picked.",
+        dots = points.map { Dot(it, it.label) },
+        segments = randomSplits.map { it.first.segment() },
+        readout = "worse trees, better ensemble",
+    )
+    return frames
+}
+
+private fun votingFrames(): List<CloudFrame> {
+    val points = twoClasses
+    val query = P(0.52f, 0.48f)
+    val uniform = FloatArray(points.size) { 1f / points.size }
+    val frames = mutableListOf<CloudFrame>()
+
+    // Three deliberately different models, each with a confidence on the query point.
+    val members = listOf(
+        Triple("Model A", Stump(0, 0.5f, 0), 0.55f),
+        Triple("Model B", Stump(1, 0.45f, 0), 0.92f),
+        Triple("Model C", bestStump(points, uniform).first, 0.51f),
+    )
+
+    frames += CloudFrame(
+        status = "Voting combines models that were trained independently and may be of completely different kinds — a tree, an SVM, a logistic regression. The only requirement is that their errors are not identical, because averaging correlated mistakes changes nothing.",
+        dots = points.map { Dot(it, it.label) } + Dot(query, -1, Emphasis.QUERY),
+    )
+
+    val hardVotes = mutableListOf<Int>()
+    members.forEach { (name, stump, confidence) ->
+        val vote = stump.predict(query)
+        hardVotes += vote
+        frames += CloudFrame(
+            status = "$name predicts class $vote for the yellow query, with confidence ${"%.2f".format(confidence)}. Hard voting records only the class; soft voting keeps the number.",
+            dots = points.map { Dot(it, it.label) } + Dot(query, -1, Emphasis.QUERY),
+            segments = listOf(stump.segment()),
+            readout = "$name → class $vote (p = ${"%.2f".format(confidence)})",
+        )
+    }
+
+    val hardWinner = if (hardVotes.count { it == 1 } > hardVotes.count { it == 0 }) 1 else 0
+    // Soft voting averages the probability of class 1 across members.
+    val softScore = members.mapIndexed { i, (_, _, confidence) ->
+        if (hardVotes[i] == 1) confidence else 1f - confidence
+    }.average().toFloat()
+    val softWinner = if (softScore >= 0.5f) 1 else 0
+
+    frames += CloudFrame(
+        status = "Hard vote: ${hardVotes.count { it == 1 }} for class 1 against ${hardVotes.count { it == 0 }}, so class $hardWinner. Soft vote averages the probabilities to ${"%.3f".format(softScore)}, giving class $softWinner. " +
+            if (hardWinner != softWinner) {
+                "They disagree, and soft voting is right to: two members were barely above a coin flip while the confident one was outvoted by them."
+            } else {
+                "They agree here — but soft voting is generally preferred, because it lets a confident member outweigh two hesitant ones instead of being outvoted by them."
+            },
+        dots = points.map { Dot(it, it.label) } + Dot(query, -1, Emphasis.QUERY),
+        segments = members.map { it.second.segment() },
+        readout = "hard → $hardWinner · soft → $softWinner (${"%.3f".format(softScore)})",
+    )
+    return frames
+}
+
+private fun stackingFrames(): List<CloudFrame> {
+    val points = twoClasses
+    val uniform = FloatArray(points.size) { 1f / points.size }
+    val frames = mutableListOf<CloudFrame>()
+
+    frames += CloudFrame(
+        status = "Stacking replaces voting's fixed rule with a learned one: a second model is trained on the base models' predictions and works out how to combine them. It can learn that one member is reliable in one region and another elsewhere — something no fixed averaging rule can express.",
+        dots = points.map { Dot(it, it.label) },
+    )
+
+    val base = listOf(Stump(0, 0.5f, 0), Stump(1, 0.45f, 0), bestStump(points, uniform).first)
+    base.forEachIndexed { index, stump ->
+        val wrong = points.indices.filter { stump.predict(points[it]) != points[it].label }
+        frames += CloudFrame(
+            status = "Base model ${index + 1} of ${base.size}: ${points.size - wrong.size} of ${points.size} correct. Its predictions become one column of the meta-learner's input.",
+            dots = points.mapIndexed { i, p -> Dot(p, p.label, if (i in wrong) Emphasis.ACTIVE else Emphasis.NORMAL) },
+            segments = listOf(stump.segment()),
+        )
+    }
+
+    // The leakage trap: predictions on rows the base model was fitted on are optimistic.
+    val folds = 3
+    frames += CloudFrame(
+        status = "Now the step that stacking lives or dies on. If the meta-learner trains on predictions the base models made for rows they were fitted on, those predictions are optimistic — the meta-learner learns to trust a level of accuracy that will not exist at inference, and the whole stack overfits.",
+        dots = points.mapIndexed { i, p -> Dot(p, p.label, if (i % folds == 0) Emphasis.ACTIVE else Emphasis.FADED) },
+        readout = "in-sample predictions are leaked labels",
+    )
+
+    repeat(folds) { fold ->
+        val heldOut = points.indices.filter { it % folds == fold }.toSet()
+        frames += CloudFrame(
+            status = "Fold ${fold + 1} of $folds: fit the base models on the solid points, and record their predictions only for the ${heldOut.size} highlighted rows they did not see. Rotate through every fold and each row ends up with one honest out-of-fold prediction.",
+            dots = points.mapIndexed { i, p ->
+                Dot(p, p.label, if (i in heldOut) Emphasis.QUERY else Emphasis.NORMAL)
+            },
+            readout = "out-of-fold predictions for ${heldOut.size} rows",
+        )
+    }
+
+    frames += CloudFrame(
+        status = "Those out-of-fold predictions — never in-sample ones — are the meta-learner's training set. Keep the meta-learner simple: logistic regression is the standard choice, because a flexible one on ${base.size} columns of near-duplicate predictions will overfit them immediately.",
+        dots = points.map { Dot(it, it.label) },
+        segments = base.map { it.segment() },
+        readout = "${base.size} base models → 1 meta-learner",
+    )
+    return frames
+}
+
+private fun isolationForestFrames(): List<CloudFrame> {
+    val rng = Lcg(89)
+    val normal = blob(rng, 0.45f, 0.45f, 22, 0.22f, 0)
+    val outliers = listOf(P(0.08f, 0.90f, 1), P(0.92f, 0.10f, 1))
+    val points = normal + outliers
+    val frames = mutableListOf<CloudFrame>()
+
+    frames += CloudFrame(
+        status = "Isolation Forest inverts the usual approach to anomaly detection. It does not model what normal looks like and measure distance from it — it asks how hard each point is to separate from everything else with random cuts.",
+        dots = normal.map { Dot(it, 0) } + outliers.map { Dot(it, 1, Emphasis.QUERY) },
+    )
+
+    // Isolate one outlier and one normal point with the same random-cut procedure, counting splits.
+    fun isolate(target: P, seed: Int): Pair<Int, List<Segment>> {
+        val local = Lcg(seed)
+        var lowX = 0f; var highX = 1f; var lowY = 0f; var highY = 1f
+        val cuts = mutableListOf<Segment>()
+        var depth = 0
+        while (depth < 12) {
+            val survivors = points.filter { it.x in lowX..highX && it.y in lowY..highY }
+            if (survivors.size <= 1) break
+            depth++
+            if (local.next() < 0.5f) {
+                val t = lowX + local.next() * (highX - lowX)
+                cuts += Segment(P(t, lowY), P(t, highY), AxisColor)
+                if (target.x < t) highX = t else lowX = t
+            } else {
+                val t = lowY + local.next() * (highY - lowY)
+                cuts += Segment(P(lowX, t), P(highX, t), AxisColor)
+                if (target.y < t) highY = t else lowY = t
+            }
+        }
+        return depth to cuts
+    }
+
+    val (outlierDepth, outlierCuts) = isolate(outliers[0], 5)
+    frames += CloudFrame(
+        status = "Take the outlier in the top-left. Random axis-aligned cuts isolate it in $outlierDepth ${if (outlierDepth == 1) "split" else "splits"} — it sits in a sparse region, so almost any cut separates it from the crowd immediately.",
+        dots = normal.map { Dot(it, 0, Emphasis.FADED) } + outliers.map { Dot(it, 1, Emphasis.QUERY) },
+        segments = outlierCuts,
+        readout = "path length $outlierDepth",
+    )
+
+    val interior = normal.minByOrNull { kotlin.math.abs(it.x - 0.45f) + kotlin.math.abs(it.y - 0.45f) }!!
+    val (normalDepth, normalCuts) = isolate(interior, 5)
+    frames += CloudFrame(
+        status = "Now a point from the middle of the cluster. It takes $normalDepth splits to isolate, because every cut through the dense region leaves neighbours on the same side. Path length is the anomaly score, and it is cheap: the tree stops as soon as the point is alone rather than growing to purity.",
+        dots = normal.map { Dot(it, 0) } + outliers.map { Dot(it, 1, Emphasis.FADED) } + Dot(interior, 0, Emphasis.QUERY),
+        segments = normalCuts,
+        readout = "path length $normalDepth vs $outlierDepth",
+    )
+
+    frames += CloudFrame(
+        status = "Averaged over many random trees, path length separates the two cleanly — here $outlierDepth against $normalDepth on a single tree. Two consequences follow from never modelling normality: training is O(n log n) with no distance computations at all, and subsampling actively helps, because a smaller sample makes the sparse regions sparser.",
+        dots = normal.map { Dot(it, 0) } + outliers.map { Dot(it, 1, Emphasis.QUERY) },
+        readout = "short path = anomaly",
+    )
+    return frames
+}
+
+// ── MCMC: Metropolis-Hastings walking a banana-shaped posterior ──────────────
+// A correlated, curved target, because a spherical Gaussian would make every proposal look good and
+// hide the two things worth seeing: burn-in, and what happens when the step size is wrong.
+
+private fun bananaLogDensity(x: Float, y: Float): Double {
+    // Rosenbrock-style: narrow curved ridge. Hard for a naive random walk, which is the point.
+    val a = (x - 0.0) / 1.4
+    val b = (y - 0.35 * (x * x - 2.0)) / 0.55
+    return -0.5 * (a * a + b * b)
+}
+
+private fun mcmcFrames(): List<CloudFrame> {
+    val rng = Lcg(20240719)
+    val frames = mutableListOf<CloudFrame>()
+
+    // Background contour: sample the target on a lattice and keep the high-density cells, so the
+    // chain has something visible to be exploring.
+    val contour = buildList {
+        var gx = -3.4f
+        while (gx <= 3.4f) {
+            var gy = -2.6f
+            while (gy <= 3.4f) {
+                if (bananaLogDensity(gx, gy) > -2.2) add(Dot(P(gx, gy), -1, Emphasis.FADED))
+                gy += 0.28f
+            }
+            gx += 0.28f
+        }
+    }
+
+    frames.add(
+        CloudFrame(
+            status = "The target posterior, shaded. Suppose you can evaluate it up to a constant but cannot integrate it — which is the normal situation, because the normalizing constant is exactly the integral you cannot do.",
+            dots = contour,
+        ),
+    )
+
+    fun runChain(proposalScale: Float, steps: Int, start: P): Triple<List<P>, Int, List<Boolean>> {
+        val chain = mutableListOf(start)
+        val accepts = mutableListOf<Boolean>()
+        var current = start
+        var accepted = 0
+        repeat(steps) {
+            val proposal = P(current.x + rng.jitter(proposalScale * 2f), current.y + rng.jitter(proposalScale * 2f))
+            val logRatio = bananaLogDensity(proposal.x, proposal.y) - bananaLogDensity(current.x, current.y)
+            // Always accept an uphill move; accept a downhill one with probability exp(logRatio).
+            // That second clause is what stops the chain collapsing onto the mode.
+            val accept = logRatio >= 0.0 || rng.next() < kotlin.math.exp(logRatio)
+            if (accept) { current = proposal; accepted++ }
+            accepts.add(accept)
+            chain.add(current)
+        }
+        return Triple(chain, accepted, accepts)
+    }
+
+    // Proposal half-widths chosen by measuring acceptance against this target, not guessed: 3.0
+    // lands at the ~25% random-walk rule of thumb, 0.06 at ~95%, 8.0 at ~2%.
+    val start = P(-2.8f, 2.9f)
+    val (chain, accepted, accepts) = runChain(3.0f, 260, start)
+
+    frames.add(
+        CloudFrame(
+            status = "Metropolis-Hastings needs only the ratio of densities at two points, and the unknown constant cancels in that ratio. Start anywhere — here deliberately far out in the tail.",
+            dots = contour + Dot(start, 0, Emphasis.QUERY),
+        ),
+    )
+
+    listOf(1, 2, 3, 4).forEach { step ->
+        val current = chain[step - 1]
+        val proposed = chain[step]
+        val moved = accepts[step - 1]
+        frames.add(
+            CloudFrame(
+                status = if (moved) {
+                    "Step $step: proposal accepted. The density there was higher, or the coin came up favourable — a downhill move is accepted with probability exp(Δ log p), which is what keeps the chain from collapsing onto the peak."
+                } else {
+                    "Step $step: proposal rejected, so the chain stays put and the current point is recorded a second time. A rejection is a sample, not a wasted iteration."
+                },
+                dots = contour + chain.take(step).map { Dot(it, 0, Emphasis.NORMAL) },
+                centroids = listOf(Dot(proposed, if (moved) 2 else 3, Emphasis.QUERY)),
+                segments = listOf(Segment(current, proposed, if (moved) CloudColors[2] else UnassignedColor, dashed = !moved)),
+            ),
+        )
+    }
+
+    val burnIn = 60
+    frames.add(
+        CloudFrame(
+            status = "After $burnIn steps the chain has found the ridge, but those early samples were drawn while it was still travelling. They are not from the posterior and have to be discarded — that is burn-in, and forgetting it biases everything downstream.",
+            dots = contour + chain.take(burnIn).map { Dot(it, 3, Emphasis.FADED) },
+            segments = chain.take(burnIn).zipWithNext().map { (a, b) -> Segment(a, b, UnassignedColor) },
+            readout = "burn-in: $burnIn samples discarded",
+        ),
+    )
+
+    frames.add(
+        CloudFrame(
+            status = "Post burn-in, the chain traces the target's shape. Acceptance rate over the whole run was ${"%.0f".format(accepted * 100f / accepts.size)}% — for a random-walk proposal the rule of thumb is roughly 25%, and being far from it in either direction means the step size is wrong.",
+            dots = contour + chain.drop(burnIn).map { Dot(it, 0, Emphasis.NORMAL) },
+            segments = chain.drop(burnIn).zipWithNext().map { (a, b) -> Segment(a, b, CloudColors[0]) },
+            readout = "acceptance ${"%.0f".format(accepted * 100f / accepts.size)}%",
+        ),
+    )
+
+    val (tiny, tinyAccepted, tinyAccepts) = runChain(0.06f, 200, P(0f, -0.6f))
+    frames.add(
+        CloudFrame(
+            status = "Step size too small: ${"%.0f".format(tinyAccepted * 100f / tinyAccepts.size)}% of proposals accepted, which sounds excellent and is not. The chain barely moves, consecutive samples are almost identical, and the effective sample size is a small fraction of the ${tiny.size} iterations.",
+            dots = contour + tiny.map { Dot(it, 1, Emphasis.NORMAL) },
+            segments = tiny.zipWithNext().map { (a, b) -> Segment(a, b, CloudColors[1]) },
+            readout = "acceptance ${"%.0f".format(tinyAccepted * 100f / tinyAccepts.size)}% · barely explores",
+        ),
+    )
+
+    val (huge, hugeAccepted, hugeAccepts) = runChain(8.0f, 200, P(0f, -0.6f))
+    frames.add(
+        CloudFrame(
+            status = "Step size too large: ${"%.0f".format(hugeAccepted * 100f / hugeAccepts.size)}% accepted. Almost every proposal lands somewhere implausible and is rejected, so the chain sticks in place for long stretches — the opposite failure, with the same symptom of highly correlated samples.",
+            dots = contour + huge.map { Dot(it, 3, Emphasis.NORMAL) },
+            segments = huge.zipWithNext().map { (a, b) -> Segment(a, b, CloudColors[3]) },
+            readout = "acceptance ${"%.0f".format(hugeAccepted * 100f / hugeAccepts.size)}% · sticks",
+        ),
+    )
+
+    frames.add(
+        CloudFrame(
+            status = "This is why tuning matters and why modern samplers avoid it: Hamiltonian Monte Carlo uses the gradient to propose distant points that are still likely, and NUTS picks its own trajectory length. Both are the same accept/reject skeleton with a better proposal.",
+            dots = contour + chain.drop(burnIn).map { Dot(it, 0, Emphasis.NORMAL) },
+            readout = "${chain.size - burnIn} usable samples",
+        ),
+    )
+    return frames
+}
+
 private val cloudConfigs = mapOf(
+    "adaboost" to CloudConfig(
+        intro = "Four rounds of real AdaBoost: the best stump under the current weights, the α it earns, and the re-weighting that decides what the next stump sees.",
+        legend = listOf(
+            CloudColors[0] to "Class 0",
+            CloudColors[1] to "Class 1",
+            QueryColor to "Misclassified / up-weighted",
+        ),
+        build = ::adaBoostFrames,
+    ),
+    "bagging" to CloudConfig(
+        intro = "Bootstrap sampling with the out-of-bag rows called out, and the one line that separates plain bagging from a random forest.",
+        legend = listOf(
+            CloudColors[0] to "Class 0",
+            CloudColors[1] to "Class 1",
+            UnassignedColor to "Out-of-bag",
+        ),
+        build = ::baggingFrames,
+    ),
+    "extra_trees" to CloudConfig(
+        intro = "The exhaustively-searched best split, then three thresholds drawn at random — each worse on its own, and the reason the ensemble is better.",
+        legend = listOf(
+            CloudColors[0] to "Class 0",
+            CloudColors[1] to "Class 1",
+            AxisColor to "Split",
+        ),
+        build = ::extraTreesFrames,
+    ),
+    "voting" to CloudConfig(
+        intro = "Three models, one query point, and the case where counting votes and averaging probabilities give different answers.",
+        legend = listOf(
+            CloudColors[0] to "Class 0",
+            CloudColors[1] to "Class 1",
+            QueryColor to "Query point",
+        ),
+        build = ::votingFrames,
+    ),
+    "stacking" to CloudConfig(
+        intro = "Base models, then the out-of-fold construction that makes the meta-learner's training set honest — the step stacking fails without.",
+        legend = listOf(
+            CloudColors[0] to "Class 0",
+            CloudColors[1] to "Class 1",
+            QueryColor to "Held-out fold",
+        ),
+        build = ::stackingFrames,
+    ),
+    "isolation_forest" to CloudConfig(
+        intro = "Random cuts isolating an outlier and an interior point, with the split count as the anomaly score.",
+        legend = listOf(
+            CloudColors[0] to "Normal",
+            QueryColor to "Being isolated",
+            AxisColor to "Random cut",
+        ),
+        build = ::isolationForestFrames,
+    ),
+    "mcmc" to CloudConfig(
+        intro = "Metropolis-Hastings on a curved, correlated posterior: the accept/reject rule, burn-in, and both ways a badly chosen step size fails.",
+        legend = listOf(
+            CloudColors[0] to "Chain",
+            QueryColor to "Proposal",
+            UnassignedColor to "Rejected / burn-in",
+        ),
+        build = ::mcmcFrames,
+    ),
     "random_forest" to CloudConfig(
         intro = "Three trees, three bootstrap samples, three different cuts — then a vote on the yellow query " +
             "point. Faded points are out-of-bag for the tree being grown.",

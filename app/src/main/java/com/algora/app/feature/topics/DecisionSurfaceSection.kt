@@ -262,7 +262,42 @@ private fun passiveAggressiveConfig() = SurfaceConfig(
     },
 )
 
+private fun gaussianNbConfig() = SurfaceConfig(
+    intro = "Gaussian naive Bayes is QDA with the off-diagonal covariance terms forced to zero. \"Features are independent given the class\" is not an abstraction here — it is visible as ellipses that cannot tilt.",
+    data = { seed -> unequalCovarianceBlobs(seed) },
+    sliders = listOf(SurfaceSlider("var_smoothing", 0f..1.5f, 0f)),
+    legend = listOf(EllipseColor to "Axis-aligned covariance", PositiveFill to "Class +1", NegativeFill to "Class −1"),
+    evaluate = { points, values, _ ->
+        val smoothing = values[0].toDouble()
+        val fit = fitGaussianNb(points, smoothing)
+        val qda = fitQda(points)
+        fun errorsOf(model: DiscriminantFit) = points.indices.filter {
+            val d = model.decision(points[it].x, points[it].y)
+            (d >= 0 && points[it].label < 0) || (d < 0 && points[it].label > 0)
+        }.toSet()
+        val wrong = errorsOf(fit)
+        val qdaWrong = errorsOf(qda).size
+        SurfaceResult(
+            decision = { x, y -> fit.decision(x, y) },
+            readouts = listOf(
+                SurfaceReadout("${points.size - wrong.size}/${points.size}", "GaussianNB correct"),
+                SurfaceReadout("${points.size - qdaWrong}/${points.size}", "QDA correct"),
+                SurfaceReadout("6", "Parameters"),
+            ),
+            note = "The positive class is genuinely tilted, but naive Bayes has no parameter that can represent a tilt — every ellipse is locked to the axes. It fits 6 parameters against QDA's 11, and here that costs " +
+                when {
+                    wrong.size > qdaWrong -> "${wrong.size - qdaWrong} extra error${if (wrong.size - qdaWrong == 1) "" else "s"}. The independence assumption is false and you can see exactly where."
+                    wrong.size < qdaWrong -> "nothing — it is ${qdaWrong - wrong.size} error${if (qdaWrong - wrong.size == 1) "" else "s"} ahead of QDA, because fewer parameters estimated from the same data is often the better trade even when the assumption is wrong."
+                    else -> "nothing on this sample: the assumption is false, yet the classifier is unaffected. That gap between \"wrong model\" and \"wrong prediction\" is why naive Bayes keeps working."
+                },
+            errors = wrong,
+            ellipses = listOf(fit.negative.ellipse(1.6), fit.positive.ellipse(1.6)),
+        )
+    },
+)
+
 private val surfaceConfigs: Map<String, () -> SurfaceConfig> = mapOf(
+    "gaussian_nb" to ::gaussianNbConfig,
     "svm_rbf" to ::svmRbfConfig,
     "nu_svc" to ::nuSvcConfig,
     "lda" to ::ldaConfig,

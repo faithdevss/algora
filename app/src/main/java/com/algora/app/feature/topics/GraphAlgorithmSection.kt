@@ -1155,7 +1155,103 @@ private fun articulationPointsFrames(): List<GraphAlgoFrame> {
     return frames
 }
 
+// ── Bayesian network ─────────────────────────────────────────────────────────
+// The classic sprinkler network. Small enough that the joint can be written out in full, which is
+// the point: the factorization's parameter saving is countable rather than asserted.
+private val bayesNetGraph = GraphDef(
+    nodes = listOf(
+        GNode("Cloudy", 0.50f, 0.10f),
+        GNode("Sprinkler", 0.18f, 0.45f),
+        GNode("Rain", 0.80f, 0.45f),
+        GNode("WetGrass", 0.50f, 0.85f),
+    ),
+    edges = listOf(
+        GEdge("Cloudy", "Sprinkler", directed = true),
+        GEdge("Cloudy", "Rain", directed = true),
+        GEdge("Sprinkler", "WetGrass", directed = true),
+        GEdge("Rain", "WetGrass", directed = true),
+    ),
+)
+
+private fun bayesNetworkFrames(): List<GraphAlgoFrame> {
+    val frames = mutableListOf<GraphAlgoFrame>()
+
+    frames.add(
+        GraphAlgoFrame(
+            status = "Four binary variables. Naive Bayes would assume all of them independent given the class; a Bayesian network instead states exactly which dependencies exist, as a directed acyclic graph.",
+            hideWeights = true,
+        ),
+    )
+
+    frames.add(
+        GraphAlgoFrame(
+            status = "Each node carries P(node | its parents). Cloudy has no parents so it needs 1 number; Sprinkler and Rain need 2 each; WetGrass has two parents so it needs 4. That is 9 parameters against the 2⁴ − 1 = 15 a full joint table would need.",
+            badges = mapOf("Cloudy" to "1", "Sprinkler" to "2", "Rain" to "2", "WetGrass" to "4"),
+            hideWeights = true,
+        ),
+    )
+
+    frames.add(
+        GraphAlgoFrame(
+            status = "The saving comes entirely from the missing edges. There is no arrow from Sprinkler to Rain, which asserts they are conditionally independent given Cloudy — a claim about the world that the graph makes explicit and testable.",
+            nodeMarks = mapOf("Sprinkler" to NodeMark.ACTIVE, "Rain" to NodeMark.ACTIVE, "Cloudy" to NodeMark.DONE),
+            edgeMarks = mapOf(0 to EdgeMark.ACCEPTED, 1 to EdgeMark.ACCEPTED),
+            hideWeights = true,
+        ),
+    )
+
+    frames.add(
+        GraphAlgoFrame(
+            status = "Observe Cloudy and the path between Sprinkler and Rain is blocked — learning it is sunny tells you about the sprinkler, but once you already know the weather, the sprinkler tells you nothing more about rain. This is d-separation, and it is what makes inference tractable.",
+            nodeMarks = mapOf("Cloudy" to NodeMark.DONE),
+            groups = mapOf("Sprinkler" to 0, "Rain" to 1),
+            hideWeights = true,
+        ),
+    )
+
+    frames.add(
+        GraphAlgoFrame(
+            status = "Now the collider. Sprinkler and Rain are marginally independent — neither causes the other. But observe WetGrass and they become dependent: the grass is wet, so if the sprinkler was off, rain becomes far more likely.",
+            nodeMarks = mapOf("WetGrass" to NodeMark.DONE),
+            edgeMarks = mapOf(2 to EdgeMark.ACTIVE, 3 to EdgeMark.ACTIVE),
+            groups = mapOf("Sprinkler" to 0, "Rain" to 0),
+            hideWeights = true,
+        ),
+    )
+
+    frames.add(
+        GraphAlgoFrame(
+            status = "That is explaining away, and it is the one pattern where conditioning creates dependence rather than removing it. It is also why you cannot read independence off the arrows alone — the direction of the arrows into a node matters.",
+            nodeMarks = mapOf("WetGrass" to NodeMark.DONE, "Sprinkler" to NodeMark.ACTIVE),
+            groups = mapOf("Rain" to 1),
+            hideWeights = true,
+        ),
+    )
+
+    frames.add(
+        GraphAlgoFrame(
+            status = "The joint factorizes along the arrows: P(C,S,R,W) = P(C)·P(S|C)·P(R|C)·P(W|S,R). Exact inference by variable elimination is efficient on a graph this sparse; on densely connected graphs it becomes intractable, which is where MCMC comes in.",
+            nodeMarks = GraphDefAllDone(bayesNetGraph),
+            hideWeights = true,
+        ),
+    )
+    return frames
+}
+
+private fun GraphDefAllDone(def: GraphDef): Map<String, NodeMark> =
+    def.ids.associateWith { NodeMark.DONE }
+
 private val graphAlgoConfigs = mapOf(
+    "bayesian_networks" to GraphAlgoConfig(
+        intro = "The sprinkler network: how the missing edges buy the parameter saving, and the two ways conditioning changes what is independent of what.",
+        def = bayesNetGraph,
+        legend = listOf(
+            NodeMarkColors.getValue(NodeMark.DONE) to "Observed",
+            NodeMarkColors.getValue(NodeMark.ACTIVE) to "In question",
+            GroupColors[0] to "Dependent",
+        ),
+        build = ::bayesNetworkFrames,
+    ),
     "topological_sort" to GraphAlgoConfig(
         intro = "Kahn's algorithm on a DAG. Badges are remaining in-degrees — a node joins the queue the moment " +
             "its count hits zero, and the emitted count at the end is the cycle check.",

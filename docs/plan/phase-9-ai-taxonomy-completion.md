@@ -1,7 +1,8 @@
 # Phase 9 — AI Taxonomy Completion
 
-Status: In progress — Track A complete (RL at 100% of the doc), B1 and B2 done. 31 of 226 topics
-authored; taxonomy at 231, target 426. Next: B3 (Bayesian Algorithms, 7 topics)
+Status: In progress — Track A complete (RL at 100% of the doc), B1–B4 done. 47 of 226 topics
+authored; taxonomy at 247, target 426. AI sections now: ML 48, DL 15, NLP 12, RL 74.
+Next: B5 (Clustering, 10 topics)
 Depends on: Phase 5 (AI mode shell + content template), Phase 3 (simulation widgets), Phase 8 (premium gating)
 
 ## Goal
@@ -230,18 +231,72 @@ the two-sided bound is checked on screen rather than asserted.
   the comparison and describe whichever way it actually went — including the case where QDA loses,
   which is the more instructive outcome and states the reason.
 
-**B3 · Bayesian Algorithms** — 7 topics
-Gaussian NB · Multinomial NB · Bernoulli NB · Complement NB · Categorical NB · Bayesian Networks ·
-MCMC
-*Sims:* `ClassifierPlayground` (per-likelihood decision surfaces), `GraphVisualizer` (Bayes net
-d-separation), `PointCloudPlayer` (MCMC chain walking a posterior).
+**B3 · Bayesian Algorithms** — 7 topics — **Done**
+`gaussian_nb` · `multinomial_nb` · `bernoulli_nb` · `complement_nb` · `categorical_nb` ·
+`bayesian_networks` · `mcmc`
 
-**B4 · Ensemble Methods** — 9 topics
-AdaBoost · XGBoost · LightGBM · CatBoost · Extra Trees · Voting · Stacking & Blending · Bagging ·
-Isolation Forest
-*Sims:* `PointCloudPlayer` (reweighting per boosting round, residual-fitting stumps — the existing
-`gradient_boosting` frame builder generalizes), `ClassifierPlayground` (vote aggregation),
-`TreeVisualizer` (histogram vs leaf-wise growth for LightGBM).
+New category `ml_bayesian`, led by the existing generic `naive_bayes` moved over from
+`ml_supervised`. All premium.
+
+**Zero new widgets** — the check the note above asks for paid off. Configs went to four existing
+labs: `DecisionSurface` (`gaussian_nb`), `TokenStripPlayer` (the four discrete variants),
+`GraphAlgorithmPlayer` (`bayesian_networks`), `PointCloudPlayer` (`mcmc`). One new support file,
+`NaiveBayesFrames.kt`, holds the shared corpus and the four fitted models so the frame builders
+compute their arithmetic rather than hard-coding it.
+
+`gaussian_nb` reuses the LDA/QDA dataset and fits a diagonal covariance, so the independence
+assumption is visible as ellipses that cannot tilt next to QDA's that can. The four discrete
+variants share one corpus and one test document, so what changes between them is only the
+likelihood — Bernoulli's frames step through the whole vocabulary to show absent terms contributing,
+which is the thing that actually distinguishes it from multinomial.
+
+**Two corrections came out of verification, both real bugs rather than wording:**
+- **Complement NB had the sign inverted.** I wrote the weight as −log(θ̃) and kept Rennie's argmin
+  decision rule, which is self-cancelling: the lab confidently picked the *wrong* class on the
+  imbalanced corpus (politics for a document reading "goal match"). Rennie's weight is log(θ̃) with
+  argmin; fixed, and the lab now scores sports at −0.502 against politics at −0.212.
+- **The MCMC proposal scales were wrong.** Acceptance was measured against the actual target rather
+  than assumed: the "tuned" chain at half-width 0.55 was accepting 66%, and the "too large" chain at
+  3.2 was accepting 18% — which is the *well-tuned* regime, not a failure. Now 3.0 (24%, the
+  random-walk rule of thumb), 0.06 (95%) and 8.0 (2%), with the measured values recorded in a
+  comment.
+
+Also softened two overclaims: the complement frame now states which model was right rather than
+assuming multinomial fails, and notes that the two scores are on different scales and not comparable.
+The Bayesian-network explaining-away numbers were verified by exact enumeration — P(Rain) 0.500 →
+0.708 on wet grass → 0.320 once the sprinkler explains it.
+
+**B4 · Ensemble Methods** — 9 topics — **Done**
+`bagging` · `extra_trees` · `voting` · `stacking` · `adaboost` · `xgboost` · `lightgbm` ·
+`catboost` · `isolation_forest`
+
+New category `ml_ensemble`, holding the doc's Ensemble block in full — the existing `random_forest`
+and `gradient_boosting` moved over from `ml_supervised` and were renamed to the doc's titles
+("Random Forests", "Gradient Boosting Machines (GBM)"). All premium. `ml_supervised` is now down to
+`perceptron`, `bias_variance`, `regularization` and `model_evaluation`, which B9 and B10 will
+redistribute.
+
+**No new widgets again.** Six configs went to `PointCloudPlayer` and three to `TreeVisualizer`.
+A shared `Stump` type plus an exhaustive `bestStump` search now sits in `PointCloudSection`, so the
+boosting and bagging builders show the genuinely optimal split under the current weights rather than
+a chosen one. AdaBoost runs the real algorithm — weighted error, α = ½ln((1−ε)/ε), exponential
+re-weighting — and reports its own numbers.
+
+The three GBM implementations went to `TreeVisualizer` because what distinguishes them in practice is
+how they decide to grow, which is a tree-shape story: XGBoost's level-wise growth with a
+second-order gain and γ-pruning, LightGBM's leaf-wise growth, and CatBoost's oblivious trees where
+every node at a level shares one condition.
+
+**Two arithmetic errors caught before the copy shipped:**
+- **XGBoost's split gain was negative where the frame claimed it positive.** The G/H values I first
+  picked (−5/5 and −1/3) give a gain of −0.29, so the frame narrated taking a split the formula
+  rejects. Replaced with −6/4 and −1/4, verified: gain +0.478, leaves 1.20 and 0.20, and a second
+  split at −0.513 that γ correctly prunes.
+- **LightGBM's leaf counts and gain totals did not follow from the drawing.** The frames said "six
+  leaves" while rendering four, and the totals (8.5 vs 10.3) summed gains from splits that were never
+  taken. Rewritten to an exactly checkable comparison: three splits and four leaves either way,
+  level-wise realizing 4.0 + 0.3 = 4.3 and leaf-wise 4.0 + 2.1 = 6.1, because leaf-wise declines to
+  spend a budgeted split on the 0.3 node.
 
 **B5 · Clustering** — 10 topics
 K-Medians · K-Modes · Hierarchical (Divisive) · HDBSCAN · OPTICS · Mean Shift · BIRCH ·

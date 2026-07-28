@@ -848,7 +848,173 @@ private fun treeDpFrames(): List<TreeFrame> {
     return b.frames
 }
 
+// ── Gradient-boosting implementations, as tree shapes ────────────────────────
+// XGBoost, LightGBM and CatBoost all optimize the same objective; what distinguishes them in
+// practice is how each one decides to grow. That is a tree-shape story, so it belongs here rather
+// than in a scatter plot. Gains and leaf values below are computed from the real formulas.
+
+// XGBoost's exact split gain, from the second-order Taylor expansion:
+//   gain = ½[ G_L²/(H_L+λ) + G_R²/(H_R+λ) − (G_L+G_R)²/(H_L+H_R+λ) ] − γ
+private fun xgbGain(gl: Double, hl: Double, gr: Double, hr: Double, lambda: Double, gamma: Double): Double =
+    0.5 * (gl * gl / (hl + lambda) + gr * gr / (hr + lambda) - (gl + gr) * (gl + gr) / (hl + hr + lambda)) - gamma
+
+private fun xgbLeaf(g: Double, h: Double, lambda: Double): Double = -g / (h + lambda)
+
+private fun xgboostFrames(): List<TreeFrame> {
+    val builder = TreeBuilder()
+    val lambda = 1.0
+    val gamma = 0.5
+
+    val root = builder.add("G=−7.0  H=8.0", null, 0)
+    builder.frame(
+        "XGBoost is gradient boosting written as a proper regularized optimization. Each node carries two sums over the rows that reach it: G, the gradients of the loss, and H, the second derivatives. Ordinary gradient boosting uses only G.",
+        active = setOf(root),
+    )
+
+    builder.relabel(root, "w* = ${"%.2f".format(xgbLeaf(-7.0, 8.0, lambda))}")
+    builder.frame(
+        "If this node stayed a leaf, its optimal value would be −G/(H+λ) = ${"%.2f".format(xgbLeaf(-7.0, 8.0, lambda))}. That is a closed-form Newton step, not a line search — the second-order term is what makes it exact, and λ in the denominator shrinks the leaf toward zero.",
+        marked = setOf(root),
+    )
+
+    val gainA = xgbGain(-6.0, 4.0, -1.0, 4.0, lambda, gamma)
+    val left = builder.add("G=−6.0  H=4.0", root, 0)
+    val right = builder.add("G=−1.0  H=4.0", root, 1)
+    builder.relabel(root, "gain ${"%.2f".format(gainA)}")
+    builder.frame(
+        "Candidate split: gain = ½[G_L²/(H_L+λ) + G_R²/(H_R+λ) − G²/(H+λ)] − γ = ${"%.2f".format(gainA)}. Positive, so it is worth taking. γ is a fixed toll charged per split — a structural penalty that has no analogue in plain GBM.",
+        active = setOf(left, right),
+        path = setOf(root),
+    )
+
+    val gainB = xgbGain(-0.6, 2.0, -0.4, 2.0, lambda, gamma)
+    val leftLeft = builder.add("G=−0.6  H=2.0", right, 0)
+    val leftRight = builder.add("G=−0.4  H=2.0", right, 1)
+    builder.frame(
+        "Try splitting the right child: gain = ${"%.2f".format(gainB)}. Negative, because the improvement it buys is smaller than γ. XGBoost prunes it — and note it computes this *after* growing to max depth, so a bad split whose children are excellent is not discarded prematurely.",
+        active = setOf(leftLeft, leftRight),
+    )
+
+    builder.remove(leftLeft)
+    builder.remove(leftRight)
+    builder.relabel(left, "w = ${"%.2f".format(xgbLeaf(-6.0, 4.0, lambda))}")
+    builder.relabel(right, "w = ${"%.2f".format(xgbLeaf(-1.0, 4.0, lambda))}")
+    builder.frame(
+        "Pruned. The two surviving leaves take their closed-form values ${"%.2f".format(xgbLeaf(-6.0, 4.0, lambda))} and ${"%.2f".format(xgbLeaf(-1.0, 4.0, lambda))}. Both are shrunk toward zero by λ — with λ = 0 they would be ${"%.2f".format(xgbLeaf(-6.0, 4.0, 0.0))} and ${"%.2f".format(xgbLeaf(-1.0, 4.0, 0.0))}.",
+        marked = setOf(left, right),
+    )
+
+    builder.frame(
+        "Growth here is level-wise: every node at a depth is considered before going deeper, which keeps the tree balanced and made the algorithm straightforward to parallelize. That choice is exactly what LightGBM changes.",
+        marked = setOf(left, right),
+        path = setOf(root),
+    )
+    return builder.frames
+}
+
+private fun lightgbmFrames(): List<TreeFrame> {
+    val builder = TreeBuilder()
+
+    // Both strategies get the same budget: three splits, which produces four leaves either way.
+    // Each node's label is the gain that splitting THAT node would realize.
+    val root = builder.add("root", null, 0)
+    builder.frame("Same budget for both strategies: three splits, so four leaves either way. XGBoost's level-wise growth splits every node at a depth before descending.")
+
+    val l = builder.add("gain 4.0", root, 0)
+    val r = builder.add("gain 0.3", root, 1)
+    builder.frame("Split 1 is the root, giving two children whose own split gains are very different — 4.0 and 0.3.", active = setOf(l, r))
+
+    val ll = builder.add("gain 2.1", l, 0)
+    val lr = builder.add("gain 1.8", l, 1)
+    val rl = builder.add("gain 0.2", r, 0)
+    val rr = builder.add("gain 0.1", r, 1)
+    builder.frame(
+        "Splits 2 and 3 go to both nodes at this level, because that is what level-wise means. Realized gain 4.0 + 0.3 = 4.3, and one of those splits went to a node with almost nothing left to give. Four leaves, depth 2.",
+        marked = setOf(ll, lr, rl, rr),
+    )
+
+    listOf(rr, rl, lr, ll, r, l).forEach { builder.remove(it) }
+    builder.frame("Now the same three splits, grown leaf-wise: each time, split whichever leaf anywhere in the tree offers the largest gain, regardless of depth.")
+
+    val a = builder.add("gain 4.0", root, 0)
+    val b = builder.add("gain 0.3", root, 1)
+    builder.frame("Split 1 is identical — the strategies only diverge once there is a choice of leaf.", active = setOf(a, b))
+
+    val c = builder.add("gain 2.1", a, 0)
+    val d = builder.add("gain 1.8", a, 1)
+    builder.frame("Split 2: the best available leaf is the 4.0 node, so take it. Level-wise would have made the same choice here.", active = setOf(c, d))
+
+    builder.frame(
+        "Split 3 is where they part. The candidates are now 0.3, 2.1 and 1.8, and leaf-wise takes the 2.1 — leaving the 0.3 node unsplit rather than spending a budgeted split on it. Realized gain 4.0 + 2.1 = 6.1 against level-wise's 4.3, from the same three splits and the same four leaves.",
+        active = setOf(c),
+        marked = setOf(b, d),
+    )
+
+    val e = builder.add("gain 1.2", c, 0)
+    val f = builder.add("gain 0.9", c, 1)
+    builder.frame(
+        "The resulting tree is deeper and lopsided. That is the trade: more gain per leaf, and a shape that overfits small datasets readily — which is why num_leaves and min_data_in_leaf matter far more here than max_depth does in XGBoost. The other half of LightGBM's speed is histogram binning: features bucketed into ~255 bins, so split search costs O(bins) instead of sorting every value.",
+        marked = setOf(b, d, e, f),
+        path = setOf(root, a, c),
+    )
+    return builder.frames
+}
+
+private fun catboostFrames(): List<TreeFrame> {
+    val builder = TreeBuilder()
+
+    val root = builder.add("x₁ < 5?", null, 0)
+    val l = builder.add("x₁ < 5?", root, 0)
+    val r = builder.add("x₁ < 5?", root, 1)
+    builder.frame(
+        "CatBoost grows oblivious (symmetric) trees: every node at the same depth tests the identical condition. Here the root's test is reused across the whole level, which is not a coincidence but the constraint.",
+        active = setOf(root),
+    )
+
+    builder.relabel(l, "x₂ < 2?")
+    builder.relabel(r, "x₂ < 2?")
+    builder.frame(
+        "Depth 2 picks one condition and applies it to both nodes. The tree is fully described by a list of (feature, threshold) pairs — one per level — rather than a per-node structure.",
+        active = setOf(l, r),
+    )
+
+    val leaves = (0 until 4).map { i ->
+        builder.add("leaf $i", if (i < 2) l else r, i % 2)
+    }
+    builder.frame(
+        "That makes prediction a bit-trick rather than a traversal: evaluate each level's condition to a 0 or 1, concatenate them into an index, and look the leaf up directly. No branching, no pointer chasing — which is why CatBoost's inference is unusually fast.",
+        marked = leaves.toSet(),
+    )
+
+    builder.frame(
+        "The symmetry is also a regularizer. A balanced tree forced to reuse conditions is far less expressive than LightGBM's leaf-wise growth, so it overfits less on small data — and it is a real constraint, so on large datasets with complex interactions it can cost accuracy.",
+        marked = leaves.toSet(),
+        path = setOf(root, l, r),
+    )
+
+    builder.frame(
+        "CatBoost's other two ideas are not visible in the tree shape. Ordered target statistics encode a categorical value using the target mean over only the rows *before* it in a random permutation, so a row never contributes to its own encoding — plain target encoding leaks the label and overfits badly. Ordered boosting applies the same trick to residuals, computing each row's gradient from a model that never saw it.",
+        marked = leaves.toSet(),
+    )
+    return builder.frames
+}
+
 private val treeConfigs = mapOf(
+    "xgboost" to TreeConfig(
+        intro = "One tree built by the real second-order gain formula: G and H sums, the closed-form leaf value, and a split that γ prunes away.",
+        markedLabel = "Leaf",
+        build = ::xgboostFrames,
+    ),
+    "lightgbm" to TreeConfig(
+        intro = "The same six-leaf budget spent level-wise and then leaf-wise, so the difference in shape and in captured gain is directly comparable.",
+        markedLabel = "Leaf",
+        build = ::lightgbmFrames,
+    ),
+    "catboost" to TreeConfig(
+        intro = "Oblivious trees: one condition per level, reused across the whole level, and what that buys at inference time.",
+        markedLabel = "Leaf",
+        build = ::catboostFrames,
+    ),
     "lca" to TreeConfig(
         intro = "Two LCA queries on an 8-node tree: one where the nodes sit at different depths and must be " +
             "levelled first, one where they are already level and only need to climb together.",

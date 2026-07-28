@@ -277,6 +277,24 @@ internal fun fitQda(points: List<ClassPoint>, shrink: Double = 0.0): Discriminan
     )
 }
 
+// Gaussian naive Bayes is QDA with the off-diagonal covariance terms forced to zero: features are
+// assumed conditionally independent given the class, which is exactly what a diagonal covariance
+// says. Keeping it in the same DiscriminantFit type makes the three directly comparable.
+internal fun fitGaussianNb(points: List<ClassPoint>, smoothing: Double = 0.0): DiscriminantFit {
+    val full = fitQda(points)
+    fun diagonalize(g: Gaussian2D): Gaussian2D {
+        val varX = g.covariance[0][0] + smoothing
+        val varY = g.covariance[1][1] + smoothing
+        return Gaussian2D(
+            g.meanX,
+            g.meanY,
+            arrayOf(doubleArrayOf(varX, 0.0), doubleArrayOf(0.0, varY)),
+            g.prior,
+        )
+    }
+    return DiscriminantFit(diagonalize(full.negative), diagonalize(full.positive))
+}
+
 private fun List<Double>.averageOr(fallback: Double) = if (isEmpty()) fallback else average()
 
 // ── Passive-Aggressive: the online update, step by step ──────────────────────
