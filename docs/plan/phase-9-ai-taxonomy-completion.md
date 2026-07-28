@@ -1,9 +1,9 @@
 # Phase 9 — AI Taxonomy Completion
 
-Status: In progress — Track A complete (RL at 100% of the doc), B1–B6 done. 65 of 226 topics
-authored; taxonomy at 265, target 426. AI sections now: ML 66, DL 15, NLP 12, RL 74.
-**Doc coverage is now measured, not estimated: 183 of the doc's 357 entries (51%).**
-Next: B7 (Association Rules + Time Series, 9 topics).
+Status: In progress — Track A complete (RL at 100% of the doc), B1–B7 done. 74 of 226 topics
+authored; taxonomy at 274, target 426. AI sections now: ML 75, DL 15, NLP 12, RL 74.
+**Doc coverage is measured, not estimated: 192 of the doc's 357 entries (54%).**
+Next: B8 (Data Preprocessing, 9 topics).
 
 **Both guards are now built.** Phase 10 landed the category-integrity assertion
 (`CategoryIntegrityTest`, generic over all eight sections), and B6 landed
@@ -66,14 +66,15 @@ below.
 | B5 · Clustering | 10 | **Done** | No new widget; `twoMoons` geometry replaced |
 | B6 · Dimensionality Reduction | 8 | **Done** | New `DimReductionMath.kt`; no new widget. `ml_unsupervised` retired |
 | — · Guards | — | **Done** | `AiTaxonomyCoverageTest` + `DimReductionMathTest` |
-| B7–B10 | 38 | Planned | |
+| B7 · Association Rules + Time Series | 9 | **Done** | No new widget; one additive `LabCanvas` fix. `B7MathTest` added |
+| B8–B10 | 29 | Planned | |
 | Track C (C1–C9) | 73 | Planned | `FeatureMapPlayer` still outstanding |
 | Track D (D1–D6) | 50 | Planned | |
-| **Total** | **226** | **65 done** | Taxonomy 200 → 265 of 426 |
+| **Total** | **226** | **74 done** | Taxonomy 200 → 274 of 426 |
 
-Sections against the doc, now measured by `AiTaxonomyCoverageTest` rather than counted by hand:
-**RL 71/71**, ML 74/113, DL 22/96, NLP 16/77 — **183 of 357 overall**. ML is 66 topics of its
-eventual ~100; DL and NLP are untouched at 15 and 12.
+Sections against the doc, measured by `AiTaxonomyCoverageTest` rather than counted by hand:
+**RL 71/71**, ML 83/113, DL 22/96, NLP 16/77 — **192 of 357 overall**. ML is 75 topics of its
+eventual ~100; DL and NLP are untouched at 15 and 12. Browsable topics across the app: 297.
 
 ## Decisions taken before planning
 
@@ -98,9 +99,8 @@ Existing categories are kept where a doc heading matches; the two generic ML/DL/
 retired once their topics are redistributed.
 
 **Machine Learning — 12 categories.** Built so far: `ml_regression`, `ml_classification`,
-`ml_bayesian`, `ml_ensemble`, `ml_clustering`, `ml_dimreduction`. Still to come:
-`ml_nn_foundations`, `ml_association`, `ml_timeseries`, `ml_preprocessing`, `ml_metrics`,
-`ml_rl_fundamentals`.
+`ml_bayesian`, `ml_ensemble`, `ml_clustering`, `ml_dimreduction`, `ml_association`, `ml_timeseries`.
+Still to come: `ml_nn_foundations`, `ml_preprocessing`, `ml_metrics`, `ml_rl_fundamentals`.
 
 `ml_supervised` and `ml_unsupervised` were hollowed out a batch at a time rather than deleted up
 front, so that no category was ever empty mid-phase. **`ml_unsupervised` is now gone** — B5 took its
@@ -449,11 +449,48 @@ recovery to within 5°, the FA residual, the t-SNE size inversion, UMAP beating 
 metrics, the LLE k = 6 failure — so a future re-tune that quietly makes a topic pointless fails
 rather than ships.
 
-**B7 · Association Rules + Time Series** — 9 topics
-Apriori · Eclat · FP-Growth · Moving Average · Autoregression · ARIMA · SARIMA ·
-Exponential Smoothing · Prophet
-*Sims:* `ArrayWalkPlayer` (candidate pruning per Apriori pass; rolling-window mean sliding a series),
-`TreeVisualizer` (FP-tree), `RegressionExplorer` (AR coefficients, trend/seasonal decomposition).
+**B7 · Association Rules + Time Series** — 9 topics — **Done**
+`apriori` · `eclat` · `fp_growth` · `moving_average` · `exponential_smoothing` · `autoregression` ·
+`arima` · `sarima` · `prophet`
+
+Two new categories, `ml_association` (icon `link`) and `ml_timeseries` (icon `history`) — the last
+two glyphs still unused in this section, so no ML category shares one. `apriori` and
+`moving_average` are free, the rest premium.
+
+**No new widget, sixth batch running.** The plan proposed `RegressionExplorer` for the time-series
+half; that is the mock's hand-tuned lab with no `topicId` parameter, so it cannot take per-topic
+configs. `RegressionLab` — B1's config-driven sibling — took all six instead, and the only change it
+needed was one additive line in `LabCanvas`: the x-range now includes curve points, not just data
+points. Every regression topic samples its curve across the data's own range so none of them noticed,
+but a forecast is by definition drawn past the last observation, and without it the entire forecast
+fell off the right edge of the canvas. Association went to `ArrayWalkPlayer` (Apriori's candidate
+rows, Eclat's tid-lists) and `TreeVisualizer` (the FP-tree, using the `TreeLink` field Aho-Corasick
+added for failure links to draw the header chain).
+
+Two new math files. `AssociationMath.kt` holds one basket database and all three algorithms, so the
+labs can show that they return the *same* frequent itemsets by different searches. The database is
+built to exercise each claim rather than illustrate it: one item below minimum support, one 3-itemset
+(BCE) eliminated by downward closure without a counting pass, and one frequent rule with high
+confidence and lift below 1. `TimeSeriesMath.kt` holds the six estimators on one shared series —
+least squares on the lagged design for AR, **Hannan–Rissanen** two-stage for ARIMA's MA terms (a real
+estimator, not a stand-in), the three Holt-Winters recursions, and Prophet's actual model form:
+piecewise-linear trend on changepoint basis functions plus a Fourier seasonality, fitted as one
+least-squares problem with the penalty applied to the changepoint slopes alone — which is Prophet's
+sparse prior on δ.
+
+**Every lab scores against a held-out year and against seasonal-naive**, and that discipline caught
+the batch's one wrong claim. The `autoregression` copy was drafted saying AR loses to the benchmark
+at every order the slider offers. Measured, that is true only up to p = 8 (RMSE 8.7–11.0 against the
+benchmark's 5.90); at p = 9 it reaches the annual lag and wins at 3.80. The paragraph was rewritten
+to the more interesting true version — AR *can* represent seasonality, at a price of nine to twelve
+parameters estimated from thirty-six usable rows, which is what one seasonal difference buys in a
+single subtraction. Measured ordering across the six: Prophet 3.77 < Holt-Winters 4.72 < SARIMA 5.54
+< seasonal-naive 5.90 < ARIMA ≈ AR(1–8) ≈ 8.7–10.9.
+
+New guard `B7MathTest` (13 tests). The association assertions are exact, because the database is
+hand-checkable; the time-series ones are orderings — which method beats which, which diagnostic moves
+which way — because those orderings *are* the copy. A re-tune that flipped one would leave every frame
+internally consistent (all numbers are computed) and teaching the opposite of what it says.
 
 **B8 · Data Preprocessing** — 9 topics
 Min-Max Normalization · Z-Score Standardization · Label Encoding · One-Hot Encoding ·
@@ -607,7 +644,7 @@ monetization angle.
 
 ## Guards
 
-**Shipping and green (80 tests):**
+**Shipping and green (94 tests):**
 - `ContentCoverageTest` — every browsable topic has content, nothing resolves to `NotYetAvailable`,
   and every prerequisite and cross-link id resolves. It has caught real breakage every batch and is
   run (with `--rerun-tasks`) at the end of each one.
@@ -619,8 +656,9 @@ monetization angle.
 - `AiTaxonomyCoverageTest` (B6) — the doc as code. 357 entries nested by section and heading, each
   mapped to the topic ids serving it or to an explicit gap; pins the entry count, id resolution,
   section membership, and the covered count. Its failure message prints the remaining backlog.
-- `DimReductionMathTest` (B6) — pins the properties B6's copy leans on, so a re-tune that makes a
-  topic pointless fails instead of shipping.
+- `DimReductionMathTest` (B6) and `B7MathTest` (B7) — pin the properties each batch's copy leans on,
+  so a re-tune that makes a topic pointless fails instead of shipping. Worth continuing per batch;
+  `B7MathTest` caught a wrong claim that had already been written.
 
 **Nothing specified here is now unbuilt.** The lesson from the five-batch slip is worth keeping:
 the taxonomy map cost about an hour, would have cost the same at any point, and immediately
@@ -634,11 +672,14 @@ number closed no doc entry, which is worth noticing at the time rather than at t
   widget. Three batches in, two config-driven sim types had shipped (`RegressionLab`,
   `DecisionSurface`) plus additive fields on `RlFrame` and `CloudFrame`. The pattern that emerged:
   existing widgets were each bound to one model shape, so a batch either fits an existing one exactly
-  or needs a new config-driven sibling. B3 through B6 then needed nothing new — four consecutive
-  batches on existing widgets — so the cost is front-loaded per *family* rather than per batch.
-  Check the remaining batches against what now exists before assuming more.
+  or needs a new config-driven sibling. B3 through B7 then needed nothing new — five consecutive
+  batches on existing widgets — so the cost is front-loaded per *family* rather than per batch. B7
+  also showed the second-order version of the same mistake: the plan named `RegressionExplorer` for
+  its time-series half, which cannot take a config at all, while `RegressionLab` took all six topics
+  after a one-line canvas change. Check the remaining batches against what now exists, and check
+  *which* of two similar widgets is the config-driven one.
 - **`FeatureMapPlayer` is still net-new** and blocks C3 and C4. Build it while C1/C2 land.
-- **Verification keeps finding real defects, not wording problems.** Across six batches: an
+- **Verification keeps finding real defects, not wording problems.** Across seven batches: an
   inverted Complement NB sign that produced confidently wrong classifications, MCMC step sizes whose
   "too large" case sat in the well-tuned regime, an XGBoost split gain that was negative where the
   narration took it, LightGBM leaf counts that contradicted the drawing, and a `twoMoons` geometry
@@ -647,8 +688,10 @@ number closed no doc entry, which is worth noticing at the time rather than at t
   than linear PCA, and a factor-analysis frame whose intended claim was measurably backwards. Every
   one of these reads plausibly and is wrong. **Numeric claims in a lab must be measured before the
   copy around them is written**, and notes that could go either way should compute the comparison
-  rather than assert it. Both of B6's were caught only because a throwaway probe printed the numbers
-  before any copy existed; that probe step is worth keeping as part of the batch routine.
+  rather than assert it. B7 added one more — an `autoregression` paragraph asserting the model loses
+  to the seasonal benchmark at every order, when it wins from p = 9 — and it was the batch's own guard
+  test that caught it, not the probe. Both steps earn their place: the probe before the copy, the
+  guard after it.
 - **Topic-id collisions.** `TopicRegistry` collapses cross-listed ids first-wins (`perceptron`,
   `transformers`). Tracks C and D cross-list far more (backprop, LSTM, attention, RLHF, all seven
   Deep RL entries). `AiTaxonomyCoverageTest` now makes these reviewable — a cross-listed entry
@@ -662,7 +705,7 @@ number closed no doc entry, which is worth noticing at the time rather than at t
 
 ## Suggested order
 
-~~A1 → A2~~ → ~~B1 → B2 → B3 → B4 → B5~~ → ~~guards~~ → ~~B6~~ → **B7** → B8 → B9 → B10 → C1 → C2 →
+~~A1 → A2~~ → ~~B1 → B2 → B3 → B4 → B5~~ → ~~guards~~ → ~~B6 → B7~~ → **B8** → B9 → B10 → C1 → C2 →
 `FeatureMapPlayer` → C3 → C4 → C5 → C6 → C7 → C8 → C9 → D1 → D2 → D3 → D4 → D5 → D6.
 
 Struck-through batches are done. The guards step landed with B6 rather than before it, in the same

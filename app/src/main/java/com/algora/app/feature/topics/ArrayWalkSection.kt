@@ -2855,7 +2855,230 @@ private fun sparseTableFrames(): List<WalkFrame> {
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
+// ── Association rules (phase 9, batch B7) ────────────────────────────────────
+// Two of the three mining algorithms fit the cell row exactly, because both are really about a list
+// of things being marked kept or discarded: Apriori marks candidate itemsets, Eclat marks
+// transaction ids. Both run on the shared database in AssociationMath.kt, so the frequent itemsets
+// they end on are the same and every count is computed rather than written down.
+
+private fun aprioriFrames(): List<WalkFrame> {
+    val frames = mutableListOf<WalkFrame>()
+    val passes = aprioriPasses()
+
+    frames += WalkFrame(
+        status = "${transactions.size} baskets over ${basketItems.size} items, minimum support ${MinSupport} of " +
+            "${transactions.size}. The cells are the ${basketItems.size} single items; the row beneath is how many " +
+            "baskets each appears in.",
+        cells = basketItems.map { CellView(it) },
+        aux = basketItems.map { CellView(support(setOf(it)).toString(), CellMark.DIM) },
+        auxLabel = "support",
+    )
+
+    passes.forEach { pass ->
+        val labels = pass.candidates.map { it.label }
+        val counting = pass.candidates.map { c ->
+            CellView(c.label, if (c.prunedBySubset != null) CellMark.DIM else CellMark.ACTIVE)
+        }
+
+        if (pass.k > 1) {
+            val pruned = pass.candidates.filter { it.prunedBySubset != null }
+            frames += WalkFrame(
+                status = if (pruned.isEmpty()) {
+                    "Level ${pass.k}: join the frequent ${pass.k - 1}-itemsets pairwise to get ${labels.size} " +
+                        "candidates. Every ${pass.k - 1}-subset of every one of them is frequent, so none can be " +
+                        "ruled out in advance — all ${labels.size} have to be counted."
+                } else {
+                    "Level ${pass.k}: joining gives ${labels.size} candidates, but " +
+                        "${pruned.joinToString { it.label }} contains the subset " +
+                        "${pruned.joinToString { itemsetLabel(it.prunedBySubset!!) }}, which level ${pass.k - 1} " +
+                        "already found infrequent. **A superset of an infrequent set cannot be frequent** — so it is " +
+                        "discarded without reading a single basket. That is the Apriori property, and it is the whole " +
+                        "algorithm."
+                },
+                cells = pass.candidates.map { c ->
+                    CellView(c.label, if (c.prunedBySubset != null) CellMark.DIM else CellMark.IDLE)
+                },
+                aux = pass.candidates.map { c ->
+                    CellView(if (c.prunedBySubset != null) "✗" else "?", CellMark.DIM)
+                },
+                auxLabel = "before counting",
+                readout = "${pass.counted} of ${pass.candidates.size} need a database pass",
+            )
+        }
+
+        frames += WalkFrame(
+            status = "Counting pass ${pass.k}: read all ${transactions.size} baskets once and tally the " +
+                "${pass.counted} surviving candidate${if (pass.counted == 1) "" else "s"}. " +
+                pass.candidates.filter { it.prunedBySubset == null && !it.frequent }
+                    .let { below ->
+                        if (below.isEmpty()) "All of them clear support ${MinSupport}."
+                        else "${below.joinToString { "${it.label} (${it.support})" }} " +
+                            "${if (below.size == 1) "falls" else "fall"} below ${MinSupport} and " +
+                            "${if (below.size == 1) "is" else "are"} dropped."
+                    },
+            cells = counting,
+            aux = pass.candidates.map { c ->
+                CellView(
+                    if (c.prunedBySubset != null) "—" else c.support.toString(),
+                    when {
+                        c.prunedBySubset != null -> CellMark.DIM
+                        c.frequent -> CellMark.DONE
+                        else -> CellMark.IDLE
+                    },
+                )
+            },
+            auxLabel = "support",
+            readout = "L${pass.k} = { ${pass.frequent.joinToString { it.label }} }",
+        )
+    }
+
+    val last = passes.last()
+    frames += WalkFrame(
+        status = "No pair of ${last.k}-itemsets shares a prefix, so nothing can be joined and the search stops. " +
+            "The frequent sets are everything marked green along the way — found in ${passes.size} database passes, " +
+            "one per level, which is Apriori's cost and its weakness on long itemsets.",
+        cells = last.frequent.map { CellView(it.label, CellMark.RESULT) }.ifEmpty { listOf(CellView("—")) },
+        aux = last.frequent.map { CellView(it.support.toString(), CellMark.RESULT) }.ifEmpty { listOf(CellView("—")) },
+        auxLabel = "support",
+        readout = "${passes.size} database passes",
+    )
+
+    // Rules, and the reason confidence alone is not enough.
+    val rules = allRules()
+    val strongest = rules.first()
+    val misleading = rules.filter { it.lift < 1.0 }.maxByOrNull { it.confidence }
+    frames += WalkFrame(
+        status = "Frequent itemsets are not rules yet. Split each one every way and score the split: confidence is " +
+            "P(consequent | antecedent), lift is that divided by P(consequent) on its own. " +
+            "${strongest.label} has confidence ${"%.2f".format(strongest.confidence)} and lift " +
+            "${"%.2f".format(strongest.lift)}.",
+        cells = rules.take(6).map { CellView(it.label.replace(" → ", "→"), CellMark.IDLE) },
+        aux = rules.take(6).map { CellView("%.2f".format(it.lift), if (it.lift > 1.0) CellMark.DONE else CellMark.IDLE) },
+        auxLabel = "lift",
+    )
+
+    if (misleading != null) {
+        frames += WalkFrame(
+            status = "And the trap. ${misleading.label} has confidence ${"%.2f".format(misleading.confidence)} — a " +
+                "rule that fires ${"%.0f".format(misleading.confidence * 100)}% of the time, which sounds like a " +
+                "finding. But ${itemsetLabel(misleading.consequent)} appears in " +
+                "${support(misleading.consequent)} of ${transactions.size} baskets anyway, so lift is " +
+                "${"%.2f".format(misleading.lift)}: buying ${itemsetLabel(misleading.antecedent)} makes " +
+                "${itemsetLabel(misleading.consequent)} *less* likely, not more. Confidence cannot see that, because " +
+                "it never looks at how common the consequent is.",
+            // Top eight by confidence — enough cells to make the point, few enough to stay legible.
+            cells = rules.sortedByDescending { it.confidence }.take(8)
+                .map { CellView(it.label.replace(" → ", "→"), if (it === misleading) CellMark.ACTIVE else CellMark.DIM) },
+            aux = rules.sortedByDescending { it.confidence }.take(8)
+                .map { CellView("%.2f".format(it.confidence), if (it === misleading) CellMark.ACTIVE else CellMark.DIM) },
+            auxLabel = "confidence",
+            readout = "conf ${"%.2f".format(misleading.confidence)} · lift ${"%.2f".format(misleading.lift)}",
+        )
+    }
+    return frames
+}
+
+private fun eclatFrames(): List<WalkFrame> {
+    val frames = mutableListOf<WalkFrame>()
+    val order = basketItems.filter { support(setOf(it)) >= MinSupport }.sortedByDescending { support(setOf(it)) }
+
+    fun tidRow(tids: Collection<Int>, mark: CellMark = CellMark.WINDOW) = transactions.indices.map { t ->
+        CellView("${t + 1}", if (t in tids) mark else CellMark.DIM)
+    }
+
+    frames += WalkFrame(
+        status = "Apriori stores the database by row: basket 1 holds these items, basket 2 holds those. Eclat turns it " +
+            "on its side and stores it by column — for each item, the set of basket ids containing it. Same data, and " +
+            "the whole algorithm follows from the layout.",
+        cells = transactions.mapIndexed { t, items -> CellView("${t + 1}") },
+        aux = transactions.map { CellView(it.sorted().joinToString(""), CellMark.IDLE) },
+        auxLabel = "items",
+    )
+
+    order.forEach { item ->
+        val tids = tidList(item)
+        frames += WalkFrame(
+            status = "The tid-list for $item (${basketNames[item]}): baskets " +
+                "${tids.joinToString { "${it + 1}" }}. Its support is not counted — it is the length of this list, " +
+                "${tids.size}. That is the trade Eclat makes: hold the lists in memory and never scan the database " +
+                "again.",
+            cells = tidRow(tids),
+            aux = transactions.indices.map { CellView(if (it < tids.size) "•" else "", CellMark.DIM) },
+            auxLabel = "|t($item)| = ${tids.size}",
+            readout = "support($item) = ${tids.size}",
+        )
+    }
+
+    val a = order[0]
+    val b = order[1]
+    val ta = tidList(a)
+    val tb = tidList(b)
+    val intersection = ta.filter { it in tb }
+    frames += WalkFrame(
+        status = "Extending $a with $b is a set intersection: t($a) ∩ t($b). The cells show t($a) in blue; the row " +
+            "beneath marks which of those also appear in t($b). ${intersection.size} survive, so support($a$b) = " +
+            "${intersection.size} — again with no counting pass, because the intersection *is* the count.",
+        cells = tidRow(ta),
+        aux = transactions.indices.map { t ->
+            CellView(if (t in intersection) "✓" else if (t in ta) "✗" else "", if (t in intersection) CellMark.DONE else CellMark.DIM)
+        },
+        auxLabel = "also in t($b)",
+        readout = "support($a$b) = ${intersection.size}",
+    )
+
+    val steps = eclatSteps().filter { it.depth > 0 }
+    val deepest = steps.maxByOrNull { it.itemset.size }
+    steps.take(6).forEach { step ->
+        frames += WalkFrame(
+            status = "Depth ${step.depth}: ${step.label}, ${step.tids.size} tids. " +
+                if (step.frequent) {
+                    "Still frequent, so the search goes deeper along this branch before backtracking — depth-first, " +
+                        "unlike Apriori's level-by-level sweep."
+                } else {
+                    "Below support ${MinSupport}, so this branch is abandoned immediately and nothing under it is " +
+                        "ever generated."
+                },
+            cells = tidRow(step.tids, if (step.frequent) CellMark.DONE else CellMark.IDLE),
+            aux = transactions.indices.map { CellView("", CellMark.DIM) },
+            auxLabel = step.label,
+            readout = "support(${step.label}) = ${step.tids.size}",
+        )
+    }
+
+    val frequent = eclatSteps().filter { it.frequent && it.itemset.size >= 2 }
+    frames += WalkFrame(
+        status = "The frequent itemsets Eclat ends with are exactly the ones Apriori ends with — " +
+            "${frequent.joinToString { it.label }} — which is the point: these are different searches of the same " +
+            "space, not different definitions of the answer. Eclat wins when tid-lists are short (sparse data, high " +
+            "support) and loses when they are long, because a tid-list for a common item is nearly the whole database " +
+            "and intersecting two of them is expensive. ${deepest?.let { "The deepest branch reached ${it.label}." } ?: ""}",
+        cells = frequent.map { CellView(it.label, CellMark.RESULT) },
+        aux = frequent.map { CellView(it.tids.size.toString(), CellMark.RESULT) },
+        auxLabel = "support",
+        readout = "${frequent.size} frequent itemsets of size ≥ 2",
+    )
+    return frames
+}
+
 private val walkConfigs = mapOf(
+    "apriori" to WalkConfig(
+        intro = "Ten baskets, five items, minimum support 3. Level by level: generate candidates, prune what cannot possibly be frequent, then count only what is left.",
+        legend = listOf(
+            ActiveFill to "Being counted",
+            DoneFill to "Frequent",
+            ResultFill to "Answer",
+        ),
+        build = ::aprioriFrames,
+    ),
+    "eclat" to WalkConfig(
+        intro = "The same database stored by column instead of by row, so support becomes the length of a set intersection rather than the result of a counting pass.",
+        legend = listOf(
+            WindowFill to "In tid-list",
+            DoneFill to "In intersection",
+            ResultFill to "Answer",
+        ),
+        build = ::eclatFrames,
+    ),
     "kmp" to WalkConfig(
         intro = "First the LPS table is built from the pattern alone, then the text is scanned. Watch the text " +
             "pointer i on the second phase: it only ever moves forward, even on a mismatch.",

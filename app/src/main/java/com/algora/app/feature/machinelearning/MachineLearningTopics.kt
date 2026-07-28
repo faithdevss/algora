@@ -33,6 +33,8 @@ private val bayesian = MachineLearningCategories.bayesian
 private val ensemble = MachineLearningCategories.ensemble
 private val clustering = MachineLearningCategories.clustering
 private val dimReduction = MachineLearningCategories.dimReduction
+private val association = MachineLearningCategories.association
+private val timeSeries = MachineLearningCategories.timeSeries
 private val supervised = MachineLearningCategories.supervised
 
 // Ordered as a reading path: the plain fit, then the two penalties, then the estimators that change
@@ -144,8 +146,28 @@ private val dimReductionTopics = listOf(
     topic("lle", "Locally Linear Embedding (LLE)", dimReduction, "Every patch is flat: rebuild each point from its neighbours, then keep the weights.", isPremium = true, difficulty = Difficulty.ADVANCED),
 )
 
+// Three algorithms, one answer. They are ordered by what each one gives up to be faster than the
+// one before it: Apriori scans per level, Eclat trades memory for the scans, FP-Growth trades a tree
+// for the candidates.
+private val associationTopics = listOf(
+    topic("apriori", "Apriori Algorithm", association, "Generate, prune, count — and the property that makes the pruning sound.", difficulty = Difficulty.BEGINNER),
+    topic("eclat", "Eclat Algorithm", association, "Store the database by column and support becomes a set intersection.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("fp_growth", "FP-Growth Algorithm", association, "Compress the database into a tree, then mine it with no candidates at all.", isPremium = true, difficulty = Difficulty.ADVANCED),
+)
+
+// Ordered as the two families: smoothing the past, then modelling it. All six run on the same series
+// so the comparison in each lab is against the others rather than against a friendly dataset.
+private val timeSeriesTopics = listOf(
+    topic("moving_average", "Moving Average (MA)", timeSeries, "The simplest smoother, and the lag it costs you.", difficulty = Difficulty.BEGINNER),
+    topic("exponential_smoothing", "Exponential Smoothing (Holt-Winters)", timeSeries, "Level, trend and season, each an exponentially-weighted update.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("autoregression", "Autoregression (AR)", timeSeries, "Regress the series on its own past — and find out what that cannot reach.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("arima", "ARIMA", timeSeries, "Differencing for stationarity, lags for memory, past errors for the rest.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("sarima", "SARIMA (Seasonal)", timeSeries, "One subtraction at lag m, and the annual cycle stops being the model's problem.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("prophet", "Prophet (by Meta)", timeSeries, "Trend plus seasonality plus holidays, fitted as a curve-fitting problem on purpose.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+)
+
 object MachineLearningTopics {
-    val topics: List<Topic> = regressionTopics + classificationTopics + bayesianTopics + ensembleTopics + clusteringTopics + dimReductionTopics + supervisedTopics
+    val topics: List<Topic> = regressionTopics + classificationTopics + bayesianTopics + ensembleTopics + clusteringTopics + dimReductionTopics + associationTopics + timeSeriesTopics + supervisedTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }

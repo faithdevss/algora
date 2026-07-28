@@ -142,6 +142,17 @@ object PrerequisiteGraph {
         "tsne" to listOf("pca", "knn"),
         "umap" to listOf("tsne", "graph"),
         "lle" to listOf("pca", "knn"),
+        // ML: association rules. Eclat and FP-Growth are both told as "Apriori, differently", so
+        // both hang off it; FP-Growth also needs the prefix tree to be a familiar shape.
+        "eclat" to listOf("apriori"),
+        "fp_growth" to listOf("apriori", "trie"),
+        // ML: time series. Smoothing before modelling, and the modelling chain in the order the
+        // labs compare them in.
+        "exponential_smoothing" to listOf("moving_average"),
+        "autoregression" to listOf("linear_regression", "moving_average"),
+        "arima" to listOf("autoregression"),
+        "sarima" to listOf("arima"),
+        "prophet" to listOf("sarima", "regularization"),
         // DL: training techniques presuppose the training loop
         "batch_normalization" to listOf("neural_network_basics", "backpropagation"),
         "dropout" to listOf("neural_network_basics", "regularization"),

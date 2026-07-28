@@ -130,17 +130,17 @@ class AiTaxonomyCoverageTest {
                 "Deep Belief Networks" to emptyList(),                  // B10
             ),
             "Association Rule Learning" to linkedMapOf(
-                "Apriori Algorithm" to emptyList(),                     // B7
-                "Eclat Algorithm" to emptyList(),                       // B7
-                "FP-Growth Algorithm" to emptyList(),                   // B7
+                "Apriori Algorithm" to listOf("apriori"),
+                "Eclat Algorithm" to listOf("eclat"),
+                "FP-Growth Algorithm" to listOf("fp_growth"),
             ),
             "Time Series Analysis" to linkedMapOf(
-                "Moving Average (MA)" to emptyList(),                   // B7
-                "Autoregression (AR)" to emptyList(),                   // B7
-                "ARIMA" to emptyList(),                                 // B7
-                "SARIMA (Seasonal)" to emptyList(),                     // B7
-                "Exponential Smoothing (Holt-Winters)" to emptyList(),  // B7
-                "Prophet (by Meta)" to emptyList(),                     // B7
+                "Moving Average (MA)" to listOf("moving_average"),
+                "Autoregression (AR)" to listOf("autoregression"),
+                "ARIMA" to listOf("arima"),
+                "SARIMA (Seasonal)" to listOf("sarima"),
+                "Exponential Smoothing (Holt-Winters)" to listOf("exponential_smoothing"),
+                "Prophet (by Meta)" to listOf("prophet"),
             ),
             "Data Preprocessing Techniques" to linkedMapOf(
                 "Normalization (Min-Max)" to emptyList(),               // B8
@@ -514,7 +514,7 @@ class AiTaxonomyCoverageTest {
 
     // The ratchet. Move it when a batch lands; a batch that does not move it did not close any doc
     // entry, which is worth noticing.
-    private val expectedCoveredCount = 183
+    private val expectedCoveredCount = 192
 
     // Doc entries the app answers from the DSA taxonomy rather than an AI section. Deliberate reuse
     // — the alternative is a duplicate page — but small and explicit, so it cannot grow by accident.

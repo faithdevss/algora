@@ -99,6 +99,7 @@ private class TreeBuilder {
     }
     fun remove(id: Int) { nodes.remove(id) }
     fun labelOf(id: Int) = nodes.getValue(id).label
+    fun parentOf(id: Int) = nodes[id]?.parent
 
     fun frame(
         status: String,
@@ -1189,7 +1190,136 @@ private fun ahoCorasickFrames(): List<TreeFrame> {
     return b.frames
 }
 
+// ── FP-Growth: the tree is the algorithm ─────────────────────────────────────
+// Apriori and Eclat both search a candidate space. FP-Growth does not generate candidates at all —
+// it compresses the database into a prefix tree in two passes and then reads the frequent itemsets
+// out of it recursively. Shown here because the compression and the header links are the whole idea,
+// and neither is visible in a row of cells.
+
+private fun fpGrowthFrames(): List<TreeFrame> {
+    val builder = TreeBuilder()
+    val order = fpItemOrder()
+    val root = builder.add("root", null, 0)
+
+    builder.frame(
+        status = "Pass 1 counts single items and throws away everything below support ${MinSupport}: " +
+            "${order.joinToString { "$it=${support(setOf(it))}" }} survive, " +
+            "${basketItems.filter { it !in order }.joinToString { "$it=${support(setOf(it))}" }} does not. The " +
+            "surviving items are then ordered by descending count — that order is what makes the tree compress, " +
+            "because the most common items become shared prefixes.",
+        active = setOf(root),
+    )
+
+    // Node ids in this builder, keyed the same way the tree in AssociationMath is.
+    val ids = mutableMapOf<Pair<Int, String>, Int>()
+    val counts = mutableMapOf<Int, Int>()
+    val perItem = mutableMapOf<String, MutableList<Int>>()
+
+    transactions.forEachIndexed { index, transaction ->
+        val sorted = fpSortedTransaction(transaction)
+        var parent = root
+        val touched = mutableSetOf<Int>()
+        var reusedDepth = 0
+        var reusing = true
+        sorted.forEachIndexed { depth, item ->
+            val key = parent to item
+            val existing = ids[key]
+            if (existing != null) {
+                counts[existing] = counts.getValue(existing) + 1
+                builder.relabel(existing, "$item:${counts.getValue(existing)}")
+                parent = existing
+                if (reusing) reusedDepth = depth + 1
+            } else {
+                reusing = false
+                val id = builder.add("$item:1", parent, depth)
+                ids[key] = id
+                counts[id] = 1
+                perItem.getOrPut(item) { mutableListOf() }.add(id)
+                parent = id
+            }
+            touched += parent
+        }
+        builder.frame(
+            status = "Basket ${index + 1} is ${transaction.sorted().joinToString("")}" +
+                (if (transaction.size != sorted.size) ", which becomes ${sorted.joinToString("")} once infrequent items are dropped" else "") +
+                ", sorted into header order. " +
+                if (reusedDepth > 0) {
+                    "Its first $reusedDepth item${if (reusedDepth > 1) "s" else ""} already exist as a path, so those " +
+                        "nodes just have their counter incremented — no new storage at all. That reuse is the " +
+                        "compression."
+                } else {
+                    "No existing path shares its prefix, so it becomes a new branch off the root."
+                },
+            active = touched,
+        )
+    }
+
+    val tree = buildFpTree()
+    val slots = transactions.sumOf { fpSortedTransaction(it).size }
+    builder.frame(
+        status = "All ${transactions.size} baskets are in. They contained $slots item slots between them and the tree " +
+            "holds ${tree.nodes.size} nodes — the database, complete, with every count recoverable and every " +
+            "duplicate prefix stored once. On a real basket dataset that ratio is the reason this method exists.",
+    )
+
+    // Header links: the same-item chain the mining step walks.
+    val target = "E"
+    val chain = perItem[target].orEmpty()
+    val links = chain.zipWithNext { a, b -> TreeLink(a, b) }
+    builder.frame(
+        status = "The header table keeps, for each item, a linked list through every node holding it. Here is $target's: " +
+            "${chain.size} nodes scattered across the tree, ${chain.sumOf { counts.getValue(it) }} occurrences in " +
+            "total — which matches the ${support(setOf(target))} baskets containing $target, as it must.",
+        active = chain.toSet(),
+        links = links,
+    )
+
+    val base = conditionalPatternBase(tree, target)
+    builder.frame(
+        status = "Mining $target: walk that chain and read the path above each node. The conditional pattern base is " +
+            "${base.joinToString { "${it.path.joinToString("").ifEmpty { "∅" }}×${it.count}" }} — every context in " +
+            "which $target occurred, with its multiplicity.",
+        marked = chain.toSet(),
+        path = chain.flatMap { id ->
+            generateSequence(id) { current -> builder.parentOf(current) }.toList()
+        }.toSet() - chain.toSet() - setOf(root),
+        links = links,
+    )
+
+    val conditionalCounts = base
+        .flatMap { pattern -> pattern.path.map { it to pattern.count } }
+        .groupBy({ it.first }, { it.second })
+        .mapValues { it.value.sum() }
+        .filterValues { it >= MinSupport }
+    builder.frame(
+        status = "Count items within that base: " +
+            "${base.flatMap { p -> p.path.map { it } }.distinct().sorted().joinToString { item ->
+                "$item=${base.filter { item in it.path }.sumOf { it.count }}"
+            }}. Only ${conditionalCounts.keys.joinToString().ifEmpty { "nothing" }} clears support ${MinSupport}, so " +
+            "${conditionalCounts.keys.joinToString { "$it$target" }} is frequent — support " +
+            "${conditionalCounts.values.firstOrNull() ?: 0}, and Apriori found exactly the same set by counting " +
+            "candidates instead.",
+        marked = chain.toSet(),
+        links = links,
+    )
+
+    builder.frame(
+        status = "Two database passes total: one to count items, one to build the tree. Everything after that is " +
+            "recursion over conditional trees held in memory, with no candidate generation and no further scans. " +
+            "Apriori needed a pass per level. The cost is the tree itself — on data with little shared prefix " +
+            "structure it can be larger than the database, and then FP-Growth is the wrong choice.",
+        marked = chain.toSet(),
+    )
+    return builder.frames
+}
+
 private val treeConfigs = mapOf(
+    "fp_growth" to TreeConfig(
+        intro = "Ten baskets compressed into a prefix tree in two passes, then mined by walking the header chain for one item back up to the root.",
+        markedLabel = "Header chain",
+        linkLabel = "Header link",
+        build = ::fpGrowthFrames,
+    ),
     "aho_corasick" to TreeConfig(
         intro = "The dictionary {he, she, his, hers} as a trie, then its failure links, then one walk over \"ushers\". " +
             "The dashed arcs are the failure links — they are the whole algorithm, and they are why the text pointer never backs up.",

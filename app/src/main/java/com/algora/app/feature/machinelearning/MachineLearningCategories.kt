@@ -20,9 +20,14 @@ object MachineLearningCategories {
     // apt name, "stack", already belongs to Ensemble Methods and would render the same glyph twice
     // in one browser.
     val dimReduction = Category("ml_dimreduction", "Dimensionality Reduction", Section.ML, 0xFFEC4899, "chart")
+
+    // "link" for the rules (X → Y is a link) and "history" for the series; both were still unused in
+    // this section, which keeps every ML category on its own glyph.
+    val association = Category("ml_association", "Association Rule Learning", Section.ML, 0xFF06B6D4, "link")
+    val timeSeries = Category("ml_timeseries", "Time Series Analysis", Section.ML, 0xFF10B981, "history")
     val supervised = Category("ml_supervised", "Supervised", Section.ML, 0xFF6366F1, "robot")
 
     // `ml_unsupervised` is gone: B5 took its clustering topics and B6 took `pca`, its last one.
     // `ml_supervised` still holds the four topics B9 and B10 will redistribute.
-    val all = listOf(regression, classification, bayesian, ensemble, clustering, dimReduction, supervised)
+    val all = listOf(regression, classification, bayesian, ensemble, clustering, dimReduction, association, timeSeries, supervised)
 }
