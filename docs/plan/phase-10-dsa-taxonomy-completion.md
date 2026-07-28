@@ -202,11 +202,11 @@ category guard load-bearing rather than nice-to-have.
 |---|---|---|---|
 | D1 · Existing-category gap-fill | 7 | **Done** | Plus `SimulationFrameTest` — see below |
 | D2 · Computational Geometry | 4 | **Done** | Needed no new `CloudFrame` fields; found a live `mcmc` bug |
-| D3 · String Algorithms | 5 (+3 moved) | Next | `TreeVisualizer` failure-link support unverified |
-| D4 · Math & Number Theory | 7 | Planned | |
+| D3 · String Algorithms | 5 (+3 moved) | **Done** | `TreeVisualizer` did need failure-link support; added |
+| D4 · Math & Number Theory | 7 | Next | |
 | D5 · Bit Manipulation | 4 | Planned | New `BitBoardPlayer` widget |
 | Guards | — | Planned | Taxonomy + category guards land at the end, not with D1 — see below |
-| **Total** | **27** | **11 done** | Algorithms 67 → 94; app taxonomy 257 → 284 |
+| **Total** | **27** | **16 done** | Algorithms 67 → 94; app taxonomy 257 → 284 |
 
 ### Deviations from the plan as written
 
@@ -273,6 +273,39 @@ rendering off-canvas since it landed. Fixed by routing every dot and segment in 
 an `mcmcPlot()` mapping. This is exactly the class of defect the test was added for: it is invisible
 in a build, invisible in a review, and only visible by opening that one topic and knowing what the
 picture was supposed to look like.
+
+### D3, as built
+
+Category `algo_strings` (`10 · String Algorithms`, `browser`, `#EC4899`) with `naive_string_search`
+free and the rest premium. `kmp`, `rabin_karp` and `manacher` moved over from `algo_misc` by changing
+`categoryId` only — ids unchanged, so no content file, cross-link, prerequisite or problem-bank
+reference moved with them. `algo_misc` is down from 12 topics to 9.
+
+**The flagged risk was real: `TreeVisualizer` had no cross-tree edge support.** Its canvas derives
+every edge from `parent`, so a failure link — which by definition points into a different branch —
+could not be drawn at all. Resolved the way the plan's fallback proposed: `TreeFrame` gained a
+`links: List<TreeLink>` field and `TreeConfig` an optional `linkLabel` for the extra legend chip,
+with the links rendered as dashed quadratic arcs beneath the node pills. Purely additive; every other
+tree config leaves the list empty.
+
+- `naive_string_search` → `ArrayWalkPlayer`, with the pattern drawn as the aux row where it currently
+  sits, so the shift-by-one and the re-comparison it forces are movements on screen. Closes by
+  counting the pathological case (`AAAAAAAAAB` / `AAAB`) at 28 comparisons for a 10-character text.
+- `z_algorithm` → `ArrayWalkPlayer`. The `[l, r)` window is the pointer row, and the readout tracks
+  positions copied from a mirror against characters actually compared — the linearity argument.
+- `longest_palindromic_substring` → `ArrayWalkPlayer`, expanding around both kinds of centre.
+- `longest_common_substring` → `DpGridVisualizer`, a 7×7 table where the traceback starts at the
+  maximum cell rather than the corner.
+- `aho_corasick` → `TreeVisualizer`, on {he, she, his, hers} scanning "ushers".
+
+**A bug in the Aho-Corasick scan survived a green test run and was caught by re-reading.** The node
+label used for display (`"root"` for the root) was the same string used as the trie-lookup key, so
+the first character looked up `"root" + c`, found nothing, and the automaton could never leave the
+root. `SimulationFrameTest` did not catch it because the frames were still structurally valid — only
+the narration was wrong. Fixed by separating `prefixOf` (the lookup key, empty at the root) from the
+display label, and the builder now ends with a `require(found == [she, he, hers])`, which puts the
+claim the frames make under the test that runs them. "he" is reachable only through the output link
+off "she", so it is the first thing a wrong transition drops.
 
 ## Out of scope
 

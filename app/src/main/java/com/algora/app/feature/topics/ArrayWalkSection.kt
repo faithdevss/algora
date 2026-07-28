@@ -819,6 +819,266 @@ private fun coinChangeGreedyFrames(): List<WalkFrame> {
     return frames
 }
 
+// ── String algorithms ────────────────────────────────────────────────────────
+
+// The aux row is the pattern drawn where it currently sits, so the shift of one — and the
+// re-comparison it forces — is a movement on screen rather than a claim in the caption.
+private fun naiveSearchFrames(): List<WalkFrame> {
+    val text = "ABCABCABD"
+    val pattern = "ABCABD"
+    val frames = mutableListOf<WalkFrame>()
+
+    fun patternRow(shift: Int, upTo: Int, failed: Int?) = List(text.length) { i ->
+        val j = i - shift
+        when {
+            j < 0 || j >= pattern.length -> CellView("·", CellMark.DIM)
+            j == failed -> CellView(pattern[j].toString(), CellMark.RESULT)
+            j < upTo -> CellView(pattern[j].toString(), CellMark.DONE)
+            j == upTo -> CellView(pattern[j].toString(), CellMark.ACTIVE)
+            else -> CellView(pattern[j].toString(), CellMark.IDLE)
+        }
+    }
+
+    frames += WalkFrame(
+        status = "Text \"$text\", pattern \"$pattern\". No preprocessing and no extra memory — align, compare, shift by one.",
+        cells = text.map { CellView(it.toString()) },
+        aux = patternRow(0, 0, null),
+        auxLabel = "pattern",
+    )
+
+    var comparisons = 0
+    val hits = mutableListOf<Int>()
+    for (shift in 0..text.length - pattern.length) {
+        var j = 0
+        while (j < pattern.length && text[shift + j] == pattern[j]) {
+            comparisons++
+            j++
+            frames += WalkFrame(
+                status = "Shift $shift: '${pattern[j - 1]}' matches text[${shift + j - 1}]. $j of ${pattern.length} characters agree.",
+                cells = text.mapIndexed { i, c ->
+                    CellView(c.toString(), if (i in shift until shift + j) CellMark.WINDOW else if (i < shift) CellMark.DIM else CellMark.IDLE)
+                },
+                pointers = mapOf(shift + j - 1 to "i"),
+                aux = patternRow(shift, j, null),
+                auxLabel = "pattern",
+                readout = "comparisons: $comparisons",
+            )
+        }
+        if (j == pattern.length) {
+            hits += shift
+            frames += WalkFrame(
+                status = "Shift $shift: the pattern ran out — every character agreed, so this is a match.",
+                cells = text.mapIndexed { i, c -> CellView(c.toString(), if (i in shift until shift + pattern.length) CellMark.RESULT else CellMark.DIM) },
+                aux = patternRow(shift, pattern.length, null),
+                auxLabel = "pattern",
+                readout = "match at $shift · comparisons: $comparisons",
+            )
+        } else {
+            comparisons++
+            frames += WalkFrame(
+                status = "Shift $shift: '${pattern[j]}' ≠ text[${shift + j}] = '${text[shift + j]}'. Mismatch — slide the pattern one position right. " +
+                    (if (j > 0) "The $j character${if (j == 1) "" else "s"} that just matched are discarded, and $j of them will be compared again." else "Nothing was learned to discard here."),
+                cells = text.mapIndexed { i, c ->
+                    CellView(c.toString(), if (i == shift + j) CellMark.RESULT else if (i in shift until shift + j) CellMark.WINDOW else CellMark.DIM)
+                },
+                pointers = mapOf(shift + j to "i"),
+                aux = patternRow(shift, j, j),
+                auxLabel = "pattern",
+                readout = "comparisons: $comparisons",
+            )
+        }
+    }
+
+    frames += WalkFrame(
+        status = "Found at ${hits.joinToString(", ")} in $comparisons comparisons over ${text.length - pattern.length + 1} alignments. " +
+            "On ordinary text most mismatches land on the first character, so this is close to linear in practice.",
+        cells = text.mapIndexed { i, c -> CellView(c.toString(), if (hits.any { i in it until it + pattern.length }) CellMark.RESULT else CellMark.DIM) },
+        readout = "$comparisons comparisons",
+    )
+
+    // The worst case, counted rather than described.
+    val badText = "AAAAAAAAAB"
+    val badPattern = "AAAB"
+    var badComparisons = 0
+    for (shift in 0..badText.length - badPattern.length) {
+        var j = 0
+        while (j < badPattern.length && badText[shift + j] == badPattern[j]) { badComparisons++; j++ }
+        if (j < badPattern.length) badComparisons++
+    }
+    frames += WalkFrame(
+        status = "Now the pathological input: text \"$badText\", pattern \"$badPattern\". Every alignment matches three characters " +
+            "and fails on the fourth — $badComparisons comparisons for a ${badText.length}-character text, which is (n − m + 1)·m almost exactly. " +
+            "KMP's prefix table exists to record what those matched characters already established.",
+        cells = badText.map { CellView(it.toString(), CellMark.DIM) },
+        aux = List(badText.length) { i -> if (i < badPattern.length) CellView(badPattern[i].toString(), CellMark.RESULT) else CellView("·", CellMark.DIM) },
+        auxLabel = "pattern",
+        readout = "$badComparisons comparisons · n·m = ${badText.length * badPattern.length}",
+    )
+    return frames
+}
+
+// Z[i] is how far the suffix at i agrees with the string's own prefix. The [l, r) window is drawn as
+// the pointer row, because the whole claim of linearity is that r only ever moves right.
+private fun zAlgorithmFrames(): List<WalkFrame> {
+    val s = "aabcaabxaaz"
+    val n = s.length
+    val z = IntArray(n)
+    val frames = mutableListOf<WalkFrame>()
+
+    fun zRow(upTo: Int, active: Int? = null) = List(n) { i ->
+        when {
+            i == 0 -> CellView("–", CellMark.DIM)
+            i == active -> CellView(z[i].toString(), CellMark.ACTIVE)
+            i <= upTo -> CellView(z[i].toString(), CellMark.WINDOW)
+            else -> CellView("·", CellMark.DIM)
+        }
+    }
+
+    frames += WalkFrame(
+        status = "Z[i] is the length of the longest run starting at i that also matches the start of the string. Z[0] is left undefined.",
+        cells = s.map { CellView(it.toString()) },
+        aux = zRow(0),
+        auxLabel = "Z",
+    )
+
+    var l = 0
+    var r = 0
+    var copied = 0
+    var compared = 0
+    for (i in 1 until n) {
+        val insideWindow = i < r
+        val mirror = i - l
+        if (insideWindow) {
+            z[i] = minOf(r - i, z[mirror])
+            copied++
+        }
+        val startedAt = z[i]
+        while (i + z[i] < n && s[z[i]] == s[i + z[i]]) {
+            z[i]++
+            compared++
+        }
+        val extended = z[i] - startedAt
+        val grew = i + z[i] > r
+        if (grew) {
+            l = i
+            r = i + z[i]
+        }
+        frames += WalkFrame(
+            status = buildString {
+                append("i = $i: ")
+                if (insideWindow) {
+                    append("inside the known window, so the mirror at $mirror supplies a starting value of $startedAt without a single comparison. ")
+                } else {
+                    append("outside any known window, so compare from scratch. ")
+                }
+                append(if (extended == 0) "No extension." else "Extended $extended character${if (extended == 1) "" else "s"}.")
+                append(" Z[$i] = ${z[i]}.")
+                if (grew) append(" That pushed the right edge to ${r} — it never moves left, which is why the total comparison work is O(n).")
+            },
+            cells = s.mapIndexed { j, c ->
+                CellView(
+                    c.toString(),
+                    when {
+                        j in i until i + z[i] -> CellMark.RESULT
+                        j < z[i] -> CellMark.DONE
+                        j == i -> CellMark.ACTIVE
+                        else -> CellMark.IDLE
+                    },
+                )
+            },
+            pointers = buildMap {
+                put(i, "i")
+                if (l != r) {
+                    put(l, "l")
+                    put((r - 1).coerceAtLeast(l), "r")
+                }
+            },
+            aux = zRow(i - 1, active = i),
+            auxLabel = "Z",
+            readout = "copied from mirror: $copied · characters compared: $compared",
+        )
+    }
+
+    frames += WalkFrame(
+        status = "Z = [${z.indices.joinToString(", ") { if (it == 0) "–" else z[it].toString() }}]. $compared character comparisons for " +
+            "an $n-character string. Concatenate pattern + '\$' + text and every Z equal to the pattern's length is an occurrence — " +
+            "that is O(n + m) matching out of a general-purpose array.",
+        cells = s.map { CellView(it.toString(), CellMark.DIM) },
+        aux = zRow(n - 1),
+        auxLabel = "Z",
+        readout = "$compared comparisons for n = $n",
+    )
+    return frames
+}
+
+// Expand around centre. Both kinds of centre get their own frames, because skipping the even ones is
+// the bug the topic is mostly about.
+private fun longestPalindromeFrames(): List<WalkFrame> {
+    val s = "abacabad"
+    val frames = mutableListOf<WalkFrame>()
+    var bestStart = 0
+    var bestLength = 1
+
+    frames += WalkFrame(
+        status = "A palindrome is defined by its centre, not its endpoints — so enumerate centres. There are " +
+            "${2 * s.length - 1} of them here: ${s.length} characters and ${s.length - 1} gaps.",
+        cells = s.map { CellView(it.toString()) },
+        readout = "${2 * s.length - 1} centres",
+    )
+
+    for (centre in s.indices) {
+        for (even in listOf(false, true)) {
+            var left = centre
+            var right = if (even) centre + 1 else centre
+            // An even centre whose two characters differ spans nothing at all; it gets no frame so
+            // the playback stays about expansions that actually happen.
+            if (even && (right >= s.length || s[left] != s[right])) continue
+            while (left >= 0 && right < s.length && s[left] == s[right]) {
+                left--
+                right++
+            }
+            val length = right - left - 1
+            val start = left + 1
+            val improved = length > bestLength
+            if (improved) {
+                bestLength = length
+                bestStart = start
+            }
+            frames += WalkFrame(
+                status = "${if (even) "Even" else "Odd"} centre at ${if (even) "the gap after index $centre" else "index $centre"}: " +
+                    "expanded to \"${s.substring(start, start + length)}\", length $length. " +
+                    if (improved) "New best." else "Shorter than the best so far ($bestLength).",
+                cells = s.mapIndexed { i, c ->
+                    CellView(
+                        c.toString(),
+                        when {
+                            i in start until start + length -> if (improved) CellMark.RESULT else CellMark.WINDOW
+                            i in bestStart until bestStart + bestLength -> CellMark.DONE
+                            else -> CellMark.IDLE
+                        },
+                    )
+                },
+                pointers = buildMap {
+                    put(start, "l")
+                    put(start + length - 1, "r")
+                },
+                readout = "best: \"${s.substring(bestStart, bestStart + bestLength)}\" ($bestLength)",
+            )
+        }
+    }
+
+    frames += WalkFrame(
+        status = "Longest palindromic substring: \"${s.substring(bestStart, bestStart + bestLength)}\", length $bestLength. " +
+            "${2 * s.length - 1} centres each expanding at most n/2 gives O(n²) time in O(1) space. Manacher reaches O(n) by " +
+            "initialising each centre's radius from its mirror — the same window trick the Z-algorithm uses.",
+        cells = s.mapIndexed { i, c ->
+            CellView(c.toString(), if (i in bestStart until bestStart + bestLength) CellMark.RESULT else CellMark.DIM)
+        },
+        readout = "\"${s.substring(bestStart, bestStart + bestLength)}\" · O(n²) time, O(1) space",
+    )
+    return frames
+}
+
 private fun longestUniqueWindowFrames(): List<WalkFrame> {
     val s = "abcabcbb".toList()
     val frames = mutableListOf<WalkFrame>()
@@ -2440,6 +2700,36 @@ private val walkConfigs = mapOf(
             ResultFill to "Answer",
         ),
         build = ::coinChangeGreedyFrames,
+    ),
+    "naive_string_search" to WalkConfig(
+        intro = "The pattern drawn where it currently sits, one frame per character comparison. The shift of one is a " +
+            "movement on screen, and the last frame counts the worst case rather than describing it.",
+        legend = listOf(
+            ActiveFill to "Comparing",
+            WindowFill to "Matched this alignment",
+            ResultFill to "Mismatch / match",
+        ),
+        build = ::naiveSearchFrames,
+    ),
+    "z_algorithm" to WalkConfig(
+        intro = "The Z-array built left to right. The pointers are the window [l, r) whose right edge never moves left — " +
+            "the readout counts how many positions were copied from a mirror against how many characters were actually compared.",
+        legend = listOf(
+            ActiveFill to "Current index",
+            DoneFill to "Prefix it matches",
+            ResultFill to "The run found here",
+        ),
+        build = ::zAlgorithmFrames,
+    ),
+    "longest_palindromic_substring" to WalkConfig(
+        intro = "Expand around every centre — the character centres and the gap centres both, since dropping the gaps is " +
+            "the bug that reports \"a\" as the longest palindrome in \"abba\".",
+        legend = listOf(
+            WindowFill to "Expanded here",
+            DoneFill to "Best so far",
+            ResultFill to "New best",
+        ),
+        build = ::longestPalindromeFrames,
     ),
 )
 

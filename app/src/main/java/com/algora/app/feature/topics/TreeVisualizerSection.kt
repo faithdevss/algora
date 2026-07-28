@@ -23,6 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
@@ -50,18 +53,30 @@ private class TreeNodeSpec(
     val state: TreeState = TreeState.Idle,
 )
 
-private class TreeFrame(val nodes: List<TreeNodeSpec>, val status: String)
+// Aho-Corasick's failure links run between nodes that are not parent and child, and the canvas
+// derives its edges from `parent` alone. Rather than give the tree model a second edge kind, a frame
+// carries the links it wants drawn — same additive shape as CloudFrame's later fields.
+private class TreeLink(val from: Int, val to: Int)
+
+private class TreeFrame(
+    val nodes: List<TreeNodeSpec>,
+    val status: String,
+    val links: List<TreeLink> = emptyList(),
+)
 
 private class TreeConfig(
     val intro: String,
     val markedLabel: String,
     val build: () -> List<TreeFrame>,
+    // Non-null adds a fourth legend chip; only the configs that draw links need it.
+    val linkLabel: String? = null,
 )
 
 private val PathColor = Color(0xFF3B82F6)
 private val ActiveColor = Color(0xFFFACC15)
 private val MarkedColor = SimColors.Green
 private val IdleColor = Color(0xFF7C3AED)
+private val LinkColor = Color(0xFFF97316)
 
 // Mutable tree the builders mutate; each `frame()` call snapshots it.
 private class TreeBuilder {
@@ -90,6 +105,7 @@ private class TreeBuilder {
         active: Set<Int> = emptySet(),
         path: Set<Int> = emptySet(),
         marked: Set<Int> = emptySet(),
+        links: List<TreeLink> = emptyList(),
     ) {
         frames.add(
             TreeFrame(
@@ -108,6 +124,7 @@ private class TreeBuilder {
                     )
                 },
                 status,
+                links,
             ),
         )
     }
@@ -1045,7 +1062,141 @@ private fun divisiveFrames(): List<TreeFrame> {
     return builder.frames
 }
 
+// ── Aho-Corasick: the trie, its failure links, then one pass over the text ───
+// The textbook dictionary, because it is the smallest one that exercises every case: "hers" fails to
+// "s" in a different branch, and "she" has to report "he" through an output link.
+private fun ahoCorasickFrames(): List<TreeFrame> {
+    val patterns = listOf("he", "she", "his", "hers")
+    val text = "ushers"
+    val b = TreeBuilder()
+
+    val root = b.add("·", null, 0)
+    // Trie node id per prefix string, so failure links can be resolved by suffix lookup.
+    val nodeOf = linkedMapOf("" to root)
+    val terminal = mutableMapOf<Int, String>()
+
+    b.frame("Root. Every pattern will hang off it, sharing whatever prefixes they have in common.", marked = setOf(root))
+
+    for ((index, pattern) in patterns.withIndex()) {
+        var prefix = ""
+        var parent = root
+        val touched = mutableSetOf(root)
+        for (c in pattern) {
+            val next = prefix + c
+            val existing = nodeOf[next]
+            parent = existing ?: b.add(c.toString(), parent, index).also { nodeOf[next] = it }
+            touched += parent
+            prefix = next
+        }
+        terminal[parent] = pattern
+        b.frame(
+            "Insert \"$pattern\". ${if (patterns.take(index).any { pattern.startsWith(it) || it.startsWith(pattern) }) "It shares a prefix with an earlier pattern, so those nodes are reused." else "A fresh branch."}",
+            path = touched,
+            marked = setOf(parent),
+        )
+    }
+
+    // Failure links by BFS: a node's target is always shallower, so depth order means it is ready.
+    val fail = mutableMapOf(root to root)
+    val links = mutableListOf<TreeLink>()
+    val byDepth = nodeOf.keys.filter { it.isNotEmpty() }.sortedBy { it.length }
+
+    b.frame(
+        "Now the failure links. A node's link points at the node for the longest proper suffix of its own string — " +
+            "KMP's prefix function, except the target usually lives in a different branch.",
+        marked = terminal.keys,
+    )
+
+    for (prefix in byDepth) {
+        val node = nodeOf.getValue(prefix)
+        // Longest proper suffix of `prefix` that is itself a node.
+        val target = (1 until prefix.length).firstNotNullOfOrNull { nodeOf[prefix.substring(it)] } ?: root
+        fail[node] = target
+        links += TreeLink(node, target)
+        b.frame(
+            "\"$prefix\" → " + if (target == root) {
+                "no proper suffix of it is in the trie, so it fails to the root."
+            } else {
+                "its longest suffix present in the trie is \"${nodeOf.entries.first { it.value == target }.key}\", so that is its failure target."
+            },
+            active = setOf(node),
+            marked = terminal.keys,
+            links = links.toList(),
+        )
+    }
+
+    // Output links: a terminal reachable by following failures from here.
+    val outputVia = mutableMapOf<Int, String>()
+    for (prefix in byDepth) {
+        val node = nodeOf.getValue(prefix)
+        var f = fail.getValue(node)
+        while (f != root) {
+            terminal[f]?.let { outputVia[node] = it }
+            if (outputVia.containsKey(node)) break
+            f = fail.getValue(f)
+        }
+    }
+    b.frame(
+        "One piece left. \"she\" ends at a node whose failure target is \"he\", and \"he\" is itself a pattern — so landing on " +
+            "\"she\" has also matched \"he\". Reporting every terminal up the failure chain is what catches those; without it the " +
+            "automaton finds only the longest match at each position.",
+        marked = terminal.keys,
+        active = outputVia.keys,
+        links = links.toList(),
+    )
+
+    // The scan. The text pointer never moves backwards, which is the guarantee inherited from KMP.
+    var current = root
+    val found = mutableListOf<String>()
+    // The prefix a node stands for. Kept separate from anything display-shaped: the root's prefix is
+    // the empty string, and a lookup of prefixOf(root) + c is how the first character finds its edge.
+    val prefixOf: Map<Int, String> = nodeOf.entries.associate { (prefix, id) -> id to prefix }
+    fun show(id: Int) = prefixOf.getValue(id).ifEmpty { "root" }
+
+    for ((i, c) in text.withIndex()) {
+        val before = current
+        var walked = 0
+        while (current != root && nodeOf[prefixOf.getValue(current) + c] == null) {
+            current = fail.getValue(current)
+            walked++
+        }
+        current = nodeOf[prefixOf.getValue(current) + c] ?: root
+
+        val hits = listOfNotNull(terminal[current], outputVia[current])
+        found += hits
+        b.frame(
+            "Text '$c' (index $i): " +
+                (if (walked > 0) "no edge from \"${show(before)}\", so follow $walked failure link${if (walked == 1) "" else "s"} first, then " else "") +
+                "move to \"${show(current)}\". " +
+                if (hits.isEmpty()) "No pattern ends here." else "Match: ${hits.joinToString(" and ") { "\"$it\"" }}." +
+                    if (hits.size > 1) " The second one came through the output link." else "",
+            active = setOf(current),
+            marked = terminal.keys,
+            links = links.toList(),
+        )
+    }
+
+    // The narration of the frames above states what the automaton finds, so pin it: "he" is only
+    // reachable through the output link off "she", and it is the first thing a wrong transition drops.
+    require(found == listOf("she", "he", "hers")) { "aho_corasick found $found, expected [she, he, hers]" }
+
+    b.frame(
+        "Found ${found.joinToString(", ") { "\"$it\"" }} in one pass over \"$text\". The cost is O(n + m + z) — text length, total " +
+            "dictionary length, matches reported — with the number of patterns absent from the scan term entirely.",
+        marked = terminal.keys,
+        links = links.toList(),
+    )
+    return b.frames
+}
+
 private val treeConfigs = mapOf(
+    "aho_corasick" to TreeConfig(
+        intro = "The dictionary {he, she, his, hers} as a trie, then its failure links, then one walk over \"ushers\". " +
+            "The dashed arcs are the failure links — they are the whole algorithm, and they are why the text pointer never backs up.",
+        markedLabel = "Pattern ends here",
+        build = ::ahoCorasickFrames,
+        linkLabel = "Failure link",
+    ),
     "hierarchical_divisive" to TreeConfig(
         intro = "The dendrogram built top-down: repeatedly split the least cohesive cluster, with the real diameters driving which one goes next.",
         markedLabel = "Cluster",
@@ -1143,6 +1294,20 @@ private val treeConfigs = mapOf(
 private fun treeConfigFor(topicId: String): TreeConfig =
     treeConfigs[topicId] ?: treeConfigs.getValue("binary_search_tree")
 
+internal val treeVisualizerTopicIds: Set<String> get() = treeConfigs.keys
+
+internal fun treeVisualizerFrameCount(topicId: String): Int {
+    val frames = treeConfigFor(topicId).build()
+    frames.forEach { frame ->
+        val ids = frame.nodes.map { it.id }.toSet()
+        val orphans = frame.nodes.mapNotNull { it.parent }.filter { it !in ids }
+        require(orphans.isEmpty()) { "$topicId has nodes whose parent is not in the same frame: $orphans" }
+        val danglingLinks = frame.links.flatMap { listOf(it.from, it.to) }.filter { it !in ids }
+        require(danglingLinks.isEmpty()) { "$topicId draws links to nodes not in the frame: $danglingLinks" }
+    }
+    return frames.size
+}
+
 @Composable
 fun TreeVisualizerSection(topicId: String) {
     val config = remember(topicId) { treeConfigFor(topicId) }
@@ -1180,6 +1345,7 @@ fun TreeVisualizerSection(topicId: String) {
                 TreeLegend(ActiveColor, "Current")
                 TreeLegend(PathColor, "Path")
                 TreeLegend(MarkedColor, config.markedLabel)
+                config.linkLabel?.let { TreeLegend(LinkColor, it) }
             }
 
             PlaybackTransport(playback)
@@ -1256,6 +1422,25 @@ private fun TreeCanvas(frame: TreeFrame) {
                     Offset(px(xById.getValue(parent.id)), py(depthById.getValue(parent.id))),
                     Offset(px(xById.getValue(node.id)), py(depthById.getValue(node.id))),
                     strokeWidth = 2f,
+                )
+            }
+
+            // Failure links, under the node pills so an arrow never covers a label. Drawn as a
+            // dashed arc rather than a straight line, because a link back to the root would
+            // otherwise lie exactly on top of the parent edges it crosses.
+            frame.links.forEach { link ->
+                val from = byId[link.from] ?: return@forEach
+                val to = byId[link.to] ?: return@forEach
+                val start = Offset(px(xById.getValue(from.id)), py(depthById.getValue(from.id)))
+                val end = Offset(px(xById.getValue(to.id)), py(depthById.getValue(to.id)))
+                val control = Offset((start.x + end.x) / 2f, minOf(start.y, end.y) - 34f)
+                drawPath(
+                    path = Path().apply {
+                        moveTo(start.x, start.y)
+                        quadraticTo(control.x, control.y, end.x, end.y)
+                    },
+                    color = LinkColor,
+                    style = Stroke(width = 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(7f, 6f))),
                 )
             }
 

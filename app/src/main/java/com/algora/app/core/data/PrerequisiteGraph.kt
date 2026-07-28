@@ -51,9 +51,14 @@ object PrerequisiteGraph {
         "sparse_table" to listOf("binary_search", "prefix_sum"),
         "lca" to listOf("tree", "sparse_table"),
         // String algorithms
-        "kmp" to listOf("string"),
-        "rabin_karp" to listOf("string", "hash_table"),
-        "manacher" to listOf("kmp"),
+        "naive_string_search" to listOf("string"),
+        "kmp" to listOf("naive_string_search"),
+        "rabin_karp" to listOf("naive_string_search", "hash_table"),
+        "z_algorithm" to listOf("naive_string_search"),
+        "manacher" to listOf("longest_palindromic_substring", "z_algorithm"),
+        "longest_palindromic_substring" to listOf("string", "two_pointer"),
+        "longest_common_substring" to listOf("longest_common_subsequence"),
+        "aho_corasick" to listOf("trie", "kmp", "bfs"),
         // Graph algorithms, continued
         "topological_sort" to listOf("dfs", "queue"),
         "articulation_points" to listOf("dfs"),

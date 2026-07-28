@@ -39,4 +39,8 @@ class SimulationFrameTest {
     @Test
     fun `every point-cloud config builds frames inside the unit square`() =
         check("PointCloud", pointCloudTopicIds, ::pointCloudFrameCount)
+
+    @Test
+    fun `every tree config builds frames with resolvable parents and links`() =
+        check("TreeVisualizer", treeVisualizerTopicIds, ::treeVisualizerFrameCount)
 }

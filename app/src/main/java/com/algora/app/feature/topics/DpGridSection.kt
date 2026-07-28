@@ -561,6 +561,67 @@ private fun partitionFrames(): List<DpFrame> {
     return b.frames
 }
 
+private const val LCSUB_A = "abcdxy"
+private const val LCSUB_B = "zabcdw"
+
+// The same table shape as LCS with one clause changed: a mismatch writes 0 instead of carrying the
+// best neighbour forward. Every zero in this grid is the contiguity requirement being enforced.
+private fun longestCommonSubstringFrames(): List<DpFrame> {
+    val a = LCSUB_A
+    val b = LCSUB_B
+    val rows = a.length + 1
+    val cols = b.length + 1
+    val bld = DpBuilder(rows, cols)
+    val dp = Array(rows) { IntArray(cols) }
+    var best = 0
+    var endI = 0
+    var endJ = 0
+
+    for (i in 0 until rows) {
+        for (j in 0 until cols) {
+            val status: String
+            if (i == 0 || j == 0) {
+                status = "dp[$i][$j] = 0 — an empty prefix shares no suffix with anything."
+            } else if (a[i - 1] == b[j - 1]) {
+                dp[i][j] = dp[i - 1][j - 1] + 1
+                status = "'${a[i - 1]}' == '${b[j - 1]}' → dp[${i - 1}][${j - 1}] + 1 = ${dp[i][j]}. The run grows by one."
+                if (dp[i][j] > best) {
+                    best = dp[i][j]
+                    endI = i
+                    endJ = j
+                }
+            } else {
+                status = "'${a[i - 1]}' ≠ '${b[j - 1]}' → 0. Not max(up, left) — that would be LCS, and it would let the " +
+                    "run survive a gap. Zero here is what makes the answer contiguous."
+            }
+            bld.fill(i, j, dp[i][j].toString(), status)
+        }
+    }
+
+    // The answer sits wherever the maximum landed, so the traceback starts there rather than at the
+    // bottom-right corner — reading the corner is the standard mistake and returns the common suffix.
+    val path = mutableListOf<Int>()
+    var i = endI
+    var j = endJ
+    repeat(best) {
+        path += bld.key(i, j)
+        i--
+        j--
+    }
+    bld.trace(path) { cell ->
+        val r = cell / cols
+        val c = cell % cols
+        val remaining = dp[r][c]
+        if (remaining == 1) {
+            "Back to the start of the run: \"${a.substring(endI - best, endI)}\", length $best. The maximum was at " +
+                "dp[$endI][$endJ], not at dp[${rows - 1}][${cols - 1}] — the corner only ever holds the common suffix."
+        } else {
+            "dp[$r][$c] = $remaining, so '${a[r - 1]}' is part of the run; step diagonally back."
+        }
+    }
+    return bld.frames
+}
+
 private val dpConfigs = mapOf(
     "fibonacci_dp" to DpConfig(
         rows = 1, cols = 10,
@@ -650,6 +711,15 @@ private val dpConfigs = mapOf(
         intro = "Can {1, 5, 11, 5} be split into two equal halves? The total is 22, so the question becomes whether " +
             "any subset reaches exactly 11 — subset-sum with the target derived from the input rather than given.",
         build = ::partitionFrames,
+    ),
+    "longest_common_substring" to DpConfig(
+        rows = LCSUB_A.length + 1, cols = LCSUB_B.length + 1,
+        rowHeader = { if (it == 0) "ε" else LCSUB_A[it - 1].toString() },
+        colHeader = { if (it == 0) "ε" else LCSUB_B[it - 1].toString() },
+        corner = "",
+        intro = "Longest common substring of \"$LCSUB_A\" and \"$LCSUB_B\". A cell is the longest common *suffix* of the two " +
+            "prefixes, so a mismatch resets it to zero — and the answer is the largest cell anywhere, not the corner.",
+        build = ::longestCommonSubstringFrames,
     ),
 )
 

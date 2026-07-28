@@ -30,6 +30,7 @@ private val greedy = AlgorithmsCategories.greedy
 private val dp = AlgorithmsCategories.dynamicProgramming
 private val graphAlgo = AlgorithmsCategories.graphAlgorithms
 private val pathfinding = AlgorithmsCategories.pathfinding
+private val strings = AlgorithmsCategories.strings
 private val geometry = AlgorithmsCategories.geometry
 private val misc = AlgorithmsCategories.miscAdvanced
 
@@ -118,6 +119,19 @@ private val pathfindingTopics = listOf(
     topic("ida_star", "IDA*", pathfinding, "A*'s answer on a stack instead of a frontier — linear memory.", isPremium = true),
 )
 
+// kmp, rabin_karp and manacher moved here from algo_misc. Their ids are unchanged, so no content
+// file, cross-link, prerequisite or problem-bank reference had to move with them — only categoryId.
+private val stringTopics = listOf(
+    topic("naive_string_search", "Naive Pattern Search", strings, "Shift by one and compare — the baseline everything else beats."),
+    topic("kmp", "KMP String Matching", strings, "Reuses a prefix table so the text pointer never backs up.", isPremium = true),
+    topic("rabin_karp", "Rabin-Karp", strings, "Rolling hash turns substring comparison into arithmetic.", isPremium = true),
+    topic("z_algorithm", "Z Algorithm", strings, "One array of prefix-match lengths, computed in a single linear pass.", isPremium = true),
+    topic("longest_common_substring", "Longest Common Substring", strings, "The longest contiguous run two strings share.", isPremium = true),
+    topic("longest_palindromic_substring", "Longest Palindromic Substring", strings, "Expand around every centre — the O(n²) answer Manacher improves on.", isPremium = true),
+    topic("manacher", "Manacher's Algorithm", strings, "Finds the longest palindromic substring in linear time.", isPremium = true),
+    topic("aho_corasick", "Aho-Corasick", strings, "Matches every pattern in a dictionary in one pass over the text.", isPremium = true),
+)
+
 // closest_pair_of_points stays in Divide and Conquer — the doc lists it under both headings — and
 // cross-links here instead of moving.
 private val geometryTopics = listOf(
@@ -137,15 +151,12 @@ private val miscTopics = listOf(
     topic("monte_carlo_method", "Monte Carlo Method", misc, "Randomized sampling to approximate a numeric answer.", isPremium = true),
     topic("mos_algorithm", "Mo's Algorithm", misc, "Offline query reordering for efficient range queries.", isPremium = true),
     topic("difference_array", "Difference Array", misc, "Applies range updates in O(1), resolved with a prefix sum.", isPremium = true),
-    topic("kmp", "KMP String Matching", misc, "Reuses a prefix table so the text pointer never backs up.", isPremium = true),
-    topic("rabin_karp", "Rabin-Karp", misc, "Rolling hash turns substring comparison into arithmetic.", isPremium = true),
-    topic("manacher", "Manacher's Algorithm", misc, "Finds the longest palindromic substring in linear time.", isPremium = true),
 )
 
 object AlgorithmsTopics {
     val topics: List<Topic> =
         sortingTopics + searchingTopics + recursionTopics + divideConquerTopics + greedyTopics +
-            dpTopics + graphAlgoTopics + pathfindingTopics + geometryTopics + miscTopics
+            dpTopics + graphAlgoTopics + pathfindingTopics + stringTopics + geometryTopics + miscTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }
