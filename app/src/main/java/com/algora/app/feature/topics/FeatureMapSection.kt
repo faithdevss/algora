@@ -30,13 +30,18 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.algora.app.core.ui.theme.SimColors
 import kotlin.math.abs
 import kotlin.math.log10
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 // ── Feature map player ───────────────────────────────────────────────────────
@@ -84,9 +89,32 @@ private class FmPlot(
     val logY: Boolean = false,
 )
 
+// C4's render part: an image-sized canvas with boxes on it, optionally over a label mask or under a
+// detector's cell grid. Detection is the one vision task whose *output* is geometry, so a lab that
+// cannot draw a box cannot show what any of these architectures produce.
+private class SceneBox(
+    val box: BoxF,
+    val label: String,
+    val color: Color,
+    /** Proposals and anchors are drawn thin; predictions and ground truth are drawn solid. */
+    val faint: Boolean = false,
+)
+
+private class FmScene(
+    val label: String,
+    /** Side of the square image the boxes are expressed in. */
+    val size: Double,
+    val boxes: List<SceneBox> = emptyList(),
+    /** Overlay grid, as in YOLO's S×S cells. 0 for none. */
+    val gridCells: Int = 0,
+    /** Per-pixel label map, drawn under the boxes. 0 is background. */
+    val mask: List<List<Int>>? = null,
+)
+
 private class FmFrame(
     val status: String,
     val grids: List<FmGrid> = emptyList(),
+    val scene: FmScene? = null,
     val stack: List<FmStackRow> = emptyList(),
     val bars: List<FmBar> = emptyList(),
     val plot: FmPlot? = null,
@@ -855,6 +883,564 @@ private fun vitFrames(): List<FmFrame> {
     return frames
 }
 
+// ── Detection: the shared scene every C4 lab is drawn on ─────────────────────
+
+private const val SceneSize = 200.0
+
+private val truthBoxes = listOf(
+    BoxF(20.0, 40.0, 90.0, 150.0),
+    BoxF(110.0, 60.0, 180.0, 140.0),
+)
+
+// Six region proposals with scores: one good box per object, one duplicate of the first, a sloppy
+// box straddling both, and two on background. Every number the detection labs quote about NMS and
+// average precision is computed from this set rather than chosen.
+private val proposals: List<Pair<BoxF, Double>> = listOf(
+    BoxF(18.0, 44.0, 88.0, 148.0) to 0.94,
+    BoxF(24.0, 36.0, 96.0, 156.0) to 0.88,
+    BoxF(112.0, 58.0, 178.0, 142.0) to 0.81,
+    BoxF(60.0, 20.0, 150.0, 120.0) to 0.55,
+    BoxF(130.0, 10.0, 190.0, 60.0) to 0.42,
+    BoxF(10.0, 150.0, 70.0, 195.0) to 0.30,
+)
+
+private fun truthScene(label: String, extra: List<SceneBox> = emptyList(), gridCells: Int = 0) = FmScene(
+    label = label,
+    size = SceneSize,
+    boxes = truthBoxes.mapIndexed { i, b -> SceneBox(b, "truth ${i + 1}", SavingColor) } + extra,
+    gridCells = gridCells,
+)
+
+private fun proposalBoxes(faint: Boolean = true) = proposals.map { (box, score) ->
+    SceneBox(box, "%.2f".format(score), WindowColor, faint = faint)
+}
+
+// ── R-CNN ────────────────────────────────────────────────────────────────────
+
+private fun rcnnFrames(): List<FmFrame> {
+    val kept = nms(proposals.map { it.first }, proposals.map { it.second }, threshold = 0.5)
+    val withDuplicates = averagePrecision(proposals, truthBoxes)
+    val afterNms = averagePrecision(kept.map { proposals[it] }, truthBoxes)
+    val frames = mutableListOf<FmFrame>()
+
+    frames += FmFrame(
+        status = "Classification answers \"what is in this image?\". Detection has to answer \"what, and where, and " +
+            "how many\" — and the number of answers is not known in advance, which is why it cannot be a fixed-size " +
+            "output layer. R-CNN's answer in 2014: turn it back into classification by proposing regions first.",
+        scene = truthScene("what the detector has to produce"),
+        readout = "2 objects, each needing a class and four coordinates",
+    )
+    frames += FmFrame(
+        status = "Selective search proposes about 2,000 regions per image by merging superpixels — no learning, no " +
+            "class knowledge, just \"this looks like it could be an object\". Six of them are drawn here. Recall " +
+            "matters far more than precision at this stage: a missed region can never be recovered.",
+        scene = truthScene("~2,000 proposals (6 shown)", extra = proposalBoxes()),
+        readout = "proposals: 2,000 · objects: 2",
+    )
+    frames += FmFrame(
+        status = "Each proposal is warped to 227×227 and run through the CNN separately. That is the cost: 2,000 " +
+            "forward passes per image, with no computation shared between overlapping regions — and the overlaps are " +
+            "enormous. Reported test time is 47 seconds per image with VGG-16.",
+        stack = listOf(
+            FmStackRow("selective search", "2,000 regions", 0L, "~2 s, CPU, not learned"),
+            FmStackRow("CNN forward × 2,000", "227×227 each", 0L, "the 47 s", emphasis = true),
+            FmStackRow("SVM per class", "on cached features", 0L, "trained separately"),
+            FmStackRow("bbox regressor", "per class", 0L, "trained separately again"),
+        ),
+        readout = "three models, trained in three stages, on disk-cached features",
+    )
+    frames += FmFrame(
+        status = "Scored boxes come back overlapping, because overlapping proposals of the same object all look like " +
+            "that object. Non-maximum suppression keeps the highest-scoring box and deletes anything overlapping it " +
+            "by more than 0.5 IoU: ${proposals.size} boxes in, ${kept.size} out.",
+        scene = truthScene(
+            "after NMS at IoU 0.5",
+            extra = kept.map { SceneBox(proposals[it].first, "%.2f".format(proposals[it].second), WindowColor) },
+        ),
+        readout = "${proposals.size} → ${kept.size} boxes",
+    )
+    frames += FmFrame(
+        status = "And this is why NMS is part of the score rather than tidying. A second detection of an object " +
+            "already found counts as a false positive, so on these boxes average precision at IoU 0.5 is " +
+            "${"%.3f".format(withDuplicates.averagePrecision)} with the duplicate left in and " +
+            "${"%.3f".format(afterNms.averagePrecision)} after suppression. Same model, same features.",
+        bars = listOf(
+            FmBar(
+                "AP@0.5",
+                listOf(withDuplicates.averagePrecision, afterNms.averagePrecision),
+                SavingColor,
+                listOf("with duplicate", "after NMS"),
+            ),
+        ),
+        readout = "AP ${"%.3f".format(withDuplicates.averagePrecision)} → ${"%.3f".format(afterNms.averagePrecision)} · " +
+            "VOC2007's 11-point rule reports ${"%.3f".format(afterNms.elevenPointAp)} for the same detections",
+    )
+    return frames
+}
+
+// ── Fast R-CNN ───────────────────────────────────────────────────────────────
+
+private fun fastRcnnFrames(): List<FmFrame> {
+    val q = roiQuantisation(boxSidePixels = 145.0)
+    val frames = mutableListOf<FmFrame>()
+
+    frames += FmFrame(
+        status = "R-CNN runs the CNN 2,000 times over the same image. Fast R-CNN runs it once. The image goes " +
+            "through the convolutional stack a single time, and every proposal is then *projected* onto that shared " +
+            "feature map — a box at stride 16 becomes a box on the feature grid.",
+        scene = truthScene("one shared feature map, proposals projected onto it", extra = proposalBoxes()),
+        readout = "1 forward pass instead of 2,000",
+    )
+    frames += FmFrame(
+        status = "RoI pooling makes each projected region a fixed 7×7 map whatever its size, so a dense head can " +
+            "read it. Everything after that — class scores and box refinement — is one network with one multi-task " +
+            "loss, trained end to end, replacing R-CNN's three separately trained stages and its feature cache.",
+        stack = listOf(
+            FmStackRow("conv stack", "whole image, once", 0L, "shared by every proposal", emphasis = true),
+            FmStackRow("RoI pooling", "any size → 7×7", 0L, "no parameters"),
+            FmStackRow("fc + softmax", "K + 1 classes", 0L, "trained jointly"),
+            FmStackRow("fc + box regression", "4 per class", 0L, "same loss, one stage"),
+        ),
+        readout = "L = L_cls + λ·L_box, one optimiser",
+    )
+    frames += FmFrame(
+        status = "RoI pooling quantises twice, and both roundings are in feature-map units. A ${"%.0f".format(145.0)}-pixel " +
+            "box is ${"%.3f".format(q.exactFeatureSide)} features wide at stride ${q.stride} and gets snapped to " +
+            "${q.quantisedFeatureSide} — ${"%.1f".format(q.roiShiftPixels)} image pixels lost — then divided into 7 bins of " +
+            "${"%.3f".format(q.exactBinSide)} that are snapped to ${q.quantisedBinSide}, for another " +
+            "${"%.0f".format(q.binShiftPixels)} pixels at the far edge. Good enough for a class label. Not good enough for a mask, " +
+            "which is what Mask R-CNN's RoIAlign fixes.",
+        bars = listOf(
+            FmBar(
+                "misalignment from quantisation (image pixels)",
+                listOf(q.roiShiftPixels, q.binShiftPixels, q.totalShiftPixels),
+                CostColor,
+                listOf("RoI snap", "bin snap", "total"),
+            ),
+        ),
+        readout = "${"%.0f".format(q.totalShiftPixels)} px of misalignment at stride ${q.stride}",
+    )
+    frames += FmFrame(
+        status = "The measured result: 47 s per image down to 2.3 s, and 0.32 s if the proposals are already " +
+            "computed. Which relocates the bottleneck rather than removing it — selective search now takes about " +
+            "seven times longer than the network it feeds, and it is the only part that is not learned.",
+        bars = listOf(
+            FmBar(
+                "test time per image (s)",
+                listOf(47.0, 2.3, 0.32),
+                CostColor,
+                listOf("R-CNN", "Fast R-CNN", "network only"),
+            ),
+        ),
+        readout = "the proposals are now 87% of the time — Faster R-CNN's entire premise",
+    )
+    return frames
+}
+
+// ── Faster R-CNN ─────────────────────────────────────────────────────────────
+
+private fun fasterRcnnFrames(): List<FmFrame> {
+    val anchors = rpnAnchorCount()
+    val anchorBoxes = listOf(
+        SceneBox(BoxF(70.0, 70.0, 130.0, 130.0), "1:1", WindowColor, faint = true),
+        SceneBox(BoxF(55.0, 85.0, 145.0, 115.0), "2:1", WindowColor, faint = true),
+        SceneBox(BoxF(85.0, 55.0, 115.0, 145.0), "1:2", WindowColor, faint = true),
+        SceneBox(BoxF(40.0, 40.0, 160.0, 160.0), "2× scale", WindowColor, faint = true),
+    )
+    val frames = mutableListOf<FmFrame>()
+
+    frames += FmFrame(
+        status = "Fast R-CNN left one CPU algorithm in the middle of a GPU pipeline, taking most of the wall clock. " +
+            "Faster R-CNN's move is to make the proposals a network too — a Region Proposal Network sliding over the " +
+            "same feature map the detector already computed, so proposals become almost free.",
+        scene = truthScene("anchors at one feature-map position", extra = anchorBoxes),
+        readout = "9 anchors per position: 3 scales × 3 aspect ratios",
+    )
+    frames += FmFrame(
+        status = "Anchors are the idea that made it work. Instead of regressing boxes from nothing, the RPN scores a " +
+            "fixed set of reference boxes at every position and regresses an *offset* from the ones that fit. On a " +
+            "40×60 feature map that is ${anchors} anchors — the network's entire hypothesis space, laid out in advance.",
+        stack = listOf(
+            FmStackRow("feature map", "40×60, stride 16", 0L, "shared with the detector"),
+            FmStackRow("anchors", "9 per position", anchors.toLong(), "objectness + 4 offsets each", emphasis = true),
+            FmStackRow("after score + NMS", "2,000 proposals", 2_000L, "300 at test time"),
+        ),
+        readout = "$anchors anchors → 2,000 proposals → 300 detections",
+    )
+    frames += FmFrame(
+        status = "The RPN is class-agnostic: it only asks \"object or not\", and hands the survivors to the same " +
+            "Fast R-CNN head as before. Because both share the convolutional stack, adding the proposal network cost " +
+            "about 10 ms per image — against selective search's two seconds.",
+        bars = listOf(
+            FmBar(
+                "proposal generation (ms)",
+                listOf(2000.0, 10.0),
+                CostColor,
+                listOf("selective search", "RPN"),
+            ),
+        ),
+        readout = "0.2 s per image end to end — 5 fps with VGG-16, real-time with a smaller backbone",
+    )
+    frames += FmFrame(
+        status = "That completes the two-stage detector: propose, then classify, with everything learned and " +
+            "everything shared. Its accuracy stayed the reference for years, and its cost — two passes over every " +
+            "region — is exactly what the one-stage detectors set out to remove.",
+        scene = truthScene("final detections", extra = listOf(0, 2).map {
+            SceneBox(proposals[it].first, "%.2f".format(proposals[it].second), WindowColor)
+        }),
+        readout = "R-CNN 47 s → Fast 2.3 s → Faster 0.2 s, and every stage now learned",
+    )
+    return frames
+}
+
+// ── YOLO ─────────────────────────────────────────────────────────────────────
+
+private fun yoloFrames(): List<FmFrame> {
+    val v1 = YoloShape(grid = 7, boxesPerCell = 2, classes = 20)
+    val frames = mutableListOf<FmFrame>()
+
+    frames += FmFrame(
+        status = "YOLO deletes the proposal stage entirely. One CNN pass produces every box for the whole image at " +
+            "once: the image is divided into a ${v1.grid}×${v1.grid} grid, and the cell containing an object's centre " +
+            "is responsible for predicting it.",
+        scene = truthScene("the ${v1.grid}×${v1.grid} grid, and the two responsible cells", gridCells = v1.grid),
+        readout = "detection as a single regression problem",
+    )
+    frames += FmFrame(
+        status = "Each cell predicts ${v1.boxesPerCell} boxes — x, y, w, h and a confidence — plus one set of " +
+            "${v1.classes} class probabilities *shared by both boxes*. That makes the whole output one tensor of " +
+            "${v1.grid}×${v1.grid}×${v1.channels} = ${v1.tensorSize} numbers, and the whole detector one forward pass.",
+        stack = listOf(
+            FmStackRow("per cell", "${v1.boxesPerCell}×5 + ${v1.classes}", v1.channels.toLong(), "box coords, confidence, classes"),
+            FmStackRow("output tensor", "${v1.grid}×${v1.grid}×${v1.channels}", v1.tensorSize.toLong(), "one forward pass", emphasis = true),
+            FmStackRow("boxes predicted", "${v1.grid}²×${v1.boxesPerCell}", v1.boxesPredicted.toLong(), "against R-CNN's 2,000 proposals"),
+        ),
+        readout = "${v1.boxesPredicted} boxes total, scored and finished in one pass",
+    )
+    frames += FmFrame(
+        status = "The trade is explicit in the numbers: 45 fps against Faster R-CNN's 7, at 63.4 mAP against 73.2 on " +
+            "VOC 2007 — and Fast YOLO reached 155 fps. It also makes fewer background false positives than Fast " +
+            "R-CNN, because it sees the whole image at once rather than a cropped region.",
+        bars = listOf(
+            FmBar("frames per second", listOf(7.0, 45.0, 155.0), SavingColor, listOf("Faster R-CNN", "YOLO", "Fast YOLO")),
+            FmBar("VOC07 mAP", listOf(73.2, 63.4, 52.7), SignalColor, listOf("Faster R-CNN", "YOLO", "Fast YOLO")),
+        ),
+    )
+    frames += FmFrame(
+        status = "v1's weaknesses come straight from its grid: one class set per cell, so a cell holding two " +
+            "different objects can only report one, and small clustered objects — a flock of birds — fall inside " +
+            "single cells. Every later version is an answer to that. v2 added anchors and a higher resolution, v3 " +
+            "predicted at three scales with an FPN and swapped softmax for per-class sigmoids, v4/v5 were engineering " +
+            "and training-recipe work, and v8 went anchor-free with a decoupled head.",
+        scene = truthScene("one cell, two objects — v1 can name only one", gridCells = v1.grid),
+        readout = "the fix in every later version: more boxes, more scales, no shared class vector",
+    )
+    return frames
+}
+
+// ── SSD ──────────────────────────────────────────────────────────────────────
+
+private fun ssdFrames(): List<FmFrame> {
+    val levels = ssd300Levels()
+    val total = levels.sumOf { it.count }
+    val frames = mutableListOf<FmFrame>()
+
+    frames += FmFrame(
+        status = "SSD's disagreement with YOLO v1 is about scale. One grid over one feature map has one notion of " +
+            "object size; SSD attaches detection heads to six feature maps of different resolutions, so a 38×38 map " +
+            "with a stride of 8 handles small objects and a 1×1 map handles ones filling the frame.",
+        stack = levels.map { level ->
+            FmStackRow(
+                "stride ${level.stride}",
+                "${level.gridSize}×${level.gridSize} × ${level.perLocation}",
+                level.count.toLong(),
+                "${percent(level.count.toLong(), total.toLong())} of the boxes",
+            )
+        },
+        readout = "$total default boxes in total",
+    )
+    frames += FmFrame(
+        status = "Default boxes are anchors by another name: a fixed set of shapes per location, each predicting a " +
+            "class distribution and a four-number offset. Nearly two thirds of the ${total} come from the finest map " +
+            "alone, which is where small objects live and where a coarse detector fails.",
+        bars = listOf(
+            FmBar(
+                "default boxes per level",
+                levels.map { it.count.toDouble() },
+                SignalColor,
+                levels.map { "s${it.stride}" },
+            ),
+        ),
+        scene = truthScene("default boxes at two of the six scales", extra = listOf(
+            SceneBox(BoxF(75.0, 75.0, 125.0, 125.0), "fine", WindowColor, faint = true),
+            SceneBox(BoxF(30.0, 30.0, 170.0, 170.0), "coarse", CostColor, faint = true),
+        )),
+    )
+    frames += FmFrame(
+        status = "Scoring $total boxes when an image holds two objects creates a brutal imbalance, and SSD handles it " +
+            "by hard negative mining: sort the background boxes by loss, keep the worst ones at a 3:1 ratio to the " +
+            "positives, and ignore the rest. It works, and it is a heuristic on top of the loss — which is precisely " +
+            "what RetinaNet replaced with a loss function.",
+        readout = "3:1 negatives to positives, chosen by loss",
+    )
+    frames += FmFrame(
+        status = "The result was the first detector to be both fast and accurate: SSD300 at 74.3 mAP and 59 fps on " +
+            "VOC 2007, against YOLO v1's 63.4 at 45 fps and Faster R-CNN's 73.2 at 7. Multi-scale prediction, not " +
+            "speed tricks, is what bought the accuracy back.",
+        bars = listOf(
+            FmBar("VOC07 mAP", listOf(63.4, 74.3, 73.2), SignalColor, listOf("YOLO", "SSD300", "Faster R-CNN")),
+            FmBar("frames per second", listOf(45.0, 59.0, 7.0), SavingColor, listOf("YOLO", "SSD300", "Faster R-CNN")),
+        ),
+    )
+    return frames
+}
+
+// ── RetinaNet ────────────────────────────────────────────────────────────────
+
+private fun retinaNetFrames(): List<FmFrame> {
+    val levels = retinaNetLevels()
+    val anchors = levels.sumOf { it.count }
+    val ce = crossEntropySplit(100_000, 0.9, 10, 0.1)
+    val fl = focalSplit(100_000, 0.9, 10, 0.1)
+    val frames = mutableListOf<FmFrame>()
+
+    frames += FmFrame(
+        status = "By 2017 the question was why one-stage detectors were fast but always less accurate. RetinaNet's " +
+            "answer: it is not the architecture, it is the loss. A one-stage detector scores every anchor on the " +
+            "pyramid — ${anchors} of them here — and essentially all of them are background.",
+        stack = levels.map { level ->
+            FmStackRow("P${when (level.stride) { 8 -> 3; 16 -> 4; 32 -> 5; 64 -> 6; else -> 7 }} · stride ${level.stride}",
+                "${level.gridSize}×${level.gridSize} × 9", level.count.toLong(), "")
+        },
+        readout = "≈${anchors / 1000}k anchors per image, two of them on objects",
+    )
+    frames += FmFrame(
+        status = "Cross-entropy has no answer to that. Take 100,000 background anchors the model already gets right " +
+            "at 0.9 confidence and 10 hard foreground anchors at 0.1: the background contributes " +
+            "${"%.0f".format(ce.backgroundLoss)} of loss against the foreground's ${"%.0f".format(ce.foregroundLoss)} — " +
+            "${"%.1f".format(ce.backgroundShare * 100)}% of the gradient comes from examples that are already correct.",
+        bars = listOf(
+            FmBar(
+                "cross-entropy loss contribution",
+                listOf(ce.backgroundLoss, ce.foregroundLoss),
+                CostColor,
+                listOf("100k easy background", "10 hard foreground"),
+            ),
+        ),
+        readout = "background : foreground = ${"%.0f".format(ce.ratio)} : 1",
+    )
+    frames += FmFrame(
+        status = "Focal loss multiplies each example's loss by (1 − p_t)^γ. At γ = 2 an anchor the model is 90% sure " +
+            "about is scaled by ${"%.2f".format(focalWeight(0.9))} while one it is 10% sure about keeps " +
+            "${"%.2f".format(focalWeight(0.1))} of its loss. Same 100,010 anchors: the split becomes " +
+            "${"%.0f".format(fl.backgroundLoss)} against ${"%.0f".format(fl.foregroundLoss)}, and the ratio falls from " +
+            "${"%.0f".format(ce.ratio)}:1 to ${"%.1f".format(fl.ratio)}:1 — a " +
+            "${"%.0f".format(ce.ratio / fl.ratio)}× rebalance from one factor in the loss.",
+        plot = FmPlot(
+            "focal weight (1 − p)^γ by confidence",
+            listOf(
+                FmCurve("γ = 0 (cross-entropy)", (0..20).map { (it / 20f) to 1f }, MutedColor),
+                FmCurve("γ = 1", (0..20).map { (it / 20f) to focalWeight(it / 20.0, 1.0).toFloat() }, SignalColor),
+                FmCurve("γ = 2", (0..20).map { (it / 20f) to focalWeight(it / 20.0, 2.0).toFloat() }, SavingColor),
+                FmCurve("γ = 5", (0..20).map { (it / 20f) to focalWeight(it / 20.0, 5.0).toFloat() }, CostColor),
+            ),
+            xRange = 0f..1f,
+            yRange = 0f..1f,
+        ),
+        readout = "easy examples are not ignored — they are down-weighted, smoothly",
+    )
+    frames += FmFrame(
+        status = "With that loss and nothing else exotic — a ResNet-FPN backbone, two small subnets for class and " +
+            "box — a one-stage detector matched the two-stage accuracy record: 39.1 AP on COCO, above every Faster " +
+            "R-CNN variant published at the time, while staying single-shot. The lesson generalised: class imbalance " +
+            "is a loss-design problem, not an architecture problem.",
+        bars = listOf(
+            FmBar("COCO AP", listOf(31.2, 36.2, 39.1), SignalColor, listOf("SSD513", "Faster R-CNN + FPN", "RetinaNet")),
+        ),
+    )
+    return frames
+}
+
+// ── U-Net ────────────────────────────────────────────────────────────────────
+
+private fun unetFrames(): List<FmFrame> {
+    val path = unetPath()
+    val output = path.last().size
+    val frames = mutableListOf<FmFrame>()
+
+    frames += FmFrame(
+        status = "Segmentation needs a label for every pixel, so a classifier's ending — pool everything away, then a " +
+            "dense layer — is exactly wrong. U-Net keeps the contracting encoder, and mirrors it with an expanding " +
+            "decoder that upsamples back to image resolution.",
+        stack = path.take(5).map { FmStackRow(it.name, "${it.size}×${it.size}×${it.channels}", 0L, "") },
+        readout = "encoder: resolution down, semantics up",
+    )
+    frames += FmFrame(
+        status = "The skip connections are what make it work. Upsampling alone cannot invent back the boundary detail " +
+            "the pooling threw away, so each decoder stage concatenates the encoder map of the same resolution — " +
+            "coarse \"what\" from below, fine \"where\" from the side.",
+        stack = path.filter { it.cropPerSide > 0 }.map {
+            FmStackRow(it.name, "${it.size}×${it.size}×${it.channels}", 0L, "skip cropped ${it.cropPerSide} px per side", emphasis = true)
+        },
+        readout = "concatenate, not add — the decoder sees both maps in full",
+    )
+    frames += FmFrame(
+        status = "Because the original uses unpadded convolutions, the encoder map is always larger than the decoder " +
+            "map it joins, and the paper crops it — by ${path.filter { it.cropPerSide > 0 }.joinToString(", ") { "${it.cropPerSide}" }} pixels " +
+            "per side going up. The consequence is visible in the shapes: 572×572 in, ${output}×${output} out. The " +
+            "network deliberately predicts a smaller region than it reads, and a large image is covered by " +
+            "overlapping tiles so that every predicted pixel has full context.",
+        scene = FmScene(
+            "input tile vs predicted region",
+            size = SceneSize,
+            boxes = listOf(
+                SceneBox(BoxF(0.0, 0.0, 200.0, 200.0), "input 572²", WindowColor, faint = true),
+                SceneBox(BoxF(32.0, 32.0, 168.0, 168.0), "output ${output}²", SavingColor),
+            ),
+        ),
+        readout = "572 → $output, and the missing border is why tiles overlap",
+    )
+    frames += FmFrame(
+        status = "It was trained on about 30 annotated images. Heavy elastic deformation stood in for the data that " +
+            "did not exist, and a weighted loss put extra cost on the thin background gaps *between* touching cells — " +
+            "a segmentation network taught to draw separations it would otherwise merge. It won the ISBI cell-tracking " +
+            "challenge by a wide margin and remains the default architecture for medical segmentation.",
+        readout = "30 images, elastic augmentation, boundary-weighted cross-entropy",
+    )
+    return frames
+}
+
+// ── Mask R-CNN ───────────────────────────────────────────────────────────────
+
+private fun maskRcnnFrames(): List<FmFrame> {
+    val q = roiQuantisation(boxSidePixels = 145.0)
+    val maskGrid = 28
+    val frames = mutableListOf<FmFrame>()
+
+    frames += FmFrame(
+        status = "Mask R-CNN is Faster R-CNN plus a third head: alongside the class and the box, a small fully " +
+            "convolutional branch predicts a ${maskGrid}×${maskGrid} binary mask per RoI. The addition is almost " +
+            "trivially simple, which is the paper's point — instance segmentation did not need a new paradigm.",
+        stack = listOf(
+            FmStackRow("class head", "K + 1 softmax", 0L, "unchanged from Faster R-CNN"),
+            FmStackRow("box head", "4 per class", 0L, "unchanged"),
+            FmStackRow("mask head", "K × ${maskGrid}×${maskGrid}", (maskGrid * maskGrid).toLong(), "one binary mask per class", emphasis = true),
+        ),
+        readout = "≈5 fps, and it beat every entrant of the 2016 COCO segmentation challenge",
+    )
+    frames += FmFrame(
+        status = "The masks are per-class and binary, with no softmax across classes: the class head decides *what* " +
+            "it is, the mask head only decides *which pixels*. Decoupling those two questions is worth several points " +
+            "of mask AP over the usual per-pixel multi-class softmax, because the mask branch stops competing with " +
+            "itself across classes.",
+        scene = FmScene(
+            "box → 28×28 mask, per instance",
+            size = SceneSize,
+            boxes = truthBoxes.mapIndexed { i, b -> SceneBox(b, "instance ${i + 1}", SavingColor) },
+            mask = List(20) { r ->
+                List(20) { c ->
+                    when {
+                        r in 4..14 && c in 2..8 -> 1
+                        r in 6..13 && c in 11..17 -> 2
+                        else -> 0
+                    }
+                }
+            },
+        ),
+    )
+    frames += FmFrame(
+        status = "But the mask branch exposed a defect that classification had tolerated for two years. RoI pooling " +
+            "quantises twice — the box onto the feature grid, then the grid into bins — and at stride ${q.stride} " +
+            "those roundings are worth ${"%.0f".format(q.totalShiftPixels)} image pixels on a 145-pixel box. A class " +
+            "label survives that. A mask does not.",
+        bars = listOf(
+            FmBar(
+                "misalignment (image pixels)",
+                listOf(q.roiShiftPixels, q.binShiftPixels, 0.0),
+                CostColor,
+                listOf("RoI snap", "bin snap", "RoIAlign"),
+            ),
+        ),
+        readout = "RoIPool ${"%.0f".format(q.totalShiftPixels)} px · RoIAlign 0 px",
+    )
+    frames += FmFrame(
+        status = "RoIAlign removes both roundings: sample each bin at exact floating-point locations with bilinear " +
+            "interpolation and never snap to the grid. The paper reports roughly a 3-point mask-AP gain from that " +
+            "one change, and about twice as much at the strict IoU 0.75 threshold — where a few pixels of " +
+            "misalignment is exactly what decides a match.",
+        readout = "the fix is arithmetic, not architecture: stop calling floor()",
+    )
+    return frames
+}
+
+// ── Semantic vs instance segmentation ────────────────────────────────────────
+
+private fun segmentationTypesFrames(): List<FmFrame> {
+    // Two touching objects of the same class, plus one of another class. Semantic labelling cannot
+    // separate the first two; instance labelling can.
+    val semantic = List(12) { r ->
+        List(12) { c ->
+            when {
+                r in 3..8 && c in 1..9 -> 1     // two sheep, touching
+                r in 1..4 && c in 10..11 -> 2   // a tree
+                else -> 0
+            }
+        }
+    }
+    val instance = List(12) { r ->
+        List(12) { c ->
+            when {
+                r in 3..8 && c in 1..4 -> 1
+                r in 3..8 && c in 5..9 -> 2
+                r in 1..4 && c in 10..11 -> 3
+                else -> 0
+            }
+        }
+    }
+    val counts = segmentationCounts(semantic, instance)
+    // A prediction that is right about class everywhere except a two-pixel strip.
+    val predicted = semantic.mapIndexed { r, row -> row.mapIndexed { c, v -> if (r == 8 && c in 1..9) 0 else v } }
+    val miou = meanIoU(predicted, semantic)
+    val frames = mutableListOf<FmFrame>()
+
+    frames += FmFrame(
+        status = "Four tasks sit on the same picture and answer different questions. Classification: what is here. " +
+            "Detection: where, as boxes. Semantic segmentation: a class per pixel. Instance segmentation: a class per " +
+            "pixel *and* which object each pixel belongs to.",
+        scene = FmScene("semantic map — one label per pixel", size = SceneSize, mask = semantic),
+        readout = "${counts.classes} classes · ${counts.semanticRegions} connected regions",
+    )
+    frames += FmFrame(
+        status = "The distinction is not academic, and it shows up the moment two objects of the same class touch. " +
+            "Semantically the two sheep are one region of ${counts.pixelsPerClass[1]} pixels — there is no label that " +
+            "could separate them, because the output space has one channel per class and none per object.",
+        scene = FmScene("instance map — one label per object", size = SceneSize, mask = instance),
+        readout = "semantic: ${counts.semanticRegions} regions · instance: ${counts.instances} objects",
+    )
+    frames += FmFrame(
+        status = "So they are evaluated differently too. Semantic segmentation reports mean IoU per class — this " +
+            "prediction, which drops the sheep's bottom row, scores ${"%.3f".format(miou)} — while instance " +
+            "segmentation uses detection's average precision over masks, where merging two sheep into one costs a " +
+            "false negative outright rather than a few pixels of IoU.",
+        bars = listOf(
+            FmBar("mIoU of the shown prediction", listOf(miou, 1.0), SavingColor, listOf("predicted", "perfect")),
+        ),
+        readout = "mIoU ${"%.3f".format(miou)} · a merged pair would still score well here, and 0 under mask AP",
+    )
+    frames += FmFrame(
+        status = "Architecturally the split is just as clean: semantic segmentation is a dense per-pixel classifier " +
+            "(FCN, U-Net, DeepLab), instance segmentation is detection with a mask head (Mask R-CNN), and panoptic " +
+            "segmentation is the task that demands both at once — every pixel labelled, and every countable object " +
+            "separated, with no overlaps allowed.",
+        stack = listOf(
+            FmStackRow("semantic", "class per pixel", 0L, "U-Net, FCN, DeepLab · mIoU"),
+            FmStackRow("instance", "mask per object", 0L, "Mask R-CNN · mask AP"),
+            FmStackRow("panoptic", "both, no overlaps", 0L, "stuff + things · PQ", emphasis = true),
+        ),
+    )
+    return frames
+}
+
 // ── Config registry ──────────────────────────────────────────────────────────
 
 private val featureMapConfigs: Map<String, FmConfig> = linkedMapOf(
@@ -927,6 +1513,55 @@ private val featureMapConfigs: Map<String, FmConfig> = linkedMapOf(
         legend = listOf(SignalColor to "Patch token", WindowColor to "Class token", CostColor to "Attention pairs"),
         build = { vitFrames() },
     ),
+    "rcnn" to FmConfig(
+        intro = "Region proposals, one CNN pass each, and the two evaluation rules — NMS and average precision — " +
+            "that everything after this is scored by.",
+        legend = listOf(SavingColor to "Ground truth", WindowColor to "Proposal", CostColor to "Cost"),
+        build = { rcnnFrames() },
+    ),
+    "fast_rcnn" to FmConfig(
+        intro = "One shared feature map instead of 2,000 forward passes — and the pixel-level cost of RoI pooling's " +
+            "two roundings.",
+        legend = listOf(SavingColor to "Ground truth", WindowColor to "Projected RoI", CostColor to "Misalignment"),
+        build = { fastRcnnFrames() },
+    ),
+    "faster_rcnn" to FmConfig(
+        intro = "Anchors, and a proposal network that costs 10 ms where selective search cost two seconds.",
+        legend = listOf(SavingColor to "Ground truth", WindowColor to "Anchor", CostColor to "Proposal time"),
+        build = { fasterRcnnFrames() },
+    ),
+    "yolo" to FmConfig(
+        intro = "A 7×7 grid, 98 boxes, one forward pass — and the grid's own limits, which every later version " +
+            "answers.",
+        legend = listOf(SavingColor to "Ground truth", WindowColor to "Grid cell", SignalColor to "Accuracy"),
+        build = { yoloFrames() },
+    ),
+    "ssd" to FmConfig(
+        intro = "Six feature maps, 8,732 default boxes counted level by level, and the imbalance that follows.",
+        legend = listOf(SignalColor to "Default boxes", SavingColor to "Speed", CostColor to "Coarse scale"),
+        build = { ssdFrames() },
+    ),
+    "retinanet" to FmConfig(
+        intro = "100,000 anchors against two objects, priced under cross-entropy and under focal loss.",
+        legend = listOf(CostColor to "Background loss", SavingColor to "Focal weight", SignalColor to "Accuracy"),
+        build = { retinaNetFrames() },
+    ),
+    "unet" to FmConfig(
+        intro = "The contracting and expanding paths at their real sizes, including the crop each skip connection " +
+            "needs and the border the network refuses to predict.",
+        legend = listOf(SignalColor to "Encoder", SavingColor to "Predicted region", WindowColor to "Input tile"),
+        build = { unetFrames() },
+    ),
+    "mask_rcnn" to FmConfig(
+        intro = "One extra head on Faster R-CNN, and the quantisation bug the masks made visible.",
+        legend = listOf(SavingColor to "Instance", WindowColor to "RoI", CostColor to "Misalignment"),
+        build = { maskRcnnFrames() },
+    ),
+    "segmentation_types" to FmConfig(
+        intro = "The same picture under three tasks: pixels labelled by class, by object, and by both.",
+        legend = listOf(SignalColor to "Class 1", CostColor to "Class 2", MutedColor to "Background"),
+        build = { segmentationTypesFrames() },
+    ),
 )
 
 private fun featureMapConfigFor(topicId: String): FmConfig =
@@ -985,6 +1620,21 @@ internal fun featureMapFrameCount(topicId: String): Int {
             frame.stack.forEach { row ->
                 require(row.params >= 0L) { "$topicId reports ${row.params} parameters for '${row.name}'" }
             }
+            frame.scene?.let { scene ->
+                require(scene.size > 0.0) { "$topicId draws scene '${scene.label}' with side ${scene.size}" }
+                scene.boxes.forEach { drawn ->
+                    val b = drawn.box
+                    require(b.x2 > b.x1 && b.y2 > b.y1) { "$topicId draws '${drawn.label}' inside out" }
+                    require(b.x1 >= 0.0 && b.y1 >= 0.0 && b.x2 <= scene.size && b.y2 <= scene.size) {
+                        "$topicId draws '${drawn.label}' outside scene '${scene.label}'"
+                    }
+                }
+                scene.mask?.let { mask ->
+                    require(mask.isNotEmpty()) { "$topicId draws an empty mask in '${scene.label}'" }
+                    val width = mask.first().size
+                    require(mask.all { it.size == width }) { "$topicId mask in '${scene.label}' is ragged" }
+                }
+            }
         }
         count = frames.size
     }
@@ -1032,6 +1682,8 @@ fun FeatureMapSection(topicId: String) {
                     }
                 }
             }
+
+            frame.scene?.let { SceneCanvas(it, modifier = Modifier.padding(top = 12.dp)) }
 
             frame.stack.forEach { row -> StackRow(row, frame.stack.maxOf { max(it.params, 1L) }) }
 
@@ -1148,6 +1800,73 @@ private fun FeatureGrid(grid: FmGrid) {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+// The detection labs' picture: a square image with a label mask under it, an optional cell grid over
+// it, and boxes on top. Box coordinates are in the scene's own pixel units and scaled to whatever
+// width the canvas gets, so a lab never has to know the screen size.
+@Composable
+private fun SceneCanvas(scene: FmScene, modifier: Modifier = Modifier) {
+    val measurer = rememberTextMeasurer()
+    val gridColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.30f)
+    val maskPalette = listOf(SignalColor, CostColor, SavingColor, WindowColor)
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(scene.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Canvas(modifier = Modifier.fillMaxWidth().height(180.dp).padding(top = 4.dp)) {
+            val side = min(size.width, size.height)
+            val originX = (size.width - side) / 2f
+            val scale = side / scene.size.toFloat()
+            fun sx(v: Double) = originX + v.toFloat() * scale
+            fun sy(v: Double) = v.toFloat() * scale
+
+            drawRoundRect(
+                color = gridColor.copy(alpha = 0.12f),
+                topLeft = Offset(originX, 0f),
+                size = Size(side, side),
+                cornerRadius = CornerRadius(8f, 8f),
+            )
+
+            scene.mask?.let { mask ->
+                val cell = side / mask.size
+                mask.forEachIndexed { r, row ->
+                    row.forEachIndexed { c, label ->
+                        if (label != 0) {
+                            drawRect(
+                                color = maskPalette[(label - 1) % maskPalette.size].copy(alpha = 0.55f),
+                                topLeft = Offset(originX + c * cell, r * cell),
+                                size = Size(cell, cell),
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (scene.gridCells > 0) {
+                val step = side / scene.gridCells
+                (1 until scene.gridCells).forEach { i ->
+                    drawLine(gridColor, Offset(originX + i * step, 0f), Offset(originX + i * step, side), strokeWidth = 1.5f)
+                    drawLine(gridColor, Offset(originX, i * step), Offset(originX + side, i * step), strokeWidth = 1.5f)
+                }
+            }
+
+            scene.boxes.forEach { drawn ->
+                val left = sx(drawn.box.x1)
+                val top = sy(drawn.box.y1)
+                drawRect(
+                    color = drawn.color.copy(alpha = if (drawn.faint) 0.55f else 1f),
+                    topLeft = Offset(left, top),
+                    size = Size((drawn.box.width * scale).toFloat(), (drawn.box.height * scale).toFloat()),
+                    style = Stroke(width = if (drawn.faint) 2f else 4f),
+                )
+                val text = measurer.measure(
+                    drawn.label,
+                    TextStyle(color = drawn.color, fontSize = 9.sp, fontWeight = FontWeight.Bold),
+                )
+                drawText(text, topLeft = Offset(left + 2f, (top - text.size.height).coerceAtLeast(0f)))
             }
         }
     }

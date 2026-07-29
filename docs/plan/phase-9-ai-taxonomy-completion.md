@@ -1,12 +1,12 @@
 # Phase 9 — AI Taxonomy Completion
 
-Status: In progress — Track A complete (RL at 100% of the doc), B1–B7 and C1–C3 done. 100 of 226
-topics authored. AI sections now: ML 75, **DL 41**, NLP 12, RL 74 — 202 AI topics, and 324 browsable
+Status: In progress — Track A complete (RL at 100% of the doc), B1–B7 and C1–C4 done. 109 of 226
+topics authored. AI sections now: ML 75, **DL 50**, NLP 12, RL 74 — 211 AI topics, and 333 browsable
 topics across the app *counted from the section lists themselves*. (The running "taxonomy at N"
 tallies in earlier revisions of this file drifted from those lists; the measured number is the one to
 trust, and `ContentCoverageTest` is what enforces it.)
-**Doc coverage is measured, not estimated: 219 of the doc's 357 entries (61%).**
-Next: C4 — object detection, on the `FeatureMapPlayer` C3 just built.
+**Doc coverage is measured, not estimated: 228 of the doc's 357 entries (64%).**
+Next: C5 — RNN mechanics, on `NeuralNetPlayer` and `TokenStripPlayer`.
 Track B was interrupted after B7 by a deliberate jump to Track C; **B8, B9 and B10 remain unbuilt**,
 and `ml_supervised` therefore still holds the four topics they were to redistribute.
 
@@ -76,13 +76,14 @@ below.
 | C1 · NN Basics | 4 | **Done** | No new widget. New `NeuralNetPlayer` frame guard found 4 live bugs |
 | C2 · Activation Functions | 10 | **Done** | No new widget. `autoPlot` retires hand-picked axes |
 | C3 · CNN Mechanics + Architectures | 12 | **Done** | New `FeatureMapPlayer` + `CnnMath.kt`. Plan said 11; the doc lists 12 |
-| C4–C9 | 47 | Planned | `FeatureMapPlayer` now exists and serves C4 unchanged |
+| C4 · Object Detection & Segmentation | 9 | **Done** | `FeatureMapPlayer` gained a box/mask scene; new `DetectionMath.kt` |
+| C5–C9 | 38 | Planned | |
 | Track D (D1–D6) | 50 | Planned | |
-| **Total** | **226** | **100 done** | 324 browsable topics, counted from the section lists |
+| **Total** | **226** | **109 done** | 333 browsable topics, counted from the section lists |
 
 Sections against the doc, measured by `AiTaxonomyCoverageTest` rather than counted by hand:
-**RL 71/71**, ML 84/113, **DL 48/96**, NLP 16/77 — **219 of 357 overall**. ML is 75 topics of its
-eventual ~100; DL is at 41; NLP is untouched at 12. Browsable topics across the app: **324**, which
+**RL 71/71**, ML 84/113, **DL 57/96**, NLP 16/77 — **228 of 357 overall**. ML is 75 topics of its
+eventual ~100; DL is at 50; NLP is untouched at 12. Browsable topics across the app: **333**, which
 is what `DataStructuresTopics + AlgorithmsTopics + the four AI sections` actually sum to — the
 "taxonomy 200 → N of 426" running tally this table used to carry had drifted from the lists by two
 dozen, so it has been dropped in favour of the measured figure.
@@ -120,7 +121,8 @@ clustering topics and B6 took `pca`, its last one. `ml_supervised` still holds `
 topics and B10 takes `perceptron`. It should be gone by the end of Track B, and if it still exists
 then, something was missed. `CategoryIntegrityTest` is what makes that safe to do incrementally.
 
-**Deep Learning — 11 categories.** Built so far: `dl_basics`, `dl_activations`, `dl_cnn`. The two
+**Deep Learning — 11 categories.** Built so far: `dl_basics`, `dl_activations`, `dl_cnn`,
+`dl_detection`. The two
 generic buckets are being hollowed out the same way ML's were — `dl_architectures` lost `cnn` to
 `dl_cnn` and still holds the six topics C5–C7 will take. Full list (`dl_basics`, `dl_activations`,
 `dl_cnn`, `dl_detection`,
@@ -682,11 +684,52 @@ orderings across seeds and depths so they cannot be artefacts of the configurati
   column is shift-invariant for reasons unrelated to pooling — so the lab uses a localised square
   instead. Worth recording as the same class of error as A1's POMDP sensor.
 
-**C4 · Object Detection & Segmentation** — 9 topics
-R-CNN · Fast R-CNN · Faster R-CNN · YOLO (V1–V8) · SSD · RetinaNet · U-Net · Mask R-CNN ·
-Semantic vs Instance Segmentation
-*Sims:* `FeatureMapPlayer` (region proposals → RoI pooling → boxes; YOLO's grid-cell prediction;
-U-Net's contract/expand path with skip connections).
+**C4 · Object Detection & Segmentation** — 9 topics into new `dl_detection` — **Done**
+`rcnn` · `fast_rcnn` · `faster_rcnn` · `yolo` · `ssd` · `retinanet` · `unet` · `mask_rcnn` ·
+`segmentation_types`
+
+New category `dl_detection` ("Object Detection & Vision Tasks", icon `target`). Ordered as the
+history went, because each architecture is an answer to the previous one's bottleneck: the two-stage
+line from R-CNN to Faster R-CNN, then the one-stage detectors that removed the proposal step, then
+the two segmentation architectures and the task distinction they turn on. Only `segmentation_types`
+is free — it is the one topic in the batch that is a definition rather than an architecture.
+
+*Sims:* `FeatureMapPlayer`, as planned, but it needed a fifth render part. Detection is the one
+vision task whose *output* is geometry, and a lab that cannot draw a box cannot show what any of
+these produce. `FmScene` adds a square image canvas with boxes (solid for predictions and ground
+truth, faint for proposals and anchors), an optional S×S cell grid for YOLO, and an optional
+per-pixel label mask for the segmentation topics. The frame guard grew with it: no box may fall
+outside its own scene, and no mask may be ragged.
+
+New math file `DetectionMath.kt` with `DetectionMathTest` (14 tests). The evaluation machinery is
+run rather than described — IoU, greedy NMS, and the real AP matching procedure, in which a
+detection is matched to the highest-IoU ground-truth box *that is still unclaimed*:
+
+- **NMS is part of the metric.** On the lab's six boxes AP@0.5 is **0.833** with the duplicate left
+  in and **1.000** after suppression, from identical features. The same detections score **0.848**
+  under VOC2007's 11-point rule, which is the argument for always checking a paper's protocol.
+- **Focal loss, priced on a stated population.** 100,000 background anchors at p = 0.9 against 10
+  foreground at p = 0.1: cross-entropy gives 10,536 vs 23 — **99.8% of the gradient from
+  already-correct examples** — and focal loss at γ = 2 gives 105 vs 19. The background:foreground
+  ratio falls **458:1 → 5.6:1, an 81× rebalance**, with nothing discarded.
+- **RoI pooling's two roundings, in image pixels.** A 145-pixel box at stride 16 is 9.0625 feature
+  cells, snapped to 9 (1 px), then divided into 7 bins of 1.2857 snapped to 1 — so seven bins span
+  seven cells rather than nine and **32 px of the box's far edge are never read**. A box that
+  divides evenly costs zero, which is why the bug was tolerable for two years and fatal the moment
+  Mask R-CNN asked for a pixel-accurate mask.
+- **Anchor counts summed from level tables:** SSD300's **8,732** (5,776 of them from the finest map
+  alone), the RPN's **21,600**, RetinaNet's "about 100k" measured at **120,087**. YOLO v1's whole
+  output is **7×7×30 = 1,470** numbers and **98** boxes.
+- **U-Net's geometry** walked stage by stage: 572 → bottleneck 28 → output **388**, with skips
+  cropped **4, 16, 40, 88** px per side.
+- **Semantic vs instance, counted.** Two touching sheep are **1 semantic region of 54 pixels** and
+  **2 instances**; the lab's damaged prediction scores **mIoU 0.917** while a merged pair would
+  score 1.000 under mIoU and lose an object outright under mask AP.
+
+One correction found while writing the guard: the first `binShiftPixels` formula scaled the bin
+rounding by the *feature* count rather than the bin count and reported 41 px where the honest figure
+— seven bins of one cell against a nine-cell RoI — is 32. It read plausibly, which is the recurring
+failure mode this phase keeps recording.
 
 **C5 · RNN Mechanics** — 4 topics
 BPTT · Bidirectional RNNs · Encoder-Decoder Architecture · Seq2Seq
@@ -860,7 +903,7 @@ number closed no doc entry, which is worth noticing at the time rather than at t
 ## Suggested order
 
 ~~A1 → A2~~ → ~~B1 → B2 → B3 → B4 → B5~~ → ~~guards~~ → ~~B6 → B7~~ → **B8** → B9 → B10 → ~~C1 → C2~~
-→ ~~**`FeatureMapPlayer`** → C3~~ → C4 → C5 → C6 → C7 → C8 → C9 → D1 → D2 → D3 → D4 → D5 → D6.
+→ ~~**`FeatureMapPlayer`** → C3 → C4~~ → C5 → C6 → C7 → C8 → C9 → D1 → D2 → D3 → D4 → D5 → D6.
 
 Struck-through batches are done. The guards step landed with B6 rather than before it, in the same
 session. The order was then broken deliberately: C1 was built before B8–B10 at the user's direction,

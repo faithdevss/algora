@@ -55,9 +55,10 @@ class SimulationFrameTest {
     fun `every neural-net config builds frames inside its declared axes`() =
         check("NeuralNet", neuralNetTopicIds, ::neuralNetFrameCount)
 
-    // Added with C3. The three mechanics labs rebuild every frame from the kernel/stride/padding on
-    // screen, so the helper runs the whole control sweep — including combinations that empty the
-    // feature map, which are two taps away.
+    // Added with C3, extended by C4. The three mechanics labs rebuild every frame from the
+    // kernel/stride/padding on screen, so the helper runs the whole control sweep — including
+    // combinations that empty the feature map, which are two taps away. C4's labs draw boxes and
+    // label masks, so the same helper also checks that no box escapes its own scene.
     @Test
     fun `every feature-map config builds frames that match the geometry they claim`() =
         check("FeatureMap", featureMapTopicIds, ::featureMapFrameCount)

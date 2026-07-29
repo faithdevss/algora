@@ -193,6 +193,18 @@ object PrerequisiteGraph {
         "mobilenet" to listOf("resnet", "inception"),
         "efficientnet" to listOf("mobilenet"),
         "vit" to listOf("resnet", "transformers"),
+        // DL detection: the two-stage line in order, then the one-stage detectors that removed the
+        // proposal step, then segmentation. Each edge is a real dependency — Fast R-CNN's whole
+        // argument is about what R-CNN spent, and RetinaNet's is about what SSD's mining papered over.
+        "rcnn" to listOf("cnn", "transfer_learning"),
+        "fast_rcnn" to listOf("rcnn", "pooling_layers"),
+        "faster_rcnn" to listOf("fast_rcnn"),
+        "yolo" to listOf("faster_rcnn"),
+        "ssd" to listOf("yolo"),
+        "retinanet" to listOf("ssd", "resnet"),
+        "unet" to listOf("conv_layers", "padding_strides"),
+        "mask_rcnn" to listOf("faster_rcnn", "unet"),
+        "segmentation_types" to listOf("cnn"),
         // DL: training techniques presuppose the training loop
         "batch_normalization" to listOf("neural_network_basics", "backpropagation"),
         "dropout" to listOf("neural_network_basics", "regularization"),

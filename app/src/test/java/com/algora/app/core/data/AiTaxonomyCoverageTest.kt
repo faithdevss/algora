@@ -224,15 +224,15 @@ class AiTaxonomyCoverageTest {
                 "Vision Transformers (ViT)" to listOf("vit"),
             ),
             "Object Detection & Vision Tasks" to linkedMapOf(
-                "R-CNN" to emptyList(),                                 // C4
-                "Fast R-CNN" to emptyList(),                            // C4
-                "Faster R-CNN" to emptyList(),                          // C4
-                "YOLO (You Only Look Once) V1–V8" to emptyList(),       // C4
-                "SSD (Single Shot Detector)" to emptyList(),            // C4
-                "RetinaNet (Focal Loss)" to emptyList(),                // C4
-                "U-Net (Medical Segmentation)" to emptyList(),          // C4
-                "Mask R-CNN (Instance Seg.)" to emptyList(),            // C4
-                "Semantic vs Instance Segmentation" to emptyList(),     // C4
+                "R-CNN" to listOf("rcnn"),
+                "Fast R-CNN" to listOf("fast_rcnn"),
+                "Faster R-CNN" to listOf("faster_rcnn"),
+                "YOLO (You Only Look Once) V1–V8" to listOf("yolo"),
+                "SSD (Single Shot Detector)" to listOf("ssd"),
+                "RetinaNet (Focal Loss)" to listOf("retinanet"),
+                "U-Net (Medical Segmentation)" to listOf("unet"),
+                "Mask R-CNN (Instance Seg.)" to listOf("mask_rcnn"),
+                "Semantic vs Instance Segmentation" to listOf("segmentation_types"),
             ),
             "Recurrent Neural Networks (RNN)" to linkedMapOf(
                 "Vanilla RNNs" to listOf("rnn"),
@@ -516,7 +516,7 @@ class AiTaxonomyCoverageTest {
 
     // The ratchet. Move it when a batch lands; a batch that does not move it did not close any doc
     // entry, which is worth noticing.
-    private val expectedCoveredCount = 219
+    private val expectedCoveredCount = 228
 
     // Doc entries the app answers from the DSA taxonomy rather than an AI section. Deliberate reuse
     // — the alternative is a duplicate page — but small and explicit, so it cannot grow by accident.

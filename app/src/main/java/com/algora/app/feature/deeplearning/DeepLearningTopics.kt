@@ -28,6 +28,7 @@ private fun topic(
 private val basics = DeepLearningCategories.basics
 private val activations = DeepLearningCategories.activations
 private val convolutional = DeepLearningCategories.cnn
+private val detection = DeepLearningCategories.detection
 private val fundamentals = DeepLearningCategories.fundamentals
 private val architectures = DeepLearningCategories.architectures
 
@@ -90,6 +91,22 @@ private val cnnTopics = listOf(
     topic("vit", "Vision Transformers (ViT)", convolutional, "An image as 196 tokens, and no convolution anywhere.", isPremium = true, difficulty = Difficulty.ADVANCED),
 )
 
+// The doc's Object Detection & Vision Tasks block in full. Ordered as the history went, because
+// each architecture is an answer to the previous one's bottleneck: the two-stage line from R-CNN to
+// Faster R-CNN, then the one-stage detectors that removed the proposal step, then the two
+// segmentation architectures and the task distinction they turn on.
+private val detectionTopics = listOf(
+    topic("rcnn", "R-CNN", detection, "2,000 region proposals, one CNN pass each, and 47 seconds per image.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("fast_rcnn", "Fast R-CNN", detection, "Share the feature map, pool the regions out of it, train it as one model.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("faster_rcnn", "Faster R-CNN", detection, "Anchors and a proposal network: the last hand-written stage becomes learned.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("yolo", "YOLO (V1–V8)", detection, "One grid, one forward pass, 98 boxes — and what the grid costs.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("ssd", "SSD (Single Shot Detector)", detection, "8,732 default boxes across six scales, counted level by level.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("retinanet", "RetinaNet (Focal Loss)", detection, "One factor in the loss, and one-stage detection caught up.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("unet", "U-Net (Medical Segmentation)", detection, "Contract, expand, and concatenate what pooling threw away.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("mask_rcnn", "Mask R-CNN (Instance Seg.)", detection, "One more head, and the quantisation bug the masks exposed.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("segmentation_types", "Semantic vs Instance Segmentation", detection, "Two touching sheep: one region, or two objects.", difficulty = Difficulty.BEGINNER),
+)
+
 private val fundamentalsTopics = listOf(
     topic("gradient_descent_variants", "Gradient Descent Variants", fundamentals, "SGD, Momentum, RMSProp, Adam and friends.", isPremium = true),
     topic("batch_normalization", "Batch Normalization", fundamentals, "Re-centre and re-scale activations so deep stacks stay trainable.", isPremium = true),
@@ -107,7 +124,8 @@ private val architecturesTopics = listOf(
 )
 
 object DeepLearningTopics {
-    val topics: List<Topic> = basicsTopics + activationTopics + cnnTopics + fundamentalsTopics + architecturesTopics
+    val topics: List<Topic> = basicsTopics + activationTopics + cnnTopics + detectionTopics +
+        fundamentalsTopics + architecturesTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }
