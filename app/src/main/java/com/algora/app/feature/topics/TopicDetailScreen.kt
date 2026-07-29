@@ -179,6 +179,7 @@ private fun TopicDetailContent(topicId: String, onBack: () -> Unit, onTopicClick
     val quiz = remember(topicId) { QuizRegistry.get(topicId) }
     if (quiz != null) {
         QuizScreen(
+            quizId = topicId,
             quiz = quiz,
             onBack = onBack,
             onTopicClick = onTopicClick,

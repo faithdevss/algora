@@ -28,4 +28,7 @@ object SettingsKeys {
     // How many never-seen cards were introduced, and on which day — drives the daily new-card cap.
     val NEW_CARDS_DAY = longPreferencesKey("new_cards_epoch_day")
     val NEW_CARDS_COUNT = intPreferencesKey("new_cards_count")
+    // Finished quiz runs (see QuizAttempt). A quiz used to score you and forget, so nothing could
+    // say what you keep getting wrong.
+    val QUIZ_ATTEMPTS = stringSetPreferencesKey("quiz_attempts")
 }

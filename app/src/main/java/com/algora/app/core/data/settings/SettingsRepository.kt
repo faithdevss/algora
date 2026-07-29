@@ -95,6 +95,27 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         }
     }
 
+    /** Finished quiz runs, keyed by quiz id (= the topic id that renders the quiz), newest first. */
+    val quizAttempts: Flow<Map<String, List<QuizAttempt>>> =
+        dataStore.data.map { prefs ->
+            (prefs[SettingsKeys.QUIZ_ATTEMPTS] ?: emptySet())
+                .mapNotNull { parseQuizAttempt(it) }
+                .groupBy({ it.first }, { it.second })
+                .mapValues { (_, attempts) -> attempts.newestFirst() }
+        }
+
+    // Records one finished run and trims that quiz's history to the newest QUIZ_ATTEMPTS_PER_QUIZ.
+    // Other quizzes' entries are left untouched, so the set stays a flat write.
+    suspend fun recordQuizAttempt(quizId: String, attempt: QuizAttempt) {
+        dataStore.edit { prefs ->
+            val existing = (prefs[SettingsKeys.QUIZ_ATTEMPTS] ?: emptySet()).mapNotNull { parseQuizAttempt(it) }
+            val (mine, others) = existing.partition { it.first == quizId }
+            val kept = (mine.map { it.second } + attempt).newestFirst().take(QUIZ_ATTEMPTS_PER_QUIZ)
+            prefs[SettingsKeys.QUIZ_ATTEMPTS] =
+                (others.map { (id, a) -> a.serialize(id) } + kept.map { it.serialize(quizId) }).toSet()
+        }
+    }
+
     // New cards introduced on `today`. Any other stored day means the allowance has rolled over.
     fun newCardsIntroduced(today: Long): Flow<Int> =
         dataStore.data.map { prefs ->
