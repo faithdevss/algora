@@ -311,24 +311,24 @@ class AiTaxonomyCoverageTest {
         "NLP" to linkedMapOf(
             "Text Preprocessing (The Atoms)" to linkedMapOf(
                 "Tokenization (Word vs Sentence)" to listOf("tokenization"),
-                "Stop Word Removal" to emptyList(),                     // D1
+                "Stop Word Removal" to listOf("stop_words"),
                 "Stemming (Porter/Snowball)" to listOf("stemming"),
                 "Lemmatization (WordNet)" to listOf("lemmatization"),
-                "Lowercasing & Cleaning" to emptyList(),                // D1
-                "Regular Expressions (RegEx)" to emptyList(),           // D1
-                "N-Grams (Unigram, Bigram)" to emptyList(),             // D1
+                "Lowercasing & Cleaning" to listOf("text_cleaning"),
+                "Regular Expressions (RegEx)" to listOf("regex_nlp"),
+                "N-Grams (Unigram, Bigram)" to listOf("n_grams"),
                 "Subword Tokenization (BPE, WordPiece)" to listOf("bpe"),
             ),
             "Statistical NLP (Pre-Deep Learning)" to linkedMapOf(
                 "Bag of Words (BoW)" to listOf("bow_tfidf"),
                 "TF-IDF (Term Frequency)" to listOf("bow_tfidf"),
                 "Naive Bayes Classifier" to listOf("naive_bayes"),
-                "Hidden Markov Models (HMM)" to emptyList(),            // D1
-                "Probabilistic Context-Free Grammars" to emptyList(),   // D1
+                "Hidden Markov Models (HMM)" to listOf("hmm"),
+                "Probabilistic Context-Free Grammars" to listOf("pcfg"),
                 // Satisfied from the DSA taxonomy; D1 links rather than duplicating.
                 "Edit Distance (Levenshtein)" to listOf("edit_distance"),
-                "Cosine Similarity" to emptyList(),                     // D1
-                "Jaccard Similarity" to emptyList(),                    // D1
+                "Cosine Similarity" to listOf("cosine_similarity"),
+                "Jaccard Similarity" to listOf("jaccard_similarity"),
             ),
             "Syntactic & Semantic Analysis" to linkedMapOf(
                 "Part-of-Speech (POS) Tagging" to emptyList(),          // D2
@@ -516,7 +516,7 @@ class AiTaxonomyCoverageTest {
 
     // The ratchet. Move it when a batch lands; a batch that does not move it did not close any doc
     // entry, which is worth noticing.
-    private val expectedCoveredCount = 228
+    private val expectedCoveredCount = 236
 
     // Doc entries the app answers from the DSA taxonomy rather than an AI section. Deliberate reuse
     // — the alternative is a duplicate page — but small and explicit, so it cannot grow by accident.

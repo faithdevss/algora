@@ -3269,7 +3269,122 @@ private fun lleFrames(): List<CloudFrame> {
     return frames
 }
 
+// ── D1 · Cosine similarity: four documents in a two-term space ───────────────
+
+private const val CosOrigin = 0.05f
+private const val CosScale = 0.12f
+
+private fun cosPoint(v: List<Double>) = P(CosOrigin + CosScale * v[0].toFloat(), CosOrigin + CosScale * v[1].toFloat())
+
+private fun cosUnit(v: List<Double>, radius: Float = 0.5f): P {
+    val n = SimilarityLab.norm(v).toFloat()
+    return P(CosOrigin + radius * (v[0].toFloat() / n), CosOrigin + radius * (v[1].toFloat() / n))
+}
+
+private fun cosineFrames(): List<CloudFrame> {
+    val frames = mutableListOf<CloudFrame>()
+    val origin = P(CosOrigin, CosOrigin)
+    val names = SimilarityLab.vectors.keys.toList()
+    val groupOf = names.withIndex().associate { (i, name) -> name to if (name == "query") -1 else i }
+
+    fun dotsFor(emphasis: Map<String, Emphasis> = emptyMap()) = names.map { name ->
+        Dot(
+            cosPoint(SimilarityLab.vectors.getValue(name)),
+            groupOf.getValue(name),
+            emphasis[name] ?: if (name == "query") Emphasis.QUERY else Emphasis.NORMAL,
+        )
+    }
+
+    fun arrows(vararg which: String) = which.map { name ->
+        Segment(origin, cosPoint(SimilarityLab.vectors.getValue(name)), groupColor(groupOf.getValue(name)))
+    }
+
+    frames += CloudFrame(
+        status = "Four documents in a space with one axis per term — \"data\" across, \"model\" up. A document is " +
+            "a point, and \"similar\" has to become a number computed from two of them. Real spaces have one " +
+            "dimension per vocabulary entry; two is only so the geometry is visible.",
+        dots = dotsFor(),
+        segments = arrows(*names.toTypedArray()),
+        readout = names.joinToString(" · ") { "$it ${SimilarityLab.vectors.getValue(it).map { v -> v.toInt() }}" },
+    )
+
+    frames += CloudFrame(
+        status = "\"long\" is \"short\" with every sentence written twice: same term mix, twice the length. " +
+            "Euclidean distance calls them ${"%.2f".format(SimilarityLab.euclidean("short", "long"))} apart — as far apart as \"short\" is from the origin. " +
+            "Any metric that measures length is going to say a long document and its own summary are different " +
+            "documents.",
+        dots = dotsFor(mapOf("short" to Emphasis.ACTIVE, "long" to Emphasis.ACTIVE, "theory" to Emphasis.FADED, "query" to Emphasis.FADED)),
+        segments = arrows("short", "long") +
+            Segment(cosPoint(SimilarityLab.vectors.getValue("short")), cosPoint(SimilarityLab.vectors.getValue("long")), QueryColor, dashed = true),
+        readout = "‖short − long‖ = ${"%.2f".format(SimilarityLab.euclidean("short", "long"))}",
+    )
+
+    frames += CloudFrame(
+        status = "Cosine measures the angle instead: cos θ = (a · b) / (‖a‖‖b‖). The two vectors lie on the same " +
+            "ray, so the angle is 0 and the similarity is exactly ${"%.2f".format(SimilarityLab.cosine("short", "long"))} — scaling a document cannot change it, " +
+            "because both the dot product and the norms scale with it.",
+        dots = dotsFor(mapOf("short" to Emphasis.ACTIVE, "long" to Emphasis.ACTIVE, "theory" to Emphasis.FADED, "query" to Emphasis.FADED)),
+        segments = arrows("short", "long"),
+        readout = "cos(short, long) = ${"%.2f".format(SimilarityLab.cosine("short", "long"))} · θ = 0°",
+    )
+
+    val theta = Math.toDegrees(kotlin.math.acos(SimilarityLab.cosine("short", "theory")))
+    frames += CloudFrame(
+        status = "A document with the opposite emphasis sits at a real angle. cos(short, theory) = " +
+            "${"%.2f".format(SimilarityLab.cosine("short", "theory"))}, which is ${"%.1f".format(theta)}° — and because term counts are never negative, every angle " +
+            "in this space is between 0° and 90°, so cosine similarity over raw counts is bounded to [0, 1]. " +
+            "Embeddings have negative components and do use the full [−1, 1].",
+        dots = dotsFor(mapOf("short" to Emphasis.ACTIVE, "theory" to Emphasis.ACTIVE, "long" to Emphasis.FADED, "query" to Emphasis.FADED)),
+        segments = arrows("short", "theory"),
+        readout = "cos = ${"%.2f".format(SimilarityLab.cosine("short", "theory"))} · θ = ${"%.1f".format(theta)}°",
+    )
+
+    val byCos = SimilarityLab.rankByCosine()
+    val byEuc = SimilarityLab.rankByEuclidean()
+    frames += CloudFrame(
+        status = "Now rank the corpus against a query. By cosine: ${byCos.joinToString(" > ")}. By Euclidean " +
+            "distance: ${byEuc.joinToString(" > ")}. The orders disagree — \"long\", which is the best match by " +
+            "topic, ranks last by distance purely because it is long. This is the flip that makes cosine the " +
+            "default in retrieval.",
+        dots = dotsFor(mapOf("query" to Emphasis.QUERY)),
+        segments = arrows("query", "short", "long", "theory"),
+        rings = listOf(Ring(cosPoint(SimilarityLab.vectors.getValue("query")), CosScale * 2.5f, QueryColor)),
+        readout = "cosine ${byCos.joinToString(" > ")} · euclid ${byEuc.joinToString(" > ")}",
+    )
+
+    frames += CloudFrame(
+        status = "Which is the same as saying: normalise every vector to unit length first, and cosine *becomes* " +
+            "the dot product — one multiply-add per dimension, no square roots at query time. Vector databases " +
+            "store L2-normalised embeddings and run inner-product search for exactly this reason.",
+        dots = names.map { Dot(cosUnit(SimilarityLab.vectors.getValue(it)), groupOf.getValue(it), if (it == "query") Emphasis.QUERY else Emphasis.NORMAL) },
+        segments = names.map { Segment(origin, cosUnit(SimilarityLab.vectors.getValue(it)), groupColor(groupOf.getValue(it))) },
+        rings = listOf(Ring(origin, 0.5f, AxisColor)),
+        readout = "‖v‖ = 1 for all · cos(a, b) = a · b",
+    )
+
+    frames += CloudFrame(
+        status = "The cost of that invariance: cosine cannot tell a three-word note from a three-thousand-word " +
+            "report on the same mix of terms, and length is sometimes the signal — in spam scoring, in " +
+            "summarisation, in duplicate detection. Cosine on raw counts also over-rewards frequent words, " +
+            "which is why the pairing is always tf-idf weights *then* cosine, not counts then cosine.",
+        dots = dotsFor(mapOf("short" to Emphasis.ACTIVE, "long" to Emphasis.ACTIVE)),
+        segments = arrows("short", "long"),
+        readout = "cos = ${"%.2f".format(SimilarityLab.cosine("short", "long"))} whatever the length",
+    )
+    return frames
+}
+
 private val cloudConfigs = mapOf(
+    "cosine_similarity" to CloudConfig(
+        intro = "Four documents in a two-term space: the same document at two lengths, one with the opposite " +
+            "emphasis, and a query — ranked by angle and by distance, which disagree.",
+        legend = listOf(
+            CloudColors[0] to "short / long",
+            CloudColors[2] to "theory",
+            QueryColor to "Query",
+        ),
+        build = ::cosineFrames,
+    ),
     "kernel_pca" to CloudConfig(
         intro = "Two concentric rings that no straight axis can separate, then the same data seen through an RBF kernel — and what happens when γ is wrong.",
         legend = listOf(CloudColors[0] to "Inner ring", CloudColors[1] to "Outer ring", QueryColor to "Kernel width"),

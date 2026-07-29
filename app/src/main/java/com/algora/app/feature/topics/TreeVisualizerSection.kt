@@ -1313,7 +1313,166 @@ private fun fpGrowthFrames(): List<TreeFrame> {
     return builder.frames
 }
 
+// ── D1 · Probabilistic CFG: CYK over an ambiguous sentence ───────────────────
+
+private fun pcfgProb(p: Double): String = if (p >= 0.01) "%.2f".format(p) else "%.4f".format(p)
+
+private fun pcfgFrames(): List<TreeFrame> {
+    val b = TreeBuilder()
+    val words = PcfgLab.sentence
+
+    // Both readings, scored by the math file — the labels below print what it computed.
+    val vpReading = PcfgLab.vpAttachment()
+    val vpTopParse = vpReading.right!!
+    val vpCoreParse = vpTopParse.left!!
+    val ppParse = vpTopParse.right!!
+    val npReading = PcfgLab.npAttachment()
+    val vpBParse = npReading.right!!
+    val bigNpParse = vpBParse.right!!
+    val npManParse = vpCoreParse.right!!
+    val npScopeParse = ppParse.right!!
+
+    val wordIds = words.mapIndexed { i, w -> b.add(w, null, i) }
+    b.frame(
+        "Seven words, and the grammar is six binary rules plus a lexicon. A PCFG is a CFG where every rule " +
+            "carries a probability, and the rules sharing a left-hand side sum to 1 — so VP → V NP at 0.70 and " +
+            "VP → VP PP at 0.30 are a distribution over what a verb phrase can be.",
+        active = wordIds.toSet(),
+    )
+
+    // Lexical rules: the CYK diagonal.
+    val preLabels = listOf(
+        "NP ${pcfgProb(0.40)}", "V ${pcfgProb(1.0)}", "Det ${pcfgProb(1.0)}", "N ${pcfgProb(0.50)}",
+        "P ${pcfgProb(1.0)}", "Det ${pcfgProb(1.0)}", "N ${pcfgProb(0.50)}",
+    )
+    val preIds = wordIds.mapIndexed { i, wordId ->
+        val id = b.add(preLabels[i], null, i)
+        b.reparent(wordId, id, 0)
+        id
+    }
+    b.frame(
+        "Lexical rules first — this is CYK's diagonal, the width-1 spans. \"the\" is only ever a determiner, " +
+            "but a real lexicon gives most words several tags, and every one of them starts a different parse.",
+        marked = preIds.toSet(),
+    )
+
+    val npMan = b.add("NP ${pcfgProb(npManParse.probability)}", null, 2)
+    b.reparent(preIds[2], npMan, 0)
+    b.reparent(preIds[3], npMan, 1)
+    val npScope = b.add("NP ${pcfgProb(npScopeParse.probability)}", null, 5)
+    b.reparent(preIds[5], npScope, 0)
+    b.reparent(preIds[6], npScope, 1)
+    b.frame(
+        "Width-2 spans: NP → Det N fires twice, at 0.40 × 1.0 × 0.50 = ${pcfgProb(npManParse.probability)} each. A cell's probability is the " +
+            "rule's probability times its children's — the parse tree's score is the product of every rule in it.",
+        active = setOf(npMan, npScope),
+    )
+
+    val pp = b.add("PP ${pcfgProb(ppParse.probability)}", null, 4)
+    b.reparent(preIds[4], pp, 0)
+    b.reparent(npScope, pp, 1)
+    val vpCore = b.add("VP ${pcfgProb(vpCoreParse.probability)}", null, 1)
+    b.reparent(preIds[1], vpCore, 0)
+    b.reparent(npMan, vpCore, 1)
+    b.frame(
+        "\"with the telescope\" becomes a PP at ${pcfgProb(ppParse.probability)}, and \"saw the man\" a VP at ${pcfgProb(vpCoreParse.probability)}. Everything so far is " +
+            "forced. The ambiguity is entirely about what the PP attaches to — and both answers are grammatical.",
+        active = setOf(pp, vpCore),
+    )
+
+    val vpTop = b.add("VP ${pcfgProb(vpTopParse.probability)}", null, 1)
+    b.reparent(vpCore, vpTop, 0)
+    b.reparent(pp, vpTop, 1)
+    val sA = b.add("S ${pcfgProb(vpReading.probability)}", null, 0)
+    b.reparent(preIds[0], sA, 0)
+    b.reparent(vpTop, sA, 1)
+    b.frame(
+        "Reading 1 — VP attachment: the PP modifies the seeing, so she used the telescope to look. " +
+            "VP → VP PP at 0.30 × ${pcfgProb(vpCoreParse.probability)} × ${pcfgProb(ppParse.probability)} = ${pcfgProb(vpTopParse.probability)}, and S → NP VP gives ${pcfgProb(vpReading.probability)}.",
+        marked = setOf(sA, vpTop),
+        path = setOf(vpCore, pp),
+    )
+
+    // Rebuild the same span the other way. The children are reused, which is the point of the chart
+    // — so each node is detached from its parent before that parent is removed, and no frame is ever
+    // snapshotted holding a link to a node that is gone.
+    b.reparent(preIds[0], null, 0)
+    b.reparent(vpTop, null, 1)
+    b.remove(sA)
+    b.reparent(vpCore, null, 1)
+    b.reparent(pp, null, 4)
+    b.remove(vpTop)
+    b.reparent(preIds[1], null, 1)
+    b.reparent(npMan, null, 2)
+    b.remove(vpCore)
+    val bigNp = b.add("NP ${pcfgProb(bigNpParse.probability)}", null, 2)
+    b.reparent(npMan, bigNp, 0)
+    b.reparent(pp, bigNp, 1)
+    val vpB = b.add("VP ${pcfgProb(vpBParse.probability)}", null, 1)
+    b.reparent(preIds[1], vpB, 0)
+    b.reparent(bigNp, vpB, 1)
+    val sB = b.add("S ${pcfgProb(npReading.probability)}", null, 0)
+    b.reparent(preIds[0], sB, 0)
+    b.reparent(vpB, sB, 1)
+    b.frame(
+        "Reading 2 — NP attachment: the PP modifies the man, so he was the one holding the telescope. Same " +
+            "words, same grammar, different tree: NP → NP PP at 0.20 × ${pcfgProb(npManParse.probability)} × ${pcfgProb(ppParse.probability)} = ${pcfgProb(bigNpParse.probability)}, then " +
+            "VP → V NP and S → NP VP for ${pcfgProb(npReading.probability)}.",
+        marked = setOf(sB, bigNp),
+        path = setOf(vpB),
+    )
+
+    b.reparent(preIds[0], null, 0)
+    b.reparent(vpB, null, 1)
+    b.remove(sB)
+    b.reparent(preIds[1], null, 1)
+    b.reparent(bigNp, null, 2)
+    b.remove(vpB)
+    b.reparent(npMan, null, 2)
+    b.reparent(pp, null, 4)
+    b.remove(bigNp)
+    val vpCore2 = b.add("VP ${pcfgProb(vpCoreParse.probability)}", null, 1)
+    b.reparent(preIds[1], vpCore2, 0)
+    b.reparent(npMan, vpCore2, 1)
+    val vpTop2 = b.add("VP ${pcfgProb(vpTopParse.probability)}", null, 1)
+    b.reparent(vpCore2, vpTop2, 0)
+    b.reparent(pp, vpTop2, 1)
+    val sWinner = b.add("S ${pcfgProb(vpReading.probability)}", null, 0)
+    b.reparent(preIds[0], sWinner, 0)
+    b.reparent(vpTop2, sWinner, 1)
+    b.frame(
+        "${pcfgProb(vpReading.probability)} against ${pcfgProb(npReading.probability)} — VP attachment wins by ${"%.2f".format(PcfgLab.attachmentRatio)}×, and CYK keeps only the winner per cell " +
+            "plus a backpointer, so the losing parse costs no storage. The disambiguation is the whole reason " +
+            "the grammar is probabilistic: a plain CFG returns both trees and cannot rank them.",
+        marked = setOf(sWinner, vpTop2),
+    )
+
+    b.frame(
+        "The cost: ${PcfgLab.filledCells()} chart cells filled out of n(n+1)/2 = ${words.size * (words.size + 1) / 2} spans, over ${PcfgLab.splitsConsidered()} split points and " +
+            "the whole grammar at each one — O(n³·|G|). Same table shape as matrix-chain multiplication, with " +
+            "max in place of min.",
+        marked = setOf(sWinner),
+        path = setOf(vpTop2, vpCore2, pp, npMan, npScope),
+    )
+
+    b.frame(
+        "And the limit worth remembering: the rule probabilities here are estimated from a treebank and are " +
+            "context-free by construction, so this grammar prefers VP attachment for *every* sentence of this " +
+            "shape — it has no idea a telescope is an instrument of seeing. Lexicalised PCFGs condition each " +
+            "rule on its head word (saw … with … telescope) to fix exactly this, at the cost of a far sparser " +
+            "table.",
+        marked = setOf(sWinner),
+    )
+    return b.frames
+}
+
 private val treeConfigs = mapOf(
+    "pcfg" to TreeConfig(
+        intro = "\"she saw the man with the telescope\" parsed by probabilistic CYK: the chart bottom-up, then " +
+            "both attachments of the prepositional phrase scored against each other.",
+        markedLabel = "Best parse",
+        build = ::pcfgFrames,
+    ),
     "fp_growth" to TreeConfig(
         intro = "Ten baskets compressed into a prefix tree in two passes, then mined by walking the header chain for one item back up to the root.",
         markedLabel = "Header chain",

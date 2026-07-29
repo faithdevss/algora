@@ -1302,12 +1302,618 @@ private fun kModesFrames(): List<TokenFrame> {
     return frames
 }
 
+// ── D1 · Stop word removal ───────────────────────────────────────────────────
+
+private fun stopWordFrames(): List<TokenFrame> {
+    val negative = StopWordLab.corpus[0]
+    val positive = StopWordLab.corpus[1]
+    val frames = mutableListOf<TokenFrame>()
+
+    val rawTokens = StopWordLab.tokens(negative)
+    frames += TokenFrame(
+        status = "One review, seven tokens. Five of them are on NLTK's English list — they carry almost no " +
+            "information about *which* review this is, which is the entire argument for dropping them.",
+        chips = rawTokens.map { Chip(it, mark = if (it in StopWordLab.stopList) ChipMark.ACTIVE else ChipMark.IDLE) },
+        chipsLabel = "\"$negative\"",
+        readout = "${rawTokens.count { it in StopWordLab.stopList }} of ${rawTokens.size} on the list",
+    )
+
+    frames += TokenFrame(
+        status = "Dropped. Across the six-review corpus the list removes ${StopWordLab.removedTokens} of " +
+            "${StopWordLab.totalTokens} tokens — ${"%.0f".format(StopWordLab.removalRate * 100)}% of the text — and takes the " +
+            "vocabulary from ${StopWordLab.typesBefore} types to ${StopWordLab.typesAfter}. For an inverted index that is the whole benefit: " +
+            "smaller postings lists, fewer useless matches.",
+        chips = StopWordLab.keep(negative).map { Chip(it, mark = ChipMark.RESULT) },
+        chipsLabel = "what survives",
+        rows = listOf(
+            "tokens" to "${StopWordLab.totalTokens} → ${StopWordLab.keptTokens}",
+            "types" to "${StopWordLab.typesBefore} → ${StopWordLab.typesAfter}",
+            "removed" to "${"%.1f".format(StopWordLab.removalRate * 100)}%",
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "Now the same list on the opposite review. \"not\" is on it — NLTK's list contains not, no, " +
+            "nor and against — so the negation goes with the articles.",
+        chips = StopWordLab.tokens(positive).map {
+            Chip(it, mark = if (it in StopWordLab.stopList) ChipMark.ACTIVE else ChipMark.IDLE)
+        },
+        chipsLabel = "\"$positive\"",
+    )
+
+    frames += TokenFrame(
+        status = "Two reviews with opposite verdicts, one identical bag of words. Every model downstream of " +
+            "this point — BoW, TF-IDF, naive Bayes — now sees a single document. No amount of training fixes " +
+            "an input that no longer contains the answer.",
+        chips = StopWordLab.bag(negative).keys.map { Chip(it, mark = ChipMark.RESULT) },
+        chipsLabel = "both reviews, after removal",
+        rows = listOf(
+            "\"$negative\"" to StopWordLab.bag(negative).toString(),
+            "\"$positive\"" to StopWordLab.bag(positive).toString(),
+        ),
+        readout = if (StopWordLab.negationCollapse) "identical vectors · sentiment destroyed" else "vectors still differ",
+    )
+
+    frames += TokenFrame(
+        status = "The same failure in search: a phrase query made entirely of function words survives as " +
+            "nothing at all. This is why Google stopped dropping stop words from queries.",
+        chips = StopWordLab.tokens(StopWordLab.hamletQuery).map { Chip(it, mark = ChipMark.ACTIVE) },
+        chipsLabel = "query \"${StopWordLab.hamletQuery}\"",
+        readout = "${StopWordLab.hamletSurvivors.size} terms left",
+    )
+
+    val terms = listOf("the", "movie", "not", "life")
+    frames += TokenFrame(
+        status = "TF-IDF already does the soft version of this. idf = ln(N / df) falls to zero for a term in " +
+            "every document, so a frequent word is down-weighted rather than deleted — and \"not\", which the " +
+            "list deletes, keeps its full weight because only two reviews use it.",
+        bars = listOf(
+            BarRow(
+                "idf over the 6 reviews",
+                terms.map { StopWordLab.idf(it).toFloat() },
+                BarPositive,
+                terms.map { "$it ${"%.2f".format(StopWordLab.idf(it))}" },
+            ),
+        ),
+        readout = "\"the\" ${"%.2f".format(StopWordLab.idf("the"))} vs \"movie\" ${"%.2f".format(StopWordLab.idf("movie"))}",
+    )
+
+    frames += TokenFrame(
+        status = "So the rule is not \"always remove\": keep the list for topic models, keyword indexes and " +
+            "document clustering, where function words are noise. Drop it for sentiment, question answering, " +
+            "translation and anything transformer-based — those models want the whole string, negations included.",
+        chips = listOf(
+            Chip("topic models", sub = "remove", mark = ChipMark.RESULT),
+            Chip("keyword search", sub = "remove", mark = ChipMark.RESULT),
+            Chip("sentiment", sub = "keep", mark = ChipMark.ACTIVE),
+            Chip("QA / LLMs", sub = "keep", mark = ChipMark.ACTIVE),
+        ),
+        chipsLabel = "when to apply it",
+    )
+    return frames
+}
+
+// ── D1 · Lowercasing and cleaning ────────────────────────────────────────────
+
+private fun cleaningFrames(): List<TokenFrame> {
+    val doc = CleaningLab.raw[3]
+    val frames = mutableListOf<TokenFrame>()
+
+    frames += TokenFrame(
+        status = "Four raw strings off the web: a curly apostrophe, an em dash, a URL, an emoji, an accent, " +
+            "runs of spaces, percentages and mixed case. The corpus has ${CleaningLab.typesRaw} distinct types before any " +
+            "of it is touched.",
+        chips = doc.split(" ").filter { it.isNotBlank() }.map { Chip(it) },
+        chipsLabel = "one of the four documents, raw",
+        readout = "${CleaningLab.typesRaw} types",
+    )
+
+    CleaningLab.stages.forEachIndexed { index, (name, _) ->
+        val before = CleaningLab.typesAfter(index)
+        val after = CleaningLab.typesAfter(index + 1)
+        val text = CleaningLab.applyThrough(doc, index + 1)
+        frames += TokenFrame(
+            status = "$name. " + when (name) {
+                "NFKC normalise" -> "Compatibility normalisation first, before anything measures a string: it folds the curly apostrophe onto the ASCII one, so \"Apple's\" and \"Apple's\" stop being two words."
+                "Replace URLs" -> "URLs are replaced by a placeholder rather than deleted — each one is otherwise a unique type that will never be seen again, and its presence is a real signal."
+                "Drop emoji" -> "Emoji go only because this is a news corpus. On social text they carry sentiment and dropping them is a mistake."
+                "Lowercase" -> "The one stage that both helps and hurts, which the next two frames measure."
+                "Strip punctuation" -> "Cheap and lossy: it splits clitics (\"apple's\" → apple, s) and destroys decimals. This is exactly the job the RegEx topic hands to a tokenizer instead."
+                "Fold digits" -> "Every number becomes one token. \"12%\" and \"5.2%\" were distinct types with no shared meaning; the placeholder keeps the fact that a number was there."
+                "Fold accents" -> "Café → cafe. It merges spellings users actually type, and it is wrong in languages where the accent is the word."
+                else -> "Runs of whitespace collapse, so tokenisation by split is safe from here."
+            },
+            chips = text.split(" ").filter { it.isNotBlank() }.take(8).map { Chip(it, mark = ChipMark.RESULT) },
+            chipsLabel = "after $name",
+            rows = listOf("types" to if (before == after) "$after (unchanged)" else "$before → $after"),
+        )
+    }
+
+    frames += TokenFrame(
+        status = "What lowercasing bought, on this corpus: \"Apple's\" and \"apple\" were ${CleaningLab.appleTypesBefore} types and are now " +
+            "${CleaningLab.appleTypesAfter}. Any model counting words now has twice the evidence for the same word.",
+        chips = listOf(
+            Chip("Apple's", sub = "raw", mark = ChipMark.ACTIVE),
+            Chip("apple", sub = "raw", mark = ChipMark.ACTIVE),
+            Chip("apple", sub = "cleaned", mark = ChipMark.RESULT),
+        ),
+        chipsLabel = "the merge that pays",
+        readout = "${CleaningLab.appleTypesBefore} types → ${CleaningLab.appleTypesAfter}",
+    )
+
+    frames += TokenFrame(
+        status = "And what it cost, in the same corpus: \"US\" the country and \"us\" the pronoun are now one " +
+            "type. Truecasing — lowercase only sentence-initial words, or restore case with a model — is the " +
+            "fix, and almost nobody applies it.",
+        chips = listOf(
+            Chip("US", sub = "country", mark = ChipMark.ACTIVE),
+            Chip("us", sub = "pronoun", mark = ChipMark.ACTIVE),
+            Chip("us", sub = "both", mark = ChipMark.RESULT),
+        ),
+        chipsLabel = "the collision it causes",
+        readout = if (CleaningLab.casedPairCollapsed) "2 senses → 1 type" else "no collision in this corpus",
+    )
+
+    frames += TokenFrame(
+        status = "End to end the pipeline takes the corpus from ${CleaningLab.typesRaw} types to ${CleaningLab.typesClean} — a " +
+            "${"%.0f".format((1 - CleaningLab.typesClean.toDouble() / CleaningLab.typesRaw) * 100)}% smaller vocabulary, which is smaller embedding tables, fewer " +
+            "singletons and better count estimates. The order is not arbitrary: normalise before you compare, " +
+            "replace before you strip, and collapse whitespace last.",
+        chips = CleaningLab.applyThrough(doc, CleaningLab.stages.size).split(" ").map { Chip(it, mark = ChipMark.RESULT) },
+        chipsLabel = "the document, cleaned",
+        rows = listOf(
+            "types" to "${CleaningLab.typesRaw} → ${CleaningLab.typesClean}",
+            "stages" to "${CleaningLab.stages.size}",
+        ),
+    )
+    return frames
+}
+
+// ── D1 · Regular expressions ─────────────────────────────────────────────────
+
+private fun regexFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val naive = RegexLab.naiveTokens
+    val tuned = RegexLab.tunedTokens
+
+    frames += TokenFrame(
+        status = "The pattern everyone writes first: \\w+ over one ordinary sentence. It finds ${naive.size} " +
+            "tokens where a linguist would count ${tuned.size}.",
+        chips = naive.take(10).map { Chip(it) },
+        chipsLabel = "\\w+ matches (first 10 of ${naive.size})",
+        rows = listOf("input" to RegexLab.text),
+    )
+
+    frames += TokenFrame(
+        status = "Look at what it did. \\w matches letters, digits and underscore — nothing else — so every " +
+            "internal dot, hyphen and apostrophe is a token boundary. The e-mail address alone became four " +
+            "tokens, none of which is an e-mail address.",
+        chips = listOf("a", "smith", "x", "co").map { Chip(it, mark = ChipMark.ACTIVE) },
+        chipsLabel = "\"a.smith@x.co\" under \\w+",
+        rows = listOf(
+            "Smith's" to "Smith · s",
+            "e-mail" to "e · mail",
+            "U.S." to "U · S",
+            "3.5%" to "3 · 5",
+            "2024-01-05" to "2024 · 01 · 05",
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "The tuned pattern is one alternation with the specific branches first: e-mail, ISO date, " +
+            "dotted abbreviation, hyphen/apostrophe word, number with optional percent, then plain word. Six " +
+            "tokens the naive pattern shattered now survive whole.",
+        chips = RegexLab.rescued.map { Chip(it, mark = ChipMark.RESULT) },
+        chipsLabel = "rescued by the tuned pattern",
+        readout = "${naive.size} tokens → ${tuned.size}",
+    )
+
+    val misordered = RegexLab.misorderedTokens
+    frames += TokenFrame(
+        status = "Branch order is the design, not a detail. Move the general letters branch to the front — one " +
+            "line — and alternation, which takes the *first* branch that matches rather than the longest, eats " +
+            "the prefix of the specific ones. Same six branches, ${misordered.size} tokens instead of ${tuned.size}, and the e-mail " +
+            "comes back as \".smith@x.co\" — a token that looks like the pattern worked.",
+        chips = misordered.take(10).map { Chip(it, mark = ChipMark.ACTIVE) },
+        chipsLabel = "same branches, general one first",
+        rows = listOf("tokens" to "${tuned.size} → ${misordered.size}"),
+    )
+
+    val ns = listOf(8, 12, 16, 20, 24)
+    frames += TokenFrame(
+        status = "The failure mode that takes services down. (a+)+\$ against a run of a's followed by anything " +
+            "else has to try every way of splitting that run between the two quantifiers before it can report " +
+            "failure — 2^(n−1) of them. These counts are the search walked explicitly, not a timing.",
+        bars = listOf(
+            BarRow(
+                "backtracking attempts (log₂)",
+                ns.map { (ln(RegexLab.backtrackAttempts(it).toDouble()) / ln(2.0)).toFloat() },
+                BarNegative,
+                ns.map { "n=$it" },
+            ),
+        ),
+        rows = ns.map { "n=$it" to "${RegexLab.backtrackAttempts(it)} attempts vs ${RegexLab.linearAttempts(it)} linear" },
+        readout = "n=24 → ${RegexLab.backtrackAttempts(24)} attempts",
+    )
+
+    frames += TokenFrame(
+        status = "The fix is structural, not a longer timeout: remove the nested quantifier (a+\$), make the " +
+            "group atomic ((?>a+)+\$) or possessive (a++\$), or use a backtracking-free engine — RE2, Rust's " +
+            "regex, Go's regexp — which cannot express this shape at all. Then rejection is linear in n.",
+        chips = listOf(
+            Chip("(a+)+\$", sub = "2ⁿ⁻¹", mark = ChipMark.ACTIVE),
+            Chip("a+\$", sub = "n", mark = ChipMark.RESULT),
+            Chip("(?>a+)+\$", sub = "n", mark = ChipMark.RESULT),
+            Chip("RE2", sub = "n", mark = ChipMark.RESULT),
+        ),
+        chipsLabel = "same intent, four costs",
+        readout = "linear again",
+    )
+    return frames
+}
+
+// ── D1 · N-grams ─────────────────────────────────────────────────────────────
+
+private fun nGramFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val padded = NGramLab.padded(NGramLab.corpus[0])
+
+    for (start in 0 until padded.size - 1) {
+        frames += TokenFrame(
+            status = "A bigram is a two-token window, slid one position at a time. The <s> and </s> markers are " +
+                "not decoration: without them the model has nothing to condition the first word on and no way " +
+                "to end a sentence, and its probabilities would not sum to 1.",
+            chips = padded.mapIndexed { i, token ->
+                Chip(token, mark = if (i == start || i == start + 1) ChipMark.ACTIVE else ChipMark.IDLE)
+            },
+            chipsLabel = "\"${NGramLab.corpus[0]}\", padded",
+            readout = "(${padded[start]}, ${padded[start + 1]})",
+        )
+    }
+
+    val top = NGramLab.counts(2).entries.sortedByDescending { it.value }.take(6)
+    frames += TokenFrame(
+        status = "Counted over all ${NGramLab.corpus.size} sentences. That is the entire training procedure — " +
+            "an n-gram model is a count table, and the maximum-likelihood estimate is one division: " +
+            "P(w₂|w₁) = count(w₁w₂) / count(w₁).",
+        chips = top.map { Chip(it.key.joinToString(" "), sub = "×${it.value}") },
+        chipsLabel = "most frequent bigrams",
+        rows = listOf(
+            "bigram tokens" to "${NGramLab.tokenCount(2)}",
+            "bigram types" to "${NGramLab.typeCount(2)}",
+            "vocabulary" to "${NGramLab.vocabSize}",
+        ),
+    )
+
+    val continuations = listOf("like", "love")
+    frames += TokenFrame(
+        status = "The distribution after \"i\": ${continuations.joinToString(" and ") { "P($it|i) = ${"%.2f".format(NGramLab.mle("i", it))}" }}. " +
+            "Nothing else ever follows \"i\" in this corpus, so every other word gets exactly zero — which is " +
+            "the model's defining weakness, not a rounding artefact.",
+        bars = listOf(
+            BarRow(
+                "P(· | i)",
+                continuations.map { NGramLab.mle("i", it).toFloat() },
+                BarPositive,
+                continuations.map { "$it ${"%.2f".format(NGramLab.mle("i", it))}" },
+            ),
+        ),
+    )
+
+    val unseen = NGramLab.unseenBigrams.first()
+    frames += TokenFrame(
+        status = "Score a held-out sentence and one bigram — (${unseen.first}, ${unseen.second}) — has never been " +
+            "seen. Its MLE probability is 0, the sentence's probability is the product, and perplexity is " +
+            "exp(−(1/N)Σ ln p). One zero makes the whole thing infinite: the model cannot rank two sentences " +
+            "it has never seen.",
+        chips = NGramLab.bigramsOf(NGramLab.heldOut).map { (a, b) ->
+            Chip("$a $b", mark = if (a == unseen.first && b == unseen.second) ChipMark.ACTIVE else ChipMark.IDLE)
+        },
+        chipsLabel = "\"${NGramLab.heldOut}\"",
+        readout = "perplexity = ∞",
+    )
+
+    val ks = listOf(1.0, 0.5, 0.1, 0.01)
+    frames += TokenFrame(
+        status = "Add-k smoothing moves a little mass to everything unseen: (count + k) / (count(w₁) + k·|V|). " +
+            "k = 1 is Laplace and is far too heavy on a vocabulary of ${NGramLab.vocabSize}; k = 0.1 is best here at " +
+            "${"%.2f".format(NGramLab.perplexity(NGramLab.heldOut, 0.1))}; k = 0.01 is worse again at ${"%.2f".format(NGramLab.perplexity(NGramLab.heldOut, 0.01))}, because too little mass is left for " +
+            "the unseen bigram. k is a hyperparameter with an optimum, not a safety switch.",
+        bars = listOf(
+            BarRow(
+                "held-out perplexity",
+                ks.map { NGramLab.perplexity(NGramLab.heldOut, it).toFloat() },
+                BarNegative,
+                ks.map { "k=$it" },
+            ),
+        ),
+        rows = ks.map { "k = $it" to "%.2f".format(NGramLab.perplexity(NGramLab.heldOut, it)) },
+    )
+
+    frames += TokenFrame(
+        status = "Smoothing is not free. On a sentence the corpus *does* contain, MLE scores " +
+            "${"%.2f".format(NGramLab.perplexity("i like nlp", 0.0))} and add-1 scores ${"%.2f".format(NGramLab.perplexity("i like nlp", 1.0))} — the mass taken from seen bigrams has to come from " +
+            "somewhere. Every real smoothing method (Good-Turing, Kneser-Ney) is a better answer to the same " +
+            "trade.",
+        rows = listOf(
+            "MLE, seen sentence" to "%.2f".format(NGramLab.perplexity("i like nlp", 0.0)),
+            "add-1, seen sentence" to "%.2f".format(NGramLab.perplexity("i like nlp", 1.0)),
+            "add-0.1, seen sentence" to "%.2f".format(NGramLab.perplexity("i like nlp", 0.1)),
+        ),
+    )
+
+    val orders = listOf(1, 2, 3, 4)
+    frames += TokenFrame(
+        status = "And why n stays small: as the order grows, types climb toward tokens — at n = 4 this corpus " +
+            "has ${NGramLab.typeCount(4)} distinct 4-grams over ${NGramLab.tokenCount(4)} occurrences, so almost every one was seen exactly " +
+            "once. The table grows as |V|ⁿ while the evidence per cell collapses. Neural language models exist " +
+            "because this wall is unclimbable by counting.",
+        bars = listOf(
+            BarRow(
+                "types ÷ tokens",
+                orders.map { NGramLab.typeCount(it).toFloat() / NGramLab.tokenCount(it) },
+                BarPositive,
+                orders.map { "n=$it" },
+            ),
+        ),
+        rows = orders.map { "n = $it" to "${NGramLab.typeCount(it)} types / ${NGramLab.tokenCount(it)} tokens" },
+    )
+    return frames
+}
+
+// ── D1 · Hidden Markov model ─────────────────────────────────────────────────
+
+private fun hmmFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val words = HmmLab.sentence
+
+    frames += TokenFrame(
+        status = "Three words, two readings. \"book\" is a verb (an instruction) or a noun (an object), and " +
+            "\"that\" is a determiner or a complementiser. A tagger has to choose, and the words alone do not " +
+            "decide it — the sequence does.",
+        chips = words.map { Chip(it, mark = ChipMark.IDLE) },
+        chipsLabel = "the sentence",
+        rows = listOf(
+            "reading 1" to "VB DT NN — \"book that flight\", an order",
+            "reading 2" to "NN IN NN — \"book\" the object, \"that\" a complementiser",
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "The model is two tables estimated by counting a tagged corpus. B(t → w) says how likely a " +
+            "tag is to emit this word; note that P(book|VB) is higher than P(book|NN) — verbs are rarer, so " +
+            "when one does appear it is more likely to be this word.",
+        bars = HmmLab.tags.filter { tag -> words.any { HmmLab.b(tag, it) > 0 } }.map { tag ->
+            BarRow(
+                "B($tag → ·)",
+                words.map { HmmLab.b(tag, it).toFloat() },
+                BarPositive,
+                words.map { "$it ${"%.3f".format(HmmLab.b(tag, it))}" },
+            )
+        },
+    )
+
+    frames += TokenFrame(
+        status = "A(t → t′) is the other half: what follows what. A determiner is followed by a noun " +
+            "${"%.0f".format(HmmLab.a("DT", "NN") * 100)}% of the time, which is the strongest constraint in the table — and the one that " +
+            "will decide this sentence.",
+        heat = Heat(
+            rowLabels = HmmLab.tags,
+            colLabels = HmmLab.tags + "</s>",
+            values = HmmLab.tags.map { from -> (HmmLab.tags + "</s>").map { to -> HmmLab.a(from, to).toFloat() } },
+        ),
+        rows = listOf("read as" to "row = current tag, column = next tag"),
+    )
+
+    val forward = HmmLab.forward()
+    frames += TokenFrame(
+        status = "The forward pass fills one column per word, each cell summing every path that reaches it: " +
+            "α_t(j) = Σ_i α_{t−1}(i)·A(i→j)·B(j→wₜ). Summing the last column against the stop transition gives " +
+            "P(the sentence) = ${"%.2e".format(HmmLab.sentenceProbability())} — the probability of the words with the tags integrated out.",
+        heat = Heat(
+            rowLabels = HmmLab.tags,
+            colLabels = words,
+            values = HmmLab.tags.map { tag ->
+                forward.map { column ->
+                    val max = column.values.max()
+                    if (max <= 0f) 0f else (column.getValue(tag) / max).toFloat()
+                }
+            },
+        ),
+        rows = forward.mapIndexed { i, column ->
+            words[i] to column.filterValues { it > 0 }.entries.joinToString(" · ") { "${it.key} ${"%.1e".format(it.value)}" }
+        },
+        readout = "P(w) = ${"%.2e".format(HmmLab.sentenceProbability())}",
+    )
+
+    val greedy = HmmLab.greedy()
+    frames += TokenFrame(
+        status = "Greedy tagging goes left to right and commits. \"book\" scores highest as NN " +
+            "(${"%.4f".format((HmmLab.start["NN"] ?: 0.0) * HmmLab.b("NN", "book"))} against VB's ${"%.4f".format((HmmLab.start["VB"] ?: 0.0) * HmmLab.b("VB", "book"))}), so NN it is — and from NN the best next tag is IN, and " +
+            "from IN it is NN. Locally optimal at every step.",
+        chips = words.mapIndexed { i, w -> Chip(w, sub = greedy.tags[i], mark = ChipMark.ACTIVE) },
+        chipsLabel = "greedy",
+        readout = "P = ${"%.2e".format(greedy.probability)}",
+    )
+
+    val viterbi = HmmLab.viterbi()
+    frames += TokenFrame(
+        status = "Viterbi keeps the best path *into every tag* instead of one path overall, so the NN opening " +
+            "is still alive when the second word is scored — and the DT reading of \"that\", which greedy " +
+            "discarded, pulls the whole sequence back to the imperative. It is " +
+            "${"%.2f".format(viterbi.probability / greedy.probability)}× more probable than the greedy answer.",
+        chips = words.mapIndexed { i, w -> Chip(w, sub = viterbi.tags[i], mark = ChipMark.RESULT) },
+        chipsLabel = "Viterbi",
+        rows = HmmLab.allPaths().take(4).map { it.tags.joinToString(" ") to "%.2e".format(it.probability) },
+        readout = "P = ${"%.2e".format(viterbi.probability)} · ${"%.2f".format(viterbi.probability / greedy.probability)}× greedy",
+    )
+
+    frames += TokenFrame(
+        status = "And it is cheap. Viterbi fills T·N² cells — ${HmmLab.viterbiOperations()} here — where enumerating tag " +
+            "sequences costs N^T = ${HmmLab.bruteForcePaths()}. On a 20-word sentence that is ${HmmLab.viterbiOperations(20)} cells against " +
+            "4²⁰ ≈ 1.1 × 10¹² paths. Same dynamic-programming trick as edit distance: the best path through a " +
+            "state only needs the best path into it.",
+        rows = listOf(
+            "3 words" to "${HmmLab.viterbiOperations()} cells vs ${HmmLab.bruteForcePaths()} paths",
+            "20 words" to "${HmmLab.viterbiOperations(20)} cells vs ≈1.1×10¹² paths",
+            "complexity" to "O(T·N²) vs O(N^T)",
+        ),
+        readout = "generative: models P(w, t), not P(t | w)",
+    )
+    return frames
+}
+
+// ── D1 · Jaccard similarity ──────────────────────────────────────────────────
+
+private fun jaccardFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val a = SimilarityLab.docA
+    val b = SimilarityLab.docB
+    val setA = SimilarityLab.setOf(a)
+    val setB = SimilarityLab.setOf(b)
+    val shared = setA.intersect(setB)
+    val union = setA.union(setB)
+
+    frames += TokenFrame(
+        status = "Jaccard throws away counts and order and keeps only membership: a document is a set of " +
+            "terms. Two documents, one a longer version of the other.",
+        chips = a.split(" ").map { Chip(it, mark = if (it in setB) ChipMark.RESULT else ChipMark.ACTIVE) },
+        chipsLabel = "A: \"$a\"",
+        rows = listOf("B" to "\"$b\""),
+    )
+
+    frames += TokenFrame(
+        status = "J(A,B) = |A ∩ B| / |A ∪ B| = ${shared.size}/${union.size} = ${"%.3f".format(SimilarityLab.jaccard(a, b))}. Note \"data\" appears twice in A and " +
+            "counts once — the repetition is invisible to the set, and that is the design, not an oversight.",
+        chips = union.map { Chip(it, mark = if (it in shared) ChipMark.RESULT else ChipMark.IDLE) },
+        chipsLabel = "union, shared terms highlighted",
+        rows = listOf(
+            "|A|" to "${setA.size} terms",
+            "|B|" to "${setB.size} terms",
+            "|A ∩ B|" to "${shared.size}",
+            "|A ∪ B|" to "${union.size}",
+        ),
+        readout = "J = ${"%.3f".format(SimilarityLab.jaccard(a, b))}",
+    )
+
+    frames += TokenFrame(
+        status = "Cosine over the same two documents, on raw counts, gives ${"%.3f".format(SimilarityLab.cosineOfDocs(a, b))} — higher, because " +
+            "\"data\" occurring twice in A and once in B still aligns the two vectors. The metrics answer " +
+            "different questions: cosine asks how similar the emphasis is, Jaccard asks how much of the " +
+            "material is shared.",
+        bars = listOf(
+            BarRow(
+                "A vs B",
+                listOf(SimilarityLab.jaccard(a, b).toFloat(), SimilarityLab.cosineOfDocs(a, b).toFloat()),
+                BarPositive,
+                listOf("Jaccard ${"%.3f".format(SimilarityLab.jaccard(a, b))}", "cosine ${"%.3f".format(SimilarityLab.cosineOfDocs(a, b))}"),
+            ),
+        ),
+    )
+
+    val c = SimilarityLab.docC
+    frames += TokenFrame(
+        status = "A paraphrase of A with different wording scores ${"%.3f".format(SimilarityLab.jaccard(a, c))} — both metrics fall, and " +
+            "neither can see that \"neural model\" and \"model\" are related. Set and vector overlap are " +
+            "surface measures; that limit is what word embeddings exist to fix.",
+        chips = c.split(" ").map { Chip(it, mark = if (it in setA) ChipMark.RESULT else ChipMark.IDLE) },
+        chipsLabel = "C: \"$c\"",
+        rows = listOf(
+            "J(A,C)" to "%.3f".format(SimilarityLab.jaccard(a, c)),
+            "cos(A,C)" to "%.3f".format(SimilarityLab.cosineOfDocs(a, c)),
+        ),
+    )
+
+    val shingleJ = SimilarityLab.jaccardShingles(a, b)
+    frames += TokenFrame(
+        status = "Near-duplicate detection does not use word sets — it uses character k-shingles, which keep " +
+            "local word order. At k = 5 these documents have ${SimilarityLab.shingles(a).size} and ${SimilarityLab.shingles(b).size} shingles and score " +
+            "${"%.3f".format(shingleJ)}. This is what web crawlers and plagiarism checkers actually compare.",
+        chips = SimilarityLab.shingles(b).take(6).map { Chip("\"$it\"") },
+        chipsLabel = "5-shingles of B (first 6 of ${SimilarityLab.shingles(b).size})",
+        readout = "J₅ = ${"%.3f".format(shingleJ)}",
+    )
+
+    val ks = listOf(16, 64, 256)
+    frames += TokenFrame(
+        status = "The scaling trick: hash every shingle under k permutations, keep the minimum under each, and " +
+            "the fraction of matching minima estimates Jaccard — because P(the minima agree) is exactly " +
+            "|A ∩ B| / |A ∪ B|. Comparing ${SimilarityLab.exactComparisonSize(a, b)} shingles becomes comparing k integers, and the error " +
+            "falls as 1/√k.",
+        bars = listOf(
+            BarRow(
+                "MinHash estimate vs J₅ = ${"%.3f".format(shingleJ)}",
+                ks.map { SimilarityLab.minHashEstimate(a, b, it).toFloat() },
+                BarPositive,
+                ks.map { "k=$it ${"%.3f".format(SimilarityLab.minHashEstimate(a, b, it))}" },
+            ),
+        ),
+        rows = ks.map { "k = $it" to "estimate ${"%.3f".format(SimilarityLab.minHashEstimate(a, b, it))}, error ${"%.3f".format(abs(SimilarityLab.minHashEstimate(a, b, it) - shingleJ))}" },
+        readout = "fixed-width signatures, LSH-ready",
+    )
+    return frames
+}
+
 private val nbLegend = listOf(
     ChipActive to "Current",
     ChipResult to "Scored",
 )
 
 private val tokenConfigs = mapOf(
+    "stop_words" to TokenConfig(
+        intro = "One review through a real NLTK stop list, then the same list applied to its opposite — and the " +
+            "two reviews arriving as the same vector.",
+        legend = listOf(
+            ChipActive to "On the list",
+            ChipResult to "Survives",
+        ),
+        build = ::stopWordFrames,
+    ),
+    "text_cleaning" to TokenConfig(
+        intro = "Eight cleaning stages in order, with the corpus vocabulary measured after each one — including " +
+            "the two stages that merge words you wanted merged and the one that merges words you did not.",
+        legend = listOf(
+            ChipActive to "Before",
+            ChipResult to "After",
+        ),
+        build = ::cleaningFrames,
+    ),
+    "regex_nlp" to TokenConfig(
+        intro = "\\w+ against a sentence with an e-mail, an abbreviation and a date in it, then the pattern that " +
+            "survives them — and the nested quantifier whose backtracking is counted, not timed.",
+        legend = listOf(
+            ChipActive to "Broken / risky",
+            ChipResult to "Kept whole",
+        ),
+        build = ::regexFrames,
+    ),
+    "n_grams" to TokenConfig(
+        intro = "A bigram window sliding over a padded sentence, counted into a model, then scored on held-out " +
+            "text where one unseen bigram sends perplexity to infinity.",
+        legend = listOf(
+            ChipActive to "Window / unseen",
+            ChipResult to "Counted",
+        ),
+        build = ::nGramFrames,
+    ),
+    "hmm" to TokenConfig(
+        intro = "\"book that flight\" tagged twice: greedily, and by Viterbi. They disagree, and the trellis " +
+            "shows exactly where the greedy path threw away the answer.",
+        legend = listOf(
+            ChipActive to "Greedy",
+            ChipResult to "Viterbi",
+        ),
+        build = ::hmmFrames,
+    ),
+    "jaccard_similarity" to TokenConfig(
+        intro = "Two documents as sets, scored by Jaccard and by cosine side by side, then re-scored on " +
+            "character shingles and estimated by MinHash.",
+        legend = listOf(
+            ChipActive to "Only in A",
+            ChipResult to "Shared",
+        ),
+        build = ::jaccardFrames,
+    ),
     "k_modes" to TokenConfig(
         intro = "Lloyd's algorithm on purely categorical rows: Hamming distance in place of Euclidean, per-attribute mode in place of the mean.",
         legend = nbLegend,
@@ -1418,6 +2024,40 @@ private val tokenConfigs = mapOf(
 
 private fun tokenConfigFor(topicId: String): TokenConfig =
     tokenConfigs[topicId] ?: tokenConfigs.getValue("tokenization")
+
+internal val tokenStripTopicIds: Set<String> get() = tokenConfigs.keys
+
+/**
+ * Frame guard, added with D1 — this widget carries a third of the AI section's labs and had none.
+ * Beyond "the builder runs", it checks the two things this renderer silently swallows: a bar row
+ * whose captions do not line up with its values (the caption is dropped, so the wrong number is
+ * read off the wrong bar), and a heat grid whose row/column labels do not match its matrix.
+ */
+internal fun tokenStripFrameCount(topicId: String): Int {
+    val frames = tokenConfigFor(topicId).build()
+    frames.forEachIndexed { index, frame ->
+        frame.bars.forEach { bar ->
+            require(bar.values.isNotEmpty()) { "$topicId frame $index draws an empty bar row '${bar.label}'" }
+            require(bar.captions.isEmpty() || bar.captions.size == bar.values.size) {
+                "$topicId frame $index has ${bar.captions.size} captions for ${bar.values.size} bars in '${bar.label}'"
+            }
+            require(bar.values.all { it.isFinite() }) { "$topicId frame $index has a non-finite bar in '${bar.label}'" }
+        }
+        frame.heat?.let { heat ->
+            require(heat.values.size == heat.rowLabels.size) {
+                "$topicId frame $index has ${heat.values.size} heat rows for ${heat.rowLabels.size} labels"
+            }
+            require(heat.values.all { it.size == heat.colLabels.size }) {
+                "$topicId frame $index has heat rows that do not match its ${heat.colLabels.size} column labels"
+            }
+            heat.focusRow?.let { row ->
+                require(row in heat.values.indices) { "$topicId frame $index focuses heat row $row, which does not exist" }
+            }
+        }
+        require(frame.status.isNotBlank()) { "$topicId frame $index has no status line" }
+    }
+    return frames.size
+}
 
 // ── UI ───────────────────────────────────────────────────────────────────────
 

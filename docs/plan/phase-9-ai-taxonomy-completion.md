@@ -78,12 +78,13 @@ below.
 | C3 · CNN Mechanics + Architectures | 12 | **Done** | New `FeatureMapPlayer` + `CnnMath.kt`. Plan said 11; the doc lists 12 |
 | C4 · Object Detection & Segmentation | 9 | **Done** | `FeatureMapPlayer` gained a box/mask scene; new `DetectionMath.kt` |
 | C5–C9 | 38 | Planned | |
-| Track D (D1–D6) | 50 | Planned | |
-| **Total** | **226** | **109 done** | 333 browsable topics, counted from the section lists |
+| D1 · Preprocessing + Statistical NLP | 8 | **Done** | New `nlp_statistical`; no new widget. TokenStrip frame guard + `D1MathTest`, which caught two live errors |
+| D2–D6 | 42 | Planned | |
+| **Total** | **226** | **117 done** | 341 browsable topics, counted from the section lists |
 
 Sections against the doc, measured by `AiTaxonomyCoverageTest` rather than counted by hand:
-**RL 71/71**, ML 84/113, **DL 57/96**, NLP 16/77 — **228 of 357 overall**. ML is 75 topics of its
-eventual ~100; DL is at 50; NLP is untouched at 12. Browsable topics across the app: **333**, which
+**RL 71/71**, ML 84/113, **DL 57/96**, NLP 24/77 — **236 of 357 overall**. ML is 75 topics of its
+eventual ~100; DL is at 50; NLP is at 20. Browsable topics across the app: **341**, which
 is what `DataStructuresTopics + AlgorithmsTopics + the four AI sections` actually sum to — the
 "taxonomy 200 → N of 426" running tally this table used to carry had drifted from the lists by two
 dozen, so it has been dropped in favour of the measured figure.
@@ -129,7 +130,9 @@ generic buckets are being hollowed out the same way ML's were — `dl_architectu
 `dl_rnn`, `dl_transformers`, `dl_generative`, `dl_deep_rl`, `dl_optimizers`, `dl_regularization`,
 `dl_specialized`)
 
-**NLP — 11 categories** (`nlp_preprocessing` (kept), `nlp_statistical`, `nlp_syntax`,
+**NLP — 11 categories.** Built so far: `nlp_preprocessing` (kept, renamed "Text Preprocessing") and
+`nlp_statistical` (D1, which also took `bow_tfidf` off Preprocessing). Full list
+(`nlp_preprocessing` (kept), `nlp_statistical`, `nlp_syntax`,
 `nlp_embeddings`, `nlp_rnn`, `nlp_transformer`, `nlp_pretrained`, `nlp_modern_llm`,
 `nlp_finetuning`, `nlp_beyond`, `nlp_metrics`)
 
@@ -763,14 +766,47 @@ on edges for GAT).
 
 ### Track D — NLP (50 topics)
 
-**D1 · Preprocessing + Statistical NLP** — 8 topics
-Stop Word Removal · Lowercasing & Cleaning · RegEx · N-Grams · HMM · PCFG · Cosine Similarity ·
-Jaccard Similarity
-*Sims:* `TokenStripPlayer` (each cleaning stage mutating the strip; n-gram windows; Viterbi over HMM
-states — the `ner` frame builder already does Viterbi), `PointCloudPlayer` (cosine vs Jaccard on the
-same pair of documents).
-*Cross-links:* Edit Distance and KMP/Rabin-Karp already exist in the DSA taxonomy — link, don't
-duplicate.
+**D1 · Preprocessing + Statistical NLP** — 8 topics into `nlp_preprocessing` and a new
+`nlp_statistical` — **Done**
+`stop_words` · `text_cleaning` · `regex_nlp` · `n_grams` (Preprocessing) · `hmm` · `pcfg` ·
+`cosine_similarity` · `jaccard_similarity` (Statistical)
+
+New category `nlp_statistical` ("Statistical NLP", icon `chart`, unused elsewhere in the section).
+`bow_tfidf` **moved into it** from Preprocessing — the doc lists BoW and TF-IDF under Statistical
+NLP, and they are the representation the rest of that category scores — so Preprocessing is now
+ordered as a reading path (clean → tokenize → regex → stop words → stem → lemmatize → n-grams → BPE)
+rather than alphabetically. Gating honours the doc's `🔒` markers verbatim: `stop_words` and
+`text_cleaning` free, the other six premium. Edit Distance and KMP/Rabin-Karp are cross-linked from
+the DSA taxonomy rather than duplicated, as planned.
+
+**No new widget.** Six topics went to `TokenStripPlayer`, `pcfg` to `TreeVisualizer` and
+`cosine_similarity` to `PointCloudPlayer` — and the plan's own suggestion (PointCloud for *both*
+similarity topics) turned out to be half wrong: Jaccard is a set-overlap story that reads far better
+as chips and bars than as a scatter, so only cosine needed the geometry. That is the same
+check-the-widget-against-what-exists lesson B7 recorded, in the opposite direction.
+
+Two math files carry every number the copy quotes — `TextPreprocessingMath.kt` (stop-list removal
+rates, the cleaning pipeline's per-stage vocabulary, a real regex tokenizer plus an explicit
+backtracking counter, an n-gram model with add-k perplexity) and `StatisticalNlpMath.kt` (forward,
+Viterbi, greedy tagging, probabilistic CYK, cosine/Jaccard/MinHash) — and `D1MathTest` pins the
+properties the topics rest on.
+
+**Two guards were built this batch, and both immediately paid.** `SimulationFrameTest` gained
+**TokenStrip** coverage — the widget carries a third of the AI section's labs and had none — checking
+bar captions that do not line up with their values and heat grids whose labels do not match their
+matrix; it caught `pcfg` rendering a frame with a link to a node that had been removed (removing a
+node in `TreeBuilder` orphans its children, which the rebuild between the two attachment readings did
+twice). `D1MathTest` caught the second: the plan's claim that reordering the tokenizer's alternation
+branches "returns the naive result" is false — it gives 16 tokens, not 21, because the digit-initial
+branches still fire, and the e-mail comes back as `.smith@x.co`, a token that *looks* like the
+pattern worked. The copy now says what the pattern actually does.
+
+Content notes worth keeping: the HMM lab needed a sentence where greedy tagging and Viterbi genuinely
+disagree, which is not automatic — "book that flight" was tuned until NN wins the first word locally
+(0.0105 vs 0.0100) and loses the sentence globally (1.89e-6 vs 2.70e-6, a 1.43× gap), and the test
+pins both halves so a re-tune cannot quietly make greedy right. The add-k frame reports a real
+optimum (k=1 → 5.20, k=0.1 → 3.42, k=0.01 → 4.34) rather than asserting that smoothing helps, and it
+also prices what smoothing costs on a *seen* sentence (1.86 → 4.51).
 
 **D2 · Syntactic & Semantic Analysis** — 6 topics
 POS Tagging · Dependency Parsing · Constituency Parsing · Chunking · Coreference Resolution ·
@@ -829,7 +865,7 @@ monetization angle.
 
 ## Guards
 
-**Shipping and green (123 tests):**
+**Shipping and green (182 tests):**
 - `ContentCoverageTest` — every browsable topic has content, nothing resolves to `NotYetAvailable`,
   and every prerequisite and cross-link id resolves. It has caught real breakage every batch and is
   run (with `--rerun-tasks`) at the end of each one.
@@ -840,16 +876,17 @@ monetization angle.
   frames stay inside the unit square. Caught B6's `unevenClusters` overflow. **C1 added neural-net
   coverage** (declared plot axes, bar caption arity) and it found four live bugs on its first run,
   two of them frames rendering the wrong data entirely; **C2 then failed on seven of its own ten new
-  labs** before they shipped, which `autoPlot` now prevents structurally. Worth extending to the
-  remaining unguarded widgets — `TokenStrip`, `RegressionLab`, `DecisionSurface` — rather than
-  waiting for a batch to need them.
+  labs** before they shipped, which `autoPlot` now prevents structurally. **D1 added TokenStrip**
+  (bar caption arity, heat-grid label/matrix agreement) and caught a dangling tree link in its own
+  new `pcfg` lab. `RegressionLab` and `DecisionSurface` are still unguarded.
 - `AiTaxonomyCoverageTest` (B6) — the doc as code. 357 entries nested by section and heading, each
   mapped to the topic ids serving it or to an explicit gap; pins the entry count, id resolution,
   section membership, and the covered count. Its failure message prints the remaining backlog.
-- `DimReductionMathTest` (B6), `B7MathTest` (B7), `DeepNetMathTest` (C1) and `ActivationMathTest`
-  (C2) — pin the properties each batch's copy leans on, so a re-tune that makes a topic pointless
-  fails instead of shipping. Worth continuing per batch; `B7MathTest` caught a wrong claim that had
-  already been written.
+- `DimReductionMathTest` (B6), `B7MathTest` (B7), `DeepNetMathTest` (C1), `ActivationMathTest` (C2),
+  `CnnMathTest` (C3), `DetectionMathTest` (C4) and `D1MathTest` (D1) — pin the properties each
+  batch's copy leans on, so a re-tune that makes a topic pointless fails instead of shipping. Worth
+  continuing per batch; `B7MathTest` caught a wrong claim that had already been written, and
+  `D1MathTest` caught one this plan document had asserted.
 
 **Nothing specified here is now unbuilt.** The lesson from the five-batch slip is worth keeping:
 the taxonomy map cost about an hour, would have cost the same at any point, and immediately
@@ -889,6 +926,10 @@ number closed no doc entry, which is worth noticing at the time rather than at t
   is carrying unknown bugs of that shape. C2 then showed the guard's second use — it failed on seven
   of ten new labs during authoring, which is far cheaper than finding them after release, and the fix
   (`autoPlot`, deriving axes from the data) removed the whole class rather than the seven instances.
+  D1 extended the same guard to `TokenStrip` and it found a live bug in the batch's own new tree lab
+  (a frame linking to a removed node), while `D1MathTest` falsified a claim this plan document had
+  itself asserted about the regex tokenizer. Two widgets remain unguarded: `RegressionLab` and
+  `DecisionSurface`.
 - **Topic-id collisions.** `TopicRegistry` collapses cross-listed ids first-wins (`perceptron`,
   `transformers`). Tracks C and D cross-list far more (backprop, LSTM, attention, RLHF, all seven
   Deep RL entries). `AiTaxonomyCoverageTest` now makes these reviewable — a cross-listed entry
@@ -903,7 +944,7 @@ number closed no doc entry, which is worth noticing at the time rather than at t
 ## Suggested order
 
 ~~A1 → A2~~ → ~~B1 → B2 → B3 → B4 → B5~~ → ~~guards~~ → ~~B6 → B7~~ → **B8** → B9 → B10 → ~~C1 → C2~~
-→ ~~**`FeatureMapPlayer`** → C3 → C4~~ → C5 → C6 → C7 → C8 → C9 → D1 → D2 → D3 → D4 → D5 → D6.
+→ ~~**`FeatureMapPlayer`** → C3 → C4~~ → C5 → C6 → C7 → C8 → C9 → ~~D1~~ → D2 → D3 → D4 → D5 → D6.
 
 Struck-through batches are done. The guards step landed with B6 rather than before it, in the same
 session. The order was then broken deliberately: C1 was built before B8–B10 at the user's direction,

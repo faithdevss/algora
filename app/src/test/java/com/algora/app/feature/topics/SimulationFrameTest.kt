@@ -63,6 +63,14 @@ class SimulationFrameTest {
     fun `every feature-map config builds frames that match the geometry they claim`() =
         check("FeatureMap", featureMapTopicIds, ::featureMapFrameCount)
 
+    // Added with D1. The token strip carries a third of the AI section's labs — every preprocessing,
+    // statistical-NLP and naive-Bayes topic — and had no guard at all. It also checks the two things
+    // this renderer swallows silently: bar captions that do not line up with their values, and a
+    // heat grid whose labels do not match its matrix.
+    @Test
+    fun `every token-strip config builds frames whose bars and heat grids are labelled`() =
+        check("TokenStrip", tokenStripTopicIds, ::tokenStripFrameCount)
+
     // The recursion tree is the one widget with a live parameter, so this covers every n the slider
     // can reach, not just the default one.
     @Test
