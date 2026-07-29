@@ -1854,12 +1854,364 @@ private fun jaccardFrames(): List<TokenFrame> {
     return frames
 }
 
+// ── D3 · word2vec: CBOW ──────────────────────────────────────────────────────
+
+private fun w2vSentence() = Word2VecLab.sentences[0]
+
+private fun cbowFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val tokens = w2vSentence()
+    val centre = 2
+    val contextIds = (centre - Word2VecLab.window..centre + Word2VecLab.window)
+        .filter { it != centre && it in tokens.indices }
+
+    frames += TokenFrame(
+        status = "CBOW turns the corpus into a fill-in-the-blank task: hide the centre word, keep its " +
+            "${Word2VecLab.window * 2}-word window, and train a model to guess what was removed. No labels are needed — the text " +
+            "labels itself, which is why this scales to whatever text you have.",
+        chips = tokens.mapIndexed { i, t ->
+            Chip(t, mark = if (i == centre) ChipMark.RESULT else if (i in contextIds) ChipMark.ACTIVE else ChipMark.DIM)
+        },
+        chipsLabel = "context → centre",
+        rows = listOf(
+            "context" to contextIds.joinToString(", ") { tokens[it] },
+            "target" to tokens[centre],
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "The context vectors are *averaged* into one hidden vector before the prediction — bag of " +
+            "words, hence the name. Word order inside the window is thrown away, and the whole window costs one " +
+            "update. That is the difference from skip-gram, and everything else follows from it.",
+        chips = contextIds.map { Chip(tokens[it], mark = ChipMark.ACTIVE) } + Chip("mean", mark = ChipMark.RESULT),
+        chipsLabel = "h = mean of the context vectors",
+        rows = listOf(
+            "updates / epoch" to "${Word2VecLab.cbowUpdatesPerEpoch()} (one per position)",
+            "skip-gram" to "${Word2VecLab.skipGramUpdatesPerEpoch()} (one per pair)",
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "Scoring the true centre against the whole vocabulary would cost a softmax over every word. " +
+            "Negative sampling replaces it with ${Word2VecLab.negatives + 1} binary decisions: pull the real target closer, push " +
+            "${Word2VecLab.negatives} words drawn from the noise distribution away.",
+        chips = listOf(Chip(tokens[centre], sub = "+1", mark = ChipMark.RESULT)) +
+            listOf("dog", "book", "water", "works", "young").map { Chip(it, sub = "0", mark = ChipMark.ACTIVE) },
+        chipsLabel = "one positive, ${Word2VecLab.negatives} negatives",
+        rows = listOf(
+            "full softmax" to "${Word2VecLab.softmaxCost()} multiply-adds",
+            "negative sampling" to "${Word2VecLab.negativeSamplingCost()} multiply-adds",
+        ),
+    )
+
+    val cbow = Word2VecLab.cbow
+    val sg = Word2VecLab.skipGram
+    frames += TokenFrame(
+        status = "Trained for ${Word2VecLab.epochs} epochs on ${Word2VecLab.corpus.size} sentences. The loss falls from " +
+            "${"%.2f".format(cbow.losses.first())} to ${"%.2f".format(cbow.losses.last())} — lower than skip-gram reaches on the same corpus " +
+            "(${"%.2f".format(sg.losses.last())}), because predicting one word from an averaged window is an easier problem than " +
+            "predicting each context word from one centre.",
+        bars = listOf(
+            BarRow(
+                "CBOW loss",
+                cbow.losses.filterIndexed { i, _ -> i % 4 == 0 },
+                BarNegative,
+                cbow.losses.filterIndexed { i, _ -> i % 4 == 0 }.mapIndexed { i, _ -> "e${i * 40}" },
+            ),
+        ),
+        readout = "loss ${"%.2f".format(cbow.losses.first())} → ${"%.2f".format(cbow.losses.last())}",
+    )
+
+    val nearest = Word2VecLab.nearest(cbow, "king", 4)
+    frames += TokenFrame(
+        status = "What it learned: nothing in the corpus says king and queen are related, and no rule was " +
+            "written. They share contexts — rules, wears, sits, leads — and sharing contexts is what the " +
+            "objective rewards.",
+        chips = nearest.map { Chip(it.first, sub = "%.2f".format(it.second), mark = ChipMark.RESULT) },
+        chipsLabel = "nearest to \"king\" (cosine)",
+        rows = listOf(
+            "king · queen" to "%.2f".format(Word2VecLab.similarity(cbow, "king", "queen")),
+            "king · dog" to "%.2f".format(Word2VecLab.similarity(cbow, "king", "dog")),
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "Against skip-gram on the same corpus, measured rather than assumed. CBOW is smoother: it " +
+            "scores king·queen ${"%.2f".format(Word2VecLab.similarity(cbow, "king", "queen"))} against skip-gram's ${"%.2f".format(Word2VecLab.similarity(sg, "king", "queen"))}, but also king·man ${"%.2f".format(Word2VecLab.similarity(cbow, "king", "man"))} against " +
+            "${"%.2f".format(Word2VecLab.similarity(sg, "king", "man"))} — it compresses distinctions as well as similarities, and its related-minus-unrelated " +
+            "gap is the smaller of the two (${"%.2f".format(Word2VecLab.contrast(cbow))} vs ${"%.2f".format(Word2VecLab.contrast(sg))}).",
+        bars = listOf(
+            BarRow(
+                "CBOW",
+                listOf(
+                    Word2VecLab.similarity(cbow, "king", "queen"),
+                    Word2VecLab.similarity(cbow, "king", "man"),
+                    Word2VecLab.similarity(cbow, "king", "dog"),
+                ),
+                BarPositive,
+                listOf("king·queen", "king·man", "king·dog"),
+            ),
+            BarRow(
+                "skip-gram",
+                listOf(
+                    Word2VecLab.similarity(sg, "king", "queen"),
+                    Word2VecLab.similarity(sg, "king", "man"),
+                    Word2VecLab.similarity(sg, "king", "dog"),
+                ),
+                ChipResult,
+                listOf("king·queen", "king·man", "king·dog"),
+            ),
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "And the rare word, where the textbook expects CBOW to lose: \"monarch\" occurs twice against " +
+            "king's five, and here CBOW places it nearer king (${"%.2f".format(Word2VecLab.similarity(cbow, "monarch", "king"))}) than skip-gram does " +
+            "(${"%.2f".format(Word2VecLab.similarity(sg, "monarch", "king"))}). On ${Word2VecLab.sentences.sumOf { it.size }} tokens the averaging that costs CBOW resolution also " +
+            "lends a rare word its neighbours' evidence. The paper's advantage for skip-gram is a claim about " +
+            "billions of tokens — which is the real lesson: an embedding comparison is a corpus-size claim.",
+        chips = Word2VecLab.nearest(cbow, "monarch", 3).map { Chip(it.first, sub = "%.2f".format(it.second), mark = ChipMark.RESULT) },
+        chipsLabel = "CBOW nearest to \"monarch\"",
+        rows = listOf(
+            "monarch count" to "${Word2VecLab.counts.getValue("monarch")}",
+            "king count" to "${Word2VecLab.counts.getValue("king")}",
+            "CBOW monarch·king" to "%.2f".format(Word2VecLab.similarity(cbow, "monarch", "king")),
+            "skip-gram monarch·king" to "%.2f".format(Word2VecLab.similarity(sg, "monarch", "king")),
+        ),
+    )
+    return frames
+}
+
+// ── D3 · word2vec: skip-gram ────────────────────────────────────────────────
+
+private fun skipGramFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val tokens = w2vSentence()
+    val centre = 2
+    val contextIds = (centre - Word2VecLab.window..centre + Word2VecLab.window)
+        .filter { it != centre && it in tokens.indices }
+
+    frames += TokenFrame(
+        status = "Skip-gram inverts CBOW: one centre word, and the model has to predict each word around it " +
+            "separately. The same window that gave CBOW one training example gives skip-gram ${contextIds.size}.",
+        chips = tokens.mapIndexed { i, t ->
+            Chip(t, mark = if (i == centre) ChipMark.RESULT else if (i in contextIds) ChipMark.ACTIVE else ChipMark.DIM)
+        },
+        chipsLabel = "centre → context",
+        rows = contextIds.map { "pair" to "(${tokens[centre]}, ${tokens[it]})" },
+    )
+
+    frames += TokenFrame(
+        status = "Over the whole corpus that is ${Word2VecLab.pairs.size} training pairs from ${Word2VecLab.sentences.sumOf { it.size }} tokens — " +
+            "${"%.1f".format(Word2VecLab.pairs.size.toFloat() / Word2VecLab.cbowUpdatesPerEpoch())}× the updates CBOW makes per epoch. Slower per pass, and each occurrence of a " +
+            "word gets its own gradient rather than being averaged into a group.",
+        rows = listOf(
+            "tokens" to "${Word2VecLab.sentences.sumOf { it.size }}",
+            "window" to "±${Word2VecLab.window}",
+            "skip-gram pairs" to "${Word2VecLab.pairs.size}",
+            "CBOW updates" to "${Word2VecLab.cbowUpdatesPerEpoch()}",
+        ),
+        chips = Word2VecLab.pairs.take(6).map { (c, o) -> Chip("${Word2VecLab.vocab[c]}→${Word2VecLab.vocab[o]}") },
+        chipsLabel = "first pairs of the corpus",
+    )
+
+    val probes = listOf("the", "king", "monarch")
+    frames += TokenFrame(
+        status = "Negatives are not drawn uniformly. Counts are raised to the power 3/4 first, which is the " +
+            "paper's one unexplained-but-it-works constant: it flattens \"the\" from ${"%.1f".format(Word2VecLab.unigramShare("the") * 100)}% of draws to " +
+            "${"%.1f".format(Word2VecLab.noiseShare("the") * 100)}% and lifts \"monarch\" from ${"%.1f".format(Word2VecLab.unigramShare("monarch") * 100)}% to ${"%.1f".format(Word2VecLab.noiseShare("monarch") * 100)}%. Frequent words still dominate, just less.",
+        bars = listOf(
+            BarRow("unigram", probes.map { Word2VecLab.unigramShare(it).toFloat() }, BarPositive, probes),
+            BarRow("unigram^0.75", probes.map { Word2VecLab.noiseShare(it).toFloat() }, ChipResult, probes),
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "Cost per example, counted: a full softmax scores the centre against all ${Word2VecLab.vocab.size} words at " +
+            "${Word2VecLab.dim} dimensions — ${Word2VecLab.softmaxCost()} multiply-adds — while ${Word2VecLab.negatives} negatives plus the target cost ${Word2VecLab.negativeSamplingCost()}. " +
+            "That ratio is ${"%.1f".format(Word2VecLab.softmaxCost().toFloat() / Word2VecLab.negativeSamplingCost())}× here and 166,000× on a million-word vocabulary at 300 dimensions, which is why " +
+            "word2vec could be trained on a billion words in 2013 on one machine.",
+        rows = listOf(
+            "this corpus" to "${Word2VecLab.softmaxCost()} → ${Word2VecLab.negativeSamplingCost()}",
+            "|V| = 1M, d = 300" to "300,000,000 → 1,800",
+            "alternative" to "hierarchical softmax, log₂|V| binary decisions",
+        ),
+        readout = "${"%.1f".format(Word2VecLab.softmaxCost().toFloat() / Word2VecLab.negativeSamplingCost())}× cheaper per example, here",
+    )
+
+    val sg = Word2VecLab.skipGram
+    frames += TokenFrame(
+        status = "After ${Word2VecLab.epochs} epochs the neighbours are the words that share contexts. king·queen is " +
+            "${"%.2f".format(Word2VecLab.similarity(sg, "king", "queen"))} and king·dog is ${"%.2f".format(Word2VecLab.similarity(sg, "king", "dog"))} — the corpus never states the relationship, and the objective " +
+            "never sees a definition.",
+        chips = Word2VecLab.nearest(sg, "king", 4).map { Chip(it.first, sub = "%.2f".format(it.second), mark = ChipMark.RESULT) },
+        chipsLabel = "nearest to \"king\"",
+        bars = listOf(
+            BarRow(
+                "skip-gram loss",
+                sg.losses.filterIndexed { i, _ -> i % 4 == 0 },
+                BarNegative,
+                sg.losses.filterIndexed { i, _ -> i % 4 == 0 }.mapIndexed { i, _ -> "e${i * 40}" },
+            ),
+        ),
+    )
+
+    val analogy = Word2VecLab.vocab.filter { it !in listOf("king", "man", "woman") }.map { w ->
+        val t = FloatArray(Word2VecLab.dim) {
+            sg.vector("king")[it] - sg.vector("man")[it] + sg.vector("woman")[it]
+        }
+        w to cosineOf(t, sg.vector(w))
+    }.sortedByDescending { it.second }
+
+    frames += TokenFrame(
+        status = "And the result the paper is remembered for, computed on the vectors this lab just trained: " +
+            "king − man + woman lands nearest \"${analogy.first().first}\" at cosine ${"%.2f".format(analogy.first().second)}. Directions in the space " +
+            "encode relations, and nobody put them there.",
+        chips = analogy.take(4).map { Chip(it.first, sub = "%.2f".format(it.second), mark = if (it == analogy.first()) ChipMark.RESULT else ChipMark.DIM) },
+        chipsLabel = "nearest to king − man + woman",
+        readout = "≈ ${analogy.first().first}",
+    )
+
+    frames += TokenFrame(
+        status = "What the space cannot do is separate senses: \"bank\" gets one vector however it was used, " +
+            "and every occurrence of it in a corpus votes on the same 300 numbers. That single limitation is " +
+            "what ELMo and then BERT were built to remove.",
+        chips = listOf(
+            Chip("one vector", sub = "per type", mark = ChipMark.ACTIVE),
+            Chip("river bank", sub = "same vector", mark = ChipMark.DIM),
+            Chip("savings bank", sub = "same vector", mark = ChipMark.DIM),
+        ),
+        chipsLabel = "the static-embedding ceiling",
+    )
+    return frames
+}
+
+// ── D3 · FastText: subword composition ──────────────────────────────────────
+
+private fun fastTextFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val model = FastTextLab.model
+
+    frames += TokenFrame(
+        status = "FastText keeps word2vec's objective and changes what a word *is*: a bag of character " +
+            "n-grams of length ${FastTextLab.minN}–${FastTextLab.maxN}, taken from the word wrapped in boundary markers, plus the whole " +
+            "word as one more token. The markers are what let a prefix and a suffix be distinguished from the " +
+            "same letters in the middle.",
+        chips = FastTextLab.subwords("king").map { Chip(it) },
+        chipsLabel = "subwords of \"king\" (${FastTextLab.subwords("king").size})",
+        rows = listOf("word types" to "${Word2VecLab.vocab.size}", "distinct n-grams" to "${FastTextLab.subwordVocabularySize()}"),
+    )
+
+    frames += TokenFrame(
+        status = "A word's vector is the sum of its subwords' vectors. That single change means morphology is " +
+            "shared: \"king\", \"kingdom\" and \"kings\" overlap in the n-grams they are built from, so evidence " +
+            "for one is partial evidence for all — which matters most in Turkish, Finnish or German, where a " +
+            "lemma has hundreds of surface forms.",
+        chips = listOf("king", "kingdom").flatMap { w ->
+            FastTextLab.subwords(w).take(4).map { Chip(it, sub = w) }
+        },
+        chipsLabel = "shared n-grams",
+        readout = "v(w) = Σ v(g) over g ∈ subwords(w)",
+    )
+
+    val oov = "kings"
+    val (known, total) = model.coverage(oov)
+    frames += TokenFrame(
+        status = "Here is the payoff. \"$oov\" never appears in the corpus, so word2vec has no vector for it at " +
+            "all — the lookup misses and the word becomes <unk>. FastText builds one from the $known of its $total " +
+            "n-grams that *were* seen, and the result sits at cosine ${"%.2f".format(FastTextLab.similarityToKnown(model, oov, "king"))} to \"king\".",
+        chips = FastTextLab.subwords(oov).map {
+            Chip(it, mark = if (it in model.subwordVectors) ChipMark.RESULT else ChipMark.DIM)
+        },
+        chipsLabel = "\"$oov\" — highlighted n-grams were seen in training",
+        rows = listOf(
+            "in vocabulary?" to if (FastTextLab.isOov(oov)) "no — word2vec returns <unk>" else "yes",
+            "n-grams known" to "$known of $total",
+            "cos($oov, king)" to "%.2f".format(FastTextLab.similarityToKnown(model, oov, "king")),
+        ),
+    )
+
+    val probe = "monarchy"
+    frames += TokenFrame(
+        status = "It generalises past inflection to derivation: \"$probe\" is also unseen, shares no whole word " +
+            "with the corpus, and still lands near both \"monarch\"-adjacent regions — cosine " +
+            "${"%.2f".format(FastTextLab.similarityToKnown(model, probe, "king"))} to \"king\" and ${"%.2f".format(FastTextLab.similarityToKnown(model, probe, "kingdom"))} to \"kingdom\", against ${"%.2f".format(FastTextLab.similarityToKnown(model, probe, "dog"))} to \"dog\".",
+        bars = listOf(
+            BarRow(
+                "cosine from \"$probe\"",
+                listOf("king", "kingdom", "queen", "dog").map { FastTextLab.similarityToKnown(model, probe, it) },
+                BarPositive,
+                listOf("king", "kingdom", "queen", "dog"),
+            ),
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "One honest caveat about this lab: real FastText trains subword vectors jointly with the " +
+            "objective, while these are derived from the trained word vectors — so an unseen word whose known " +
+            "n-grams all come from one word reproduces that word exactly (\"kingdoms\" scores " +
+            "${"%.2f".format(FastTextLab.similarityToKnown(model, "kingdoms", "kingdom"))} against \"kingdom\"). What the lab demonstrates is composition, not the training of it.",
+        chips = listOf("kingdoms", "queenly").map {
+            Chip(it, sub = "${model.coverage(it).first}/${model.coverage(it).second}", mark = ChipMark.ACTIVE)
+        },
+        chipsLabel = "composed from n-grams alone",
+        rows = listOf(
+            "kingdoms · kingdom" to "%.2f".format(FastTextLab.similarityToKnown(model, "kingdoms", "kingdom")),
+            "queenly · queen" to "%.2f".format(FastTextLab.similarityToKnown(model, "queenly", "queen")),
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "The cost is size: ${FastTextLab.subwordVocabularySize()} n-gram vectors for ${Word2VecLab.vocab.size} words here, and on a real corpus " +
+            "millions more. Production FastText hashes n-grams into a fixed 2M-bucket table and accepts the " +
+            "collisions — the model stays a lookup table plus a sum, which is why it still runs where a " +
+            "transformer cannot.",
+        rows = listOf(
+            "n-gram vectors" to "${FastTextLab.subwordVocabularySize()}",
+            "word vectors" to "${Word2VecLab.vocab.size}",
+            "production trick" to "hash to 2,000,000 buckets",
+            "inference" to "one sum per word — no network runs",
+        ),
+        readout = "OOV solved, memory paid",
+    )
+    return frames
+}
+
 private val nbLegend = listOf(
     ChipActive to "Current",
     ChipResult to "Scored",
 )
 
 private val tokenConfigs = mapOf(
+    "word2vec_cbow" to TokenConfig(
+        intro = "A window predicting its own missing centre word, trained for real on a 20-sentence corpus — " +
+            "then measured against skip-gram on the same text, including the rare word where the textbook " +
+            "expects CBOW to lose.",
+        legend = listOf(
+            ChipActive to "Context",
+            ChipResult to "Target / result",
+        ),
+        build = ::cbowFrames,
+    ),
+    "word2vec_skipgram" to TokenConfig(
+        intro = "One centre word predicting each of its neighbours: the pair count, the 3/4-power noise " +
+            "distribution, the cost negative sampling avoids, and king − man + woman computed on vectors this " +
+            "lab trains.",
+        legend = listOf(
+            ChipActive to "Context",
+            ChipResult to "Centre / result",
+        ),
+        build = ::skipGramFrames,
+    ),
+    "fasttext" to TokenConfig(
+        intro = "Words as bags of character n-grams, and four words the corpus never contained getting vectors " +
+            "anyway — with the coverage each one was built from.",
+        legend = listOf(
+            ChipActive to "Composed",
+            ChipResult to "Seen in training",
+        ),
+        build = ::fastTextFrames,
+    ),
     "stop_words" to TokenConfig(
         intro = "One review through a real NLTK stop list, then the same list applied to its opposite — and the " +
             "two reviews arriving as the same vector.",

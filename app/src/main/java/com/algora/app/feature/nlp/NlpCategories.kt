@@ -13,7 +13,10 @@ object NlpCategories {
     // D1. "chart" is the counting these methods all reduce to, and it was unused in this section.
     val statistical = Category("nlp_statistical", "Statistical NLP", Section.NLP, 0xFF8B5CF6, "chart")
 
+    // D3. "map" is what a projected embedding space is read as, and it is unused in this section.
+    val embeddings = Category("nlp_embeddings", "Word Embeddings", Section.NLP, 0xFF6366F1, "map")
+
     val modeling = Category("nlp_modeling", "Modeling", Section.NLP, 0xFF3B82F6, "network")
 
-    val all = listOf(preprocessing, statistical, modeling)
+    val all = listOf(preprocessing, statistical, embeddings, modeling)
 }

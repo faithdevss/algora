@@ -27,6 +27,7 @@ private fun topic(
 
 private val preprocessing = NlpCategories.preprocessing
 private val statistical = NlpCategories.statistical
+private val embeddings = NlpCategories.embeddings
 private val modeling = NlpCategories.modeling
 
 // Ordered as a reading path — clean, split, filter, normalise, then the two vocabulary-building
@@ -52,8 +53,18 @@ private val statisticalTopics = listOf(
     topic("pcfg", "Probabilistic Context-Free Grammars", statistical, "Rank the parse trees a grammar allows instead of listing them.", isPremium = true, difficulty = Difficulty.ADVANCED),
 )
 
+// D3. `word_embeddings` moves here from Modeling and stays as the category's landing topic — it is
+// the umbrella the doc's five models sit under, and the five below author them properly.
+private val embeddingTopics = listOf(
+    topic("word_embeddings", "Word Embeddings", embeddings, "Dense vectors that place similar words near each other.", isPremium = true),
+    topic("word2vec_cbow", "Word2Vec (CBOW)", embeddings, "Predict the missing centre word from its averaged context.", isPremium = true),
+    topic("word2vec_skipgram", "Word2Vec (Skip-Gram)", embeddings, "Predict each neighbour from the centre word, one pair at a time.", isPremium = true),
+    topic("glove", "GloVe", embeddings, "Fit vectors to the whole corpus co-occurrence matrix at once.", isPremium = true),
+    topic("fasttext", "FastText", embeddings, "Words as bags of character n-grams, so unseen words still get vectors.", isPremium = true),
+    topic("elmo", "ELMo", embeddings, "One vector per occurrence, read out of a bidirectional language model.", isPremium = true, difficulty = Difficulty.ADVANCED),
+)
+
 private val modelingTopics = listOf(
-    topic("word_embeddings", "Word Embeddings", modeling, "Dense vectors that place similar words near each other.", isPremium = true),
     topic("rnn_lstm", "RNN / LSTM", modeling, "Sequential models that read text one token at a time.", isPremium = true),
     topic("attention", "Attention", modeling, "Let the model weigh every token against every other.", isPremium = true),
     topic("transformers", "Transformers", modeling, "Stacked self-attention — the backbone of modern NLP.", isPremium = true),
@@ -63,7 +74,7 @@ private val modelingTopics = listOf(
 )
 
 object NlpTopics {
-    val topics: List<Topic> = preprocessingTopics + statisticalTopics + modelingTopics
+    val topics: List<Topic> = preprocessingTopics + statisticalTopics + embeddingTopics + modelingTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }

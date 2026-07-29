@@ -79,12 +79,14 @@ below.
 | C4 · Object Detection & Segmentation | 9 | **Done** | `FeatureMapPlayer` gained a box/mask scene; new `DetectionMath.kt` |
 | C5–C9 | 38 | Planned | |
 | D1 · Preprocessing + Statistical NLP | 8 | **Done** | New `nlp_statistical`; no new widget. TokenStrip frame guard + `D1MathTest`, which caught two live errors |
-| D2–D6 | 42 | Planned | |
-| **Total** | **226** | **117 done** | 341 browsable topics, counted from the section lists |
+| D2 | 6 | Planned | |
+| D3 · Word Embeddings | 5 | **Done** | New `nlp_embeddings`; no new widget. Models trained for real in `EmbeddingMath.kt`; `D3MathTest` |
+| D4–D6 | 31 | Planned | |
+| **Total** | **226** | **122 done** | 346 browsable topics, counted from the section lists |
 
 Sections against the doc, measured by `AiTaxonomyCoverageTest` rather than counted by hand:
-**RL 71/71**, ML 84/113, **DL 57/96**, NLP 24/77 — **236 of 357 overall**. ML is 75 topics of its
-eventual ~100; DL is at 50; NLP is at 20. Browsable topics across the app: **341**, which
+**RL 71/71**, ML 84/113, **DL 57/96**, NLP 29/77 — **241 of 357 overall**. ML is 75 topics of its
+eventual ~100; DL is at 50; NLP is at 25. Browsable topics across the app: **346**, which
 is what `DataStructuresTopics + AlgorithmsTopics + the four AI sections` actually sum to — the
 "taxonomy 200 → N of 426" running tally this table used to carry had drifted from the lists by two
 dozen, so it has been dropped in favour of the measured figure.
@@ -130,8 +132,9 @@ generic buckets are being hollowed out the same way ML's were — `dl_architectu
 `dl_rnn`, `dl_transformers`, `dl_generative`, `dl_deep_rl`, `dl_optimizers`, `dl_regularization`,
 `dl_specialized`)
 
-**NLP — 11 categories.** Built so far: `nlp_preprocessing` (kept, renamed "Text Preprocessing") and
-`nlp_statistical` (D1, which also took `bow_tfidf` off Preprocessing). Full list
+**NLP — 11 categories.** Built so far: `nlp_preprocessing` (kept, renamed "Text Preprocessing"),
+`nlp_statistical` (D1, which also took `bow_tfidf` off Preprocessing) and `nlp_embeddings` (D3, which
+took the `word_embeddings` umbrella off Modeling and kept it as the category's landing topic). Full list
 (`nlp_preprocessing` (kept), `nlp_statistical`, `nlp_syntax`,
 `nlp_embeddings`, `nlp_rnn`, `nlp_transformer`, `nlp_pretrained`, `nlp_modern_llm`,
 `nlp_finetuning`, `nlp_beyond`, `nlp_metrics`)
@@ -814,10 +817,39 @@ Sentiment Analysis (Lexicon)
 *Sims:* `TokenStripPlayer` (tag assignment, chunk spans, coref chains linking mentions),
 `TreeVisualizer` (dependency arcs and constituency trees).
 
-**D3 · Word Embeddings** — 5 topics
-Word2Vec (CBOW) · Word2Vec (Skip-Gram) · GloVe · FastText · ELMo
-*Sims:* `PointCloudPlayer` (2-D embedding space with the analogy-vector payoff),
-`TokenStripPlayer` (context window sliding, subword decomposition for FastText).
+**D3 · Word Embeddings** — 5 topics into a new `nlp_embeddings` — **Done**
+`word2vec_cbow` · `word2vec_skipgram` · `glove` · `fasttext` · `elmo`
+
+New category `nlp_embeddings` ("Word Embeddings", icon `map`). The `word_embeddings` umbrella moved
+into it from Modeling and stays as the landing topic, which is what the coverage test's umbrella note
+anticipated. All five are premium, per the doc's markers. Sims split as the plan suggested:
+`TokenStripPlayer` for CBOW, skip-gram and FastText; `PointCloudPlayer` for GloVe and ELMo.
+
+**The labs train for real.** `EmbeddingMath.kt` runs SGNS (both objectives), a weighted-least-squares
+GloVe fit, subword composition and a contextual-vector stand-in on a 20-sentence corpus, with
+deterministic seeds and lazily cached models so opening three labs trains each model once. No
+hand-set vectors anywhere — which is the difference from the older `word_embeddings` umbrella lab,
+whose four dimensions are labelled by hand so the analogy lands exactly.
+
+**Three things the probe found before any copy was written**, all of which would have shipped as
+plausible-sounding falsehoods:
+- **A 2-D GloVe fit is degenerate on this corpus.** The biases absorb most of log X, every vector
+  landed on one line, and *every* cosine came out 1.00 — nearest-neighbour lists were meaningless.
+  Fixed by training at 8 dimensions and projecting to 2 with a power-iteration PCA, which is also
+  what people actually do to look at embeddings.
+- **ELMo's sense separation did not hold** with the first four sentences: the two money sentences
+  scored 0.583 against each other, *below* several cross-sense pairs. The corpus was rewritten so the
+  sentences within a sense share content words, and now every same-sense pair (0.953, 0.954) beats
+  every cross-sense pair — which is what `D3MathTest` asserts, rather than the gap's size.
+- **The rare-word folklore inverted.** The plan and every textbook say skip-gram beats CBOW on rare
+  words; on 102 tokens CBOW places `monarch` nearer `king` (0.89) than skip-gram does (0.60). The
+  copy reports the measurement and explains why the published claim is a statement about billions of
+  tokens — and the test pins the direction, so a re-tune cannot quietly make the narration false.
+
+Also measured rather than asserted: the analogy. king − man + woman lands on `queen` at 0.93 under
+skip-gram and 0.77 under the GloVe fit, both on vectors these labs train; the copy says explicitly
+that 20 sentences cannot rank the two methods. The 3/4-power noise distribution is shown moving
+"the" from 26.5% of draws to 18.0% and `monarch` from 2.0% to 2.5%.
 
 **D4 · Transformer Internals + Pre-trained LMs** — 8 topics
 Positional Encodings · Feed-Forward Networks · BART · XLNet · GPT-3 & GPT-4 · LLaMA & Vicuna ·
@@ -865,7 +897,7 @@ monetization angle.
 
 ## Guards
 
-**Shipping and green (182 tests):**
+**Shipping and green (199 tests):**
 - `ContentCoverageTest` — every browsable topic has content, nothing resolves to `NotYetAvailable`,
   and every prerequisite and cross-link id resolves. It has caught real breakage every batch and is
   run (with `--rerun-tasks`) at the end of each one.
@@ -883,7 +915,7 @@ monetization angle.
   mapped to the topic ids serving it or to an explicit gap; pins the entry count, id resolution,
   section membership, and the covered count. Its failure message prints the remaining backlog.
 - `DimReductionMathTest` (B6), `B7MathTest` (B7), `DeepNetMathTest` (C1), `ActivationMathTest` (C2),
-  `CnnMathTest` (C3), `DetectionMathTest` (C4) and `D1MathTest` (D1) — pin the properties each
+  `CnnMathTest` (C3), `DetectionMathTest` (C4), `D1MathTest` (D1) and `D3MathTest` (D3) — pin the properties each
   batch's copy leans on, so a re-tune that makes a topic pointless fails instead of shipping. Worth
   continuing per batch; `B7MathTest` caught a wrong claim that had already been written, and
   `D1MathTest` caught one this plan document had asserted.
@@ -929,7 +961,10 @@ number closed no doc entry, which is worth noticing at the time rather than at t
   D1 extended the same guard to `TokenStrip` and it found a live bug in the batch's own new tree lab
   (a frame linking to a removed node), while `D1MathTest` falsified a claim this plan document had
   itself asserted about the regex tokenizer. Two widgets remain unguarded: `RegressionLab` and
-  `DecisionSurface`.
+  `DecisionSurface`. D3 is the strongest case yet for the probe-before-copy rule: its labs train
+  rather than replay fixed numbers, and the first run produced a degenerate GloVe geometry, an ELMo
+  sense separation that did not exist, and a rare-word comparison pointing the opposite way to the
+  literature. All three read as perfectly good copy if written before looking.
 - **Topic-id collisions.** `TopicRegistry` collapses cross-listed ids first-wins (`perceptron`,
   `transformers`). Tracks C and D cross-list far more (backprop, LSTM, attention, RLHF, all seven
   Deep RL entries). `AiTaxonomyCoverageTest` now makes these reviewable — a cross-listed entry
@@ -944,7 +979,7 @@ number closed no doc entry, which is worth noticing at the time rather than at t
 ## Suggested order
 
 ~~A1 → A2~~ → ~~B1 → B2 → B3 → B4 → B5~~ → ~~guards~~ → ~~B6 → B7~~ → **B8** → B9 → B10 → ~~C1 → C2~~
-→ ~~**`FeatureMapPlayer`** → C3 → C4~~ → C5 → C6 → C7 → C8 → C9 → ~~D1~~ → D2 → D3 → D4 → D5 → D6.
+→ ~~**`FeatureMapPlayer`** → C3 → C4~~ → C5 → C6 → C7 → C8 → C9 → ~~D1~~ → D2 → ~~D3~~ → D4 → D5 → D6.
 
 Struck-through batches are done. The guards step landed with B6 rather than before it, in the same
 session. The order was then broken deliberately: C1 was built before B8–B10 at the user's direction,

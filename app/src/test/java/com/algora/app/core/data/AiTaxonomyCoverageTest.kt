@@ -342,11 +342,11 @@ class AiTaxonomyCoverageTest {
             // `word_embeddings` is the umbrella; D3 authors the five models under it.
             "Word Embeddings (Vectorization)" to linkedMapOf(
                 "One-Hot Encoding" to emptyList(),                      // B8
-                "Word2Vec (CBOW)" to emptyList(),                       // D3
-                "Word2Vec (Skip-Gram)" to emptyList(),                  // D3
-                "GloVe (Global Vectors)" to emptyList(),                // D3
-                "FastText (Subword info)" to emptyList(),               // D3
-                "ELMo (Contextual Embeddings)" to emptyList(),          // D3
+                "Word2Vec (CBOW)" to listOf("word2vec_cbow"),
+                "Word2Vec (Skip-Gram)" to listOf("word2vec_skipgram"),
+                "GloVe (Global Vectors)" to listOf("glove"),
+                "FastText (Subword info)" to listOf("fasttext"),
+                "ELMo (Contextual Embeddings)" to listOf("elmo"),
             ),
             "Recurrent Neural Networks" to linkedMapOf(
                 "Vanilla RNNs" to listOf("rnn"),
@@ -516,7 +516,7 @@ class AiTaxonomyCoverageTest {
 
     // The ratchet. Move it when a batch lands; a batch that does not move it did not close any doc
     // entry, which is worth noticing.
-    private val expectedCoveredCount = 236
+    private val expectedCoveredCount = 241
 
     // Doc entries the app answers from the DSA taxonomy rather than an AI section. Deliberate reuse
     // — the alternative is a duplicate page — but small and explicit, so it cannot grow by accident.

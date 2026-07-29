@@ -3374,7 +3374,219 @@ private fun cosineFrames(): List<CloudFrame> {
     return frames
 }
 
+// ── D3 · GloVe: global co-occurrence, then the space it produces ─────────────
+
+private fun gloveFrames(): List<CloudFrame> {
+    val frames = mutableListOf<CloudFrame>()
+    val ratios = GloveLab.probeWords.map { it to GloveLab.ratio(it) }
+
+    frames += CloudFrame(
+        status = "GloVe starts from a complaint about word2vec: it learns from local windows one at a time and " +
+            "never looks at the corpus-wide counts directly. The paper's argument is that the information lives " +
+            "in *ratios* of co-occurrence probabilities. P(solid|ice)/P(solid|steam) = ${"%.1f".format(ratios[0].second)} and " +
+            "P(gas|ice)/P(gas|steam) = ${"%.2f".format(ratios[1].second)} — the ratio says which word discriminates, where the raw " +
+            "probabilities are both tiny and say nothing.",
+        dots = emptyList(),
+        profile = ratios.map { ProfileBar((it.second.toFloat() / 9f).coerceIn(0.02f, 1f), if (it.second > 1.5) 0 else if (it.second < 0.5) 1 else 2) },
+        profileLabel = "P(w|ice) / P(w|steam): " + ratios.joinToString("  ") { "${it.first} ${"%.2f".format(it.second)}" },
+        readout = "words related to neither — water ${"%.2f".format(ratios[2].second)}, fashion ${"%.2f".format(ratios[3].second)} — sit at 1",
+    )
+
+    frames += CloudFrame(
+        status = "So the model is fitted to the counts themselves. X is built once by sweeping the corpus with a " +
+            "±${GloveLab.window} window, incrementing by 1/distance so a neighbour counts more than a word five away. On this " +
+            "corpus that is ${GloveLab.nonZeroEntries()} non-zero cells out of ${GloveLab.totalCells()} — ${"%.0f".format(GloveLab.sparsity() * 100)}% of the matrix is empty, and only the " +
+            "non-zero entries are ever visited.",
+        dots = emptyList(),
+        profile = listOf("the king", "king kingdom", "king crown", "king dog").map { pair ->
+            val (a, b) = pair.split(" ")
+            ProfileBar((GloveLab.cooccur(a, b) / 6f).coerceIn(0.01f, 1f), if (GloveLab.cooccur(a, b) > 0f) 0 else 1)
+        },
+        profileLabel = "X(i,j): the·king ${"%.2f".format(GloveLab.cooccur("the", "king"))}  king·kingdom ${"%.2f".format(GloveLab.cooccur("king", "kingdom"))}  king·crown ${"%.2f".format(GloveLab.cooccur("king", "crown"))}  king·dog ${"%.2f".format(GloveLab.cooccur("king", "dog"))}",
+        readout = "${GloveLab.nonZeroEntries()} / ${GloveLab.totalCells()} cells non-zero",
+    )
+
+    frames += CloudFrame(
+        status = "The objective is weighted least squares on log X: (wᵢ·w̃ⱼ + bᵢ + b̃ⱼ − log Xᵢⱼ)², times a weight " +
+            "f(X) = (X/${GloveLab.xMax.toInt()})^${GloveLab.alpha} that caps at 1. The weighting is the design: without it, the handful of " +
+            "\"the\" pairs would dominate every gradient. Here X(the, king) = ${"%.2f".format(GloveLab.cooccur("the", "king"))} gets weight ${"%.2f".format(GloveLab.weight(GloveLab.cooccur("the", "king")))} while " +
+            "X(king, crown) = ${"%.2f".format(GloveLab.cooccur("king", "crown"))} gets ${"%.2f".format(GloveLab.weight(GloveLab.cooccur("king", "crown")))} — frequent pairs count more, but sub-linearly.",
+        dots = emptyList(),
+        profile = listOf(0.5f, 2f, 5f, 10f, 20f).map { ProfileBar(GloveLab.weight(it), 0) },
+        profileLabel = "f(X) at X = 0.5, 2, 5, 10, 20 — flat once X ≥ ${GloveLab.xMax.toInt()}",
+        readout = "zero cells contribute nothing at all",
+    )
+
+    val model = GloveLab.model
+    frames += CloudFrame(
+        status = "Fitted by SGD over the ${GloveLab.nonZeroEntries()} non-zero entries for ${GloveLab.epochs} epochs; weighted loss falls from " +
+            "${"%.3f".format(model.losses.first())} to ${"%.5f".format(model.losses.last())}. Note what this is *not*: there is no sliding window at training " +
+            "time and no sampling — the corpus was reduced to a matrix once, and the matrix is the training set. " +
+            "That is what makes GloVe trivially parallel and reproducible.",
+        dots = emptyList(),
+        profile = model.losses.filterIndexed { i, _ -> i % 2 == 0 }
+            .map { ProfileBar((it / model.losses.first()).coerceIn(0.01f, 1f), 0) },
+        profileLabel = "weighted loss per epoch",
+        readout = "loss ${"%.3f".format(model.losses.first())} → ${"%.5f".format(model.losses.last())}",
+    )
+
+    // The trained vectors are 8-D; the plot is their first two principal components, which is how
+    // embeddings are actually inspected.
+    val projection = GloveLab.project2D(model)
+    val royalty = setOf("king", "queen", "monarch", "crown", "kingdom", "throne")
+    val people = setOf("man", "woman", "dog", "book", "water")
+    fun dotFor(word: String, emphasis: Emphasis = Emphasis.NORMAL): Dot {
+        val (x, y) = GloveLab.coordinateOf(projection, word)
+        val group = when (word) {
+            in royalty -> 0
+            in people -> 1
+            else -> 2
+        }
+        return Dot(P(x, y), group, emphasis)
+    }
+
+    frames += CloudFrame(
+        status = "The ${GloveLab.dim}-dimensional vectors, projected onto their first two principal components — which is " +
+            "how embeddings are actually looked at, because nobody can read 300 numbers. king and queen land on " +
+            "top of each other (cosine ${"%.2f".format(GloveLab.similarity(model, "king", "queen"))}); \"the\", which co-occurs with everything, is pushed to the edge " +
+            "with no neighbours at all.",
+        dots = GloveLab.vocab.map { dotFor(it) },
+        readout = "nearest to king: " + GloveLab.nearest(model, "king", 3).joinToString(", ") { "${it.first} ${"%.2f".format(it.second)}" },
+    )
+
+    val analogy = GloveLab.analogy(model, "king", "man", "woman")
+    frames += CloudFrame(
+        status = "The offsets between king/man and queen/woman are roughly parallel, which is what makes the " +
+            "arithmetic work: king − man + woman lands nearest \"${analogy.first().first}\" at cosine ${"%.2f".format(analogy.first().second)}. Skip-gram scores " +
+            "the same analogy higher on this corpus (${"%.2f".format(Word2VecLab.vocab.filter { it !in listOf("king", "man", "woman") }.maxOf { w ->
+            val t = FloatArray(Word2VecLab.dim) {
+                Word2VecLab.skipGram.vector("king")[it] - Word2VecLab.skipGram.vector("man")[it] + Word2VecLab.skipGram.vector("woman")[it]
+            }
+            cosineOf(t, Word2VecLab.skipGram.vector(w))
+        })}) — 20 sentences is far too little to rank the two methods, and the published comparisons are run on billions of tokens.",
+        dots = GloveLab.vocab.map {
+            dotFor(it, if (it in listOf("king", "queen", "man", "woman")) Emphasis.ACTIVE else Emphasis.FADED)
+        },
+        segments = listOf(
+            Segment(
+                P(GloveLab.coordinateOf(projection, "man").first, GloveLab.coordinateOf(projection, "man").second),
+                P(GloveLab.coordinateOf(projection, "king").first, GloveLab.coordinateOf(projection, "king").second),
+                QueryColor,
+            ),
+            Segment(
+                P(GloveLab.coordinateOf(projection, "woman").first, GloveLab.coordinateOf(projection, "woman").second),
+                P(GloveLab.coordinateOf(projection, "queen").first, GloveLab.coordinateOf(projection, "queen").second),
+                QueryColor,
+                dashed = true,
+            ),
+        ),
+        readout = "king − man + woman ≈ ${analogy.first().first} (${"%.2f".format(analogy.first().second)})",
+    )
+
+    frames += CloudFrame(
+        status = "What GloVe buys over word2vec is not accuracy but shape: the corpus is summarised once into a " +
+            "matrix, training touches only non-zero cells, and the result is deterministic and parallelisable. " +
+            "What it costs is memory — the matrix is |V|² in the worst case, which is why real implementations " +
+            "cap the window, prune rare pairs and stream the counts.",
+        dots = GloveLab.vocab.map { dotFor(it) },
+        readout = "counts once · fit many · no sampling",
+    )
+    return frames
+}
+
+// ── D3 · ELMo: one vector per occurrence ────────────────────────────────────
+
+private fun elmoFrames(): List<CloudFrame> {
+    val frames = mutableListOf<CloudFrame>()
+    val projection = ElmoLab.project2D()
+    val staticPoint = P(projection.last().first, projection.last().second)
+    fun occurrence(i: Int, emphasis: Emphasis = Emphasis.NORMAL) =
+        Dot(P(projection[i].first, projection[i].second), if (ElmoLab.senseOf[i] == "river") 0 else 1, emphasis)
+
+    frames += CloudFrame(
+        status = "Every embedding so far gives one vector per *type*: \"bank\" has a single row in the table, and " +
+            "the river and the money senses share it. Its similarity with itself is ${"%.1f".format(ElmoLab.staticSimilarity())} by construction — " +
+            "there is nothing else it could be.",
+        dots = listOf(Dot(staticPoint, 2, Emphasis.QUERY)),
+        readout = "static: 1 vector for ${ElmoLab.sentences.size} occurrences",
+    )
+
+    frames += CloudFrame(
+        status = "ELMo makes the representation a function of the sentence instead. A two-layer bidirectional " +
+            "LSTM language model reads the whole sentence, and a token's vector is a learned weighted sum of its " +
+            "layers — so the same word in four sentences produces four different vectors.",
+        dots = ElmoLab.sentences.indices.map { occurrence(it) } + Dot(staticPoint, 2, Emphasis.FADED),
+        readout = "${ElmoLab.sentences.size} occurrences of \"${ElmoLab.target}\" · ${ElmoLab.sentences.size} vectors",
+    )
+
+    frames += CloudFrame(
+        status = "The two river sentences land together and the two money sentences land together: within a " +
+            "sense the cosine is ${"%.3f".format(ElmoLab.similarity(0, 1))} and ${"%.3f".format(ElmoLab.similarity(2, 3))}, and every cross-sense pair scores lower " +
+            "(${"%.3f".format(ElmoLab.acrossSense())} on average). Word sense disambiguation, with no sense inventory and no labels — the " +
+            "senses were never enumerated, they fell out of context.",
+        dots = ElmoLab.sentences.indices.map { occurrence(it, Emphasis.ACTIVE) } + Dot(staticPoint, 2, Emphasis.FADED),
+        segments = listOf(
+            Segment(P(projection[0].first, projection[0].second), P(projection[1].first, projection[1].second), CloudColors[0]),
+            Segment(P(projection[2].first, projection[2].second), P(projection[3].first, projection[3].second), CloudColors[1]),
+        ),
+        readout = "within ${"%.3f".format(ElmoLab.withinSense())} · across ${"%.3f".format(ElmoLab.acrossSense())} · gap ${"%.3f".format(ElmoLab.senseGap())}",
+    )
+
+    frames += CloudFrame(
+        status = "This lab's contextual layer is a stand-in — a token's vector mixed with the mean of its " +
+            "sentence — so the gap it produces (${"%.2f".format(ElmoLab.senseGap())}) is far narrower than a trained biLM's. What " +
+            "reproduces faithfully is the ordering: every same-sense pair beats every cross-sense pair, which is " +
+            "the property the topic is about.",
+        dots = ElmoLab.sentences.indices.map { occurrence(it) } + Dot(staticPoint, 2, Emphasis.QUERY),
+        rings = listOf(
+            Ring(P((projection[0].first + projection[1].first) / 2, (projection[0].second + projection[1].second) / 2), 0.18f, CloudColors[0]),
+            Ring(P((projection[2].first + projection[3].first) / 2, (projection[2].second + projection[3].second) / 2), 0.18f, CloudColors[1]),
+        ),
+        readout = "same-sense pairs: ${"%.3f".format(ElmoLab.similarity(0, 1))}, ${"%.3f".format(ElmoLab.similarity(2, 3))} — both above every cross pair",
+    )
+
+    frames += CloudFrame(
+        status = "The deep part matters as much as the bidirectional part: ELMo's contribution was that the " +
+            "*lower* layer captures syntax and the upper one semantics, so a task learns its own mix — γ·Σ sⱼhⱼ, " +
+            "with s learned per task. Freezing the biLM and training only those weights beat the state of the " +
+            "art on six benchmarks at once in 2018.",
+        dots = ElmoLab.sentences.indices.map { occurrence(it) },
+        readout = "layer 0 characters · layer 1 syntax · layer 2 semantics",
+    )
+
+    frames += CloudFrame(
+        status = "And the trade it introduced, which every contextual model since inherits: a lookup table of " +
+            "1M words at 300 dimensions is ${"%,d".format(ElmoLab.lookupParameters())} parameters you can memory-map, while ELMo is " +
+            "${"%,d".format(ElmoLab.elmoParameters())} parameters that must *run* on every sentence. Smaller model, larger bill — you can " +
+            "no longer precompute anything. BERT then replaced the LSTM with a transformer and made both numbers " +
+            "bigger again.",
+        dots = ElmoLab.sentences.indices.map { occurrence(it) } + Dot(staticPoint, 2, Emphasis.QUERY),
+        readout = "static: lookup · contextual: inference per token",
+    )
+    return frames
+}
+
 private val cloudConfigs = mapOf(
+    "glove" to CloudConfig(
+        intro = "The co-occurrence ratio GloVe is derived from, the weighting that keeps \"the\" from dominating, " +
+            "and the vectors it fits — plotted as their first two principal components.",
+        legend = listOf(
+            CloudColors[0] to "Royalty",
+            CloudColors[1] to "People / objects",
+            QueryColor to "Analogy offset",
+        ),
+        build = ::gloveFrames,
+    ),
+    "elmo" to CloudConfig(
+        intro = "One word, four sentences, four vectors: the same \"bank\" contextualised, with the sense " +
+            "separation measured against the single static vector it replaces.",
+        legend = listOf(
+            CloudColors[0] to "River sense",
+            CloudColors[1] to "Money sense",
+            QueryColor to "Static vector",
+        ),
+        build = ::elmoFrames,
+    ),
     "cosine_similarity" to CloudConfig(
         intro = "Four documents in a two-term space: the same document at two lengths, one with the opposite " +
             "emphasis, and a query — ranked by angle and by distance, which disagree.",

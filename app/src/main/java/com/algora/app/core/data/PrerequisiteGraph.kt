@@ -241,6 +241,11 @@ object PrerequisiteGraph {
         "bpe" to listOf("tokenization"),
         "ner" to listOf("tokenization", "rnn_lstm"),
         "rag" to listOf("word_embeddings", "llms"),
+        "word2vec_cbow" to listOf("word_embeddings"),
+        "word2vec_skipgram" to listOf("word_embeddings"),
+        "glove" to listOf("word2vec_skipgram", "bow_tfidf"),
+        "fasttext" to listOf("word2vec_skipgram", "bpe"),
+        "elmo" to listOf("word2vec_skipgram", "rnn_lstm"),
     )
 
     fun prereqsOf(topicId: String): List<String> = prerequisites[topicId].orEmpty()
