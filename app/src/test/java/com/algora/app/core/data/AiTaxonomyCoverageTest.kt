@@ -331,13 +331,13 @@ class AiTaxonomyCoverageTest {
                 "Jaccard Similarity" to listOf("jaccard_similarity"),
             ),
             "Syntactic & Semantic Analysis" to linkedMapOf(
-                "Part-of-Speech (POS) Tagging" to emptyList(),          // D2
+                "Part-of-Speech (POS) Tagging" to listOf("pos_tagging"),
                 "Named Entity Recognition (NER)" to listOf("ner"),
-                "Dependency Parsing" to emptyList(),                    // D2
-                "Constituency Parsing" to emptyList(),                  // D2
-                "Chunking" to emptyList(),                              // D2
-                "Coreference Resolution" to emptyList(),                // D2
-                "Sentiment Analysis (Lexicon Based)" to emptyList(),    // D2
+                "Dependency Parsing" to listOf("dependency_parsing"),
+                "Constituency Parsing" to listOf("constituency_parsing"),
+                "Chunking" to listOf("chunking"),
+                "Coreference Resolution" to listOf("coreference"),
+                "Sentiment Analysis (Lexicon Based)" to listOf("sentiment_lexicon"),
             ),
             // `word_embeddings` is the umbrella; D3 authors the five models under it.
             "Word Embeddings (Vectorization)" to linkedMapOf(
@@ -516,7 +516,7 @@ class AiTaxonomyCoverageTest {
 
     // The ratchet. Move it when a batch lands; a batch that does not move it did not close any doc
     // entry, which is worth noticing.
-    private val expectedCoveredCount = 241
+    private val expectedCoveredCount = 247
 
     // Doc entries the app answers from the DSA taxonomy rather than an AI section. Deliberate reuse
     // — the alternative is a duplicate page — but small and explicit, so it cannot grow by accident.

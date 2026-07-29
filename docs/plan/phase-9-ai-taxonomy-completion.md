@@ -79,14 +79,14 @@ below.
 | C4 · Object Detection & Segmentation | 9 | **Done** | `FeatureMapPlayer` gained a box/mask scene; new `DetectionMath.kt` |
 | C5–C9 | 38 | Planned | |
 | D1 · Preprocessing + Statistical NLP | 8 | **Done** | New `nlp_statistical`; no new widget. TokenStrip frame guard + `D1MathTest`, which caught two live errors |
-| D2 | 6 | Planned | |
+| D2 · Syntactic & Semantic Analysis | 6 | **Done** | New `nlp_syntax`; no new widget. Taggers and parsers run and scored in `SyntaxMath.kt`; `D2MathTest` |
 | D3 · Word Embeddings | 5 | **Done** | New `nlp_embeddings`; no new widget. Models trained for real in `EmbeddingMath.kt`; `D3MathTest` |
 | D4–D6 | 31 | Planned | |
-| **Total** | **226** | **122 done** | 346 browsable topics, counted from the section lists |
+| **Total** | **226** | **128 done** | 352 browsable topics, counted from the section lists |
 
 Sections against the doc, measured by `AiTaxonomyCoverageTest` rather than counted by hand:
-**RL 71/71**, ML 84/113, **DL 57/96**, NLP 29/77 — **241 of 357 overall**. ML is 75 topics of its
-eventual ~100; DL is at 50; NLP is at 25. Browsable topics across the app: **346**, which
+**RL 71/71**, ML 84/113, **DL 57/96**, NLP 35/77 — **247 of 357 overall**. ML is 75 topics of its
+eventual ~100; DL is at 50; NLP is at 31. Browsable topics across the app: **352**, which
 is what `DataStructuresTopics + AlgorithmsTopics + the four AI sections` actually sum to — the
 "taxonomy 200 → N of 426" running tally this table used to carry had drifted from the lists by two
 dozen, so it has been dropped in favour of the measured figure.
@@ -133,8 +133,9 @@ generic buckets are being hollowed out the same way ML's were — `dl_architectu
 `dl_specialized`)
 
 **NLP — 11 categories.** Built so far: `nlp_preprocessing` (kept, renamed "Text Preprocessing"),
-`nlp_statistical` (D1, which also took `bow_tfidf` off Preprocessing) and `nlp_embeddings` (D3, which
-took the `word_embeddings` umbrella off Modeling and kept it as the category's landing topic). Full list
+`nlp_statistical` (D1, which also took `bow_tfidf` off Preprocessing), `nlp_syntax` (D2, which took
+`ner` off Modeling) and `nlp_embeddings` (D3, which took the `word_embeddings` umbrella off Modeling
+and kept it as the category's landing topic). Full list
 (`nlp_preprocessing` (kept), `nlp_statistical`, `nlp_syntax`,
 `nlp_embeddings`, `nlp_rnn`, `nlp_transformer`, `nlp_pretrained`, `nlp_modern_llm`,
 `nlp_finetuning`, `nlp_beyond`, `nlp_metrics`)
@@ -811,11 +812,37 @@ pins both halves so a re-tune cannot quietly make greedy right. The add-k frame 
 optimum (k=1 → 5.20, k=0.1 → 3.42, k=0.01 → 4.34) rather than asserting that smoothing helps, and it
 also prices what smoothing costs on a *seen* sentence (1.86 → 4.51).
 
-**D2 · Syntactic & Semantic Analysis** — 6 topics
-POS Tagging · Dependency Parsing · Constituency Parsing · Chunking · Coreference Resolution ·
-Sentiment Analysis (Lexicon)
-*Sims:* `TokenStripPlayer` (tag assignment, chunk spans, coref chains linking mentions),
-`TreeVisualizer` (dependency arcs and constituency trees).
+**D2 · Syntactic & Semantic Analysis** — 6 topics into a new `nlp_syntax` — **Done**
+`pos_tagging` · `chunking` · `dependency_parsing` · `constituency_parsing` · `coreference` ·
+`sentiment_lexicon`
+
+New category `nlp_syntax` ("Syntactic & Semantic Analysis", icon `browser`). `ner` moved into it from
+Modeling — the doc lists it under this heading — so the category reads as a pipeline: tag, chunk,
+recognise entities, parse, resolve reference, then score sentiment. `pos_tagging` is free (the doc
+carries no lock on it), the rest premium. Sims exactly as planned: `TokenStripPlayer` for tagging,
+chunking, coreference and sentiment; `TreeVisualizer` for the two parsers.
+
+`SyntaxMath.kt` runs and scores everything rather than describing it: a most-frequent-tag baseline
+and a bigram HMM estimated from the same mini treebank, an arc-standard oracle parser with the full
+transition sequence, evalb over labelled spans, a head-percolation converter, a regex chunker with
+span-level scoring, an agreement-based coreference resolver, and a lexicon scorer with and without
+negation rules.
+
+**Four things the probe changed before the copy was written:**
+- **The HMM tagger tied the baseline** (12/14 each) and made a new error of its own, because no
+  training sentence contained a VBP → RB transition — so the held-out "the dogs walk slowly" was
+  tagged DT NN VBZ RB. Two training sentences supply that evidence and it now scores 14/14. Without
+  the probe, the topic's central comparison would have been asserted and false.
+- **Coreference chains were being read off immediate links.** "her" resolves to "She", not to Ada
+  Lovelace, so the resolver looked 67% accurate; adding the transitive closure the task actually
+  asks for takes it to 100%. Both numbers are now in the lab, because the gap *is* the lesson.
+- **LAS could not differ from UAS** — the planted wrong parse had only a head error, so both scores
+  were 0.83 and the reason for having two metrics was invisible. A label error was added: 0.83 UAS
+  against 0.67 LAS.
+- **One narration idea did not survive measurement.** The chunking frame was going to say span
+  scoring is stricter than token accuracy; on this sentence they are 0.80 and 0.78, so the claim is
+  not supported. What *is* demonstrable is the thing that matters: the mis-bounded span overlaps
+  gold by two of three tokens and scores exactly zero.
 
 **D3 · Word Embeddings** — 5 topics into a new `nlp_embeddings` — **Done**
 `word2vec_cbow` · `word2vec_skipgram` · `glove` · `fasttext` · `elmo`
@@ -897,7 +924,7 @@ monetization angle.
 
 ## Guards
 
-**Shipping and green (199 tests):**
+**Shipping and green (218 tests):**
 - `ContentCoverageTest` — every browsable topic has content, nothing resolves to `NotYetAvailable`,
   and every prerequisite and cross-link id resolves. It has caught real breakage every batch and is
   run (with `--rerun-tasks`) at the end of each one.
@@ -915,7 +942,7 @@ monetization angle.
   mapped to the topic ids serving it or to an explicit gap; pins the entry count, id resolution,
   section membership, and the covered count. Its failure message prints the remaining backlog.
 - `DimReductionMathTest` (B6), `B7MathTest` (B7), `DeepNetMathTest` (C1), `ActivationMathTest` (C2),
-  `CnnMathTest` (C3), `DetectionMathTest` (C4), `D1MathTest` (D1) and `D3MathTest` (D3) — pin the properties each
+  `CnnMathTest` (C3), `DetectionMathTest` (C4), `D1MathTest`, `D2MathTest` and `D3MathTest` — pin the properties each
   batch's copy leans on, so a re-tune that makes a topic pointless fails instead of shipping. Worth
   continuing per batch; `B7MathTest` caught a wrong claim that had already been written, and
   `D1MathTest` caught one this plan document had asserted.
@@ -964,7 +991,10 @@ number closed no doc entry, which is worth noticing at the time rather than at t
   `DecisionSurface`. D3 is the strongest case yet for the probe-before-copy rule: its labs train
   rather than replay fixed numbers, and the first run produced a degenerate GloVe geometry, an ELMo
   sense separation that did not exist, and a rare-word comparison pointing the opposite way to the
-  literature. All three read as perfectly good copy if written before looking.
+  literature. All three read as perfectly good copy if written before looking. D2 then found four
+  more of the same kind in one batch — a contextual tagger that did not beat its baseline, a
+  coreference score computed on the wrong unit, two parser metrics that could not differ, and a
+  comparison between metrics that the numbers did not support.
 - **Topic-id collisions.** `TopicRegistry` collapses cross-listed ids first-wins (`perceptron`,
   `transformers`). Tracks C and D cross-list far more (backprop, LSTM, attention, RLHF, all seven
   Deep RL entries). `AiTaxonomyCoverageTest` now makes these reviewable — a cross-listed entry
@@ -979,7 +1009,7 @@ number closed no doc entry, which is worth noticing at the time rather than at t
 ## Suggested order
 
 ~~A1 → A2~~ → ~~B1 → B2 → B3 → B4 → B5~~ → ~~guards~~ → ~~B6 → B7~~ → **B8** → B9 → B10 → ~~C1 → C2~~
-→ ~~**`FeatureMapPlayer`** → C3 → C4~~ → C5 → C6 → C7 → C8 → C9 → ~~D1~~ → D2 → ~~D3~~ → D4 → D5 → D6.
+→ ~~**`FeatureMapPlayer`** → C3 → C4~~ → C5 → C6 → C7 → C8 → C9 → ~~D1~~ → ~~D2~~ → ~~D3~~ → D4 → D5 → D6.
 
 Struck-through batches are done. The guards step landed with B6 rather than before it, in the same
 session. The order was then broken deliberately: C1 was built before B8–B10 at the user's direction,

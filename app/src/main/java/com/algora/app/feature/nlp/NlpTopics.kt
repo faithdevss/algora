@@ -27,6 +27,7 @@ private fun topic(
 
 private val preprocessing = NlpCategories.preprocessing
 private val statistical = NlpCategories.statistical
+private val syntax = NlpCategories.syntax
 private val embeddings = NlpCategories.embeddings
 private val modeling = NlpCategories.modeling
 
@@ -53,6 +54,18 @@ private val statisticalTopics = listOf(
     topic("pcfg", "Probabilistic Context-Free Grammars", statistical, "Rank the parse trees a grammar allows instead of listing them.", isPremium = true, difficulty = Difficulty.ADVANCED),
 )
 
+// D2. `ner` moves here from Modeling — the doc lists Named Entity Recognition under Syntactic &
+// Semantic Analysis, alongside the five topics this batch authors.
+private val syntaxTopics = listOf(
+    topic("pos_tagging", "Part-of-Speech Tagging", syntax, "Assign each token its syntactic category, in context.", difficulty = Difficulty.BEGINNER),
+    topic("chunking", "Chunking", syntax, "Find flat phrases without building a whole parse tree.", isPremium = true),
+    topic("ner", "Named Entity Recognition", syntax, "Tag each token as person, place, organization or nothing.", isPremium = true),
+    topic("dependency_parsing", "Dependency Parsing", syntax, "One labelled arc per word — what relates to what.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("constituency_parsing", "Constituency Parsing", syntax, "Nested phrase structure, scored by labelled brackets.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("coreference", "Coreference Resolution", syntax, "Decide which mentions point at the same entity.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("sentiment_lexicon", "Sentiment Analysis (Lexicon)", syntax, "Score text by summing word valences — and handling negation.", isPremium = true),
+)
+
 // D3. `word_embeddings` moves here from Modeling and stays as the category's landing topic — it is
 // the umbrella the doc's five models sit under, and the five below author them properly.
 private val embeddingTopics = listOf(
@@ -69,12 +82,11 @@ private val modelingTopics = listOf(
     topic("attention", "Attention", modeling, "Let the model weigh every token against every other.", isPremium = true),
     topic("transformers", "Transformers", modeling, "Stacked self-attention — the backbone of modern NLP.", isPremium = true),
     topic("llms", "LLMs", modeling, "Transformers scaled to billions of parameters.", isPremium = true),
-    topic("ner", "Named Entity Recognition", modeling, "Tag each token as person, place, organization or nothing.", isPremium = true),
     topic("rag", "Retrieval-Augmented Generation", modeling, "Retrieve relevant passages and condition the model on them.", isPremium = true),
 )
 
 object NlpTopics {
-    val topics: List<Topic> = preprocessingTopics + statisticalTopics + embeddingTopics + modelingTopics
+    val topics: List<Topic> = preprocessingTopics + statisticalTopics + syntaxTopics + embeddingTopics + modelingTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }

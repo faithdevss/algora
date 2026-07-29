@@ -1313,6 +1313,166 @@ private fun fpGrowthFrames(): List<TreeFrame> {
     return builder.frames
 }
 
+// ── D2 · Dependency parsing: an arc-standard transition sequence ─────────────
+
+private fun dependencyFrames(): List<TreeFrame> {
+    val b = TreeBuilder()
+    val words = DependencyLab.sentence
+    val steps = DependencyLab.parse()
+
+    // One node per word plus ROOT; arcs become parent links as the parser builds them.
+    val rootId = b.add("ROOT", null, 0)
+    val nodeOf = words.indices.associate { i -> (i + 1) to b.add(words[i], null, i + 1) }
+
+    b.frame(
+        "A dependency parse is a set of labelled arcs, one per word: every token gets exactly one head, and " +
+            "one token — the main verb here — is headed by ROOT. No phrase nodes exist at all, which is the " +
+            "difference from a constituency tree.",
+        active = nodeOf.values.toSet(),
+    )
+
+    b.frame(
+        "Arc-standard parsing runs a stack, a buffer and three moves. SHIFT pushes the next word; LEFT-ARC " +
+            "attaches the second stack item to the top and pops it; RIGHT-ARC attaches the top to the second " +
+            "and pops it. An arc is only drawn once its dependent has all of its own children, so nothing has " +
+            "to be revisited.",
+        marked = setOf(rootId),
+    )
+
+    steps.forEachIndexed { index, step ->
+        // Re-hang every node according to the arcs built so far.
+        nodeOf.forEach { (word, id) ->
+            val arc = step.arcs.firstOrNull { it.second == word }
+            if (arc == null) b.reparent(id, null, word)
+            else b.reparent(id, if (arc.first == 0) rootId else nodeOf.getValue(arc.first), word)
+        }
+        step.arcs.forEach { (head, dependent, label) ->
+            b.relabel(nodeOf.getValue(dependent), "${words[dependent - 1]} · $label")
+        }
+
+        val stackText = step.stack.joinToString(" ") { DependencyLab.wordAt(it) }
+        val bufferText = step.buffer.joinToString(" ") { DependencyLab.wordAt(it) }
+        val moveText = when (step.move) {
+            DependencyLab.Move.SHIFT -> "SHIFT — push the next word; no arc yet."
+            DependencyLab.Move.LEFT_ARC -> "LEFT-ARC (${step.label}) — the second stack item becomes a dependent of the top and is removed."
+            DependencyLab.Move.RIGHT_ARC -> "RIGHT-ARC (${step.label}) — the top becomes a dependent of the second item and is removed."
+        }
+        b.frame(
+            "Step ${index + 1} of ${steps.size}: $moveText  ·  stack [$stackText]  buffer [$bufferText]  ·  ${step.arcs.size} arc${if (step.arcs.size == 1) "" else "s"} built.",
+            active = step.stack.mapNotNull { if (it == 0) rootId else nodeOf[it] }.toSet(),
+            marked = step.arcs.map { nodeOf.getValue(it.second) }.toSet(),
+        )
+    }
+
+    b.frame(
+        "Done in ${DependencyLab.transitionCount()} transitions, which is exactly 2n for ${words.size} words — every word is shifted once and " +
+            "attached once, so a greedy parser is linear in sentence length. Chart-based (graph) parsers are " +
+            "O(n²) or O(n³) but search globally; the transition family trades that for speed and a classifier " +
+            "that only has to pick the next move.",
+        marked = nodeOf.values.toSet(),
+        path = setOf(rootId),
+    )
+
+    b.frame(
+        "Scoring is per word. UAS counts heads only; LAS also requires the relation to match. A parse with " +
+            "\"small\" attached to the verb instead of the noun, and \"cat\" labelled nsubj instead of obj, " +
+            "scores UAS ${"%.2f".format(DependencyLab.uas(DependencyLab.predictedHeads))} and LAS ${"%.2f".format(DependencyLab.las(DependencyLab.predictedHeads, DependencyLab.predictedLabels))} — the gap between them is entirely label errors on " +
+            "attachments that were right.",
+        marked = setOf(nodeOf.getValue(2), nodeOf.getValue(6)),
+    )
+
+    b.frame(
+        "One structural limit: arc-standard can only build projective trees — no two arcs may cross. " +
+            "\"A hearing is scheduled on the issue today\" needs a crossing arc (hearing → on crosses " +
+            "scheduled → today) and is unreachable by any sequence of these three moves. Roughly 1% of English " +
+            "sentences and far more in German or Czech are non-projective, which is why pseudo-projective " +
+            "transforms, the swap transition and graph-based parsers exist.",
+        marked = nodeOf.values.toSet(),
+    )
+    return b.frames
+}
+
+// ── D2 · Constituency parsing: phrases, brackets and head rules ─────────────
+
+private fun constituencyFrames(): List<TreeFrame> {
+    val b = TreeBuilder()
+    val gold = ConstituencyLab.gold
+
+    // Build the gold tree once; frames differ in what they highlight and in the flat-VP variant.
+    val ids = mutableMapOf<String, Int>()
+    fun build(node: ConstituencyLab.Node, parent: Int?, order: Int, path: String): Int {
+        val id = b.add(if (node.isLeaf) "${node.label} ${node.word}" else node.label, parent, order)
+        ids[path] = id
+        node.children.forEachIndexed { i, child -> build(child, id, i, "$path/$i") }
+        return id
+    }
+    val root = build(gold, null, 0, "")
+
+    b.frame(
+        "A constituency parse groups words into nested phrases: the sentence is an NP and a VP, the NP is a " +
+            "determiner, an adjective and a noun. Every internal node is a phrase, and the words only appear at " +
+            "the leaves — where a dependency parse has arcs between words and no phrase nodes at all.",
+        marked = setOf(root),
+    )
+
+    b.frame(
+        "The units it is scored on are labelled spans: ${ConstituencyLab.spanList(gold).joinToString(", ") { "${it.first}[${it.second},${it.third})" }}. " +
+            "Part-of-speech nodes are excluded by convention, because a tagger's accuracy would otherwise " +
+            "inflate the parser's score.",
+        marked = setOf(root, ids.getValue("/0"), ids.getValue("/1"), ids.getValue("/1/1")),
+    )
+
+    // The flat-VP variant: detach the object NP's children and drop the NP node.
+    val objectNp = ids.getValue("/1/1")
+    val vp = ids.getValue("/1")
+    val det = ids.getValue("/1/1/0")
+    val noun = ids.getValue("/1/1/1")
+    b.reparent(det, vp, 1)
+    b.reparent(noun, vp, 2)
+    b.remove(objectNp)
+
+    val evalb = ConstituencyLab.evalb()
+    b.frame(
+        "Here is a parse that misses one phrase: the object NP is flattened into the VP. Every bracket it does " +
+            "predict is correct, so precision is ${"%.2f".format(evalb.precision)}, but it recovers only ${ConstituencyLab.spanList(ConstituencyLab.predicted).size} of the gold tree's ${ConstituencyLab.spanList(gold).size} " +
+            "spans, so recall is ${"%.2f".format(evalb.recall)} and F1 is ${"%.2f".format(evalb.f1)}. That asymmetry is why evalb reports all three: a parser " +
+            "that emits fewer, safer brackets can hold precision at 1.00 indefinitely.",
+        active = setOf(det, noun),
+        marked = setOf(vp),
+    )
+
+    // Restore the gold shape.
+    val restoredNp = b.add("NP", vp, 1)
+    b.reparent(det, restoredNp, 0)
+    b.reparent(noun, restoredNp, 1)
+    b.frame(
+        "Restored. The two formalisms are convertible, and the conversion is a table of head rules: the head " +
+            "of a VP is its verb, the head of an NP is its rightmost noun, the head of an S is its VP's head. " +
+            "Percolate those upward and every phrase gets a head word.",
+        marked = setOf(restoredNp, vp, ids.getValue("/0")),
+    )
+
+    val heads = ConstituencyLab.toDependencies()
+    b.frame(
+        "Running that conversion on this tree produces heads ${heads.joinToString(", ")} — identical to the " +
+            "dependency lab's gold parse for the same sentence, computed here rather than asserted. This is how " +
+            "the Penn Treebank became a dependency treebank, and why a claim that one formalism carries more " +
+            "information than the other needs to be about the *annotation*, not the notation.",
+        marked = setOf(root),
+        path = ids.values.toSet() - root,
+    )
+
+    b.frame(
+        "Which to use: constituency when the phrase itself is the object of interest — extracting noun phrases, " +
+            "grammar checking, anything that asks \"is this a well-formed clause\" — and dependency when the " +
+            "question is what relates to what, which is most of information extraction and nearly all " +
+            "multilingual work, because dependency annotation transfers across languages with far less " +
+            "redesign (that is the entire premise of Universal Dependencies).",
+        marked = setOf(root),
+    )
+    return b.frames
+}
+
 // ── D1 · Probabilistic CFG: CYK over an ambiguous sentence ───────────────────
 
 private fun pcfgProb(p: Double): String = if (p >= 0.01) "%.2f".format(p) else "%.4f".format(p)
@@ -1467,6 +1627,18 @@ private fun pcfgFrames(): List<TreeFrame> {
 }
 
 private val treeConfigs = mapOf(
+    "dependency_parsing" to TreeConfig(
+        intro = "One sentence parsed by arc-standard transitions, stack and buffer replayed step by step — then " +
+            "UAS against LAS on a wrong parse, and the crossing arc this transition system cannot build.",
+        markedLabel = "Attached",
+        build = ::dependencyFrames,
+    ),
+    "constituency_parsing" to TreeConfig(
+        intro = "The same sentence as nested phrases: the spans evalb scores, a flattened VP costing recall, and " +
+            "head rules converting the tree into the dependency parse next door.",
+        markedLabel = "Constituent",
+        build = ::constituencyFrames,
+    ),
     "pcfg" to TreeConfig(
         intro = "\"she saw the man with the telescope\" parsed by probabilistic CYK: the chart bottom-up, then " +
             "both attachments of the prepositional phrase scored against each other.",

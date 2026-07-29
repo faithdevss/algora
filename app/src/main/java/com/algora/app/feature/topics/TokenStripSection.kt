@@ -1854,6 +1854,379 @@ private fun jaccardFrames(): List<TokenFrame> {
     return frames
 }
 
+// ── D2 · Part-of-speech tagging ──────────────────────────────────────────────
+
+private fun posTaggingFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val ambiguous = PosLab.test[1]
+
+    frames += TokenFrame(
+        status = "Tagging assigns each token a syntactic category. It looks like a lookup until you meet a word " +
+            "with more than one: \"man\" is a noun in one of these sentences and a verb in the other, and no " +
+            "property of the word itself decides which.",
+        chips = listOf("the", "old", "man", "chased").mapIndexed { i, w ->
+            Chip(w, sub = if (w == "man") "NN?" else null, mark = if (i == 2) ChipMark.ACTIVE else ChipMark.IDLE)
+        } + Chip("|") + listOf("they", "man", "a", "boat").mapIndexed { i, w ->
+            Chip(w, sub = if (w == "man") "VBP?" else null, mark = if (i == 1) ChipMark.ACTIVE else ChipMark.IDLE)
+        },
+        chipsLabel = "the same word, two categories",
+        rows = PosLab.tagsOf("man").map { "man as ${it.key}" to "${it.value} in training" },
+    )
+
+    frames += TokenFrame(
+        status = "In this ${PosLab.train.flatten().size}-token treebank only ${PosLab.ambiguousTypes.size} of ${PosLab.typeCount} types is ambiguous — but the ratio is " +
+            "misleading, and on real corpora it is the tokens that matter: about 40% of Brown corpus *tokens* " +
+            "are ambiguous even though only ~11% of its types are, because the ambiguous words are the common " +
+            "ones.",
+        rows = listOf(
+            "types" to "${PosLab.typeCount}",
+            "ambiguous types" to PosLab.ambiguousTypes.joinToString(", "),
+            "ambiguous tokens" to "${"%.1f".format(PosLab.ambiguousTokenShare * 100)}% here",
+            "tagset" to PosLab.tagset.joinToString(" "),
+        ),
+        chips = PosLab.tagset.map { Chip(it) },
+        chipsLabel = "the tagset used here (Penn Treebank uses 45)",
+    )
+
+    val words = ambiguous.map { it.first }
+    val baseline = PosLab.baselineTags(words)
+    frames += TokenFrame(
+        status = "The baseline every tagger is measured against: give each word its most frequent tag in " +
+            "training, and give unknown words NN. It is not a strawman — it reaches about 90% on English, which " +
+            "is why a tagger reporting 92% has barely earned its complexity.",
+        chips = words.mapIndexed { i, w ->
+            Chip(w, sub = baseline[i], mark = if (baseline[i] != ambiguous[i].second) ChipMark.ACTIVE else ChipMark.IDLE)
+        },
+        chipsLabel = "most-frequent-tag baseline",
+        rows = listOf("gold" to ambiguous.joinToString(" ") { it.second }),
+        readout = "${PosLab.baselineScore.correct}/${PosLab.baselineScore.total} = ${"%.1f".format(PosLab.baselineScore.accuracy * 100)}% over the held-out sentences",
+    )
+
+    val viterbi = PosLab.viterbiTags(words)
+    frames += TokenFrame(
+        status = "A bigram HMM estimated from the same training text gets it right: \"they\" is a pronoun, and " +
+            "PRP is far more often followed by a verb than by a noun, so the sequence pulls \"man\" to VBP. " +
+            "Context is doing what per-word frequency cannot.",
+        chips = words.mapIndexed { i, w -> Chip(w, sub = viterbi[i], mark = ChipMark.RESULT) },
+        chipsLabel = "Viterbi over the estimated HMM",
+        rows = listOf(
+            "P(VBP | PRP)" to "%.2f".format(PosLab.a("PRP", "VBP")),
+            "P(NN | PRP)" to "%.2f".format(PosLab.a("PRP", "NN")),
+        ),
+        readout = "${PosLab.viterbiScore.correct}/${PosLab.viterbiScore.total} = ${"%.1f".format(PosLab.viterbiScore.accuracy * 100)}%",
+    )
+
+    val unknown = PosLab.test[2]
+    val unknownWords = unknown.map { it.first }
+    frames += TokenFrame(
+        status = "The harder case is a word training never contained. \"walk\" is unseen, so the baseline falls " +
+            "back to NN and is wrong; the HMM has no emission evidence either, but the tags around it — NNS " +
+            "before, RB after — leave VBP as the only sequence that fits.",
+        chips = unknownWords.mapIndexed { i, w ->
+            Chip(
+                w,
+                sub = "${PosLab.baselineTags(unknownWords)[i]} → ${PosLab.viterbiTags(unknownWords)[i]}",
+                mark = if (w == "walk") ChipMark.RESULT else ChipMark.IDLE,
+            )
+        },
+        chipsLabel = "baseline → Viterbi",
+        rows = listOf("gold" to unknown.joinToString(" ") { it.second }),
+        readout = "unknown words are where taggers earn their keep",
+    )
+
+    frames += TokenFrame(
+        status = "Both errors the baseline makes are the same error twice: a verb read as a noun, because nouns " +
+            "are more frequent. Real taggers add suffix features (-ing, -ed, -ly), capitalisation and a " +
+            "left-context window, which is how they reach 97% — and the remaining 3% is mostly noun/verb and " +
+            "adjective/participle, the same two confusions, plus genuine annotator disagreement.",
+        chips = PosLab.baselineErrors().map { (word, gold, predicted) -> Chip(word, sub = "$predicted ≠ $gold", mark = ChipMark.ACTIVE) },
+        chipsLabel = "baseline errors",
+        rows = listOf(
+            "baseline" to "${"%.1f".format(PosLab.baselineScore.accuracy * 100)}%",
+            "HMM + Viterbi" to "${"%.1f".format(PosLab.viterbiScore.accuracy * 100)}%",
+            "real English" to "~90% baseline, ~97% modern taggers",
+            "human ceiling" to "~97% agreement between annotators",
+        ),
+    )
+    return frames
+}
+
+// ── D2 · Chunking ────────────────────────────────────────────────────────────
+
+private fun chunkingFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val chunks = ChunkLab.chunk()
+    val bio = ChunkLab.bio()
+
+    frames += TokenFrame(
+        status = "Chunking — shallow parsing — finds the flat phrases in a sentence without building a tree. " +
+            "It runs over POS tags, not words, which is why one regular expression per phrase type is enough: " +
+            "NP = DT? JJ* NN+, VP = a verb, PP = a preposition.",
+        chips = ChunkLab.sentence.mapIndexed { i, w -> Chip(w, sub = ChunkLab.tags[i]) },
+        chipsLabel = "tagged input",
+    )
+
+    chunks.forEachIndexed { index, (type, start, end) ->
+        frames += TokenFrame(
+            status = "Chunk ${index + 1}: \"${ChunkLab.sentence.subList(start, end).joinToString(" ")}\" is a $type, matched by " + when (type) {
+                "NP" -> "DT? JJ* NN+ — an optional determiner, any adjectives, then the nouns."
+                "VP" -> "a single verb tag; chunk grammars deliberately do not nest a VP over its object."
+                else -> "a preposition on its own; the noun phrase after it is a separate chunk."
+            } + " Chunks never nest and never overlap, which is the whole simplification.",
+            chips = ChunkLab.sentence.mapIndexed { i, w ->
+                Chip(w, sub = ChunkLab.tags[i], mark = if (i in start until end) ChipMark.ACTIVE else ChipMark.DIM)
+            },
+            chipsLabel = "$type [$start, $end)",
+        )
+    }
+
+    frames += TokenFrame(
+        status = "The output is usually written as BIO tags so a sequence labeller can learn it: B- starts a " +
+            "chunk, I- continues one, O is outside. That single encoding turns a span problem into a per-token " +
+            "classification — the same trick NER uses, and the reason both tasks share their model.",
+        chips = ChunkLab.sentence.mapIndexed { i, w -> Chip(w, sub = bio[i], mark = if (bio[i].startsWith("B")) ChipMark.RESULT else ChipMark.IDLE) },
+        chipsLabel = "BIO encoding",
+        rows = listOf("spans" to "${chunks.size}", "tokens" to "${ChunkLab.sentence.size}"),
+    )
+
+    val perfect = ChunkLab.evaluate()
+    frames += TokenFrame(
+        status = "Scored against the gold chunks this grammar is exactly right — precision ${"%.2f".format(perfect.precision)}, recall " +
+            "${"%.2f".format(perfect.recall)}, F1 ${"%.2f".format(perfect.f1)}. Which is what a hand-written chunker looks like on the sentence it was " +
+            "written for, and why the next frame matters more than this one.",
+        chips = chunks.map { Chip("${it.first} [${it.second},${it.third})", mark = ChipMark.RESULT) },
+        chipsLabel = "predicted spans, all correct",
+        readout = "F1 ${"%.2f".format(perfect.f1)}",
+    )
+
+    val broken = ChunkLab.evaluate(ChunkLab.boundaryError)
+    frames += TokenFrame(
+        status = "Now one boundary moves: the first NP starts at \"small\" instead of \"the\". Two of its three " +
+            "tokens are still right, and the span scores **zero** — exact-match evaluation gives no partial " +
+            "credit. Precision and recall fall to ${"%.2f".format(broken.precision)}, F1 to ${"%.2f".format(broken.f1)}, while per-token accuracy only falls to " +
+            "${"%.2f".format(ChunkLab.tokenAccuracy(ChunkLab.boundaryError))}. Quoting the token number is how chunkers get oversold.",
+        chips = ChunkLab.sentence.mapIndexed { i, w ->
+            Chip(w, sub = ChunkLab.bio(ChunkLab.boundaryError)[i], mark = if (i == 0 || i == 1) ChipMark.ACTIVE else ChipMark.IDLE)
+        },
+        chipsLabel = "one token's boundary wrong",
+        rows = listOf(
+            "span F1" to "${"%.2f".format(perfect.f1)} → ${"%.2f".format(broken.f1)}",
+            "token accuracy" to "1.00 → ${"%.2f".format(ChunkLab.tokenAccuracy(ChunkLab.boundaryError))}",
+            "overlap on the bad span" to "2 of 3 tokens, scored 0",
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "Why stop at flat phrases: chunking is one linear pass — ${ChunkLab.chunkOperations()} steps for this sentence — where " +
+            "a full constituency parse is cubic, ${ChunkLab.parseOperations()}. For information extraction, question answering over " +
+            "templates or feeding an NP list to a search index, the tree was never needed. Chunk when you want " +
+            "the phrases; parse when you need what attaches to what.",
+        rows = listOf(
+            "chunking" to "O(n) — ${ChunkLab.chunkOperations()} steps",
+            "constituency parse" to "O(n³) — ${ChunkLab.parseOperations()} steps",
+            "gives you" to "flat phrases, no attachment",
+            "does not give you" to "PP attachment, nesting, long-range structure",
+        ),
+        readout = "shallow on purpose",
+    )
+    return frames
+}
+
+// ── D2 · Coreference resolution ─────────────────────────────────────────────
+
+private fun corefFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+
+    frames += TokenFrame(
+        status = "Coreference asks which mentions point at the same entity. Step one is finding the mentions at " +
+            "all — every noun phrase and pronoun is a candidate, including the ones that refer to nothing.",
+        chips = CorefLab.easyMentions.map { Chip(it.text, sub = "${it.number}/${it.gender}") },
+        chipsLabel = "mentions in the document",
+        rows = listOf("document" to CorefLab.easyDocument),
+    )
+
+    frames += TokenFrame(
+        status = "Agreement filters the candidates cheaply: a singular feminine pronoun cannot refer to " +
+            "\"Charles Babbage\" or to \"London\". On this document that is enough — \"She\" resolves to Ada " +
+            "Lovelace and \"his\" to Charles Babbage with no learning of any kind.",
+        chips = listOf(
+            Chip("She", mark = ChipMark.ACTIVE),
+            Chip("Ada Lovelace", sub = "sg/fem ✓", mark = ChipMark.RESULT),
+            Chip("Charles Babbage", sub = "gender ✗", mark = ChipMark.DIM),
+            Chip("London", sub = "animacy ✗", mark = ChipMark.DIM),
+        ),
+        chipsLabel = "candidates for \"She\"",
+    )
+
+    frames += TokenFrame(
+        status = "But the immediate link a mention-pair model returns is often another pronoun: \"her\" resolves " +
+            "to \"She\", not to Ada Lovelace. Scored on immediate antecedents that is ${"%.0f".format(CorefLab.pairAccuracy() * 100)}%; scored on the " +
+            "entity each chain resolves to — the transitive closure, which is what the task actually asks for — " +
+            "it is ${"%.0f".format(CorefLab.easyAccuracy() * 100)}%. Reporting the first number is a real evaluation mistake, not a hypothetical one.",
+        chips = listOf(3, 4, 5).map { i ->
+            Chip(CorefLab.easyMentions[i].text, sub = "${CorefLab.resolveEasy(i)} → ${CorefLab.resolveChain(i)}", mark = ChipMark.RESULT)
+        },
+        chipsLabel = "immediate link → chain entity",
+        rows = CorefLab.chains().map { (entity, mentions) -> entity to mentions.joinToString(" ← ") },
+        readout = "pair ${"%.0f".format(CorefLab.pairAccuracy() * 100)}% · chain ${"%.0f".format(CorefLab.easyAccuracy() * 100)}%",
+    )
+
+    frames += TokenFrame(
+        status = "Now the sentence agreement cannot touch. \"The city council refused the demonstrators a permit " +
+            "because they feared violence\" — who is \"they\"? Both candidates are plural, both are animate " +
+            "enough, and the answer is the council.",
+        chips = CorefLab.winogradA.split(" ").map {
+            Chip(it, mark = if (it == "they") ChipMark.ACTIVE else if (it == "feared") ChipMark.RESULT else ChipMark.IDLE)
+        },
+        chipsLabel = "Winograd schema, variant A",
+        rows = listOf("gold" to CorefLab.goldA),
+    )
+
+    frames += TokenFrame(
+        status = "Change one word — feared to advocated — and the answer flips to the demonstrators. Nothing " +
+            "syntactic changed. Any system relying on recency picks the same candidate both times and is " +
+            "therefore right exactly ${"%.0f".format(CorefLab.baselineAccuracyOnPair() * 100)}% of the time on the pair, which is the score of guessing.",
+        chips = CorefLab.winogradB.split(" ").map {
+            Chip(it, mark = if (it == "they") ChipMark.ACTIVE else if (it == "advocated") ChipMark.RESULT else ChipMark.IDLE)
+        },
+        chipsLabel = "variant B",
+        rows = listOf(
+            "gold A" to CorefLab.goldA,
+            "gold B" to CorefLab.goldB,
+            "recency answers" to CorefLab.recencyBaseline(),
+            "accuracy on the pair" to "${"%.0f".format(CorefLab.baselineAccuracyOnPair() * 100)}%",
+        ),
+        readout = "world knowledge, not grammar",
+    )
+
+    frames += TokenFrame(
+        status = "The modern shape of the task: score every candidate pair — ${CorefLab.candidatePairs()} of them for ${CorefLab.easyMentions.size} mentions, " +
+            "quadratic in document length — or rank antecedents per mention with a neural encoder, then take " +
+            "the transitive closure. Large language models finally pushed Winograd-style accuracy past 90%, and " +
+            "they did it with the world knowledge the schema was designed to require rather than with a better " +
+            "syntactic feature.",
+        rows = listOf(
+            "mentions" to "${CorefLab.easyMentions.size}",
+            "candidate pairs" to "${CorefLab.candidatePairs()} — O(m²)",
+            "metrics" to "MUC, B³, CEAF — averaged as CoNLL F1",
+            "why three" to "each one alone can be gamed by over- or under-merging chains",
+        ),
+    )
+    return frames
+}
+
+// ── D2 · Lexicon sentiment ───────────────────────────────────────────────────
+
+private fun sentimentLexiconFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val simple = SentimentLexiconLab.testSet[0].first
+    val negated = SentimentLexiconLab.testSet[1].first
+
+    frames += TokenFrame(
+        status = "A sentiment lexicon is a dictionary from word to valence — this one holds ${SentimentLexiconLab.lexiconSize} entries scored " +
+            "from −3 to +3. Scoring a sentence is a sum. No training data, no model, and the result is entirely " +
+            "explainable: you can point at the words that produced it.",
+        chips = simple.split(" ").map { w ->
+            Chip(w, sub = SentimentLexiconLab.lexicon[w]?.let { if (it > 0) "+$it" else "$it" }, mark = if (w in SentimentLexiconLab.lexicon) ChipMark.RESULT else ChipMark.DIM)
+        },
+        chipsLabel = "\"$simple\"",
+        readout = "score ${"%+.1f".format(SentimentLexiconLab.plainScore(simple))} → positive",
+    )
+
+    frames += TokenFrame(
+        status = "Then the sentence everyone hits in week one. \"$negated\" contains the same positive word, and " +
+            "the plain sum returns ${"%+.1f".format(SentimentLexiconLab.plainScore(negated))} — positive, for a negative review. The lexicon has no " +
+            "concept of the word \"not\".",
+        chips = negated.split(" ").map { w ->
+            Chip(
+                w,
+                sub = SentimentLexiconLab.lexicon[w]?.let { if (it > 0) "+$it" else "$it" },
+                mark = if (w in SentimentLexiconLab.negators) ChipMark.ACTIVE else if (w in SentimentLexiconLab.lexicon) ChipMark.RESULT else ChipMark.DIM,
+            )
+        },
+        chipsLabel = "the negation the sum ignores",
+        readout = "plain ${"%+.1f".format(SentimentLexiconLab.plainScore(negated))} · gold negative",
+    )
+
+    frames += TokenFrame(
+        status = "So every lexicon system grows the same three rules: a negator flips the polarity of scored " +
+            "words within ${SentimentLexiconLab.negationWindow} tokens (damped, because \"not good\" is milder than \"bad\"), intensifiers " +
+            "and diminishers scale the value, and a clause after \"but\" outweighs what came before it. With " +
+            "them the same sentence scores ${"%+.1f".format(SentimentLexiconLab.ruleScore(negated))}.",
+        chips = listOf(
+            Chip("not good", sub = "${"%+.2f".format(-2 * 0.75)}", mark = ChipMark.RESULT),
+            Chip("very good", sub = "${"%+.1f".format(2 * 1.5)}", mark = ChipMark.RESULT),
+            Chip("slightly slow", sub = "${"%+.1f".format(-1 * 0.5)}", mark = ChipMark.RESULT),
+            Chip("… but excellent", sub = "×1.5", mark = ChipMark.RESULT),
+        ),
+        chipsLabel = "the three rules",
+        rows = listOf(
+            "negation window" to "${SentimentLexiconLab.negationWindow} tokens, ×−0.75",
+            "intensifiers" to SentimentLexiconLab.intensifiers.entries.joinToString(", ") { "${it.key} ×${it.value}" },
+            "contrast" to "before \"but\" ×0.5, after ×1.5",
+        ),
+    )
+
+    val cases = SentimentLexiconLab.testSet.take(6)
+    frames += TokenFrame(
+        status = "Scored over the whole labelled set, the rules take accuracy from ${"%.0f".format(SentimentLexiconLab.plainAccuracy * 100)}% to " +
+            "${"%.0f".format(SentimentLexiconLab.ruleAccuracy * 100)}% — and all three of the plain sum's errors are negation, which is the single highest-value " +
+            "rule in the family.",
+        bars = listOf(
+            BarRow(
+                "plain sum",
+                cases.map { SentimentLexiconLab.plainScore(it.first).toFloat() },
+                BarPositive,
+                cases.map { if (it.second > 0) "pos" else "neg" },
+            ),
+            BarRow(
+                "with rules",
+                cases.map { SentimentLexiconLab.ruleScore(it.first).toFloat() },
+                ChipResult,
+                cases.map { if (it.second > 0) "pos" else "neg" },
+            ),
+        ),
+        rows = listOf(
+            "plain accuracy" to "${"%.0f".format(SentimentLexiconLab.plainAccuracy * 100)}%",
+            "rule accuracy" to "${"%.0f".format(SentimentLexiconLab.ruleAccuracy * 100)}%",
+            "plain errors" to SentimentLexiconLab.errors(SentimentLexiconLab::plainScore).joinToString("; ") { "\"${it.first}\"" },
+        ),
+    )
+
+    val remaining = SentimentLexiconLab.errors(SentimentLexiconLab::ruleScore).first()
+    frames += TokenFrame(
+        status = "The error the rules cannot fix is the rules' own doing: in \"${remaining.first}\", \"never\" is a " +
+            "negator sitting three tokens before \"awful\", so the flip turns a negative review positive " +
+            "(${"%+.2f".format(remaining.second)}). A fixed window has no idea what a negator scopes over — that needs a parse, and " +
+            "at that point a classifier trained on labelled reviews is cheaper and better.",
+        chips = remaining.first.split(" ").map { w ->
+            Chip(
+                w,
+                sub = SentimentLexiconLab.lexicon[w]?.let { if (it > 0) "+$it" else "$it" },
+                mark = if (w in SentimentLexiconLab.negators) ChipMark.ACTIVE else if (w in SentimentLexiconLab.lexicon) ChipMark.RESULT else ChipMark.DIM,
+            )
+        },
+        chipsLabel = "the rule firing where it should not",
+        readout = "${"%+.2f".format(remaining.second)} · gold negative",
+    )
+
+    frames += TokenFrame(
+        status = "And the structural limit: the lexicon has an opinion about only ${"%.0f".format(SentimentLexiconLab.coverage() * 100)}% of the tokens in this " +
+            "test set, and none at all about sarcasm, comparison (\"better than their last one\") or domain " +
+            "words — \"unpredictable\" is praise for a thriller and a complaint about a car. Lexicons stay " +
+            "useful where labels do not exist, where the output must be auditable, and as a feature inside a " +
+            "trained model rather than instead of one.",
+        rows = listOf(
+            "lexicon coverage" to "${"%.0f".format(SentimentLexiconLab.coverage() * 100)}% of tokens",
+            "handles" to "explicit polarity words, negation, intensity",
+            "misses" to "sarcasm, comparison, domain sense, implicature",
+            "use it when" to "no labelled data, or the score must be explainable",
+        ),
+        readout = "VADER and AFINN are this, tuned for decades",
+    )
+    return frames
+}
+
 // ── D3 · word2vec: CBOW ──────────────────────────────────────────────────────
 
 private fun w2vSentence() = Word2VecLab.sentences[0]
@@ -2183,6 +2556,42 @@ private val nbLegend = listOf(
 )
 
 private val tokenConfigs = mapOf(
+    "pos_tagging" to TokenConfig(
+        intro = "A most-frequent-tag baseline and a bigram HMM, both estimated from the same mini treebank and " +
+            "both scored on held-out sentences — including a word training never contained.",
+        legend = listOf(
+            ChipActive to "Ambiguous / wrong",
+            ChipResult to "Resolved",
+        ),
+        build = ::posTaggingFrames,
+    ),
+    "chunking" to TokenConfig(
+        intro = "A regex-over-tags chunker run on one sentence, encoded as BIO, then scored — and one boundary " +
+            "moved to show what exact-match span evaluation does to a nearly-right answer.",
+        legend = listOf(
+            ChipActive to "Current chunk",
+            ChipResult to "Chunk start",
+        ),
+        build = ::chunkingFrames,
+    ),
+    "coreference" to TokenConfig(
+        intro = "Agreement filtering, chains as a transitive closure, and the Winograd pair where one word flips " +
+            "the answer and every syntactic heuristic scores 50%.",
+        legend = listOf(
+            ChipActive to "Pronoun / trigger",
+            ChipResult to "Antecedent",
+        ),
+        build = ::corefFrames,
+    ),
+    "sentiment_lexicon" to TokenConfig(
+        intro = "A 20-word lexicon scored over ten labelled reviews, plain and then with negation, intensity and " +
+            "contrast rules — including the sentence the rules themselves get wrong.",
+        legend = listOf(
+            ChipActive to "Negator",
+            ChipResult to "Scored word",
+        ),
+        build = ::sentimentLexiconFrames,
+    ),
     "word2vec_cbow" to TokenConfig(
         intro = "A window predicting its own missing centre word, trained for real on a 20-sentence corpus — " +
             "then measured against skip-gram on the same text, including the rare word where the textbook " +
