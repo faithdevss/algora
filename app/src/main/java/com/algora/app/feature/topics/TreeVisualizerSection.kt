@@ -1626,7 +1626,162 @@ private fun pcfgFrames(): List<TreeFrame> {
     return b.frames
 }
 
+// ── D5 · Tree of Thoughts ────────────────────────────────────────────────────
+// A real search over Game of 24, not a drawing of one. The greedy path, the beam and the exhaustive
+// count all come out of `TotLab`, and so does the evaluator's ranking of the frontier — which is the
+// thing the batch measured and did not expect.
+
+private fun chainFrames(builder: TreeBuilder, trace: List<String>, root: Int): List<Int> {
+    var parent = root
+    return trace.map { step ->
+        val id = builder.add(step, parent, 0)
+        parent = id
+        id
+    }
+}
+
+private fun treeOfThoughtsFrames(): List<TreeFrame> {
+    val frames = mutableListOf<TreeFrame>()
+    val (expanded, solutions) = TotLab.exhaustive()
+
+    // Act 1 — the problem and its real size.
+    val intro = TreeBuilder()
+    val introRoot = intro.add(TotLab.label(TotLab.puzzle), null, 0)
+    intro.frame(
+        "Game of 24: combine ${TotLab.label(TotLab.puzzle)} with + − × ÷ until one number is left and it is 24. " +
+            "Each operation replaces two numbers with one, so the search is exactly three moves deep. Expanded " +
+            "exhaustively this tree visits $expanded states and ends at 24 along $solutions of them — small " +
+            "enough to check every claim below by brute force.",
+        active = setOf(introRoot),
+    )
+    frames += intro.frames
+
+    // Act 2 — the greedy path, which is what a single chain of thought is.
+    val greedy = TotLab.beam(1, depth = 1)
+    val greedyBuilder = TreeBuilder()
+    val greedyRoot = greedyBuilder.add(TotLab.label(TotLab.puzzle), null, 0)
+    val greedyNodes = chainFrames(greedyBuilder, greedy.trace, greedyRoot)
+    greedyNodes.forEachIndexed { index, id ->
+        greedyBuilder.frame(
+            when (index) {
+                0 -> "A chain of thought is beam width 1: pick the best-looking next step and commit. The " +
+                    "evaluator here is the cheap one — \"could one more operation on some pair land on 24?\" — " +
+                    "which is the stand-in for the paper's value prompt, and it likes ${greedy.trace[0]}."
+                1 -> "Second move, still no way back. The state is now three numbers and the same evaluator " +
+                    "picks ${greedy.trace[1]}. Nothing has gone visibly wrong yet, which is the problem: a " +
+                    "single chain gives no signal that it is already in a dead branch."
+                else -> "Third move, and the chain lands on ${greedy.trace.last().substringAfter("= ")} rather " +
+                    "than 24. It cannot backtrack, because it never kept an alternative. Width 1 fails on this " +
+                    "puzzle for a reason that has nothing to do with arithmetic."
+            },
+            active = setOf(id),
+            path = greedyNodes.take(index).toSet() + greedyRoot,
+        )
+    }
+    frames += greedyBuilder.frames
+
+    // Act 3 — how bad the evaluator actually is, measured.
+    val ranked = TotLab.rankedFrontier(depth = 1)
+    val (firstSolvableRank, solvableInTopFive, frontierSize) = TotLab.evaluatorQuality(5, depth = 1)
+    val rankBuilder = TreeBuilder()
+    val rankRoot = rankBuilder.add(TotLab.label(TotLab.puzzle), null, 0)
+    val shown = ranked.take(5).mapIndexed { index, (state, score, _) ->
+        rankBuilder.add("${TotLab.label(state)}  (${"%.1f".format(score)})", rankRoot, index)
+    }
+    val best = ranked[firstSolvableRank - 1]
+    val bestNode = rankBuilder.add("${TotLab.label(best.first)}  (${"%.1f".format(best.second)})", rankRoot, 5)
+    rankBuilder.frame(
+        "So before widening the search, measure the evaluator. It ranks $frontierSize distinct first moves, and " +
+            "the highest-ranked move that can still reach 24 is its ${firstSolvableRank}th — the five it likes " +
+            "best contain $solvableInTopFive that can. This is not a bad implementation; it is what a cheap " +
+            "one-step heuristic is worth on a four-number state, because it ignores the numbers left over.",
+        active = shown.toSet(),
+        marked = setOf(bestNode),
+    )
+    frames += rankBuilder.frames
+
+    // Act 4 — width substitutes for evaluator quality.
+    val narrow = TotLab.beam(5, depth = 1)
+    val needed = TotLab.widthNeeded(1)
+    val winner = TotLab.beam(needed, depth = 1)
+    val widthBuilder = TreeBuilder()
+    val widthRoot = widthBuilder.add(TotLab.label(TotLab.puzzle), null, 0)
+    val keptFive = ranked.take(5).mapIndexed { index, (state, _, _) ->
+        widthBuilder.add(TotLab.label(state), widthRoot, index)
+    }
+    widthBuilder.frame(
+        "Beam width 5 keeps the evaluator's top five and drops the other ${frontierSize - 5}. Since none of " +
+            "those five can reach 24, the beam is already lost at depth 1 and spends the rest of the search " +
+            "confirming it: ${narrow.expanded} states expanded, best result " +
+            "${narrow.trace.last().substringAfter("= ")}.",
+        active = keptFive.toSet(),
+    )
+    val extra = ranked.subList(5, needed).mapIndexed { index, (state, _, solvable) ->
+        widthBuilder.add(TotLab.label(state), widthRoot, 5 + index) to solvable
+    }
+    widthBuilder.frame(
+        "Width $needed is where it turns over — the smallest beam that keeps a state the puzzle can be solved " +
+            "from. Nothing about the evaluator changed. The search simply stopped trusting it enough to throw " +
+            "the answer away, which is the entire argument for Tree of Thoughts.",
+        active = extra.filter { it.second }.map { it.first }.toSet(),
+        path = keptFive.toSet(),
+    )
+    val winPath = chainFrames(widthBuilder, winner.trace, extra.first { it.second }.first)
+    widthBuilder.frame(
+        "The solution the surviving branch reaches: ${winner.trace.joinToString(", ")}. It cost " +
+            "${winner.expanded} expanded states and ${winner.evaluatorCalls} evaluator calls against " +
+            "${greedy.expanded} and ${greedy.evaluatorCalls} for the greedy chain — roughly " +
+            "${"%.0f".format(winner.evaluatorCalls.toDouble() / greedy.evaluatorCalls)}× the evaluation, for " +
+            "the difference between failing and finishing.",
+        marked = winPath.toSet(),
+        path = setOf(widthRoot) + extra.first { it.second }.first,
+    )
+    frames += widthBuilder.frames
+
+    // Act 5 — the other axis, and the trade the numbers actually show.
+    val deep = TotLab.beam(1, depth = 2)
+    val deepWidth = TotLab.widthNeeded(2)
+    val (deepRank, deepTopFive, _) = TotLab.evaluatorQuality(5, depth = 2)
+    val deepBuilder = TreeBuilder()
+    val deepRoot = deepBuilder.add(TotLab.label(TotLab.puzzle), null, 0)
+    val deepNodes = chainFrames(deepBuilder, deep.trace, deepRoot)
+    deepBuilder.frame(
+        "Width is not the only axis. Give the evaluator one more operation of lookahead and its ranking " +
+            "changes completely: the best-ranked solvable state is now its ${deepRank}th and $deepTopFive of " +
+            "its top five can reach 24. Width $deepWidth is then enough — a single chain solves the puzzle, " +
+            "because the evaluator no longer throws the answer away.",
+        marked = deepNodes.toSet(),
+        path = setOf(deepRoot),
+    )
+    deepBuilder.frame(
+        "But price the two. The cheap evaluator at width $needed spends ${winner.evaluatorCalls} evaluator " +
+            "calls; the deep evaluator at width $deepWidth spends ${deep.evaluatorCalls}. The better evaluator " +
+            "is ${"%.1f".format(deep.evaluatorCalls.toDouble() / winner.evaluatorCalls)}× *more* expensive " +
+            "here, not less. Width and evaluator quality are substitutes, and which one is cheaper is a " +
+            "measurement, not a principle — with an LLM as the evaluator, each of those calls is a request.",
+        marked = deepNodes.toSet(),
+    )
+    deepBuilder.frame(
+        "The rest of Tree of Thoughts is bookkeeping on top of this: a frontier instead of a single state, an " +
+            "evaluator that scores partial states, and pruning that is allowed to be wrong because the beam " +
+            "keeps alternatives. Exhaustive search over this puzzle visits $expanded states and finds " +
+            "$solutions solution paths — the beam found one of them after " +
+            "${winner.expanded} expansions, which is ${"%.1f".format(expanded.toDouble() / winner.expanded)}× " +
+            "less of the tree.",
+        marked = deepNodes.toSet(),
+    )
+    frames += deepBuilder.frames
+    return frames
+}
+
 private val treeConfigs = mapOf(
+    "tree_of_thoughts" to TreeConfig(
+        intro = "Game of 24 searched for real: the greedy chain that fails, the evaluator's ranking measured " +
+            "against what can actually reach 24, and the beam width that fixes it — priced against a better " +
+            "evaluator.",
+        markedLabel = "Reaches 24",
+        build = ::treeOfThoughtsFrames,
+    ),
     "dependency_parsing" to TreeConfig(
         intro = "One sentence parsed by arc-standard transitions, stack and buffer replayed step by step — then " +
             "UAS against LAS on a wrong parse, and the crossing arc this transition system cannot build.",

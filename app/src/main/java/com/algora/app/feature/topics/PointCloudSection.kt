@@ -3566,7 +3566,202 @@ private fun elmoFrames(): List<CloudFrame> {
     return frames
 }
 
+// ── D5 · Vector databases ────────────────────────────────────────────────────
+// A real index over a real corpus: brute force, an IVF built by Lloyd's algorithm, and HNSW's inner
+// loop over two neighbour graphs. Every recall number is measured against the exact answer.
+
+private fun vectorDbFrames(): List<CloudFrame> {
+    val frames = mutableListOf<CloudFrame>()
+    val queryPoint = P(VectorDbLab.query.first.toFloat(), VectorDbLab.query.second.toFloat())
+    val exact = VectorDbLab.exactNeighbours()
+    val exactIds = exact.map { it.id }.toSet()
+
+    fun docDot(doc: VectorDbLab.Doc, emphasis: Emphasis = Emphasis.NORMAL, group: Int = doc.cluster) =
+        Dot(P(doc.x.toFloat(), doc.y.toFloat()), group, emphasis)
+
+    fun baseDots(emphasise: Set<Int> = emptySet(), faded: Set<Int> = emptySet()) =
+        VectorDbLab.corpus.map { doc ->
+            docDot(
+                doc,
+                when {
+                    doc.id in emphasise -> Emphasis.ACTIVE
+                    doc.id in faded -> Emphasis.FADED
+                    else -> Emphasis.NORMAL
+                },
+            )
+        } + Dot(queryPoint, 0, Emphasis.QUERY)
+
+    frames += CloudFrame(
+        status = "${VectorDbLab.corpusSize} embedded passages and one query. A vector database answers exactly " +
+            "one question — which stored vectors are nearest this one — and the honest baseline is to compare " +
+            "against all of them. That is ${VectorDbLab.corpusSize} distance computations here, exact by " +
+            "construction, and it is what every approximate index below is measured against.",
+        dots = baseDots(exactIds),
+        rings = listOf(Ring(queryPoint, VectorDbLab.distance(exact.last()).toFloat(), QueryColor)),
+        readout = "brute force: ${VectorDbLab.corpusSize} comparisons, recall 1.00 by definition",
+    )
+
+    frames += CloudFrame(
+        status = "The exact top ${VectorDbLab.k} sit within " +
+            "${"%.3f".format(VectorDbLab.distance(exact.last()))} of the query, and they are separated from " +
+            "each other by only ${"%.4f".format(VectorDbLab.neighbourSpread())}. Hold onto that second number: " +
+            "every approximation below has to preserve an ordering finer than it, and that is what most of " +
+            "them fail at.",
+        dots = baseDots(exactIds, VectorDbLab.corpus.map { it.id }.toSet() - exactIds),
+        segments = exact.map { Segment(queryPoint, P(it.x.toFloat(), it.y.toFloat()), QueryColor) },
+        readout = "neighbour spread ${"%.4f".format(VectorDbLab.neighbourSpread())} — the resolution to beat",
+    )
+
+    val cells = VectorDbLab.ivf.centroids
+    val (oneProbe, oneCost) = VectorDbLab.ivfSearch(1)
+    val (twoProbe, twoCost) = VectorDbLab.ivfSearch(2)
+    frames += CloudFrame(
+        status = "IVF partitions the corpus first. Lloyd's algorithm on the stored vectors gives " +
+            "${cells.size} coarse cells, each vector is tagged with its cell, and a query only scans the " +
+            "cells it probes. The whole index is that one assignment — which is why it builds in seconds and " +
+            "why its failure mode is geometric.",
+        dots = VectorDbLab.corpus.mapIndexed { index, doc -> docDot(doc, group = VectorDbLab.ivf.assignment[index]) } +
+            Dot(queryPoint, 0, Emphasis.QUERY),
+        centroids = cells.mapIndexed { index, c -> Dot(P(c.first.toFloat(), c.second.toFloat()), index) },
+        readout = "${cells.size} cells, ${VectorDbLab.corpusSize} vectors",
+    )
+
+    frames += CloudFrame(
+        status = "This query sits on a cell boundary, which is the case IVF is actually bad at — putting it in " +
+            "the middle of a cell would have measured nothing. Probing one cell scans $oneCost vectors " +
+            "instead of ${VectorDbLab.corpusSize} and returns recall " +
+            "${"%.2f".format(VectorDbLab.recall(oneProbe))}: two of the true neighbours are sitting just " +
+            "across the boundary, in a cell it never opened.",
+        dots = VectorDbLab.corpus.mapIndexed { index, doc ->
+            docDot(
+                doc,
+                if (doc.id in exactIds && doc !in oneProbe) Emphasis.ACTIVE else if (doc.id in exactIds) Emphasis.NORMAL else Emphasis.FADED,
+                group = VectorDbLab.ivf.assignment[index],
+            )
+        } + Dot(queryPoint, 0, Emphasis.QUERY),
+        centroids = cells.mapIndexed { index, c -> Dot(P(c.first.toFloat(), c.second.toFloat()), index) },
+        readout = "nprobe 1: $oneCost comparisons, recall ${"%.2f".format(VectorDbLab.recall(oneProbe))}",
+    )
+
+    frames += CloudFrame(
+        status = "nprobe is the recall knob, and it is cheap here: opening the second cell costs " +
+            "${twoCost - oneCost} more comparisons and recovers the missing neighbours — recall " +
+            "${"%.2f".format(VectorDbLab.recall(twoProbe))} at $twoCost of ${VectorDbLab.corpusSize} " +
+            "comparisons. That is the trade the whole field runs on: recall is not a property of the index, " +
+            "it is a dial with a price per notch.",
+        dots = baseDots(exactIds),
+        profile = (1..5).map { np ->
+            ProfileBar(VectorDbLab.recall(VectorDbLab.ivfSearch(np).first).toFloat(), if (np <= 1) 3 else 2)
+        },
+        profileLabel = "recall@${VectorDbLab.k} at nprobe 1 → 5",
+        readout = "nprobe 2: $twoCost comparisons, recall ${"%.2f".format(VectorDbLab.recall(twoProbe))}",
+    )
+
+    val stranded = VectorDbLab.strandedEntry()
+    val plainFromStranded = VectorDbLab.graphSearch(4, VectorDbLab.knnGraph, entry = stranded)
+    val smallFromStranded = VectorDbLab.graphSearch(4, VectorDbLab.smallWorldGraph, entry = stranded)
+    frames += CloudFrame(
+        status = "The other family navigates instead of partitioning. Link every vector to its 6 nearest " +
+            "neighbours, start somewhere, and repeatedly walk to whichever neighbour is closer to the query. " +
+            "It is greedy hill-climbing on a graph, and on this corpus it works — from a well-placed entry " +
+            "point it reaches the answer in a handful of hops.",
+        dots = baseDots(exactIds + stranded),
+        segments = VectorDbLab.knnGraph.flatMapIndexed { from, links ->
+            links.map { to ->
+                Segment(
+                    P(VectorDbLab.corpus[from].x.toFloat(), VectorDbLab.corpus[from].y.toFloat()),
+                    P(VectorDbLab.corpus[to].x.toFloat(), VectorDbLab.corpus[to].y.toFloat()),
+                    UnassignedColor,
+                )
+            }
+        },
+        readout = "6-NN graph: ${VectorDbLab.knnGraph.sumOf { it.size }} links",
+    )
+
+    frames += CloudFrame(
+        status = "Except that graph is in ${VectorDbLab.componentCount(VectorDbLab.knnGraph)} pieces. A " +
+            "k-nearest-neighbour graph over well-separated data is not connected, so from " +
+            "${"%.0f".format(100 * VectorDbLab.strandedFraction())}% of possible entry points there is no " +
+            "path to the answer at all — and no amount of candidate list gets you one. Starting at vector " +
+            "$stranded, recall is ${"%.2f".format(VectorDbLab.recall(plainFromStranded.found))} after " +
+            "${plainFromStranded.comparisons} comparisons.",
+        dots = VectorDbLab.corpus.map { doc ->
+            docDot(
+                doc,
+                when (doc.id) {
+                    stranded -> Emphasis.ACTIVE
+                    in exactIds -> Emphasis.NORMAL
+                    else -> Emphasis.FADED
+                },
+                group = VectorDbLab.components(VectorDbLab.knnGraph)[doc.id],
+            )
+        } + Dot(queryPoint, 0, Emphasis.QUERY),
+        readout = "${VectorDbLab.componentCount(VectorDbLab.knnGraph)} components — recall 0.00 from the wrong one",
+    )
+
+    frames += CloudFrame(
+        status = "This is why HNSW is not a k-NN graph. Add two random long-range links per vector and the " +
+            "graph collapses to ${VectorDbLab.componentCount(VectorDbLab.smallWorldGraph)} component: the same " +
+            "stranded start now reaches recall ${"%.2f".format(VectorDbLab.recall(smallFromStranded.found))} " +
+            "in ${smallFromStranded.hops} hops and ${smallFromStranded.comparisons} comparisons. The real " +
+            "algorithm gets its long links from a layer hierarchy rather than at random, but the job they do " +
+            "is this one.",
+        dots = baseDots(exactIds + stranded),
+        segments = VectorDbLab.smallWorldGraph.flatMapIndexed { from, links ->
+            links.filterNot { it in VectorDbLab.knnGraph[from] }.map { to ->
+                Segment(
+                    P(VectorDbLab.corpus[from].x.toFloat(), VectorDbLab.corpus[from].y.toFloat()),
+                    P(VectorDbLab.corpus[to].x.toFloat(), VectorDbLab.corpus[to].y.toFloat()),
+                    QueryColor,
+                    dashed = true,
+                )
+            }
+        },
+        readout = "long links: ${VectorDbLab.componentCount(VectorDbLab.smallWorldGraph)} component, recall ${"%.2f".format(VectorDbLab.recall(smallFromStranded.found))}",
+    )
+
+    frames += CloudFrame(
+        status = "Compression is the third lever, and it is the one that quietly destroys recall. Storing each " +
+            "component at 16 levels instead of a float puts every vector on a grid of spacing " +
+            "${"%.3f".format(VectorDbLab.quantizationStep(16))} — more than " +
+            "${"%.0f".format(VectorDbLab.quantizationStep(16) / VectorDbLab.neighbourSpread())}× coarser than " +
+            "the ${"%.4f".format(VectorDbLab.neighbourSpread())} that separates the true neighbours from each " +
+            "other. Recall lands at ${"%.2f".format(VectorDbLab.quantizedRecall(16))}, and the fix is not a " +
+            "better quantizer, it is rescoring the shortlist with the full vectors.",
+        dots = baseDots(exactIds),
+        profile = listOf(4, 8, 16, 64).map { ProfileBar(VectorDbLab.quantizedRecall(it).toFloat(), if (it >= 64) 2 else 3) },
+        profileLabel = "recall@${VectorDbLab.k} at 4, 8, 16, 64 levels per component",
+        readout = "int8 at 768 dims: ${VectorDbLab.bytesPerVector(768, 8)} bytes vs ${VectorDbLab.bytesPerVector(768, 32)} — 4× smaller, and rescoring is mandatory",
+    )
+
+    val contrasts = listOf(2, 8, 32, 128).map { it to VectorDbLab.contrastRatio(it) }
+    frames += CloudFrame(
+        status = "Last, the reason none of this is easy at real dimensions. Over uniform points the contrast " +
+            "(d_max − d_min) / d_min falls from ${"%.1f".format(contrasts[0].second)} in 2 dimensions to " +
+            "${"%.2f".format(contrasts.last().second)} in ${contrasts.last().first} — the nearest and " +
+            "furthest vectors stop being meaningfully different distances apart. Real embeddings are not " +
+            "uniform, which is the only reason any of this works; the measurement is what an index is " +
+            "fighting.",
+        dots = baseDots(exactIds),
+        profile = contrasts.map { ProfileBar((it.second / contrasts[0].second).toFloat().coerceAtLeast(0.01f), 1) },
+        profileLabel = "relative contrast at d = 2, 8, 32, 128 (scaled to d = 2)",
+        readout = contrasts.joinToString("  ") { "d=${it.first}: ${"%.2f".format(it.second)}" },
+    )
+    return frames
+}
+
 private val cloudConfigs = mapOf(
+    "vector_databases" to CloudConfig(
+        intro = "A real index over ${VectorDbLab.corpusSize} vectors: brute force, an IVF probed at a cell " +
+            "boundary, HNSW's greedy walk on a graph that turns out to be disconnected, and the quantization " +
+            "step that is coarser than the neighbours it has to rank.",
+        legend = listOf(
+            QueryColor to "Query",
+            CloudColors[0] to "Cell / component",
+            UnassignedColor to "Link",
+        ),
+        build = ::vectorDbFrames,
+    ),
     "glove" to CloudConfig(
         intro = "The co-occurrence ratio GloVe is derived from, the weighting that keeps \"the\" from dominating, " +
             "and the vectors it fits — plotted as their first two principal components.",

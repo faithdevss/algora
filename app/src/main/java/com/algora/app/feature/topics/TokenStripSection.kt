@@ -2978,12 +2978,387 @@ private fun fastTextFrames(): List<TokenFrame> {
     return frames
 }
 
+// ── D5 · Prompt engineering ──────────────────────────────────────────────────
+
+private val ruleCaptions = listOf("first", "last", "middle", "freq", "alpha")
+
+private fun versionSpaceBar(demos: List<String>): BarRow {
+    val survivors = PromptLab.consistent(demos).map { it.name }.toSet()
+    val mass = if (survivors.isEmpty()) 0f else 1f / survivors.size
+    return BarRow(
+        "posterior over rules (${survivors.size} still fit)",
+        PromptLab.rules.map { if (it.name in survivors) mass else 0f },
+        BarPositive,
+        ruleCaptions,
+    )
+}
+
+private fun answerBar(demos: List<String>): BarRow {
+    val posterior = PromptLab.prediction(demos)
+    val letters = posterior.keys.sorted()
+    return BarRow(
+        "answer for \"${PromptLab.query}\" (correct is '${PromptLab.label(PromptLab.query)}')",
+        letters.map { posterior.getValue(it).toFloat() },
+        ChipResult,
+        letters.map { "'$it'" },
+    )
+}
+
+private fun demoChips(demos: List<String>, upTo: Int): List<Chip> =
+    demos.mapIndexed { index, word ->
+        Chip(
+            word,
+            "→ ${PromptLab.label(word)}",
+            when {
+                index == upTo - 1 -> ChipMark.ACTIVE
+                index < upTo -> ChipMark.RESULT
+                else -> ChipMark.DIM
+            },
+        )
+    }
+
+private fun promptEngineeringFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val pool = PromptLab.pool
+
+    frames += TokenFrame(
+        status = "A prompt is an induction problem. The task here is \"word → one letter\", and before any " +
+            "example is given, ${PromptLab.rules.size} simple rules are all consistent with that description — " +
+            "first letter, last letter, middle letter, most frequent letter, alphabetically first letter. " +
+            "Zero-shot means asking the model to guess which one you meant.",
+        chips = demoChips(pool, 0),
+        chipsLabel = "the demonstration pool, none used yet",
+        bars = listOf(versionSpaceBar(emptyList()), answerBar(emptyList())),
+        readout = "5 rules fit the instruction; only one is yours",
+    )
+
+    listOf(1, 2, 3, 4).forEach { k ->
+        val demos = pool.take(k)
+        val survivors = PromptLab.consistent(demos)
+        val status = when (k) {
+            1 -> "One demonstration, banana → a. That eliminates \"first letter\" and nothing else: banana's " +
+                "last, middle, most frequent and alphabetically first letters are all 'a'. A demonstration is " +
+                "worth exactly the hypotheses it kills, and this one killed one."
+            2 -> "adage → a leaves three rules standing, and now the model has enough to answer confidently and " +
+                "wrongly: two of the three surviving rules say 'a' for kayak, so the majority answer is 'a' " +
+                "where the truth is 'y'. More examples did not mean closer to right."
+            3 -> "otter → t removes the alphabetical rule, and the version space is down to two — but they " +
+                "disagree on the query and each holds half the mass. This is the honest state of a three-shot " +
+                "prompt on this task: not wrong, undetermined."
+            else -> "level → v is the demonstration that does the work. Only \"middle letter\" survives it, and " +
+                "the answer collapses onto 'y'. Notice which example that was: not the fourth one, the " +
+                "*discriminating* one."
+        }
+        frames += TokenFrame(
+            status = status,
+            chips = demoChips(pool, k),
+            chipsLabel = "$k demonstration${if (k == 1) "" else "s"} in the prompt",
+            bars = listOf(versionSpaceBar(demos), answerBar(demos)),
+            rows = listOf(
+                "rules left" to "${survivors.size} — ${survivors.joinToString { it.name }}",
+                "answer" to if (PromptLab.predictedCorrectly(demos)) "'y' ✓" else "not yet determined",
+            ),
+            readout = "${survivors.size} of ${PromptLab.rules.size} rules survive",
+        )
+    }
+
+    val identifying = PromptLab.identifyingPairs()
+    val failing = PromptLab.allPairs().filterNot { it in identifying }
+    frames += TokenFrame(
+        status = "Which demonstrations, not how many. Of the ${PromptLab.allPairs().size} two-example prompts " +
+            "this pool allows, ${identifying.size} pin the rule exactly and ${failing.size} do not — and the " +
+            "${failing.size} that fail are made only of ${failing.flatMap { listOf(it.first, it.second) }.distinct().joinToString()}, " +
+            "the words whose letters happen to coincide. Two well-chosen examples beat the four we just spent.",
+        chips = listOf(
+            Chip("level", "→ v", ChipMark.RESULT),
+            Chip("sonar", "→ n", ChipMark.RESULT),
+            Chip("banana", "→ a", ChipMark.DIM),
+            Chip("adage", "→ a", ChipMark.DIM),
+        ),
+        chipsLabel = "two that identify the rule; two that do not",
+        bars = listOf(versionSpaceBar(listOf("level", "sonar")), answerBar(listOf("level", "sonar"))),
+        rows = listOf(
+            "identifying pairs" to "${identifying.size} of ${PromptLab.allPairs().size}",
+            "{level, sonar}" to "${PromptLab.consistent(listOf("level", "sonar")).size} rule left",
+            "{banana, adage}" to "${PromptLab.consistent(listOf("banana", "adage")).size} rules left",
+        ),
+        readout = "example selection is the tuning knob",
+    )
+
+    val eliminated = PromptLab.instructionEliminates()
+    frames += TokenFrame(
+        status = "And an instruction is not data — it is a prior. \"Take a letter from the middle of the word\" " +
+            "adds no examples, but it puts zero mass on ${eliminated.size} of the five rules " +
+            "(${eliminated.joinToString { it.name }}). Reaching the same state by demonstration alone takes " +
+            "${PromptLab.demosToEliminate(eliminated)} examples from this pool, which is what \"instruction plus " +
+            "one example\" is buying over \"five examples\".",
+        chips = listOf(
+            Chip("instruction", "prior", ChipMark.ACTIVE),
+            Chip("examples", "data", ChipMark.IDLE),
+        ),
+        bars = listOf(
+            BarRow(
+                "rules ruled out",
+                PromptLab.rules.map { rule -> if (eliminated.any { it.name == rule.name }) 1f else 0f },
+                ChipResult,
+                ruleCaptions,
+            ),
+        ),
+        rows = listOf(
+            "instruction eliminates" to "${eliminated.size} rules",
+            "same by example" to "${PromptLab.demosToEliminate(eliminated)} demonstrations",
+            "what neither fixes" to "a rule outside the space you imagined",
+        ),
+        readout = "one sentence did the work of ${PromptLab.demosToEliminate(eliminated)} examples",
+    )
+    return frames
+}
+
+// ── D5 · ReAct ───────────────────────────────────────────────────────────────
+
+private fun reactFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val ranked = RetrievalLab.ranked(ReActLab.question)
+    val answerRank = RetrievalLab.rankOf(ReActLab.question, ReActLab.hop2PassageId)
+    val (top, contains) = ReActLab.singleShot()
+
+    frames += TokenFrame(
+        status = "The question is two-hop: \"${ReActLab.question}\" The passage holding the answer is about C, " +
+            "not about Linux, so it shares almost no vocabulary with the question as asked. Retrieval is real " +
+            "here — TF-IDF cosine over the eight-passage corpus — so what it ranks is measured, not narrated.",
+        chips = ranked.take(4).map { (passage, score) ->
+            Chip(passage.title, "%.3f".format(score), if (passage.id == ReActLab.hop2PassageId) ChipMark.RESULT else ChipMark.IDLE)
+        },
+        chipsLabel = "top passages for the question, verbatim",
+        bars = listOf(
+            BarRow(
+                "cosine score",
+                ranked.map { it.second.toFloat() },
+                BarPositive,
+                ranked.map { it.first.title.take(6) },
+            ),
+        ),
+        rows = listOf(
+            "answer passage" to "\"${RetrievalLab.corpus[ReActLab.hop2PassageId].title}\", rank $answerRank of ${ranked.size}",
+            "retrieved (top 3)" to top.joinToString { it.title },
+            "answer present" to if (contains) "yes" else "no",
+        ),
+        readout = "one retrieval cannot reach the second hop",
+    )
+
+    frames += TokenFrame(
+        status = "The two failure modes this sits between. Answering closed-book produces " +
+            "\"${ReActLab.closedBookAnswer}\" — fluent, specific, and wrong. Reasoning harder without acting " +
+            "produces a longer version of the same guess, because the missing thing is not inference, it is a " +
+            "fact the model does not have. ReAct's claim is that thought and action have to interleave.",
+        chips = listOf(
+            Chip("closed book", ReActLab.closedBookAnswer, ChipMark.ACTIVE),
+            Chip("reason only", ReActLab.closedBookAnswer, ChipMark.ACTIVE),
+            Chip("ReAct", ReActLab.groundedAnswer, ChipMark.RESULT),
+        ),
+        chipsLabel = "three ways to answer, one of them right",
+        rows = listOf(
+            "what reasoning fixes" to "steps you can derive",
+            "what retrieval fixes" to "facts you do not hold",
+            "this question needs" to "both, in that order",
+        ),
+        readout = "more thinking does not recover a fact you never had",
+    )
+
+    ReActLab.trajectory.forEachIndexed { index, turn ->
+        val retrieved = turn.retrievedId?.let { RetrievalLab.corpus[it] }
+        val queryText = turn.action.substringAfter("(\"").substringBefore("\")")
+        frames += TokenFrame(
+            status = "Turn ${index + 1}. ${turn.thought}",
+            chips = listOf(
+                Chip("Thought", "step ${index + 1}", ChipMark.IDLE),
+                Chip("Action", turn.action.substringBefore("("), ChipMark.ACTIVE),
+                Chip("Observation", retrieved?.title ?: "final", ChipMark.RESULT),
+            ),
+            chipsLabel = "thought → action → observation",
+            rows = listOfNotNull(
+                "action" to turn.action,
+                "observation" to turn.observation,
+                retrieved?.let { "rank of this hit" to "${RetrievalLab.rankOf(queryText, it.id)} for \"$queryText\"" },
+            ),
+            readout = if (turn.retrievedId == null) "answer: ${turn.observation}" else "observation feeds the next thought",
+        )
+    }
+
+    frames += TokenFrame(
+        status = "What the loop actually bought, in one number: the answer passage sits at rank $answerRank " +
+            "under the question as asked and at rank " +
+            "${RetrievalLab.rankOf("C language first released", ReActLab.hop2PassageId)} under the query the " +
+            "second thought wrote. The rewrite is the work. That also names the loop's failure modes — a " +
+            "thought that writes a bad query, and a loop with no step cap that reissues it forever.",
+        bars = listOf(
+            BarRow(
+                "rank of the answer passage (lower is better)",
+                listOf(answerRank.toFloat(), RetrievalLab.rankOf("C language first released", ReActLab.hop2PassageId).toFloat()),
+                ChipResult,
+                listOf("original question", "rewritten query"),
+            ),
+        ),
+        rows = listOf(
+            "hops needed" to "2",
+            "step cap" to "required — a stuck loop repeats its own action",
+            "what to log" to "every action and observation, or nothing is debuggable",
+        ),
+        readout = "rank $answerRank → rank ${RetrievalLab.rankOf("C language first released", ReActLab.hop2PassageId)}, from one rewrite",
+    )
+    return frames
+}
+
+// ── D5 · Agents and tool use ─────────────────────────────────────────────────
+
+private fun agentFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+
+    frames += TokenFrame(
+        status = "An agent is a loop with three parts: a model that emits a tool call, a runtime that executes " +
+            "it, and a transcript that carries the result back. The tools are declared as typed schemas, and " +
+            "those schemas are in the context on every single turn — before any work happens, this agent is " +
+            "paying ${AgentLab.schemaTokens()} tokens per request just to describe what it can do.",
+        chips = AgentLab.tools.map { Chip(it.name, "${it.schemaTokens} tok", ChipMark.IDLE) },
+        chipsLabel = "declared tools",
+        bars = listOf(
+            BarRow(
+                "schema tokens",
+                AgentLab.tools.map { it.schemaTokens.toFloat() },
+                BarPositive,
+                AgentLab.tools.map { it.name },
+            ),
+        ),
+        rows = listOf(
+            "system prompt" to "${AgentLab.systemTokens} tokens",
+            "tool schemas" to "${AgentLab.schemaTokens()} tokens",
+            "fixed overhead" to "${AgentLab.systemTokens + AgentLab.schemaTokens()} tokens, every turn",
+        ),
+        readout = "the tool list is a per-turn cost, not a one-off",
+    )
+
+    frames += TokenFrame(
+        status = "The trajectory, one entry per turn. Step 4 is a real failure: the unit tool rejected \"mi\", " +
+            "the error came back as an observation, and the model reissued the call with \"mile\". That " +
+            "recovery is the behaviour worth having — but it is not free, and the next frames price it.",
+        chips = AgentLab.trajectory.map {
+            Chip(it.label.substringBefore("(").take(12), "${it.tokens}", if (it.failed) ChipMark.ACTIVE else ChipMark.IDLE)
+        },
+        chipsLabel = "eight transcript entries; the highlighted two are the failed call and its retry",
+        bars = listOf(
+            BarRow(
+                "tokens added per entry",
+                AgentLab.trajectory.map { it.tokens.toFloat() },
+                BarPositive,
+                AgentLab.trajectory.indices.map { "${it + 1}" },
+            ),
+        ),
+        readout = "an error is an observation, not an exception",
+    )
+
+    frames += TokenFrame(
+        status = "Here is the part that surprises people. The transcript is stateless: every model turn resends " +
+            "the whole thing. Context grows from ${AgentLab.contextAt(1)} tokens to " +
+            "${AgentLab.finalContext()}, but the *bill* is the sum of every request, which comes to " +
+            "${AgentLab.billedTokens()} tokens — ${"%.1f".format(AgentLab.billingMultiple())}× the final " +
+            "context. Cost is quadratic in the number of steps while the transcript is only linear.",
+        bars = listOf(
+            BarRow(
+                "context size at each model turn",
+                AgentLab.trajectory.indices.filter { it % 2 == 0 }.map { AgentLab.contextAt(it + 1).toFloat() },
+                ChipResult,
+                AgentLab.trajectory.indices.filter { it % 2 == 0 }.map { "turn ${it / 2 + 1}" },
+            ),
+        ),
+        rows = listOf(
+            "final context" to "${AgentLab.finalContext()} tokens",
+            "actually billed" to "${AgentLab.billedTokens()} tokens",
+            "multiple" to "${"%.2f".format(AgentLab.billingMultiple())}×",
+        ),
+        readout = "linear transcript, quadratic bill",
+    )
+
+    frames += TokenFrame(
+        status = "So a retry costs far more than the error message. Dropping the failed call and its reissue " +
+            "leaves a trajectory that bills ${AgentLab.billedTokens(AgentLab.cleanTrajectory)} tokens against " +
+            "this one's ${AgentLab.billedTokens()} — the two extra entries added " +
+            "${AgentLab.retryOverhead()} billed tokens, or " +
+            "${"%.0f".format(100.0 * AgentLab.retryOverhead() / AgentLab.billedTokens(AgentLab.cleanTrajectory))}%, " +
+            "because everything after them is resent with them attached.",
+        bars = listOf(
+            BarRow(
+                "billed tokens",
+                listOf(AgentLab.billedTokens(AgentLab.cleanTrajectory).toFloat(), AgentLab.billedTokens().toFloat()),
+                ChipResult,
+                listOf("clean run", "with one retry"),
+            ),
+        ),
+        rows = listOf(
+            "retry overhead" to "${AgentLab.retryOverhead()} tokens",
+            "why so large" to "the retry is resent on every later turn too",
+            "the lever" to "tool schemas that make the bad call impossible",
+        ),
+        readout = "a strict enum in the schema is cheaper than a retry",
+    )
+
+    frames += TokenFrame(
+        status = "The other lever is shape rather than size. These three calls do not depend on each other, so " +
+            "issuing them in one turn costs ${AgentLab.parallelLatency()} ms — the slowest tool — instead of " +
+            "${AgentLab.sequentialLatency()} ms of round trips, and it collapses three model turns into one. " +
+            "Sequential turns are only required when a later call needs an earlier observation, which is " +
+            "exactly the case ReAct is about.",
+        bars = listOf(
+            BarRow(
+                "latency (ms)",
+                listOf(AgentLab.sequentialLatency().toFloat(), AgentLab.parallelLatency().toFloat()),
+                BarPositive,
+                listOf("sequential ${AgentLab.sequentialLatency()}", "parallel ${AgentLab.parallelLatency()}"),
+            ),
+        ),
+        rows = listOf(
+            "independent calls" to "batch them into one turn",
+            "dependent calls" to "must interleave — that is the ReAct loop",
+            "step cap" to "the only thing between a loop and an unbounded bill",
+        ),
+        readout = "${AgentLab.sequentialLatency()} ms → ${AgentLab.parallelLatency()} ms, and two fewer billed turns",
+    )
+    return frames
+}
+
 private val nbLegend = listOf(
     ChipActive to "Current",
     ChipResult to "Scored",
 )
 
 private val tokenConfigs = mapOf(
+    "prompt_engineering" to TokenConfig(
+        intro = "A prompt written as the induction problem it is: five rules fit the instruction, and each " +
+            "demonstration kills the ones it contradicts — including the two-shot prompt that answers " +
+            "confidently and wrongly.",
+        legend = listOf(
+            ChipActive to "Newest demo",
+            ChipResult to "Used",
+        ),
+        build = ::promptEngineeringFrames,
+    ),
+    "react" to TokenConfig(
+        intro = "One two-hop question through a real retriever: the answer passage ranks 5th for the question " +
+            "as asked and 1st for the query the second thought writes.",
+        legend = listOf(
+            ChipActive to "Action",
+            ChipResult to "Observation",
+        ),
+        build = ::reactFrames,
+    ),
+    "ai_agents" to TokenConfig(
+        intro = "A real eight-entry trajectory with one failed tool call, priced: the transcript grows " +
+            "linearly, the bill grows quadratically, and the retry costs far more than its error message.",
+        legend = listOf(
+            ChipActive to "Failure / retry",
+            ChipResult to "Context",
+        ),
+        build = ::agentFrames,
+    ),
     "positional_encodings" to TokenConfig(
         intro = "The sinusoidal table as a heat grid, its offset-invariance measured, the non-monotone decay " +
             "textbook diagrams smooth over, and RoPE's exact relative identity.",

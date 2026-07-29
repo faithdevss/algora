@@ -31,6 +31,7 @@ private val syntax = NlpCategories.syntax
 private val embeddings = NlpCategories.embeddings
 private val transformer = NlpCategories.transformer
 private val pretrained = NlpCategories.pretrained
+private val modernLlm = NlpCategories.modernLlm
 private val modeling = NlpCategories.modeling
 
 // Ordered as a reading path — clean, split, filter, normalise, then the two vocabulary-building
@@ -99,14 +100,27 @@ private val pretrainedTopics = listOf(
     topic("claude_gemini", "Claude & Gemini", pretrained, "What actually separates the frontier families.", isPremium = true),
 )
 
+// D5. `rag` moves here from Modeling — the doc lists it under Modern LLM Techniques, and it is the
+// technique the other six are built around. Ordered as the stack is assembled: shape the prompt,
+// decompose the reasoning, search over the decomposition, then retrieve, act, and check.
+private val modernLlmTopics = listOf(
+    topic("prompt_engineering", "Prompt Engineering (Zero/Few Shot)", modernLlm, "Demonstrations as data — each one kills the rules it contradicts.", difficulty = Difficulty.BEGINNER),
+    topic("chain_of_thought", "Chain of Thought (CoT)", modernLlm, "Decompose the answer, and pay for every step you add.", isPremium = true),
+    topic("tree_of_thoughts", "Tree of Thoughts", modernLlm, "Keep alternatives, score them, and prune — reasoning as search.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("rag", "Retrieval-Augmented Generation", modernLlm, "Retrieve relevant passages and condition the model on them.", isPremium = true),
+    topic("vector_databases", "Vector Databases", modernLlm, "Approximate nearest neighbours, and what each approximation costs.", isPremium = true),
+    topic("react", "ReAct (Reasoning + Acting)", modernLlm, "Interleave thought and tool call, because one retrieval is not enough.", isPremium = true),
+    topic("ai_agents", "AI Agents & Tool Use", modernLlm, "The loop, its schemas, and the bill that grows quadratically.", isPremium = true),
+    topic("hallucination_mitigation", "Hallucination Mitigation", modernLlm, "Ground, cite, abstain — and why confidence is the wrong signal.", isPremium = true, difficulty = Difficulty.ADVANCED),
+)
+
 private val modelingTopics = listOf(
     topic("rnn_lstm", "RNN / LSTM", modeling, "Sequential models that read text one token at a time.", isPremium = true),
-    topic("rag", "Retrieval-Augmented Generation", modeling, "Retrieve relevant passages and condition the model on them.", isPremium = true),
 )
 
 object NlpTopics {
     val topics: List<Topic> = preprocessingTopics + statisticalTopics + syntaxTopics + embeddingTopics +
-        transformerTopics + pretrainedTopics + modelingTopics
+        transformerTopics + pretrainedTopics + modernLlmTopics + modelingTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }

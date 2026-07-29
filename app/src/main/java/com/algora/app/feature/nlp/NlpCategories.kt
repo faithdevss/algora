@@ -25,7 +25,11 @@ object NlpCategories {
     // D4. "crown" for the frontier models — the flagship tier, and unused in this section.
     val pretrained = Category("nlp_pretrained", "Pre-trained Language Models", Section.NLP, 0xFFEC4899, "crown")
 
+    // D5. "robot" is the agent loop these techniques are built around, and it is unused in this
+    // section — dl_basics uses it, but icons only have to be unique within a browser.
+    val modernLlm = Category("nlp_modern_llm", "Modern LLM Techniques", Section.NLP, 0xFF10B981, "robot")
+
     val modeling = Category("nlp_modeling", "Modeling", Section.NLP, 0xFF3B82F6, "network")
 
-    val all = listOf(preprocessing, statistical, syntax, embeddings, transformer, pretrained, modeling)
+    val all = listOf(preprocessing, statistical, syntax, embeddings, transformer, pretrained, modernLlm, modeling)
 }

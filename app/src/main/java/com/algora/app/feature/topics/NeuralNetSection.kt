@@ -2469,7 +2469,279 @@ private fun llamaFrames(): List<NetFrame> {
     return frames
 }
 
+// ── D5 · Chain of thought and self-consistency ──────────────────────────────
+// Both calculations are exact. The plurality vote is enumerated over the multinomial rather than
+// sampled, which is what makes the case where voting *hurts* checkable rather than anecdotal.
+
+private fun chainOfThoughtFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+    val p = CotLab.stepAccuracy
+    val q = CotLab.directAccuracy
+    val breakEven = CotLab.breakEvenSteps()
+
+    frames += NetFrame(
+        status = "Chain of thought trades one hard step for several easy ones. That is a real trade, not a free " +
+            "win: if a decomposed step is right ${"%.0f".format(p * 100)}% of the time and the steps have to " +
+            "all be right, the chain succeeds with probability pⁿ — which falls off a cliff. Answering " +
+            "directly is one step at ${"%.0f".format(q * 100)}%.",
+        plot = autoPlot(
+            "accuracy vs chain length",
+            listOf(
+                Curve("chain pⁿ", (1..12).map { it.toFloat() to CotLab.chainAccuracy(it).toFloat() }, ForwardColor),
+                Curve("direct answer", (1..12).map { it.toFloat() to q.toFloat() }, AccentB),
+            ),
+            1f..12f,
+        ),
+        readout = "p = ${"%.2f".format(p)} per step, direct = ${"%.2f".format(q)}",
+    )
+
+    frames += NetFrame(
+        status = "The curves cross at $breakEven steps. Below that, decomposing wins — " +
+            "${"%.3f".format(CotLab.chainAccuracy(breakEven))} against ${"%.2f".format(q)}. Past it, the chain " +
+            "is worse than the guess it replaced, because each additional step is another chance to be wrong " +
+            "and nothing checks the earlier ones. \"Let's think step by step\" is not unconditionally good " +
+            "advice; it is good advice for problems short enough that pⁿ stays above q.",
+        bars = listOf(
+            NetBar(
+                "chain accuracy by length",
+                (1..10).map { CotLab.chainAccuracy(it).toFloat() },
+                ForwardColor,
+                (1..10).map { "$it" },
+            ),
+        ),
+        readout = "break-even at n = $breakEven",
+    )
+
+    frames += NetFrame(
+        status = "Self-consistency is the standard repair: sample several independent chains and keep the " +
+            "answer most of them reach. The usual justification is that wrong chains go wrong in different " +
+            "directions while right ones agree — so the vote concentrates on the truth. That justification is " +
+            "a claim about the *errors*, and it is checkable.",
+        bars = listOf(
+            NetBar(
+                "five sampled chains, one answer each",
+                listOf(1f, 1f, 0.4f, 1f, 0.4f),
+                OutputColor,
+                listOf("24", "24", "18", "24", "18"),
+            ),
+        ),
+        readout = "plurality: 24",
+    )
+
+    val spread = CotLab.votingCurve(0.40, 4)
+    val fixed = CotLab.votingCurve(0.40, 1)
+    frames += NetFrame(
+        status = "Computed exactly, not sampled. With a per-chain accuracy of 0.40 and wrong answers scattered " +
+            "over 4 alternatives, voting over 9 chains lifts accuracy to " +
+            "${"%.3f".format(spread.last().second)}. With every wrong chain landing on the *same* wrong " +
+            "answer, the identical vote drives accuracy down to ${"%.3f".format(fixed.last().second)} — below " +
+            "the single chain it started from. Majority voting amplifies whatever the model does " +
+            "consistently, and that includes being consistently wrong.",
+        plot = autoPlot(
+            "plurality accuracy vs number of samples",
+            listOf(
+                Curve("4 distinct wrong answers", spread.map { it.first.toFloat() to it.second.toFloat() }, AccentA),
+                Curve("1 systematic wrong answer", fixed.map { it.first.toFloat() to it.second.toFloat() }, BackwardColor),
+                Curve("single chain", spread.map { it.first.toFloat() to 0.40f }, NeutralColor),
+            ),
+            1f..9f,
+        ),
+        readout = "same p, same vote, opposite direction",
+    )
+
+    frames += NetFrame(
+        status = "The same calculation gives self-consistency's other output: agreement between samples, which " +
+            "gets used as a confidence score. It is worth seeing what that number does in the bad case. At " +
+            "p = 0.12 with one systematic wrong answer, five sampled chains agree " +
+            "${"%.0f".format(CotLab.modalShare(0.12, 5, 1) * 100)}% of the time while the plurality answer is " +
+            "right ${"%.1f".format(CotLab.pluralityAccuracy(0.12, 5, 1) * 100)}% of the time. High agreement, " +
+            "near-zero accuracy — the signal points the wrong way exactly where you need it.",
+        bars = listOf(
+            NetBar(
+                "reported agreement vs actual accuracy",
+                listOf(
+                    CotLab.modalShare(0.90, 5, 4).toFloat(),
+                    CotLab.pluralityAccuracy(0.90, 5, 4).toFloat(),
+                    CotLab.modalShare(0.12, 5, 1).toFloat(),
+                    CotLab.pluralityAccuracy(0.12, 5, 1).toFloat(),
+                ),
+                OutputColor,
+                listOf("agree p=.9", "correct", "agree p=.12", "correct"),
+            ),
+        ),
+        readout = "agreement measures consistency, never correctness",
+    )
+
+    frames += NetFrame(
+        status = "What this leaves. Decomposition helps while the chain is short enough; voting helps when the " +
+            "errors are unsystematic; neither introduces a fact the model does not have, and neither can " +
+            "detect a step that is wrong in a way the model is confident about. Those are the two jobs that " +
+            "go to retrieval and to verification, which is where the rest of this category goes.",
+        bars = listOf(
+            NetBar(
+                "what each mechanism fixes",
+                listOf(1f, 1f, 0f, 0f),
+                AccentA,
+                listOf("long derivations", "random slips", "missing facts", "systematic error"),
+            ),
+        ),
+        readout = "two of four — the other two need evidence, not more sampling",
+    )
+    return frames
+}
+
+// ── D5 · Hallucination mitigation ───────────────────────────────────────────
+
+private fun hallucinationFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+    val questions = HallucinationLab.questions
+    val scattered = HallucinationLab.scatteredQuestions
+    val (threshold, coverage, selective) = HallucinationLab.bestThreshold()
+
+    frames += NetFrame(
+        status = "Ten questions, six of which the corpus can support and four it cannot. The model answers all " +
+            "ten. Its accuracy on the population is " +
+            "${"%.2f".format(HallucinationLab.overallAccuracy())}, and every one of the four unanswerable ones " +
+            "gets a fluent, specific, wrong answer — that is what makes this a hallucination rather than an " +
+            "error: nothing in the output marks it.",
+        bars = listOf(
+            NetBar(
+                "accuracy per question",
+                questions.map { HallucinationLab.accuracy(it).toFloat() },
+                ForwardColor,
+                questions.indices.map { "${it + 1}" },
+            ),
+        ),
+        readout = "6 supported, 4 not — indistinguishable from the answers alone",
+    )
+
+    frames += NetFrame(
+        status = "The first mitigation people reach for is the model's own confidence, taken as agreement " +
+            "across ${HallucinationLab.samples} sampled chains. Plotted against accuracy it should be a " +
+            "diagonal. It is not: the four unsupported questions report confidence between " +
+            "${"%.2f".format(questions.filter { !it.supported }.minOf { HallucinationLab.confidence(it) })} and " +
+            "${"%.2f".format(HallucinationLab.maxUnsupportedConfidence())} while being right almost never. " +
+            "The expected calibration error is " +
+            "${"%.3f".format(HallucinationLab.expectedCalibrationError())}.",
+        bars = listOf(
+            NetBar(
+                "reported confidence",
+                questions.map { HallucinationLab.confidence(it).toFloat() },
+                OutputColor,
+                questions.indices.map { "${it + 1}" },
+            ),
+            NetBar(
+                "actual accuracy",
+                questions.map { HallucinationLab.accuracy(it).toFloat() },
+                ForwardColor,
+                questions.indices.map { if (it < 6) "sup" else "—" },
+            ),
+        ),
+        readout = "ECE ${"%.3f".format(HallucinationLab.expectedCalibrationError())}; confidence does not separate the two groups",
+    )
+
+    frames += NetFrame(
+        status = "So thresholding on it barely works. Sweeping the abstention threshold, the best point that " +
+            "still answers at least half the questions is τ = ${"%.1f".format(threshold)}: coverage " +
+            "${"%.0f".format(coverage * 100)}%, and accuracy on what it did answer only " +
+            "${"%.3f".format(selective)}. Refusing 40% of the questions bought " +
+            "${"%.3f".format(selective - HallucinationLab.overallAccuracy())} of accuracy.",
+        plot = autoPlot(
+            "selective accuracy vs coverage",
+            listOf(
+                Curve(
+                    "confidence threshold",
+                    HallucinationLab.abstentionSweep().map { it.second.toFloat() to it.third.toFloat() }.sortedBy { it.first },
+                    BackwardColor,
+                ),
+                Curve(
+                    "grounding",
+                    listOf(
+                        HallucinationLab.groundedCoverage().toFloat() to HallucinationLab.groundedSelectiveAccuracy().toFloat(),
+                        1f to HallucinationLab.overallAccuracy().toFloat(),
+                    ),
+                    AccentA,
+                ),
+            ),
+            0f..1f,
+        ),
+        readout = "τ = ${"%.1f".format(threshold)} → coverage ${"%.2f".format(coverage)}, accuracy ${"%.3f".format(selective)}",
+    )
+
+    frames += NetFrame(
+        status = "Grounding answers the same population differently: refuse unless a retrieved passage supports " +
+            "the claim. At the same ${"%.0f".format(HallucinationLab.groundedCoverage() * 100)}% coverage it " +
+            "scores ${"%.3f".format(HallucinationLab.groundedSelectiveAccuracy())} against the confidence " +
+            "threshold's ${"%.3f".format(selective)}. It is not a better threshold — it is a different " +
+            "signal, taken from the evidence rather than from the model's agreement with itself.",
+        bars = listOf(
+            NetBar(
+                "selective accuracy at equal coverage",
+                listOf(selective.toFloat(), HallucinationLab.groundedSelectiveAccuracy().toFloat()),
+                AccentA,
+                listOf("confidence τ=${"%.1f".format(threshold)}", "grounded"),
+            ),
+        ),
+        readout = "${"%.3f".format(selective)} → ${"%.3f".format(HallucinationLab.groundedSelectiveAccuracy())} at ${"%.0f".format(coverage * 100)}% coverage",
+    )
+
+    val control = HallucinationLab.bestThreshold(scattered)
+    frames += NetFrame(
+        status = "One property causes all of it. Rerun the identical population with the model's errors " +
+            "*scattered* instead of systematic — four different wrong answers instead of the same one — and " +
+            "confidence separates the groups cleanly (${"%.2f".format(HallucinationLab.minSupportedConfidence(scattered))} " +
+            "supported against ${"%.2f".format(HallucinationLab.maxUnsupportedConfidence(scattered))} " +
+            "unsupported), and thresholding scores ${"%.3f".format(control.third)}, matching grounding. " +
+            "Self-consistency measures how firmly the model believes something. That is a useful signal " +
+            "against random slips and worthless against a confident false belief.",
+        bars = listOf(
+            NetBar(
+                "confidence, unsupported questions",
+                questions.filter { !it.supported }.map { HallucinationLab.confidence(it).toFloat() } +
+                    scattered.filter { !it.supported }.map { HallucinationLab.confidence(it).toFloat() },
+                OutputColor,
+                List(4) { "systematic" } + List(4) { "scattered" },
+            ),
+        ),
+        readout = "the signal works exactly where the failure is benign",
+    )
+
+    frames += NetFrame(
+        status = "So the working stack is layered, and the order matters: retrieve so the fact is present, " +
+            "constrain the answer to what the passages support, cite so a claim can be checked, and abstain " +
+            "when nothing supports it. Confidence thresholds sit on top of that as a cheap filter for random " +
+            "error — not as the mechanism. The failure this lab is built around is not noise, and no amount " +
+            "of resampling finds it.",
+        bars = listOf(
+            NetBar(
+                "accuracy by mitigation",
+                listOf(
+                    HallucinationLab.overallAccuracy().toFloat(),
+                    selective.toFloat(),
+                    HallucinationLab.groundedSelectiveAccuracy().toFloat(),
+                ),
+                AccentA,
+                listOf("answer everything", "confidence τ", "grounded + abstain"),
+            ),
+        ),
+        readout = "evidence beats agreement",
+    )
+    return frames
+}
+
 private val netConfigs = mapOf(
+    "chain_of_thought" to NetConfig(
+        intro = "The arithmetic of decomposition, and self-consistency's plurality vote computed exactly — " +
+            "including the case where voting over more samples makes accuracy worse.",
+        legend = listOf(ForwardColor to "Chain", AccentB to "Direct", BackwardColor to "Systematic error"),
+        build = ::chainOfThoughtFrames,
+    ),
+    "hallucination_mitigation" to NetConfig(
+        intro = "Ten questions, four of them unanswerable: what self-consistency confidence reports, what " +
+            "abstaining on it actually buys, and the one property of the errors that decides whether it works.",
+        legend = listOf(ForwardColor to "Accuracy", OutputColor to "Confidence", AccentA to "Grounded"),
+        build = ::hallucinationFrames,
+    ),
     "feed_forward" to NetConfig(
         intro = "The two-thirds of a transformer block nobody names the architecture after — its parameter " +
             "share, GELU against ReLU, SwiGLU's three-matrix reshuffle, and the sparsity MoE exploits.",

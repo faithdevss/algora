@@ -1,12 +1,12 @@
 # Phase 9 — AI Taxonomy Completion
 
-Status: In progress — Track A complete (RL at 100% of the doc), B1–B7 and C1–C4 done. 109 of 226
-topics authored. AI sections now: ML 75, **DL 50**, NLP 12, RL 74 — 211 AI topics, and 333 browsable
-topics across the app *counted from the section lists themselves*. (The running "taxonomy at N"
+Status: In progress — Track A complete (RL at 100% of the doc), B1–B7, C1–C4 and D1–D5 done. 143 of
+226 topics authored. AI sections now: ML 75, **DL 50**, NLP 46, RL 74 — 245 AI topics, and 367
+browsable topics across the app *counted from the section lists themselves*. (The running "taxonomy at N"
 tallies in earlier revisions of this file drifted from those lists; the measured number is the one to
 trust, and `ContentCoverageTest` is what enforces it.)
-**Doc coverage is measured, not estimated: 228 of the doc's 357 entries (64%).**
-Next: C5 — RNN mechanics, on `NeuralNetPlayer` and `TokenStripPlayer`.
+**Doc coverage is measured, not estimated: 262 of the doc's 357 entries (73%).**
+Next: D6 — fine-tuning, beyond-transformers and metrics, the phase's other oversized thin-topic batch.
 Track B was interrupted after B7 by a deliberate jump to Track C; **B8, B9 and B10 remain unbuilt**,
 and `ml_supervised` therefore still holds the four topics they were to redistribute.
 
@@ -58,19 +58,19 @@ foundational sub-sections, and Track A closed both.
 This table is the starting snapshot and is deliberately left unedited. Live status is the table
 below.
 
-## Where the phase stands (last updated after D4)
+## Where the phase stands (last updated after D5)
 
-**136 of 226 topics authored; 90 remain, in three open blocks.**
+**143 of 226 topics authored; 83 remain, in three open blocks.**
 
 | Open block | Topics | What it needs |
 |---|---|---|
 | B8–B10 | 29 | Neural-network foundations, preprocessing, metrics + practice. Track B is not finished until `ml_supervised` is empty — it still holds `perceptron`, `bias_variance`, `regularization`, `model_evaluation` |
 | C5–C9 | 38 | RNN family, transformers, generative, optimizers/regularization, specialized. `dl_fundamentals` and `dl_architectures` are still standing and should end empty |
-| D5–D6 | 23 | Modern LLM techniques (7) and fine-tuning + beyond-transformers + metrics (16). D6 is the phase's other oversized thin-topic batch |
+| D6 | 16 | Fine-tuning + beyond-transformers + metrics. The phase's other oversized thin-topic batch, and the last of Track D |
 
-Track A is closed (RL is 71/71 against the doc). Track D is 4 of 6. Every landed batch has updated
+Track A is closed (RL is 71/71 against the doc). Track D is 5 of 6. Every landed batch has updated
 `expectedCoveredCount` in the same change, so the coverage number below is a test result rather than
-a count: **255 of 357**.
+a count: **262 of 357**.
 
 Nothing is blocked. The one net-new widget the phase planned (`FeatureMapPlayer`) was built in C3,
 and every batch since has run on widgets that already existed — C4 and D1–D4, five in a row, each
@@ -101,8 +101,9 @@ front-loaded per *family* rather than per batch, as the risks section predicted 
 | D2 · Syntactic & Semantic Analysis | 6 | **Done** | New `nlp_syntax`; no new widget. Taggers and parsers run and scored in `SyntaxMath.kt`; `D2MathTest` |
 | D3 · Word Embeddings | 5 | **Done** | New `nlp_embeddings`; no new widget. Models trained for real in `EmbeddingMath.kt`; `D3MathTest` |
 | D4 · Transformer Internals + Pre-trained LMs | 8 | **Done** | New `nlp_transformer` + `nlp_pretrained`; no new widget. `TransformerMath.kt`; `D4MathTest` |
-| D5–D6 | 23 | Planned | |
-| **Total** | **226** | **136 done** | 360 browsable topics, counted from the section lists |
+| D5 · Modern LLM Techniques | 7 | **Done** | New `nlp_modern_llm`; no new widget. `ModernLlmMath.kt` runs a real Game-of-24 search, a real index and a real retriever; `D5MathTest` overturned four planned claims |
+| D6 | 16 | Planned | |
+| **Total** | **226** | **143 done** | 367 browsable topics, counted from the section lists |
 
 Sections against the doc, measured by `AiTaxonomyCoverageTest` rather than counted by hand:
 **RL 71/71**, ML 84/113, **DL 57/96**, NLP 43/77 — **255 of 357 overall**. ML is 75 topics of its
@@ -159,7 +160,8 @@ kept it as the category's landing topic), and `nlp_transformer` + `nlp_pretraine
 `attention`, `transformers` and `llms` off Modeling — leaving it holding only `rnn_lstm` and `rag`).
 Full list
 (`nlp_preprocessing` (kept), `nlp_statistical`, `nlp_syntax`,
-`nlp_embeddings`, `nlp_rnn`, `nlp_transformer`, `nlp_pretrained`, `nlp_modern_llm`,
+`nlp_embeddings`, `nlp_rnn`, `nlp_transformer`, `nlp_pretrained`, `nlp_modern_llm` (D5, which took
+`rag` off Modeling — leaving it holding only `rnn_lstm`, which C5 will take),
 `nlp_finetuning`, `nlp_beyond`, `nlp_metrics`)
 
 **Reinforcement Learning — 10 categories** (existing 9 + new `rl_tabular`; `rl_foundations` absorbs
@@ -936,12 +938,80 @@ context cost and alignment method in the copy; a closing frame that says outrigh
 prices are stale within months and the deciding factors are latency, context, tool reliability,
 region and price. Model facts were taken from the `claude-api` skill rather than from memory.
 
-**D5 · Modern LLM Techniques** — 7 topics
-Prompt Engineering · Chain of Thought · Tree of Thoughts · Vector Databases · ReAct ·
-AI Agents & Tool Use · Hallucination Mitigation
-*Sims:* `TokenStripPlayer` (the existing `rag` pipeline frame builder generalizes to ReAct's
-thought/action/observation loop), `GameSearchPlayer` (Tree of Thoughts branching and pruning — reuses
-the MCTS-family widget), `PointCloudPlayer` (vector-DB nearest-neighbour retrieval).
+**D5 · Modern LLM Techniques** — 7 topics into a new `nlp_modern_llm` — **Done**
+`prompt_engineering` · `chain_of_thought` · `tree_of_thoughts` · `vector_databases` · `react` ·
+`ai_agents` · `hallucination_mitigation`
+
+New category `nlp_modern_llm` ("Modern LLM Techniques", icon `robot` — the agent loop these
+techniques are built around, and unused in this section). `rag` **moved into it** from Modeling: the
+doc lists it under this heading, and it is the technique the other six are built around. Modeling is
+now down to `rnn_lstm` alone, which C5 will take. Ordered as the stack is assembled — shape the
+prompt, decompose the reasoning, search over the decomposition, then retrieve, act, and check.
+Gating honours the doc's markers verbatim: only `prompt_engineering` is free.
+
+**No new widget, and the plan's own suggestion was wrong again.** It named `GameSearchPlayer` for
+Tree of Thoughts as "the MCTS-family widget" — that widget renders a tic-tac-toe board and has no
+tree at all, so it cannot draw a frontier or a pruned branch. `TreeVisualizer` took it. Otherwise:
+three topics on `TokenStripPlayer`, two on `NeuralNetPlayer` (both are curve-and-bar arguments), one
+on `PointCloudPlayer`. That is the same read-the-widget-before-trusting-the-plan lesson B7, C2 and
+D1 each recorded, now for the third distinct widget.
+
+`ModernLlmMath.kt` refuses to simulate a language model anywhere. What it runs instead is *the
+problem each technique solves*: an enumerable hypothesis space for prompting, an exact multinomial
+plurality calculation for self-consistency, a real search over Game of 24, a real IVF and a real
+graph index over real distances, and a real TF-IDF retriever over a real corpus. Where a model's
+behaviour has to be stood in for it is stood in for by a stated parameter — a per-step accuracy, a
+number of distinct wrong answers — rather than a number typed in to make the story work, and the
+copy says so.
+
+**The probe overturned four claims before any copy existed, and one of them is the batch's headline:**
+- **Self-consistency confidence does not detect hallucinations — and the control run says why.** The
+  planned frame was "threshold on confidence and convert errors into refusals at a known rate".
+  Measured, that mechanism fails: on the lab's population the least-confident *supported* question
+  sits at 0.712 and the most-confident *unsupported* one at 0.883, so the signal does not separate
+  the groups at all (ECE 0.225). The best threshold that still answers half the questions buys
+  selective accuracy 0.668; grounding buys **0.959 at the same 60% coverage**. Rather than assert the
+  reason, the lab reruns the identical population with the errors *scattered* over four wrong answers
+  instead of one — and then confidence separates cleanly and thresholding scores 0.959 too. One
+  property flipped, opposite conclusion. Self-consistency measures conviction, not correctness.
+- **Tree of Thoughts: the better evaluator is the *more* expensive lever here.** The cheap
+  one-operation evaluator turned out to be far worse than expected — it ranks the best genuinely
+  solvable first move 8th of 36 and none of its top five can reach 24 — so beam width 1, 2, 3 and 5
+  all fail and width 8 is the first that works. Giving the evaluator one more operation of lookahead
+  lets width 1 solve it, but costs 702 evaluator calls against 180 for the weak evaluator at width 8.
+  The frame is now the measured trade (width and evaluator quality are substitutes, and which is
+  cheaper is a measurement) rather than the planned "a better evaluator lets you search less".
+- **A plain k-NN graph is disconnected, which is the real HNSW motivation.** The first graph lab was
+  built as "greedy search gets stuck in local minima" and measured recall 0.0 at every `ef` — because
+  the 6-NN graph over this corpus comes apart into **3 components**, so from 33% of entry points
+  there is no path to the answer and no candidate list can create one. Adding two random long-range
+  links per node collapses it to one component and recovers recall 1.00 in 3 hops from the same
+  stranded start. That is a better frame than the one planned, and it is why HNSW is not a k-NN graph.
+- **Self-consistency voting can make accuracy worse, exactly.** Enumerated over the multinomial
+  rather than sampled: at p = 0.40 with wrong answers spread over 4 values, voting over 9 chains
+  lifts accuracy to 0.590; with every wrong chain landing on the *same* value, the identical vote
+  drives it down to 0.267 — below the single chain it started from.
+
+Two smaller corrections came out of the same run. The prompt pool was reordered so the reading path
+is the interesting one: the first three words a person would reach for leave the rule underdetermined
+(5 → 4 → 3 → 2 survivors, with a genuine 50/50 tie at three demonstrations), and `level` resolves it
+at four. And the agent lab's "retry overhead" was originally just step 4's own tokens, which is
+mislabelled — it now measures what the failure actually cost by billing the trajectory twice, with
+and without the failed call and its reissue: **647 tokens, 49%**, because everything after them is
+resent with them attached.
+
+Measurements the copy is built on: the ReAct question's answer passage ranks **5 of 8** under the
+question as asked and **1** under the query the second thought writes; the agent trajectory bills
+1,970 tokens against a 700-token final context (**2.81×**); IVF at a cell boundary returns recall
+0.60 for 28 comparisons at nprobe 1 and 1.00 for 35 at nprobe 2, against brute force's 180;
+quantization at 16 levels imposes a 0.067 grid on neighbours 0.0089 apart, and recall only returns at
+64 levels; contrast falls 34.6 → 0.35 from 2 to 128 dimensions; and chain-of-thought decomposition at
+p = 0.92 beats a 0.55 direct answer up to **7** steps and loses at 8.
+
+New guard `D5MathTest` (23 tests). Four of them are written as "if this ever flips, the topic's
+central claim is false" — the non-separating confidence signal, the systematic-error voting curve,
+the greedy Game-of-24 failure, and the disconnected k-NN graph — because each one is a frame that
+would read perfectly well in the wrong direction.
 
 **D6 · Fine-Tuning + Beyond Transformers + Metrics** — 16 topics
 Fine-Tuning (Full) · DPO · PEFT · LoRA & QLoRA · Quantization · Flash Attention · SSMs · Mamba ·
@@ -976,7 +1046,7 @@ monetization angle.
 
 ## Guards
 
-**Shipping and green (235 tests):**
+**Shipping and green (288 tests):**
 - `ContentCoverageTest` — every browsable topic has content, nothing resolves to `NotYetAvailable`,
   and every prerequisite and cross-link id resolves. It has caught real breakage every batch and is
   run (with `--rerun-tasks`) at the end of each one.
@@ -994,8 +1064,8 @@ monetization angle.
   mapped to the topic ids serving it or to an explicit gap; pins the entry count, id resolution,
   section membership, and the covered count. Its failure message prints the remaining backlog.
 - `DimReductionMathTest` (B6), `B7MathTest` (B7), `DeepNetMathTest` (C1), `ActivationMathTest` (C2),
-  `CnnMathTest` (C3), `DetectionMathTest` (C4), `D1MathTest`, `D2MathTest`, `D3MathTest` and
-  `D4MathTest` — pin the properties each
+  `CnnMathTest` (C3), `DetectionMathTest` (C4), `D1MathTest`, `D2MathTest`, `D3MathTest`,
+  `D4MathTest` and `D5MathTest` — pin the properties each
   batch's copy leans on, so a re-tune that makes a topic pointless fails instead of shipping. Worth
   continuing per batch; `B7MathTest` caught a wrong claim that had already been written, and
   `D1MathTest` caught one this plan document had asserted.
@@ -1040,7 +1110,9 @@ number closed no doc entry, which is worth noticing at the time rather than at t
   (`autoPlot`, deriving axes from the data) removed the whole class rather than the seven instances.
   D1 extended the same guard to `TokenStrip` and it found a live bug in the batch's own new tree lab
   (a frame linking to a removed node), while `D1MathTest` falsified a claim this plan document had
-  itself asserted about the regex tokenizer. Two widgets remain unguarded: `RegressionLab` and
+  itself asserted about the regex tokenizer. D5 is the first batch where the widget guard found
+  nothing — its seven labs were written against math that had already been probed and re-probed,
+  which is the order this phase keeps arriving at. Two widgets remain unguarded: `RegressionLab` and
   `DecisionSurface`. D3 is the strongest case yet for the probe-before-copy rule: its labs train
   rather than replay fixed numbers, and the first run produced a degenerate GloVe geometry, an ELMo
   sense separation that did not exist, and a rare-word comparison pointing the opposite way to the
@@ -1049,7 +1121,13 @@ number closed no doc entry, which is worth noticing at the time rather than at t
   coreference score computed on the wrong unit, two parser metrics that could not differ, and a
   comparison between metrics that the numbers did not support. D4 caught a textbook claim: the
   sinusoidal encoding's similarity is *not* monotone in distance, which every diagram of it implies
-  and the table refutes.
+  and the table refutes. D5 produced the largest single reversal so far: its planned frame was that
+  thresholding on self-consistency confidence converts hallucinations into refusals, and measured, the
+  signal does not separate supported questions from hallucinated ones at all — it is *highest* on the
+  questions the model is systematically wrong about. The batch also found that a better Tree-of-Thoughts
+  evaluator was the more expensive lever rather than the cheaper one, and that the k-NN graph its
+  vector-search lab was built on is disconnected. All three read as perfectly good copy if written
+  before looking, and all three now have a test whose failure message says the claim has inverted.
 - **Topic-id collisions.** `TopicRegistry` collapses cross-listed ids first-wins (`perceptron`,
   `transformers`). Tracks C and D cross-list far more (backprop, LSTM, attention, RLHF, all seven
   Deep RL entries). `AiTaxonomyCoverageTest` now makes these reviewable — a cross-listed entry
@@ -1064,7 +1142,7 @@ number closed no doc entry, which is worth noticing at the time rather than at t
 ## Suggested order
 
 ~~A1 → A2~~ → ~~B1 → B2 → B3 → B4 → B5~~ → ~~guards~~ → ~~B6 → B7~~ → **B8** → B9 → B10 → ~~C1 → C2~~
-→ ~~**`FeatureMapPlayer`** → C3 → C4~~ → C5 → C6 → C7 → C8 → C9 → ~~D1~~ → ~~D2~~ → ~~D3~~ → ~~D4~~ → D5 → D6.
+→ ~~**`FeatureMapPlayer`** → C3 → C4~~ → C5 → C6 → C7 → C8 → C9 → ~~D1~~ → ~~D2~~ → ~~D3~~ → ~~D4~~ → ~~D5~~ → D6.
 
 Struck-through batches are done. The guards step landed with B6 rather than before it, in the same
 session. The order was then broken deliberately twice, both times at the user's direction and both
@@ -1085,10 +1163,11 @@ Per batch: `./gradlew testDebugUnitTest` (coverage + taxonomy + category guards)
 `./gradlew assembleDebug` and a manual walk of the touched category screen — list renders, every row
 opens, sim plays, premium rows gate.
 
-**Outstanding:** the automated half has run green on every batch (235 unit tests at D4, plus
-`assembleDebug`), but the **manual emulator walk has not been done for D1–D4**. Those four batches
-added six NLP categories, moved five topics between categories, and added twenty-seven detail
+**Outstanding:** the automated half has run green on every batch (288 unit tests at D5, plus
+`assembleDebug`), but the **manual emulator walk has not been done for D1–D5**. Those five batches
+added seven NLP categories, moved six topics between categories, and added thirty-four detail
 screens — all of it guarded against broken content, resolvable links, and frame builders that throw,
-none of it actually looked at on a device. Worth one session with the emulator before Track D
-continues: open each new category, confirm the reading-path ordering reads correctly, and play at
-least one lab per widget (TokenStrip, TreeVisualizer, PointCloud, NeuralNet all gained configs).
+none of it actually looked at on a device. This is now the phase's largest unverified surface and it
+grows every batch. Worth one session with the emulator before Track D finishes: open each new
+category, confirm the reading-path ordering reads correctly, and play at least one lab per widget
+(TokenStrip, TreeVisualizer, PointCloud, NeuralNet all gained configs).

@@ -378,14 +378,14 @@ class AiTaxonomyCoverageTest {
                 "Claude & Gemini" to listOf("claude_gemini"),
             ),
             "Modern LLM Techniques" to linkedMapOf(
-                "Prompt Engineering (Zero/Few Shot)" to emptyList(),    // D5
-                "Chain of Thought (CoT)" to emptyList(),                // D5
-                "Tree of Thoughts" to emptyList(),                      // D5
+                "Prompt Engineering (Zero/Few Shot)" to listOf("prompt_engineering"),
+                "Chain of Thought (CoT)" to listOf("chain_of_thought"),
+                "Tree of Thoughts" to listOf("tree_of_thoughts"),
                 "RAG (Retrieval Augmented Generation)" to listOf("rag"),
-                "Vector Databases (Pinecone/Chroma)" to emptyList(),    // D5
-                "ReAct (Reasoning + Acting)" to emptyList(),            // D5
-                "AI Agents & Tool Use" to emptyList(),                  // D5
-                "Hallucination Mitigation" to emptyList(),              // D5
+                "Vector Databases (Pinecone/Chroma)" to listOf("vector_databases"),
+                "ReAct (Reasoning + Acting)" to listOf("react"),
+                "AI Agents & Tool Use" to listOf("ai_agents"),
+                "Hallucination Mitigation" to listOf("hallucination_mitigation"),
             ),
             "Fine-Tuning & Optimization" to linkedMapOf(
                 "Transfer Learning" to listOf("transfer_learning"),
@@ -516,7 +516,7 @@ class AiTaxonomyCoverageTest {
 
     // The ratchet. Move it when a batch lands; a batch that does not move it did not close any doc
     // entry, which is worth noticing.
-    private val expectedCoveredCount = 255
+    private val expectedCoveredCount = 262
 
     // Doc entries the app answers from the DSA taxonomy rather than an AI section. Deliberate reuse
     // — the alternative is a duplicate page — but small and explicit, so it cannot grow by accident.
