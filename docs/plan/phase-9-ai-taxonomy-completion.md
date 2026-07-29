@@ -58,6 +58,25 @@ foundational sub-sections, and Track A closed both.
 This table is the starting snapshot and is deliberately left unedited. Live status is the table
 below.
 
+## Where the phase stands (last updated after D4)
+
+**136 of 226 topics authored; 90 remain, in three open blocks.**
+
+| Open block | Topics | What it needs |
+|---|---|---|
+| B8–B10 | 29 | Neural-network foundations, preprocessing, metrics + practice. Track B is not finished until `ml_supervised` is empty — it still holds `perceptron`, `bias_variance`, `regularization`, `model_evaluation` |
+| C5–C9 | 38 | RNN family, transformers, generative, optimizers/regularization, specialized. `dl_fundamentals` and `dl_architectures` are still standing and should end empty |
+| D5–D6 | 23 | Modern LLM techniques (7) and fine-tuning + beyond-transformers + metrics (16). D6 is the phase's other oversized thin-topic batch |
+
+Track A is closed (RL is 71/71 against the doc). Track D is 4 of 6. Every landed batch has updated
+`expectedCoveredCount` in the same change, so the coverage number below is a test result rather than
+a count: **255 of 357**.
+
+Nothing is blocked. The one net-new widget the phase planned (`FeatureMapPlayer`) was built in C3,
+and every batch since has run on widgets that already existed — C4 and D1–D4, five in a row, each
+adding only a math file. Before C3 the run was seven (B3–B7, C1, C2). The widget cost really is
+front-loaded per *family* rather than per batch, as the risks section predicted after B7.
+
 ## Progress
 
 | Batch | Topics | Status | Notes |
@@ -1048,13 +1067,28 @@ number closed no doc entry, which is worth noticing at the time rather than at t
 → ~~**`FeatureMapPlayer`** → C3 → C4~~ → C5 → C6 → C7 → C8 → C9 → ~~D1~~ → ~~D2~~ → ~~D3~~ → ~~D4~~ → D5 → D6.
 
 Struck-through batches are done. The guards step landed with B6 rather than before it, in the same
-session. The order was then broken deliberately: C1 was built before B8–B10 at the user's direction,
-which is fine — the tracks are independent, and Track C's only real dependency was `FeatureMapPlayer`
-before C3, which C3 built itself. B8–B10 stay open, and Track B is not finished until `ml_supervised`
-is empty.
+session. The order was then broken deliberately twice, both times at the user's direction and both
+times harmlessly: C1 came before B8–B10, and within Track D the run order was **D1 → D3 → D2 → D4**
+rather than D1 → D2 → D3. The tracks are independent, and the only real intra-track dependency the
+phase had — `FeatureMapPlayer` before C3 — was resolved by C3 building it.
+
+That D3-before-D2 swap did cost something small and worth recording: `word_embeddings` moved into
+`nlp_embeddings` in D3 while `ner` was still sitting in `nlp_modeling`, so Modeling was left holding
+an odd mix for one batch until D2 and D4 emptied it. Moving umbrella topics out of a generic bucket
+is cheap to do per batch but only reads coherently once the whole track lands.
+
+B8–B10 stay open, and Track B is not finished until `ml_supervised` is empty.
 
 ## Verification
 
 Per batch: `./gradlew testDebugUnitTest` (coverage + taxonomy + category guards) then
 `./gradlew assembleDebug` and a manual walk of the touched category screen — list renders, every row
 opens, sim plays, premium rows gate.
+
+**Outstanding:** the automated half has run green on every batch (235 unit tests at D4, plus
+`assembleDebug`), but the **manual emulator walk has not been done for D1–D4**. Those four batches
+added six NLP categories, moved five topics between categories, and added twenty-seven detail
+screens — all of it guarded against broken content, resolvable links, and frame builders that throw,
+none of it actually looked at on a device. Worth one session with the emulator before Track D
+continues: open each new category, confirm the reading-path ordering reads correctly, and play at
+least one lab per widget (TokenStrip, TreeVisualizer, PointCloud, NeuralNet all gained configs).
