@@ -81,12 +81,13 @@ below.
 | D1 · Preprocessing + Statistical NLP | 8 | **Done** | New `nlp_statistical`; no new widget. TokenStrip frame guard + `D1MathTest`, which caught two live errors |
 | D2 · Syntactic & Semantic Analysis | 6 | **Done** | New `nlp_syntax`; no new widget. Taggers and parsers run and scored in `SyntaxMath.kt`; `D2MathTest` |
 | D3 · Word Embeddings | 5 | **Done** | New `nlp_embeddings`; no new widget. Models trained for real in `EmbeddingMath.kt`; `D3MathTest` |
-| D4–D6 | 31 | Planned | |
-| **Total** | **226** | **128 done** | 352 browsable topics, counted from the section lists |
+| D4 · Transformer Internals + Pre-trained LMs | 8 | **Done** | New `nlp_transformer` + `nlp_pretrained`; no new widget. `TransformerMath.kt`; `D4MathTest` |
+| D5–D6 | 23 | Planned | |
+| **Total** | **226** | **136 done** | 360 browsable topics, counted from the section lists |
 
 Sections against the doc, measured by `AiTaxonomyCoverageTest` rather than counted by hand:
-**RL 71/71**, ML 84/113, **DL 57/96**, NLP 35/77 — **247 of 357 overall**. ML is 75 topics of its
-eventual ~100; DL is at 50; NLP is at 31. Browsable topics across the app: **352**, which
+**RL 71/71**, ML 84/113, **DL 57/96**, NLP 43/77 — **255 of 357 overall**. ML is 75 topics of its
+eventual ~100; DL is at 50; NLP is at 39. Browsable topics across the app: **360**, which
 is what `DataStructuresTopics + AlgorithmsTopics + the four AI sections` actually sum to — the
 "taxonomy 200 → N of 426" running tally this table used to carry had drifted from the lists by two
 dozen, so it has been dropped in favour of the measured figure.
@@ -134,8 +135,10 @@ generic buckets are being hollowed out the same way ML's were — `dl_architectu
 
 **NLP — 11 categories.** Built so far: `nlp_preprocessing` (kept, renamed "Text Preprocessing"),
 `nlp_statistical` (D1, which also took `bow_tfidf` off Preprocessing), `nlp_syntax` (D2, which took
-`ner` off Modeling) and `nlp_embeddings` (D3, which took the `word_embeddings` umbrella off Modeling
-and kept it as the category's landing topic). Full list
+`ner` off Modeling), `nlp_embeddings` (D3, which took the `word_embeddings` umbrella off Modeling and
+kept it as the category's landing topic), and `nlp_transformer` + `nlp_pretrained` (D4, which took
+`attention`, `transformers` and `llms` off Modeling — leaving it holding only `rnn_lstm` and `rag`).
+Full list
 (`nlp_preprocessing` (kept), `nlp_statistical`, `nlp_syntax`,
 `nlp_embeddings`, `nlp_rnn`, `nlp_transformer`, `nlp_pretrained`, `nlp_modern_llm`,
 `nlp_finetuning`, `nlp_beyond`, `nlp_metrics`)
@@ -878,11 +881,41 @@ skip-gram and 0.77 under the GloVe fit, both on vectors these labs train; the co
 that 20 sentences cannot rank the two methods. The 3/4-power noise distribution is shown moving
 "the" from 26.5% of draws to 18.0% and `monarch` from 2.0% to 2.5%.
 
-**D4 · Transformer Internals + Pre-trained LMs** — 8 topics
-Positional Encodings · Feed-Forward Networks · BART · XLNet · GPT-3 & GPT-4 · LLaMA & Vicuna ·
-Mistral & Mixtral (MoE) · Claude & Gemini
-*Sims:* `TokenStripPlayer` (sinusoidal position signal added to embeddings; MoE router sending tokens
-to different experts), `NeuralNetPlayer` (the FFN block).
+**D4 · Transformer Internals + Pre-trained LMs** — 8 topics into two new categories — **Done**
+`positional_encodings` · `feed_forward` (→ `nlp_transformer`) · `bart` · `xlnet` · `gpt3_gpt4` ·
+`llama_vicuna` · `mistral_mixtral` · `claude_gemini` (→ `nlp_pretrained`)
+
+Two categories at once, because the doc's two headings split cleanly: `nlp_transformer` ("The
+Transformer Architecture", icon `chip`) takes the `attention` and `transformers` umbrellas off
+Modeling, and `nlp_pretrained` ("Pre-trained Language Models", icon `crown`) takes `llms`. Modeling
+is now down to `rnn_lstm` and `rag`, and C5–C6 will empty it. All eight premium, per the doc.
+
+Sims as planned — `TokenStripPlayer` for positional encodings, BART, XLNet, MoE and the frontier
+families; `NeuralNetPlayer` for the FFN block, the scaling laws and the LLaMA argument. No new widget.
+
+`TransformerMath.kt` computes the sinusoidal table and its offset invariance, RoPE's rotation
+identity, ALiBi slopes, the FFN parameter split, BART's five corruptions, XLNet's permutation
+objective and independence gap, a top-2 MoE router with its load-balancing loss, the published
+scaling-law table, and the attention/KV-cache cost of a long context.
+
+**Two claims the probe overturned before the copy was written:**
+- **Sinusoidal similarity does not decay monotonically.** The offset profile falls to offset 3 and
+  then rises again at 4, 5, 6, 11 and 12 — it is a sum of cosines at different frequencies. Every
+  textbook diagram draws a smooth decay and the actual table does not have one. The frame now shows
+  the profile and names the offsets where it rises, and `D4MathTest` asserts the non-monotonicity so
+  a re-tune cannot quietly restore the false version.
+- **Two of BART's five corruptions were byte-identical.** With the rotation pivot at a sentence
+  boundary, document rotation produced exactly the same string as sentence permutation on a
+  two-sentence document, so the lab showed five frames of four distinct ideas. The pivot moved
+  mid-sentence and a test now pins that all five outputs differ. The same probe run also killed the
+  planned "fraction preserved" metric — position-wise similarity scores a rotation near zero even
+  though it loses nothing — replaced by the 2×2 that actually separates them: are tokens gone, and
+  is the order changed.
+
+The `claude_gemini` topic is deliberately written against the volatile/durable split: architecture,
+context cost and alignment method in the copy; a closing frame that says outright that scores and
+prices are stale within months and the deciding factors are latency, context, tool reliability,
+region and price. Model facts were taken from the `claude-api` skill rather than from memory.
 
 **D5 · Modern LLM Techniques** — 7 topics
 Prompt Engineering · Chain of Thought · Tree of Thoughts · Vector Databases · ReAct ·
@@ -924,7 +957,7 @@ monetization angle.
 
 ## Guards
 
-**Shipping and green (218 tests):**
+**Shipping and green (235 tests):**
 - `ContentCoverageTest` — every browsable topic has content, nothing resolves to `NotYetAvailable`,
   and every prerequisite and cross-link id resolves. It has caught real breakage every batch and is
   run (with `--rerun-tasks`) at the end of each one.
@@ -942,7 +975,8 @@ monetization angle.
   mapped to the topic ids serving it or to an explicit gap; pins the entry count, id resolution,
   section membership, and the covered count. Its failure message prints the remaining backlog.
 - `DimReductionMathTest` (B6), `B7MathTest` (B7), `DeepNetMathTest` (C1), `ActivationMathTest` (C2),
-  `CnnMathTest` (C3), `DetectionMathTest` (C4), `D1MathTest`, `D2MathTest` and `D3MathTest` — pin the properties each
+  `CnnMathTest` (C3), `DetectionMathTest` (C4), `D1MathTest`, `D2MathTest`, `D3MathTest` and
+  `D4MathTest` — pin the properties each
   batch's copy leans on, so a re-tune that makes a topic pointless fails instead of shipping. Worth
   continuing per batch; `B7MathTest` caught a wrong claim that had already been written, and
   `D1MathTest` caught one this plan document had asserted.
@@ -994,7 +1028,9 @@ number closed no doc entry, which is worth noticing at the time rather than at t
   literature. All three read as perfectly good copy if written before looking. D2 then found four
   more of the same kind in one batch — a contextual tagger that did not beat its baseline, a
   coreference score computed on the wrong unit, two parser metrics that could not differ, and a
-  comparison between metrics that the numbers did not support.
+  comparison between metrics that the numbers did not support. D4 caught a textbook claim: the
+  sinusoidal encoding's similarity is *not* monotone in distance, which every diagram of it implies
+  and the table refutes.
 - **Topic-id collisions.** `TopicRegistry` collapses cross-listed ids first-wins (`perceptron`,
   `transformers`). Tracks C and D cross-list far more (backprop, LSTM, attention, RLHF, all seven
   Deep RL entries). `AiTaxonomyCoverageTest` now makes these reviewable — a cross-listed entry
@@ -1009,7 +1045,7 @@ number closed no doc entry, which is worth noticing at the time rather than at t
 ## Suggested order
 
 ~~A1 → A2~~ → ~~B1 → B2 → B3 → B4 → B5~~ → ~~guards~~ → ~~B6 → B7~~ → **B8** → B9 → B10 → ~~C1 → C2~~
-→ ~~**`FeatureMapPlayer`** → C3 → C4~~ → C5 → C6 → C7 → C8 → C9 → ~~D1~~ → ~~D2~~ → ~~D3~~ → D4 → D5 → D6.
+→ ~~**`FeatureMapPlayer`** → C3 → C4~~ → C5 → C6 → C7 → C8 → C9 → ~~D1~~ → ~~D2~~ → ~~D3~~ → ~~D4~~ → D5 → D6.
 
 Struck-through batches are done. The guards step landed with B6 rather than before it, in the same
 session. The order was then broken deliberately: C1 was built before B8–B10 at the user's direction,

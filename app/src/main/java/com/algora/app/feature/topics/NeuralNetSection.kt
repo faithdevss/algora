@@ -2183,7 +2183,311 @@ private fun softmaxLabFrames(): List<NetFrame> {
     return frames
 }
 
+// ── D4 · The feed-forward block ─────────────────────────────────────────────
+
+private fun feedForwardFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+    val d = FfnLab.dModel
+
+    frames += NetFrame(
+        status = "Every transformer block is attention followed by a position-wise feed-forward network: two " +
+            "linear layers with a non-linearity between them, applied to each token independently. Attention " +
+            "moves information between positions; the FFN is where each position is transformed on its own. " +
+            "It expands ${d} dimensions to ${FfnLab.dFf} and projects back.",
+        layers = listOf(
+            NetLayer("token (d=$d)", List(4) { NetNode(0.4f + it * 0.1f, NodeMood.FORWARD) }),
+            NetLayer("hidden (4d=${FfnLab.dFf})", List(6) { NetNode(if (it % 2 == 0) 0.7f else 0f, if (it % 2 == 0) NodeMood.FORWARD else NodeMood.IDLE) }),
+            NetLayer("output (d=$d)", List(4) { NetNode(0.3f + it * 0.1f, NodeMood.OUTPUT) }),
+        ),
+        readout = "no token talks to another here — that already happened in attention",
+    )
+
+    frames += NetFrame(
+        status = "The parameter counts are the surprise. Attention's four projections (Q, K, V and output) are " +
+            "4d² = ${"%,d".format(FfnLab.attentionParameters())}. The FFN's two matrices are 2 × 4d² = ${"%,d".format(FfnLab.ffnParameters())} — twice as many. " +
+            "**Two thirds of a transformer block is the feed-forward network** (${"%.1f".format(FfnLab.ffnShare() * 100)}%), not the attention " +
+            "everyone names the architecture after.",
+        bars = listOf(
+            NetBar(
+                "parameters per block (d=$d)",
+                listOf(FfnLab.attentionParameters().toFloat(), FfnLab.ffnParameters().toFloat()),
+                ForwardColor,
+                listOf("attention ${"%,d".format(FfnLab.attentionParameters())}", "FFN ${"%,d".format(FfnLab.ffnParameters())}"),
+            ),
+        ),
+        readout = "FFN share ${"%.1f".format(FfnLab.ffnShare() * 100)}%",
+    )
+
+    frames += NetFrame(
+        status = "GELU replaced ReLU as the default activation here. It is smooth, and slightly negative for " +
+            "small negative inputs instead of exactly zero — so a unit that is nearly off still passes a little " +
+            "gradient, and the gate is probabilistic rather than a hard cut at zero.",
+        plot = autoPlot(
+            "GELU against ReLU",
+            listOf(
+                curveOf("GELU", ForwardColor, -4f, 4f) { FfnLab.gelu(it) },
+                curveOf("ReLU", NeutralColor, -4f, 4f) { FfnLab.relu(it) },
+                curveOf("difference", BackwardColor, -4f, 4f) { FfnLab.activationGap(it) },
+            ),
+            -4f..4f,
+        ),
+        readout = "the dip below zero near x = −0.5 is the whole difference",
+    )
+
+    frames += NetFrame(
+        status = "LLaMA and most models after it use SwiGLU instead: a gated unit with *three* matrices rather " +
+            "than two. To keep the parameter count unchanged the hidden width drops from 4d to 8/3·d — for " +
+            "d = ${FfnLab.llamaDModel} that is ${"%,d".format(FfnLab.swigluHidden(FfnLab.llamaDModel))}, which LLaMA rounds to ${"%,d".format(FfnLab.llamaHidden)} for hardware alignment. If you have ever " +
+            "wondered why an FFN width is 11008 rather than 16384, that is the reason.",
+        bars = listOf(
+            NetBar(
+                "FFN parameters at d=${FfnLab.llamaDModel}",
+                listOf(
+                    FfnLab.ffnParameters(FfnLab.llamaDModel).toFloat(),
+                    FfnLab.swigluParameters(FfnLab.llamaDModel, FfnLab.swigluHidden(FfnLab.llamaDModel)).toFloat(),
+                ),
+                OutputColor,
+                listOf("2-matrix 4d", "3-matrix 8/3·d"),
+            ),
+        ),
+        readout = "same budget, different shape",
+    )
+
+    frames += NetFrame(
+        status = "The interpretation that stuck: an FFN is a key-value memory. Each row of the first matrix is " +
+            "a pattern detector over the token's representation, and the corresponding column of the second is " +
+            "the value written when it fires. Because activations are sparse — about ${"%.0f".format(FfnLab.activationSparsity() * 100)}% of hidden units are " +
+            "near zero for any one token — only a handful of memories are read per token, which is exactly the " +
+            "structure mixture-of-experts exploits by splitting the FFN across experts.",
+        bars = listOf(
+            NetBar(
+                "hidden activations for one token",
+                List(16) { i -> if (i % 5 == 0) 0.8f - i * 0.02f else 0.02f },
+                AccentA,
+                List(16) { "" },
+            ),
+        ),
+        readout = "sparse reads — the opening MoE walks through",
+    )
+
+    frames += NetFrame(
+        status = "And the cost, per token, forward only: ${"%,d".format(FfnLab.ffnFlops())} FLOPs for the FFN against ${"%,d".format(FfnLab.attentionProjectionFlops())} for " +
+            "attention's projections. At short sequence lengths the FFN dominates a block's compute as well as " +
+            "its parameters; attention's quadratic term only overtakes it once the sequence is long. That is " +
+            "why quantisation, pruning and MoE all target the FFN first.",
+        bars = listOf(
+            NetBar(
+                "FLOPs per token",
+                listOf(FfnLab.attentionProjectionFlops().toFloat(), FfnLab.ffnFlops().toFloat()),
+                BackwardColor,
+                listOf("attn projections", "FFN"),
+            ),
+        ),
+        readout = "the block's centre of mass is the FFN",
+    )
+    return frames
+}
+
+// ── D4 · Scaling laws: GPT-3 and GPT-4 ──────────────────────────────────────
+
+private fun scalingFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+
+    frames += NetFrame(
+        status = "GPT-3's contribution was not an architectural idea — it is a decoder-only transformer of the " +
+            "same shape as GPT-2. It was the demonstration that scale alone produces a qualitatively different " +
+            "system: 175B parameters trained on 300B tokens, and a model that performs tasks from a handful of " +
+            "examples in the prompt, with no gradient update at all.",
+        bars = listOf(
+            NetBar(
+                "parameters (billions)",
+                ScalingLab.models.map { it.parameters.toFloat() },
+                ForwardColor,
+                ScalingLab.models.map { it.name.split(" ").first() },
+            ),
+        ),
+        readout = "in-context learning arrived as a side effect of size",
+    )
+
+    frames += NetFrame(
+        status = "The scaling laws are the reason anyone spent that money. Test loss falls as a smooth power " +
+            "law in parameters, data and compute over many orders of magnitude — so the return on a bigger run " +
+            "is predictable before the run starts. Note what the curve does *not* do: it never flattens into a " +
+            "plateau, it just pays less per doubling.",
+        plot = autoPlot(
+            "loss vs parameters (log scale)",
+            listOf(
+                curveOf("L(N)", ForwardColor, 0f, 2.5f) { ScalingLab.lossFromParameters(Math.pow(10.0, it)) },
+            ),
+            0f..2.5f,
+        ),
+        readout = "x is log₁₀ parameters in billions: 1B → 175B",
+    )
+
+    frames += NetFrame(
+        status = "Chinchilla then showed GPT-3 had spent the money wrongly. For a fixed compute budget, loss is " +
+            "minimised at roughly ${ScalingLab.chinchillaRatio.toInt()} training tokens per parameter — and GPT-3 used ${"%.1f".format(ScalingLab.ratio(ScalingLab.models[0]))}. It was " +
+            "not too big; it was undertrained for its size. A 70B model on 1.4T tokens beat it using less " +
+            "compute, which reset how every lab afterwards allocated a budget.",
+        bars = listOf(
+            NetBar(
+                "training tokens per parameter",
+                ScalingLab.models.map { ScalingLab.ratio(it).toFloat().coerceAtMost(60f) },
+                ScalingLab.models.let { OutputColor },
+                ScalingLab.models.map { "${it.name.split(" ").first()} ${"%.0f".format(ScalingLab.ratio(it))}" },
+            ),
+        ),
+        readout = "Chinchilla-optimal is ${ScalingLab.chinchillaRatio.toInt()}; bars are capped at 60 to stay readable",
+    )
+
+    frames += NetFrame(
+        status = "GPT-4's details were never published — no parameter count, no data size, no architecture. " +
+            "What its report did contribute was a methodological claim: performance on the final model was " +
+            "predicted in advance from runs using 1,000–10,000× less compute. Being able to forecast a frontier " +
+            "run's result before committing to it is a real capability, independent of the model.",
+        bars = listOf(
+            NetBar(
+                "compute used to predict the final run (log₁₀ ×)",
+                listOf(3f, 4f),
+                AccentB,
+                listOf("1,000×  less", "10,000× less"),
+            ),
+        ),
+        readout = "predictable scaling is the deliverable, not the parameter count",
+    )
+
+    frames += NetFrame(
+        status = "Two things followed that the scaling laws do not capture. Instruction tuning and RLHF made " +
+            "the models usable — InstructGPT's 1.3B model was preferred to the raw 175B GPT-3 by human raters, " +
+            "which is a 100× gap closed by post-training rather than scale. And multimodality, tool use and " +
+            "long context became the axes of competition once raw next-token loss stopped being the " +
+            "differentiator.",
+        bars = listOf(
+            NetBar(
+                "human preference (schematic)",
+                listOf(0.3f, 0.75f),
+                AccentA,
+                listOf("GPT-3 175B raw", "InstructGPT 1.3B"),
+            ),
+        ),
+        readout = "post-training beat a 100× parameter advantage",
+    )
+    return frames
+}
+
+// ── D4 · LLaMA, Vicuna, and open weights ────────────────────────────────────
+
+private fun llamaFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+    val llama1 = ScalingLab.models.first { it.name.startsWith("LLaMA-1") }
+    val llama3 = ScalingLab.models.first { it.name.startsWith("LLaMA-3") }
+    val mistral = ScalingLab.models.first { it.name.startsWith("Mistral") }
+
+    frames += NetFrame(
+        status = "LLaMA's thesis was the inverse of Chinchilla's. Chinchilla asks how to spend a *training* " +
+            "budget optimally; LLaMA asks what to do when the model will be served millions of times, so " +
+            "inference cost — which depends on parameters alone, not on training tokens — dominates. The " +
+            "answer is to train a smaller model far past compute-optimal.",
+        bars = listOf(
+            NetBar(
+                "tokens per parameter",
+                listOf(ScalingLab.ratio(llama1).toFloat(), ScalingLab.ratio(llama3).toFloat().coerceAtMost(250f), ScalingLab.ratio(mistral).toFloat().coerceAtMost(250f)),
+                ForwardColor,
+                listOf("LLaMA-1 ${"%.0f".format(ScalingLab.ratio(llama1))}", "LLaMA-3 ${"%.0f".format(ScalingLab.ratio(llama3))}", "Mistral ${"%.0f".format(ScalingLab.ratio(mistral))}"),
+            ),
+        ),
+        readout = "Chinchilla-optimal is ${ScalingLab.chinchillaRatio.toInt()} — the open models went 10–50× past it",
+    )
+
+    frames += NetFrame(
+        status = "The consequence is measurable at serving time. Inference costs about 2N FLOPs per token, " +
+            "where N is the parameter count — training tokens do not appear in that formula at all. A 7B model " +
+            "trained on ${"%.0f".format(mistral.tokens)}B tokens costs ${"%.2e".format(ScalingLab.inferenceFlopsPerToken(mistral))} FLOPs per token to run; a 70B model costs " +
+            "${"%.2e".format(ScalingLab.inferenceFlopsPerToken(llama3))}. Ten times the training spend is worth it if you serve enough tokens.",
+        bars = listOf(
+            NetBar(
+                "inference FLOPs per token (×10¹⁰)",
+                listOf(
+                    (ScalingLab.inferenceFlopsPerToken(mistral) / 1e10).toFloat(),
+                    (ScalingLab.inferenceFlopsPerToken(llama3) / 1e10).toFloat(),
+                ),
+                BackwardColor,
+                listOf("7B", "70B"),
+            ),
+        ),
+        readout = "training is paid once; inference is paid per token forever",
+    )
+
+    frames += NetFrame(
+        status = "The architecture changes are small and have all been adopted elsewhere: pre-normalisation " +
+            "with RMSNorm instead of post-LayerNorm, SwiGLU in place of the GELU feed-forward, and rotary " +
+            "position embeddings instead of learned ones. None is dramatic; together they are what a 2023 " +
+            "transformer looks like, and every open model since copies the set.",
+        bars = listOf(
+            NetBar(
+                "what changed vs the 2017 block",
+                listOf(1f, 1f, 1f),
+                AccentB,
+                listOf("RMSNorm pre-norm", "SwiGLU FFN", "RoPE"),
+            ),
+        ),
+    )
+
+    frames += NetFrame(
+        status = "Vicuna is the other half of the story, and it is a story about cost rather than capability: " +
+            "fine-tuning LLaMA-13B on ~70K shared ChatGPT conversations, for a few hundred dollars, produced a " +
+            "chat model that GPT-4-as-judge rated near the commercial systems of the time. Two caveats got lost " +
+            "in the excitement — GPT-4 judging is generous to models that imitate its style, and instruction " +
+            "tuning on outputs teaches format far better than it teaches knowledge.",
+        bars = listOf(
+            NetBar(
+                "cost of the fine-tune (log₁₀ USD, schematic)",
+                listOf(7f, 2.5f),
+                OutputColor,
+                listOf("pretrain LLaMA", "Vicuna fine-tune"),
+            ),
+        ),
+        readout = "the base model is the expensive part; alignment is not",
+    )
+
+    frames += NetFrame(
+        status = "What open weights actually buy: you can run the model where the data is, inspect and " +
+            "fine-tune it, and keep using a version after the vendor deprecates it. What they cost: you own " +
+            "the serving, the safety layer and the evaluation. \"Open\" is also doing loose work here — LLaMA's " +
+            "licence carries use restrictions, and the training data is not released, so this is open *weights* " +
+            "rather than open source in the usual sense.",
+        bars = listOf(
+            NetBar(
+                "what you take on",
+                listOf(1f, 1f, 1f, 1f),
+                NeutralColor,
+                listOf("serving", "safety", "evals", "updates"),
+            ),
+        ),
+        readout = "open weights ≠ open source",
+    )
+    return frames
+}
+
 private val netConfigs = mapOf(
+    "feed_forward" to NetConfig(
+        intro = "The two-thirds of a transformer block nobody names the architecture after — its parameter " +
+            "share, GELU against ReLU, SwiGLU's three-matrix reshuffle, and the sparsity MoE exploits.",
+        legend = listOf(ForwardColor to "Forward", OutputColor to "Parameters", AccentA to "Activations"),
+        build = ::feedForwardFrames,
+    ),
+    "gpt3_gpt4" to NetConfig(
+        intro = "Scale as the contribution: the power law, the Chinchilla correction that showed GPT-3 was " +
+            "undertrained, and the post-training that beat a 100× parameter advantage.",
+        legend = listOf(ForwardColor to "Loss curve", OutputColor to "Token ratio", AccentA to "Preference"),
+        build = ::scalingFrames,
+    ),
+    "llama_vicuna" to NetConfig(
+        intro = "The inference-first argument for over-training a small model, the three architecture changes " +
+            "everyone copied, and what open weights actually cost you.",
+        legend = listOf(ForwardColor to "Token ratio", BackwardColor to "Inference cost", AccentB to "Changes"),
+        build = ::llamaFrames,
+    ),
     "sigmoid" to NetConfig(
         intro = "The curve, its 0.25 derivative ceiling, the saturation that grows with pre-activation width, and twenty layers of the consequence.",
         legend = listOf(ForwardColor to "σ(z)", BackwardColor to "σ′(z)", AccentA to "tanh"),

@@ -29,6 +29,8 @@ private val preprocessing = NlpCategories.preprocessing
 private val statistical = NlpCategories.statistical
 private val syntax = NlpCategories.syntax
 private val embeddings = NlpCategories.embeddings
+private val transformer = NlpCategories.transformer
+private val pretrained = NlpCategories.pretrained
 private val modeling = NlpCategories.modeling
 
 // Ordered as a reading path — clean, split, filter, normalise, then the two vocabulary-building
@@ -77,16 +79,34 @@ private val embeddingTopics = listOf(
     topic("elmo", "ELMo", embeddings, "One vector per occurrence, read out of a bidirectional language model.", isPremium = true, difficulty = Difficulty.ADVANCED),
 )
 
+// D4. `attention` and `transformers` move here from Modeling — the doc's "The Transformer
+// Architecture" heading is exactly what they cover; C6 adds self-attention and multi-head.
+private val transformerTopics = listOf(
+    topic("attention", "Attention", transformer, "Let the model weigh every token against every other.", isPremium = true),
+    topic("positional_encodings", "Positional Encodings", transformer, "Inject order into a mechanism that cannot see it.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("feed_forward", "Feed-Forward Networks", transformer, "Two thirds of a transformer block, and where facts appear to live.", isPremium = true),
+    topic("transformers", "Transformers", transformer, "Stacked self-attention — the backbone of modern NLP.", isPremium = true),
+)
+
+// D4. `llms` moves here from Modeling as the landing topic for the model families.
+private val pretrainedTopics = listOf(
+    topic("llms", "LLMs", pretrained, "Transformers scaled to billions of parameters.", isPremium = true),
+    topic("bart", "BART", pretrained, "Corrupt a document five ways, then reconstruct it.", isPremium = true),
+    topic("xlnet", "XLNet", pretrained, "Autoregression over permuted orders, with no [MASK] anywhere.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("gpt3_gpt4", "GPT-3 & GPT-4", pretrained, "Scale as the contribution — and the law that made it predictable.", isPremium = true),
+    topic("llama_vicuna", "LLaMA & Vicuna", pretrained, "Over-train a small model, open the weights, fine-tune cheaply.", isPremium = true),
+    topic("mistral_mixtral", "Mistral & Mixtral (MoE)", pretrained, "Route each token to 2 of 8 experts — big model, small compute.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("claude_gemini", "Claude & Gemini", pretrained, "What actually separates the frontier families.", isPremium = true),
+)
+
 private val modelingTopics = listOf(
     topic("rnn_lstm", "RNN / LSTM", modeling, "Sequential models that read text one token at a time.", isPremium = true),
-    topic("attention", "Attention", modeling, "Let the model weigh every token against every other.", isPremium = true),
-    topic("transformers", "Transformers", modeling, "Stacked self-attention — the backbone of modern NLP.", isPremium = true),
-    topic("llms", "LLMs", modeling, "Transformers scaled to billions of parameters.", isPremium = true),
     topic("rag", "Retrieval-Augmented Generation", modeling, "Retrieve relevant passages and condition the model on them.", isPremium = true),
 )
 
 object NlpTopics {
-    val topics: List<Topic> = preprocessingTopics + statisticalTopics + syntaxTopics + embeddingTopics + modelingTopics
+    val topics: List<Topic> = preprocessingTopics + statisticalTopics + syntaxTopics + embeddingTopics +
+        transformerTopics + pretrainedTopics + modelingTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }

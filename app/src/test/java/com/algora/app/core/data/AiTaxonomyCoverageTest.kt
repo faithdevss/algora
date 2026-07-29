@@ -360,9 +360,9 @@ class AiTaxonomyCoverageTest {
                 "The Attention Mechanism" to listOf("attention"),
                 "Self-Attention" to emptyList(),                        // C6
                 "Multi-Head Attention" to emptyList(),                  // C6
-                "Positional Encodings" to emptyList(),                  // D4
+                "Positional Encodings" to listOf("positional_encodings"),
                 "Layer Normalization" to emptyList(),                   // C9
-                "Feed-Forward Networks" to emptyList(),                 // D4
+                "Feed-Forward Networks" to listOf("feed_forward"),
             ),
             // `llms` is the umbrella in front of this whole block; C6 and D4 author the models.
             "Pre-trained Language Models" to linkedMapOf(
@@ -370,12 +370,12 @@ class AiTaxonomyCoverageTest {
                 "GPT-2 (Decoder Only)" to emptyList(),                  // C6
                 "T5 (Text-to-Text)" to emptyList(),                     // C6
                 "RoBERTa & DistilBERT" to emptyList(),                  // C6
-                "BART" to emptyList(),                                  // D4
-                "XLNet" to emptyList(),                                 // D4
-                "GPT-3 & GPT-4" to emptyList(),                         // D4
-                "LLaMA & Vicuna" to emptyList(),                        // D4
-                "Mistral & Mixtral (MoE)" to emptyList(),               // D4
-                "Claude & Gemini" to emptyList(),                       // D4
+                "BART" to listOf("bart"),
+                "XLNet" to listOf("xlnet"),
+                "GPT-3 & GPT-4" to listOf("gpt3_gpt4"),
+                "LLaMA & Vicuna" to listOf("llama_vicuna"),
+                "Mistral & Mixtral (MoE)" to listOf("mistral_mixtral"),
+                "Claude & Gemini" to listOf("claude_gemini"),
             ),
             "Modern LLM Techniques" to linkedMapOf(
                 "Prompt Engineering (Zero/Few Shot)" to emptyList(),    // D5
@@ -516,7 +516,7 @@ class AiTaxonomyCoverageTest {
 
     // The ratchet. Move it when a batch lands; a batch that does not move it did not close any doc
     // entry, which is worth noticing.
-    private val expectedCoveredCount = 247
+    private val expectedCoveredCount = 255
 
     // Doc entries the app answers from the DSA taxonomy rather than an AI section. Deliberate reuse
     // — the alternative is a duplicate page — but small and explicit, so it cannot grow by accident.

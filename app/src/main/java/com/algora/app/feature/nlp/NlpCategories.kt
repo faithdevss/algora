@@ -19,7 +19,13 @@ object NlpCategories {
     // D3. "map" is what a projected embedding space is read as, and it is unused in this section.
     val embeddings = Category("nlp_embeddings", "Word Embeddings", Section.NLP, 0xFF6366F1, "map")
 
+    // D4. "chip" is the block diagram these topics live inside; unused elsewhere in this section.
+    val transformer = Category("nlp_transformer", "The Transformer Architecture", Section.NLP, 0xFF3B82F6, "chip")
+
+    // D4. "crown" for the frontier models — the flagship tier, and unused in this section.
+    val pretrained = Category("nlp_pretrained", "Pre-trained Language Models", Section.NLP, 0xFFEC4899, "crown")
+
     val modeling = Category("nlp_modeling", "Modeling", Section.NLP, 0xFF3B82F6, "network")
 
-    val all = listOf(preprocessing, statistical, syntax, embeddings, modeling)
+    val all = listOf(preprocessing, statistical, syntax, embeddings, transformer, pretrained, modeling)
 }

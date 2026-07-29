@@ -1854,6 +1854,434 @@ private fun jaccardFrames(): List<TokenFrame> {
     return frames
 }
 
+// ── D4 · Positional encodings ────────────────────────────────────────────────
+
+private fun positionalFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val tokens = listOf("the", "cat", "sat", "on", "the", "mat")
+
+    frames += TokenFrame(
+        status = "Self-attention is permutation-equivariant: shuffle the input and the outputs shuffle with " +
+            "it, unchanged. \"the cat sat\" and \"sat cat the\" produce identical representations — a bag of " +
+            "words with extra steps. Position has to be injected, because the mechanism cannot see it.",
+        chips = tokens.mapIndexed { i, t -> Chip(t, sub = "pos $i") } + Chip("|") +
+            tokens.reversed().mapIndexed { i, t -> Chip(t, sub = "pos $i", mark = ChipMark.DIM) },
+        chipsLabel = "same tokens, same attention output",
+    )
+
+    frames += TokenFrame(
+        status = "The original answer: add a fixed sinusoid per dimension pair, with wavelengths in geometric " +
+            "progression from 2π to 10000·2π. Early dimensions cycle every few positions and late ones barely " +
+            "move across the whole sequence — a positional signal at every scale at once.",
+        heat = Heat(
+            rowLabels = (0 until 8).map { "pos $it" },
+            colLabels = (0 until PositionalLab.dim).map { "d$it" },
+            values = (0 until 8).map { p -> PositionalLab.encoding(p).map { ((it + 1) / 2).toFloat() } },
+        ),
+        rows = (0..3).map { "pair $it wavelength" to "${"%.1f".format(PositionalLab.wavelength(it))} positions" },
+    )
+
+    frames += TokenFrame(
+        status = "The property that makes it work: the dot product of two encodings depends only on the *offset* " +
+            "between them, not on where the pair sits. Measured across absolute positions 0, 4, 8 and 12, the " +
+            "spread for a fixed offset is ${"%.4f".format(PositionalLab.offsetInvariance(4))} — zero to floating-point precision. Relative distance " +
+            "is available to attention without ever being stored.",
+        bars = listOf(
+            BarRow(
+                "PE(0) · PE(offset)",
+                PositionalLab.offsetProfile(8).map { it.second.toFloat() },
+                BarPositive,
+                PositionalLab.offsetProfile(8).map { "+${it.first}" },
+            ),
+        ),
+        readout = "offset-invariant to ${"%.4f".format(PositionalLab.offsetInvariance(4))}",
+    )
+
+    val bumps = PositionalLab.nonMonotonicOffsets()
+    frames += TokenFrame(
+        status = "What that plot is *not*, though, is a clean decay. It falls to offset 3 and then goes back up " +
+            "— at offsets ${bumps.joinToString(", ")} the similarity is higher than at the offset before. It is a sum of cosines " +
+            "at different frequencies, so \"nearby positions look similar\" holds on average and not pointwise. " +
+            "Textbook diagrams usually draw a smooth decay; the actual table does not have one.",
+        rows = PositionalLab.offsetProfile(8).map { (offset, value) -> "offset $offset" to "%.2f".format(value) },
+        readout = "${bumps.size} offsets where similarity rises",
+    )
+
+    frames += TokenFrame(
+        status = "RoPE takes the relative property and makes it exact rather than incidental: rotate each 2-D " +
+            "slice of the query and key by an angle proportional to position, and the dot product becomes a " +
+            "function of the gap alone. Scoring the same gap at positions 0, 5, 10 and 20 gives a spread of " +
+            "${"%.6f".format(PositionalLab.ropeRelativeError(3))} — it is an algebraic identity, not an approximation. Every recent open model uses it.",
+        rows = listOf(
+            "q@5 · k@0" to "%.4f".format(PositionalLab.ropeScore(5, 0)),
+            "q@25 · k@20" to "%.4f".format(PositionalLab.ropeScore(25, 20)),
+            "spread over 4 offsets" to "%.6f".format(PositionalLab.ropeRelativeError(3)),
+        ),
+        chips = listOf(
+            Chip("rotate q by mθ", mark = ChipMark.ACTIVE),
+            Chip("rotate k by nθ", mark = ChipMark.ACTIVE),
+            Chip("q·k depends on m−n", mark = ChipMark.RESULT),
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "ALiBi drops embeddings entirely and subtracts a per-head linear penalty from the attention " +
+            "score: −slope × distance, with slopes forming a geometric series so different heads see different " +
+            "horizons. Because the penalty *is* monotone in distance, extrapolating past the training length " +
+            "degrades gracefully instead of falling off a cliff.",
+        bars = listOf(
+            BarRow(
+                "ALiBi slopes by head",
+                PositionalLab.alibiSlopes().map { it.toFloat() },
+                BarNegative,
+                (0 until 8).map { "h$it" },
+            ),
+        ),
+        rows = listOf(
+            "head 0, distance 10" to "%.2f".format(PositionalLab.alibiBias(0, 10)),
+            "head 7, distance 10" to "%.3f".format(PositionalLab.alibiBias(7, 10)),
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "And the option most early models actually shipped: a learned table, one row per position. " +
+            "BERT's 512 × 768 table is ${"%,d".format(PositionalLab.learnedTableParameters(512))} parameters and works well inside the trained range — " +
+            "with no row at position 513 at all. That hard wall, not accuracy, is why the field moved to RoPE " +
+            "and ALiBi as context windows grew.",
+        rows = listOf(
+            "learned" to "${"%,d".format(PositionalLab.learnedTableParameters(512))} params, no extrapolation at all",
+            "sinusoidal" to "0 params, offset-invariant, weak extrapolation",
+            "RoPE" to "0 params, exact relative scores, extends with interpolation",
+            "ALiBi" to "0 params, monotone penalty, extrapolates best",
+        ),
+        readout = "position is a design choice, not a given",
+    )
+    return frames
+}
+
+// ── D4 · BART: denoising autoencoding ────────────────────────────────────────
+
+private fun bartFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+
+    frames += TokenFrame(
+        status = "BART is the obvious idea nobody had shipped: a full encoder-decoder transformer, pretrained " +
+            "by corrupting text arbitrarily and asking it to reconstruct the original. BERT's encoder can only " +
+            "fill blanks and GPT's decoder can only continue; BART does both, so it fine-tunes for " +
+            "classification *and* generation without changing shape.",
+        chips = BartLab.original.map { Chip(it) },
+        chipsLabel = "the original document",
+        rows = listOf(
+            "BERT-large" to "${BartLab.bertLargeParameters / 1_000_000}M, encoder only",
+            "GPT-2 large" to "${BartLab.gpt2LargeParameters / 1_000_000}M, decoder only",
+            "BART-large" to "${BartLab.bartLargeParameters / 1_000_000}M, both — ~10% over BERT for the extra decoder",
+        ),
+    )
+
+    BartLab.all().forEach { corruption ->
+        frames += TokenFrame(
+            status = "${corruption.name}. ${corruption.note} " + when {
+                BartLab.tokensLost(corruption) > 0 && !BartLab.lengthKnown(corruption) ->
+                    "${BartLab.tokensLost(corruption)} tokens are gone and the length no longer tells you how many."
+                BartLab.tokensLost(corruption) > 0 ->
+                    "${BartLab.tokensLost(corruption)} tokens are gone."
+                else -> "Every token survives — only the order changed."
+            },
+            chips = corruption.result.map {
+                Chip(it, mark = if (it == "[MASK]") ChipMark.ACTIVE else ChipMark.IDLE)
+            },
+            chipsLabel = corruption.name,
+            rows = listOf(
+                "tokens lost" to "${BartLab.tokensLost(corruption)}",
+                "length preserved" to if (BartLab.lengthKnown(corruption)) "yes" else "no",
+                "order changed" to if (BartLab.orderChanged(corruption)) "yes" else "no",
+            ),
+        )
+    }
+
+    frames += TokenFrame(
+        status = "The five are not variations on one idea — they attack different things. Masking and deletion " +
+            "differ on whether the *position* of the missing content is given away. Infilling is the strongest " +
+            "single objective in the paper's ablation because one mask can stand for zero, one or many tokens, " +
+            "so the model must predict how much is missing as well as what. Permutation and rotation move the " +
+            "problem up to document level, where no token is lost at all.",
+        rows = listOf(
+            "token masking" to "position given, count given",
+            "token deletion" to "position hidden, count hidden",
+            "text infilling" to "position given, count hidden — the strongest",
+            "sentence permutation" to "nothing lost, order destroyed",
+            "document rotation" to "nothing lost, start hidden",
+        ),
+        chips = BartLab.all().map { Chip(it.name.split(" ").first(), mark = ChipMark.RESULT) },
+        chipsLabel = "five corruptions, one model",
+    )
+
+    frames += TokenFrame(
+        status = "Fine-tuning is where the shape pays off. Classification: feed the input to both stacks and " +
+            "read the decoder's final token. Generation: the encoder takes the source and the decoder writes " +
+            "the target — the same setup as translation, so summarisation needs no architectural surgery. " +
+            "BART set the state of the art on CNN/DailyMail summarisation and matched RoBERTa on GLUE with " +
+            "comparable training, which is the argument for the shape in one sentence.",
+        chips = listOf(
+            Chip("classification", sub = "read decoder end", mark = ChipMark.RESULT),
+            Chip("generation", sub = "source → target", mark = ChipMark.RESULT),
+            Chip("translation", sub = "+ small encoder", mark = ChipMark.RESULT),
+        ),
+        chipsLabel = "one pretrained model, three fine-tunes",
+        readout = "denoising is the objective; the shape is the contribution",
+    )
+    return frames
+}
+
+// ── D4 · XLNet: permutation language modelling ──────────────────────────────
+
+private fun xlnetFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+
+    frames += TokenFrame(
+        status = "XLNet starts from a specific complaint about BERT: masking corrupts the input with a [MASK] " +
+            "token that appears in ${"%.0f".format(XlnetLab.bertMaskRate * 100)}% of pretraining positions and never once at fine-tuning time. " +
+            "The model spends pretraining learning about a symbol its real inputs will never contain.",
+        chips = XlnetLab.sentence.mapIndexed { i, t ->
+            Chip(if (i in XlnetLab.maskedPositions) "[MASK]" else t, mark = if (i in XlnetLab.maskedPositions) ChipMark.ACTIVE else ChipMark.IDLE)
+        },
+        chipsLabel = "BERT's view of the sentence",
+        rows = listOf("mask rate" to "${"%.0f".format(XlnetLab.bertMaskRate * 100)}% at pretraining, 0% downstream"),
+    )
+
+    frames += TokenFrame(
+        status = "The second complaint is sharper. Masking both tokens of \"New York\" and predicting them " +
+            "independently multiplies two marginals: ${"%.2f".format(XlnetLab.pNewGivenContext)} × ${"%.2f".format(XlnetLab.pYorkGivenContext)} = ${"%.3f".format(XlnetLab.independentJoint())}. The real joint factorises as " +
+            "P(New) × P(York | New) = ${"%.2f".format(XlnetLab.pNewGivenContext)} × ${"%.2f".format(XlnetLab.pYorkGivenNew)} = ${"%.3f".format(XlnetLab.trueJoint())}, because seeing \"New\" nearly determines \"York\". " +
+            "BERT's objective cannot represent that dependency at all — a ${"%.1f".format(XlnetLab.independenceGap())}× gap on this pair.",
+        bars = listOf(
+            BarRow(
+                "joint probability of \"New York\"",
+                listOf(XlnetLab.independentJoint().toFloat(), XlnetLab.trueJoint().toFloat()),
+                BarPositive,
+                listOf("independent ${"%.3f".format(XlnetLab.independentJoint())}", "true ${"%.3f".format(XlnetLab.trueJoint())}"),
+            ),
+        ),
+        readout = "${"%.1f".format(XlnetLab.independenceGap())}× — the independence assumption, priced",
+    )
+
+    frames += TokenFrame(
+        status = "XLNet's answer keeps autoregression and randomises the *order*. Predict the tokens of a " +
+            "sequence one at a time, but in a permuted factorization order sampled per example — so every " +
+            "token eventually gets to condition on every other, in some order, without any [MASK] ever entering " +
+            "the input. A 4-token sequence has ${XlnetLab.orderCount(4)} orders; an 8-token one has ${"%,d".format(XlnetLab.orderCount(8))}.",
+        chips = XlnetLab.factorizationOrders(4).take(4).map { Chip(it.joinToString("→"), mark = ChipMark.RESULT) },
+        chipsLabel = "some factorization orders of a 4-token sequence",
+        rows = listOf(
+            "length 4" to "${XlnetLab.orderCount(4)} orders",
+            "length 5" to "${XlnetLab.orderCount(5)} orders",
+            "length 8" to "${"%,d".format(XlnetLab.orderCount(8))} orders",
+        ),
+    )
+
+    val order = listOf(2, 0, 3, 1)
+    frames += TokenFrame(
+        status = "The implementation problem this creates: to predict position ${order[2]} at step 3, the model must know " +
+            "*which* position it is predicting — but must not see what is there. One attention stream cannot do " +
+            "both, so XLNet runs two: a content stream that sees the token, and a query stream that sees only " +
+            "its position plus everything already generated in this order.",
+        rows = (0..3).map { step ->
+            "step ${step + 1}" to "content sees ${XlnetLab.contentStreamSees(order, step)} · query sees ${XlnetLab.queryStreamSees(order, step)}"
+        },
+        chips = order.map { Chip("pos $it", mark = ChipMark.ACTIVE) },
+        chipsLabel = "one sampled order",
+    )
+
+    frames += TokenFrame(
+        status = "Only the last portion of each order is predicted (about ${"%.0f".format(XlnetLab.xlnetPredictedPerSequence * 100)}% of positions), because a target " +
+            "with almost no context is noise rather than signal — the same reason BERT predicts ${"%.0f".format(XlnetLab.bertPredictedPerSequence * 100)}%. XLNet also " +
+            "inherits Transformer-XL's segment recurrence and relative encodings, which is what lets it handle " +
+            "long documents.",
+        rows = listOf(
+            "predicted per sequence" to "${"%.0f".format(XlnetLab.xlnetPredictedPerSequence * 100)}% (XLNet) vs ${"%.0f".format(XlnetLab.bertPredictedPerSequence * 100)}% (BERT)",
+            "input corruption" to "none vs [MASK]",
+            "dependency modelling" to "full autoregressive factorisation vs independent",
+            "cost" to "two attention streams; roughly 5× BERT's training compute",
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "It beat BERT on twenty tasks in 2019 and then largely lost the argument anyway: RoBERTa showed " +
+            "that most of BERT's gap was under-training rather than the objective, and the field went to " +
+            "decoder-only scaling instead. XLNet is worth knowing for the analysis, not the architecture — " +
+            "\"what exactly does masking assume, and what does it cost\" is a question that keeps recurring.",
+        chips = listOf(
+            Chip("XLNet 2019", sub = "beat BERT on 20 tasks", mark = ChipMark.RESULT),
+            Chip("RoBERTa", sub = "same objective, more data", mark = ChipMark.ACTIVE),
+            Chip("GPT-3 →", sub = "decoder-only wins", mark = ChipMark.ACTIVE),
+        ),
+        chipsLabel = "how it aged",
+    )
+    return frames
+}
+
+// ── D4 · Mixture of experts ─────────────────────────────────────────────────
+
+private fun moeFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val routes = MoeLab.routes()
+
+    frames += TokenFrame(
+        status = "Mistral 7B's contribution was engineering discipline — grouped-query attention, sliding-window " +
+            "attention, an aggressively over-trained 7B that beat models twice its size. Mixtral's is " +
+            "structural: replace each block's feed-forward network with ${MoeLab.experts} of them and route every token to " +
+            "just ${MoeLab.topK}.",
+        chips = MoeLab.tokens.map { Chip(it) },
+        chipsLabel = "a sequence about to be routed",
+        rows = listOf(
+            "experts per layer" to "${MoeLab.experts}",
+            "active per token" to "${MoeLab.topK}",
+            "total parameters" to "${MoeLab.totalParameters}B",
+            "active parameters" to "${MoeLab.activeParameters}B",
+        ),
+    )
+
+    routes.take(4).forEach { route ->
+        frames += TokenFrame(
+            status = "Routing \"${route.token}\": a linear router scores all ${MoeLab.experts} experts, the top ${MoeLab.topK} are kept, and their " +
+                "softmax weights (${route.weights.joinToString(", ") { "%.2f".format(it) }}) mix the two outputs. The routing is per token and per layer — " +
+                "the next token in the same sentence can go somewhere else entirely, and usually does.",
+            chips = (0 until MoeLab.experts).map { e ->
+                Chip("E$e", mark = if (e in route.experts) ChipMark.RESULT else ChipMark.DIM)
+            },
+            chipsLabel = "\"${route.token}\" → experts ${route.experts.joinToString(", ")}",
+            bars = listOf(
+                BarRow(
+                    "router softmax",
+                    MoeLab.softmax(MoeLab.routerLogits(route.token)).map { it.toFloat() },
+                    BarPositive,
+                    (0 until MoeLab.experts).map { "E$it" },
+                ),
+            ),
+        )
+    }
+
+    frames += TokenFrame(
+        status = "Across the whole strip the load is uneven — the busiest expert takes ${"%.1f".format(MoeLab.loadImbalance())}× the average share. " +
+            "Left alone this collapses: a slightly favoured expert gets more gradient, improves, gets favoured " +
+            "more, and the rest go dead. The auxiliary load-balancing loss (${"%.2f".format(MoeLab.auxiliaryLoss())} here, 1.0 at perfect balance) " +
+            "is added to the training objective specifically to stop that feedback loop.",
+        bars = listOf(
+            BarRow(
+                "tokens routed per expert",
+                MoeLab.expertLoad().map { it.toFloat() },
+                BarNegative,
+                (0 until MoeLab.experts).map { "E$it" },
+            ),
+        ),
+        readout = "imbalance ${"%.2f".format(MoeLab.loadImbalance())}× · aux loss ${"%.2f".format(MoeLab.auxiliaryLoss())}",
+    )
+
+    frames += TokenFrame(
+        status = "The trade in one line: ${MoeLab.totalParameters}B parameters' worth of capacity at ${MoeLab.activeParameters}B parameters' worth of compute " +
+            "— ${"%.0f".format(MoeLab.computeSaving() * 100)}% of the FLOPs a dense model of that size would need. What it does *not* save is memory: " +
+            "every expert must be resident because any token might route to it, so serving needs ${"%.1f".format(MoeLab.memoryPenalty())}× the VRAM " +
+            "of a dense 7B. MoE buys quality per FLOP, and pays for it in bytes.",
+        rows = listOf(
+            "compute" to "${MoeLab.activeParameters}B of ${MoeLab.totalParameters}B active — ${"%.0f".format(MoeLab.computeSaving() * 100)}% saved",
+            "memory" to "all ${MoeLab.totalParameters}B resident — ${"%.1f".format(MoeLab.memoryPenalty())}× a dense 7B",
+            "batching" to "harder: a batch can touch every expert",
+            "fine-tuning" to "more prone to overfitting than a dense model of equal active size",
+        ),
+        readout = "quality per FLOP, paid for in VRAM",
+    )
+    return frames
+}
+
+// ── D4 · Frontier model families ────────────────────────────────────────────
+
+private fun frontierFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+
+    frames += TokenFrame(
+        status = "The frontier families differ far less in architecture than the marketing suggests — all of " +
+            "them are decoder-only transformers with RoPE-family position handling, RLHF-style post-training, " +
+            "and a mixture-of-experts variant somewhere in the line-up. What actually separates them is the " +
+            "context window, the modality story, and how they were aligned.",
+        rows = ContextLab.families.map { it.name to "${"%,d".format(it.contextTokens)} tokens · ${it.vendor}" },
+        chips = ContextLab.families.map { Chip(it.vendor, mark = ChipMark.RESULT) },
+        chipsLabel = "who ships what",
+    )
+
+    frames += TokenFrame(
+        status = "Context is the headline number, and it is a real capability rather than a spec-sheet entry: a " +
+            "million tokens is a large codebase or a few hundred thousand words of documents in the prompt, " +
+            "with no retrieval step and no chunking. Anthropic's Claude Opus/Sonnet tier and Google's Gemini " +
+            "both sit at 1M; the GPT-4 generation set the 128K expectation that the open models still target.",
+        bars = listOf(
+            BarRow(
+                "context window (log₁₀ tokens)",
+                ContextLab.families.map { (ln(it.contextTokens.toDouble()) / ln(10.0)).toFloat() },
+                BarPositive,
+                ContextLab.families.map { it.name.split(" ").first() },
+            ),
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "What a long context costs, computed. Attention is quadratic, so the score matrix at 1M tokens " +
+            "is ${"%,.0f".format(ContextLab.relativeAttentionCost(1_000_000))}× the work it is at 4K. The harder limit at serving time is the KV cache: at " +
+            "${"%,d".format(ContextLab.kvCacheBytesPerToken())} bytes per token for a 70B-class model, a full 1M-token context needs " +
+            "${"%,.0f".format(ContextLab.kvCacheGb(1_000_000))} GB of it. Grouped-query attention — sharing one K/V pair across ${ContextLab.heads / ContextLab.kvGroups} query heads — " +
+            "cuts that to ${"%,.0f".format(ContextLab.gqaCacheGb(1_000_000))} GB, which is the difference between impossible and merely expensive.",
+        rows = ContextLab.contexts.map { n ->
+            val attention = "%,.0f".format(ContextLab.relativeAttentionCost(n))
+            val cache = "%,.0f".format(ContextLab.kvCacheGb(n))
+            val gqa = "%,.1f".format(ContextLab.gqaCacheGb(n))
+            "${"%,d".format(n)} tokens" to "attention ${attention}x · KV $cache GB · with GQA $gqa GB"
+        },
+        readout = "the window is an engineering achievement, not a config value",
+    )
+
+    frames += TokenFrame(
+        status = "Alignment is where the families genuinely diverge. The common baseline is RLHF: collect human " +
+            "preference comparisons, fit a reward model, optimise the policy against it. Anthropic's " +
+            "Constitutional AI replaces much of the human labelling with a written set of principles the model " +
+            "critiques and revises its own outputs against — cheaper to scale and, more importantly, auditable, " +
+            "because the rules are a document you can read rather than a distribution over annotator opinions.",
+        chips = listOf(
+            Chip("RLHF", sub = "human comparisons", mark = ChipMark.ACTIVE),
+            Chip("Constitutional AI", sub = "written principles", mark = ChipMark.RESULT),
+            Chip("DPO", sub = "no reward model", mark = ChipMark.ACTIVE),
+        ),
+        chipsLabel = "how preferences get in",
+    )
+
+    frames += TokenFrame(
+        status = "Gemini's distinguishing claim is native multimodality: text, images, audio and video are " +
+            "interleaved from pretraining rather than bolted on with an adapter afterwards, and it runs on " +
+            "Google's TPUs with a mixture-of-experts design. Claude's is the opposite emphasis — a written " +
+            "constitution, extended reasoning that the model decides how much of to spend, and a tier structure " +
+            "(a small fast model, a balanced one, a frontier one) so the model choice is a cost decision.",
+        rows = listOf(
+            "Gemini" to "natively multimodal, MoE, TPU-trained, 1M context",
+            "Claude" to "Constitutional AI, adaptive reasoning depth, 1M context across the main tier",
+            "GPT-4 class" to "the generation that normalised 128K and tool use",
+            "open weights" to "LLaMA and Mistral — you can run, inspect and fine-tune them",
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "Two cautions worth carrying. First, published numbers move fast enough that any capability or " +
+            "price table is stale within months — treat the *shape* of the trade (context vs cost, open vs " +
+            "hosted, tier vs single model) as the durable part. Second, benchmark scores between families are " +
+            "close enough that the deciding factors in practice are usually the boring ones: latency, context " +
+            "window, tool-calling reliability, deployment region and price per token.",
+        chips = listOf(
+            Chip("durable", sub = "architecture, trade-offs", mark = ChipMark.RESULT),
+            Chip("volatile", sub = "scores, prices, model names", mark = ChipMark.ACTIVE),
+        ),
+        chipsLabel = "what to remember",
+        readout = "pick on constraints, not leaderboards",
+    )
+    return frames
+}
+
 // ── D2 · Part-of-speech tagging ──────────────────────────────────────────────
 
 private fun posTaggingFrames(): List<TokenFrame> {
@@ -2556,6 +2984,51 @@ private val nbLegend = listOf(
 )
 
 private val tokenConfigs = mapOf(
+    "positional_encodings" to TokenConfig(
+        intro = "The sinusoidal table as a heat grid, its offset-invariance measured, the non-monotone decay " +
+            "textbook diagrams smooth over, and RoPE's exact relative identity.",
+        legend = listOf(
+            ChipActive to "Position signal",
+            ChipResult to "Relative score",
+        ),
+        build = ::positionalFrames,
+    ),
+    "bart" to TokenConfig(
+        intro = "One document through all five of BART's corruptions, each classified by what it actually " +
+            "destroys — tokens, length, or order.",
+        legend = listOf(
+            ChipActive to "Corrupted",
+            ChipResult to "Objective",
+        ),
+        build = ::bartFrames,
+    ),
+    "xlnet" to TokenConfig(
+        intro = "BERT's independence assumption priced on \"New York\", then permutation language modelling and " +
+            "the two attention streams it forces.",
+        legend = listOf(
+            ChipActive to "Masked / cost",
+            ChipResult to "Permutation order",
+        ),
+        build = ::xlnetFrames,
+    ),
+    "mistral_mixtral" to TokenConfig(
+        intro = "A router sending each token to 2 of 8 experts, the load imbalance that follows, and the " +
+            "compute-versus-memory trade in numbers.",
+        legend = listOf(
+            ChipActive to "Router scores",
+            ChipResult to "Chosen expert",
+        ),
+        build = ::moeFrames,
+    ),
+    "claude_gemini" to TokenConfig(
+        intro = "What actually separates the frontier families: context window, the KV cache it costs, the " +
+            "modality story, and how each one is aligned.",
+        legend = listOf(
+            ChipActive to "Volatile",
+            ChipResult to "Durable",
+        ),
+        build = ::frontierFrames,
+    ),
     "pos_tagging" to TokenConfig(
         intro = "A most-frequent-tag baseline and a bigram HMM, both estimated from the same mini treebank and " +
             "both scored on held-out sentences — including a word training never contained.",
