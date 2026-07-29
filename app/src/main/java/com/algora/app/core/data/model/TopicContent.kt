@@ -94,6 +94,11 @@ sealed interface SimulationType {
     // whether it holds a 0 or a 1. Stretching the array row that wide collapses its labels.
     data object BitBoardPlayer : SimulationType
 
+    // The CNN labs. NeuralNetPlayer can draw a small matrix, but it has no notion of a layer table,
+    // no live kernel/stride/padding controls, and no way to price an architecture — which is most of
+    // what the convolution topics are about. Serves C3 and the detection topics in C4.
+    data object FeatureMapPlayer : SimulationType
+
     data object PerceptronVisualizer : SimulationType
     data object ClassifierPlayground : SimulationType
     data object RecursionTreeVisualizer : SimulationType

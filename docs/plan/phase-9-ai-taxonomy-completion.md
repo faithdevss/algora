@@ -1,9 +1,12 @@
 # Phase 9 — AI Taxonomy Completion
 
-Status: In progress — Track A complete (RL at 100% of the doc), B1–B7 and C1–C2 done. 88 of 226
-topics authored; taxonomy at 288, target 426. AI sections now: ML 75, DL 29, NLP 12, RL 74.
-**Doc coverage is measured, not estimated: 207 of the doc's 357 entries (58%).**
-Next: `FeatureMapPlayer`, then C3 — the plan puts the widget before the CNN batch that needs it.
+Status: In progress — Track A complete (RL at 100% of the doc), B1–B7 and C1–C3 done. 100 of 226
+topics authored. AI sections now: ML 75, **DL 41**, NLP 12, RL 74 — 202 AI topics, and 324 browsable
+topics across the app *counted from the section lists themselves*. (The running "taxonomy at N"
+tallies in earlier revisions of this file drifted from those lists; the measured number is the one to
+trust, and `ContentCoverageTest` is what enforces it.)
+**Doc coverage is measured, not estimated: 219 of the doc's 357 entries (61%).**
+Next: C4 — object detection, on the `FeatureMapPlayer` C3 just built.
 Track B was interrupted after B7 by a deliberate jump to Track C; **B8, B9 and B10 remain unbuilt**,
 and `ml_supervised` therefore still holds the four topics they were to redistribute.
 
@@ -72,13 +75,17 @@ below.
 | B8–B10 | 29 | **Skipped for now** | Deliberate jump to Track C; `ml_supervised` still awaits them |
 | C1 · NN Basics | 4 | **Done** | No new widget. New `NeuralNetPlayer` frame guard found 4 live bugs |
 | C2 · Activation Functions | 10 | **Done** | No new widget. `autoPlot` retires hand-picked axes |
-| C3–C9 | 59 | Planned | `FeatureMapPlayer` still outstanding, blocks C3/C4 |
+| C3 · CNN Mechanics + Architectures | 12 | **Done** | New `FeatureMapPlayer` + `CnnMath.kt`. Plan said 11; the doc lists 12 |
+| C4–C9 | 47 | Planned | `FeatureMapPlayer` now exists and serves C4 unchanged |
 | Track D (D1–D6) | 50 | Planned | |
-| **Total** | **226** | **88 done** | Taxonomy 200 → 288 of 426 |
+| **Total** | **226** | **100 done** | 324 browsable topics, counted from the section lists |
 
 Sections against the doc, measured by `AiTaxonomyCoverageTest` rather than counted by hand:
-**RL 71/71**, ML 84/113, DL 36/96, NLP 16/77 — **207 of 357 overall**. ML is 75 topics of its
-eventual ~100; DL is at 29; NLP is untouched at 12. Browsable topics across the app: 311.
+**RL 71/71**, ML 84/113, **DL 48/96**, NLP 16/77 — **219 of 357 overall**. ML is 75 topics of its
+eventual ~100; DL is at 41; NLP is untouched at 12. Browsable topics across the app: **324**, which
+is what `DataStructuresTopics + AlgorithmsTopics + the four AI sections` actually sum to — the
+"taxonomy 200 → N of 426" running tally this table used to carry had drifted from the lists by two
+dozen, so it has been dropped in favour of the measured figure.
 
 ## Decisions taken before planning
 
@@ -113,7 +120,10 @@ clustering topics and B6 took `pca`, its last one. `ml_supervised` still holds `
 topics and B10 takes `perceptron`. It should be gone by the end of Track B, and if it still exists
 then, something was missed. `CategoryIntegrityTest` is what makes that safe to do incrementally.
 
-**Deep Learning — 11 categories** (`dl_basics`, `dl_activations`, `dl_cnn`, `dl_detection`,
+**Deep Learning — 11 categories.** Built so far: `dl_basics`, `dl_activations`, `dl_cnn`. The two
+generic buckets are being hollowed out the same way ML's were — `dl_architectures` lost `cnn` to
+`dl_cnn` and still holds the six topics C5–C7 will take. Full list (`dl_basics`, `dl_activations`,
+`dl_cnn`, `dl_detection`,
 `dl_rnn`, `dl_transformers`, `dl_generative`, `dl_deep_rl`, `dl_optimizers`, `dl_regularization`,
 `dl_specialized`)
 
@@ -623,14 +633,54 @@ for the configuration on screen would not be a property of the activation.
 > off for seven consecutive batches (B3–B7, C1–C2), and twice the *plan's own* widget suggestion was
 > the wrong one: it named `RegressionExplorer` for both B7 and C2, and that widget takes no
 > `topicId` at all. Read the widget before trusting the plan's line about it.
+>
+> C3 is the one batch where the check came out the other way. `NeuralNetPlayer` already draws a small
+> matrix with a highlighted window — its `cnn` lab does exactly the sliding-kernel picture — but it
+> has no layer table, no live controls and no way to price an architecture, which is most of what the
+> twelve CNN topics are about. `FeatureMapPlayer` was built, as the original plan said it would be,
+> and it is the phase's only net-new widget that the plan actually predicted.
 
-**C3 · CNN Mechanics + Architectures** — 11 topics
-Convolution Layers · Pooling · Padding & Strides · LeNet-5 · AlexNet · VGG · Inception · ResNet ·
-DenseNet · MobileNet · EfficientNet · ViT
-*Sims:* `FeatureMapPlayer` — an input grid, a sliding kernel, and the resulting feature map, with
-stride/padding/kernel-size controls and a per-architecture layer stack. It also serves C4. (The
-original plan called this the phase's only new widget; that turned out to be wrong — see the note
-above.)
+**C3 · CNN Mechanics + Architectures** — 12 topics into new `dl_cnn` — **Done**
+`conv_layers` · `pooling_layers` · `padding_strides` · `lenet5` · `alexnet` · `vgg` · `inception` ·
+`resnet` · `densenet` · `mobilenet` · `efficientnet` · `vit`
+
+The plan said 11; `docs/topics.ai.md` lists **12** entries under Convolutional Neural Networks, and
+all twelve were authored, so DL doc coverage moved 36 → 48. New category `dl_cnn` ("Convolutional
+Networks (CNN)", icon `stack` — `chip` already belongs to Architectures), and the `cnn` umbrella
+moved into it from `dl_architectures` as the landing topic, which leaves `dl_architectures` holding
+the six topics C5–C7 will redistribute. Only `conv_layers` and `pooling_layers` are free; the rest
+are premium. Ordered as mechanics first, then the architectures in publication order, because each
+one is an answer to a limit of the one before it.
+
+*Sims:* **`FeatureMapPlayer`** (`FeatureMapSection.kt`) — the phase's one genuinely net-new widget,
+built here rather than before C1 as the plan sequenced it, since C1/C2 turned out not to need it.
+Four render parts mixed per frame: grids (input / kernel / feature map with the current window
+outlined), a layer table with per-layer parameter share, bars, and a plot with optional log-y. The
+three mechanics labs carry live **kernel / stride / padding** pickers and rebuild every frame from
+them, so the geometry on screen is the geometry of the controls. It serves C4 unchanged.
+
+New math file `CnnMath.kt` with `CnnMathTest` (20 tests). The architectures are layer *tables*, not
+prose: LeNet-5's **61,706**, AlexNet's **62,378,344** and VGG-16's **138,357,544** are summed from
+the definitions, and the split inside them falls out of the same table — AlexNet keeps 94.0% of its
+parameters in three dense layers while doing ~95% of its arithmetic in the five convolutions, and
+VGG-16 pushes that to 89.4% / 99.2%. Also measured rather than quoted: the inception 3a module at its
+real widths (393,216 → 163,328 MACs per position, 9.7× on the 5×5 branch alone), depthwise separable
+cost as exactly 1/N + 1/k² (0.1150 at 256 channels, k=3), a six-layer dense block's channel growth
+and flat per-layer cost, EfficientNet's α·β²·γ² = 1.9203, and ViT's 197 tokens / 590,592 patch-embed
+parameters / 38,809 attention pairs.
+
+Two claims are measurements over a real run rather than arithmetic, and both are checked as
+orderings across seeds and depths so they cannot be artefacts of the configuration on screen:
+- **ResNet.** The same 30-layer stack, identical weights, differing only by the `+ x`: a unit
+  gradient at the output arrives at layer 1 as **1.3×10⁻⁸** plain and **6.7×10³** residual. Note the
+  direction — the residual gradient *grows* toward the input, which the lab says out loud and
+  attributes to BN and zero-init γ rather than pretending the shortcut is free.
+- **Pooling.** The invariance claim, priced: a 1-pixel shift moves the raw response by 100% of its
+  own magnitude and the 2×2 max-pooled map by 50%; a 2-pixel shift moves the pooled map by 100%.
+  Pooling halves the sensitivity, it does not remove it. The first draft measured this on the
+  convolution lab's edge patch and got a meaningless answer — a response that repeats down every
+  column is shift-invariant for reasons unrelated to pooling — so the lab uses a localised square
+  instead. Worth recording as the same class of error as A1's POMDP sensor.
 
 **C4 · Object Detection & Segmentation** — 9 topics
 R-CNN · Fast R-CNN · Faster R-CNN · YOLO (V1–V8) · SSD · RetinaNet · U-Net · Mask R-CNN ·
@@ -776,7 +826,9 @@ number closed no doc entry, which is worth noticing at the time rather than at t
   its time-series half, which cannot take a config at all, while `RegressionLab` took all six topics
   after a one-line canvas change. Check the remaining batches against what now exists, and check
   *which* of two similar widgets is the config-driven one.
-- **`FeatureMapPlayer` is still net-new** and blocks C3 and C4. Build it while C1/C2 land.
+- ~~**`FeatureMapPlayer` is still net-new** and blocks C3 and C4.~~ Built with C3, not before it —
+  C1 and C2 never needed it, and building it against real content rather than in advance is what
+  gave it its live kernel/stride/padding controls and its frame guard.
 - **Verification keeps finding real defects, not wording problems.** Across nine batches: an
   inverted Complement NB sign that produced confidently wrong classifications, MCMC step sizes whose
   "too large" case sat in the well-tuned regime, an XGBoost split gain that was negative where the
@@ -808,12 +860,13 @@ number closed no doc entry, which is worth noticing at the time rather than at t
 ## Suggested order
 
 ~~A1 → A2~~ → ~~B1 → B2 → B3 → B4 → B5~~ → ~~guards~~ → ~~B6 → B7~~ → **B8** → B9 → B10 → ~~C1 → C2~~
-→ **`FeatureMapPlayer`** → C3 → C4 → C5 → C6 → C7 → C8 → C9 → D1 → D2 → D3 → D4 → D5 → D6.
+→ ~~**`FeatureMapPlayer`** → C3~~ → C4 → C5 → C6 → C7 → C8 → C9 → D1 → D2 → D3 → D4 → D5 → D6.
 
 Struck-through batches are done. The guards step landed with B6 rather than before it, in the same
 session. The order was then broken deliberately: C1 was built before B8–B10 at the user's direction,
-which is fine — the tracks are independent, and Track C's only real dependency is `FeatureMapPlayer`
-before C3. B8–B10 stay open, and Track B is not finished until `ml_supervised` is empty.
+which is fine — the tracks are independent, and Track C's only real dependency was `FeatureMapPlayer`
+before C3, which C3 built itself. B8–B10 stay open, and Track B is not finished until `ml_supervised`
+is empty.
 
 ## Verification
 

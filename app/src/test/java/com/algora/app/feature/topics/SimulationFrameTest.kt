@@ -55,6 +55,13 @@ class SimulationFrameTest {
     fun `every neural-net config builds frames inside its declared axes`() =
         check("NeuralNet", neuralNetTopicIds, ::neuralNetFrameCount)
 
+    // Added with C3. The three mechanics labs rebuild every frame from the kernel/stride/padding on
+    // screen, so the helper runs the whole control sweep — including combinations that empty the
+    // feature map, which are two taps away.
+    @Test
+    fun `every feature-map config builds frames that match the geometry they claim`() =
+        check("FeatureMap", featureMapTopicIds, ::featureMapFrameCount)
+
     // The recursion tree is the one widget with a live parameter, so this covers every n the slider
     // can reach, not just the default one.
     @Test

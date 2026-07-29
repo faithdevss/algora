@@ -27,6 +27,7 @@ private fun topic(
 
 private val basics = DeepLearningCategories.basics
 private val activations = DeepLearningCategories.activations
+private val convolutional = DeepLearningCategories.cnn
 private val fundamentals = DeepLearningCategories.fundamentals
 private val architectures = DeepLearningCategories.architectures
 
@@ -67,6 +68,28 @@ private val activationTopics = listOf(
     topic("softmax", "Softmax (Output Layer)", activations, "The one that maps a vector to a vector, with a Jacobian instead of a derivative.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
 )
 
+// The doc's CNN block in full, led by the existing `cnn` umbrella moved over from dl_architectures.
+// Ordered as the mechanics first and then the architectures in the order they were published, since
+// every one of them is an answer to a limit of the one before it: AlexNet is LeNet at scale, VGG is
+// AlexNet made uniform and deep, Inception is VGG made affordable, ResNet is depth made trainable,
+// DenseNet is ResNet's shortcut with concatenation, MobileNet and EfficientNet are the same models
+// made small, and ViT is the argument that none of the convolution was load-bearing.
+private val cnnTopics = listOf(
+    topic("cnn", "CNNs", convolutional, "Convolutional networks that exploit spatial structure in images.", isPremium = true),
+    topic("conv_layers", "Convolution Layers", convolutional, "Nine weights, reused everywhere — and what that buys over a dense layer.", difficulty = Difficulty.BEGINNER),
+    topic("pooling_layers", "Pooling Layers (Max/Average)", convolutional, "Downsampling with no parameters, and how much shift-tolerance it really buys.", difficulty = Difficulty.BEGINNER),
+    topic("padding_strides", "Padding & Strides", convolutional, "One formula for output size, and the border pixels nobody reads.", isPremium = true, difficulty = Difficulty.BEGINNER),
+    topic("lenet5", "LeNet-5 (The Original)", convolutional, "61,706 parameters that read cheques for a decade.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("alexnet", "AlexNet (The Breakthrough)", convolutional, "The 2012 result that restarted the field — and where its 62M parameters sit.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("vgg", "VGG-16 / VGG-19", convolutional, "One kernel size everywhere, 138M parameters, and why two 3×3s beat a 5×5.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("inception", "Inception (GoogLeNet)", convolutional, "Every kernel size at once, made affordable by the 1×1 bottleneck.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("resnet", "ResNet (Residual Connections)", convolutional, "One addition, and depth stopped hurting.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("densenet", "DenseNet", convolutional, "Concatenate instead of add: every layer sees every earlier one.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("mobilenet", "MobileNet (Lightweight)", convolutional, "Split filtering from mixing and the layer gets 8× cheaper.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("efficientnet", "EfficientNet", convolutional, "Depth, width and resolution scaled together by one exponent.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("vit", "Vision Transformers (ViT)", convolutional, "An image as 196 tokens, and no convolution anywhere.", isPremium = true, difficulty = Difficulty.ADVANCED),
+)
+
 private val fundamentalsTopics = listOf(
     topic("gradient_descent_variants", "Gradient Descent Variants", fundamentals, "SGD, Momentum, RMSProp, Adam and friends.", isPremium = true),
     topic("batch_normalization", "Batch Normalization", fundamentals, "Re-centre and re-scale activations so deep stacks stay trainable.", isPremium = true),
@@ -75,7 +98,6 @@ private val fundamentalsTopics = listOf(
 )
 
 private val architecturesTopics = listOf(
-    topic("cnn", "CNNs", architectures, "Convolutional networks that exploit spatial structure in images.", isPremium = true),
     topic("rnn", "RNNs", architectures, "Recurrent networks that carry state across a sequence.", isPremium = true),
     topic("lstm_gru", "LSTMs / GRUs", architectures, "Gated recurrent cells that remember long-range dependencies.", isPremium = true),
     topic("autoencoders", "Autoencoders", architectures, "Encode-then-reconstruct networks for compression and denoising.", isPremium = true),
@@ -85,7 +107,7 @@ private val architecturesTopics = listOf(
 )
 
 object DeepLearningTopics {
-    val topics: List<Topic> = basicsTopics + activationTopics + fundamentalsTopics + architecturesTopics
+    val topics: List<Topic> = basicsTopics + activationTopics + cnnTopics + fundamentalsTopics + architecturesTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }

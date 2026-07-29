@@ -14,8 +14,11 @@ object DeepLearningCategories {
     val basics = Category("dl_basics", "Neural Network Basics", Section.DL, 0xFF06B6D4, "robot")
     // C2. "trend" is the curve every topic in the block is about, and it was unused in this section.
     val activations = Category("dl_activations", "Activation Functions", Section.DL, 0xFFF59E0B, "trend")
+    // C3. "stack" is the layer stack every topic in the block is read as, and it was unused in this
+    // section — `chip` already belongs to Architectures and would render the same glyph twice.
+    val cnn = Category("dl_cnn", "Convolutional Networks (CNN)", Section.DL, 0xFF10B981, "stack")
     val fundamentals = Category("dl_fundamentals", "Fundamentals", Section.DL, 0xFFEC4899, "network")
     val architectures = Category("dl_architectures", "Architectures", Section.DL, 0xFF8B5CF6, "chip")
 
-    val all = listOf(basics, activations, fundamentals, architectures)
+    val all = listOf(basics, activations, cnn, fundamentals, architectures)
 }

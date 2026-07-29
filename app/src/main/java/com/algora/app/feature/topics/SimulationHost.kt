@@ -44,6 +44,7 @@ internal fun SimulationHost(topicId: String, type: SimulationType) {
         SimulationType.RegressionExplorer -> RegressionSimulationSection()
         SimulationType.RegressionLab -> RegressionLabSection(topicId)
         SimulationType.DecisionSurface -> DecisionSurfaceSection(topicId)
+        SimulationType.FeatureMapPlayer -> FeatureMapSection(topicId)
         SimulationType.BitBoardPlayer -> BitBoardSection(topicId)
         SimulationType.PerceptronVisualizer -> PerceptronSimulationSection()
         SimulationType.ClassifierPlayground -> ClassifierPlaygroundSection(classifierConfigFor(topicId))

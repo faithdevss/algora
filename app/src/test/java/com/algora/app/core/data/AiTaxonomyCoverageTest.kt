@@ -208,18 +208,20 @@ class AiTaxonomyCoverageTest {
             ),
             // `cnn` is the umbrella; C3 authors the mechanics and the architectures.
             "Convolutional Neural Networks (CNN)" to linkedMapOf(
-                "Convolution Layers" to emptyList(),                    // C3
-                "Pooling Layers (Max/Average)" to emptyList(),          // C3
-                "Padding & Strides" to emptyList(),                     // C3
-                "LeNet-5 (The Original)" to emptyList(),                // C3
-                "AlexNet (The Breakthrough)" to emptyList(),            // C3
-                "VGG-16 / VGG-19" to emptyList(),                       // C3
-                "Inception (GoogLeNet)" to emptyList(),                 // C3
-                "ResNet (Residual Connections)" to emptyList(),         // C3
-                "DenseNet" to emptyList(),                              // C3
-                "MobileNet (Lightweight)" to emptyList(),               // C3
-                "EfficientNet" to emptyList(),                          // C3
-                "Vision Transformers (ViT)" to emptyList(),             // C3
+                // `cnn` is the umbrella in front of this whole block and covers none of it on its
+                // own; C3 kept it as the category's landing topic and authored the twelve entries.
+                "Convolution Layers" to listOf("conv_layers"),
+                "Pooling Layers (Max/Average)" to listOf("pooling_layers"),
+                "Padding & Strides" to listOf("padding_strides"),
+                "LeNet-5 (The Original)" to listOf("lenet5"),
+                "AlexNet (The Breakthrough)" to listOf("alexnet"),
+                "VGG-16 / VGG-19" to listOf("vgg"),
+                "Inception (GoogLeNet)" to listOf("inception"),
+                "ResNet (Residual Connections)" to listOf("resnet"),
+                "DenseNet" to listOf("densenet"),
+                "MobileNet (Lightweight)" to listOf("mobilenet"),
+                "EfficientNet" to listOf("efficientnet"),
+                "Vision Transformers (ViT)" to listOf("vit"),
             ),
             "Object Detection & Vision Tasks" to linkedMapOf(
                 "R-CNN" to emptyList(),                                 // C4
@@ -514,7 +516,7 @@ class AiTaxonomyCoverageTest {
 
     // The ratchet. Move it when a batch lands; a batch that does not move it did not close any doc
     // entry, which is worth noticing.
-    private val expectedCoveredCount = 207
+    private val expectedCoveredCount = 219
 
     // Doc entries the app answers from the DSA taxonomy rather than an AI section. Deliberate reuse
     // — the alternative is a duplicate page — but small and explicit, so it cannot grow by accident.

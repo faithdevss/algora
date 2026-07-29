@@ -68,6 +68,7 @@ internal fun simLabel(type: SimulationType): String = when (type) {
     SimulationType.RegressionExplorer -> "Regression explorer"
     SimulationType.RegressionLab -> "Regression lab · estimators"
     SimulationType.DecisionSurface -> "Decision surface · boundaries"
+    SimulationType.FeatureMapPlayer -> "Feature map · conv player"
     SimulationType.BitBoardPlayer -> "Bit board · per-bit player"
     SimulationType.PerceptronVisualizer -> "Perceptron playground"
     SimulationType.ClassifierPlayground -> "Classifier playground"

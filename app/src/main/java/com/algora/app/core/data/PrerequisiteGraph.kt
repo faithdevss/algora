@@ -178,6 +178,21 @@ object PrerequisiteGraph {
         "swish" to listOf("relu", "sigmoid"),
         "gelu" to listOf("swish"),
         "softmax" to listOf("sigmoid"),
+        // DL CNNs: the three mechanics first, then the architectures in publication order — each one
+        // is an answer to a limit of the one before it, so the reading path is the history.
+        "conv_layers" to listOf("neural_network_basics"),
+        "pooling_layers" to listOf("conv_layers"),
+        "padding_strides" to listOf("conv_layers"),
+        "cnn" to listOf("conv_layers", "pooling_layers"),
+        "lenet5" to listOf("conv_layers", "pooling_layers"),
+        "alexnet" to listOf("lenet5", "relu", "dropout"),
+        "vgg" to listOf("alexnet"),
+        "inception" to listOf("vgg"),
+        "resnet" to listOf("vgg", "vanishing_gradient"),
+        "densenet" to listOf("resnet"),
+        "mobilenet" to listOf("resnet", "inception"),
+        "efficientnet" to listOf("mobilenet"),
+        "vit" to listOf("resnet", "transformers"),
         // DL: training techniques presuppose the training loop
         "batch_normalization" to listOf("neural_network_basics", "backpropagation"),
         "dropout" to listOf("neural_network_basics", "regularization"),
