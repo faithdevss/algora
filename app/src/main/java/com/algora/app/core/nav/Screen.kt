@@ -69,6 +69,11 @@ object QuizCatalogRoute {
     const val ROUTE = "quizzes"
 }
 
+// One mixed practice session per day: recall queue, one problem, a short sampled question set.
+object DailyDrillRoute {
+    const val ROUTE = "daily_drill"
+}
+
 // Problem bank: list grouped by pattern, then a per-problem workspace.
 object ProblemsRoute {
     const val ROUTE = "problems"

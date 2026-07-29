@@ -18,6 +18,7 @@ import com.algora.app.feature.machinelearning.MachineLearningScreen
 import com.algora.app.feature.nlp.NlpScreen
 import com.algora.app.feature.practice.PracticeScreen
 import com.algora.app.feature.practice.QuizCatalogScreen
+import com.algora.app.feature.practice.daily.DailyDrillScreen
 import com.algora.app.feature.practice.problems.ProblemDetailScreen
 import com.algora.app.feature.practice.problems.ProblemListScreen
 import com.algora.app.feature.premium.PremiumScreen
@@ -77,6 +78,15 @@ fun NavGraph(
 
         composable(QuizCatalogRoute.ROUTE) {
             QuizCatalogScreen(onQuizClick = openTopic, onBack = goBack)
+        }
+
+        composable(DailyDrillRoute.ROUTE) {
+            DailyDrillScreen(
+                onNavigate = { route -> navController.navigate(route) },
+                onProblemClick = { problemId -> navController.navigate(ProblemDetailRoute.route(problemId)) },
+                onTopicClick = openTopic,
+                onBack = goBack,
+            )
         }
 
         composable(ProblemsRoute.ROUTE) {

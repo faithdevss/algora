@@ -16,8 +16,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -35,6 +37,7 @@ import com.algora.app.core.data.progress.ProgressRepository
 import com.algora.app.core.data.progress.progressDataStore
 import com.algora.app.core.data.settings.SettingsRepository
 import com.algora.app.core.data.settings.settingsDataStore
+import com.algora.app.core.nav.DailyDrillRoute
 import com.algora.app.core.nav.ProblemsRoute
 import com.algora.app.core.nav.QuizCatalogRoute
 import com.algora.app.core.nav.ReviewRoute
@@ -43,6 +46,7 @@ import com.algora.app.core.ui.components.resolveIcon
 import com.algora.app.core.ui.theme.Gradients
 import com.algora.app.core.ui.theme.SpaceGrotesk
 import com.algora.app.feature.interviewprep.quiz.QuizRegistry
+import com.algora.app.feature.practice.daily.rememberDrillStatus
 import com.algora.app.feature.practice.problems.ProblemRegistry
 import com.algora.app.feature.review.DAILY_NEW_CARD_LIMIT
 import com.algora.app.feature.review.allReviewCards
@@ -145,6 +149,12 @@ fun PracticeScreen(onNavigate: (String) -> Unit, modifier: Modifier = Modifier) 
             )
         }
 
+        // The drill sits above the grid because it is the one thing to do *today*; the four cards
+        // below are the whole library, available any time.
+        DailyDrillBanner(onClick = { onNavigate(DailyDrillRoute.ROUTE) })
+
+        Spacer(modifier = Modifier.height(13.dp))
+
         // Same 2×2 gradient grid as Home's Quick Access block.
         Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
             entries.chunked(2).forEach { rowEntries ->
@@ -159,6 +169,56 @@ fun PracticeScreen(onNavigate: (String) -> Unit, modifier: Modifier = Modifier) 
         }
 
         Spacer(modifier = Modifier.height(24.dp))
+    }
+}
+
+// Full-width, above the grid: today's mixed session and how much of it is left. Every step's state
+// is derived from work already recorded elsewhere (see DrillStatus), so this cannot claim progress
+// the learner did not make.
+@Composable
+private fun DailyDrillBanner(onClick: () -> Unit) {
+    val status = rememberDrillStatus()
+    val done = status.allDone
+    val accent = if (done) Color(0xFF16A34A) else Color(0xFF6366F1)
+
+    Surface(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(20.dp),
+        color = accent.copy(alpha = 0.08f),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.45f)),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(13.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(accent.copy(alpha = 0.18f), RoundedCornerShape(14.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(resolveIcon("flame"), contentDescription = null, tint = accent, modifier = Modifier.size(24.dp))
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Daily Drill", fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(
+                    when {
+                        !status.ready -> "Building today's set…"
+                        done -> "Done for today ✓"
+                        else -> "${status.doneCount} of ${status.stepCount} done · recall, solve, drill"
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (done) accent else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Icon(
+                resolveIcon("chev"),
+                contentDescription = null,
+                tint = accent,
+                modifier = Modifier.size(20.dp),
+            )
+        }
     }
 }
 

@@ -116,6 +116,21 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         }
     }
 
+    /** The problem the daily drill picked, and the day it picked it. Null before the first drill. */
+    val drillProblem: Flow<Pair<Long, String>?> =
+        dataStore.data.map { prefs ->
+            val day = prefs[SettingsKeys.DRILL_DAY]
+            val problemId = prefs[SettingsKeys.DRILL_PROBLEM]
+            if (day == null || problemId == null) null else day to problemId
+        }
+
+    suspend fun setDrillProblem(day: Long, problemId: String) {
+        dataStore.edit { prefs ->
+            prefs[SettingsKeys.DRILL_DAY] = day
+            prefs[SettingsKeys.DRILL_PROBLEM] = problemId
+        }
+    }
+
     // New cards introduced on `today`. Any other stored day means the allowance has rolled over.
     fun newCardsIntroduced(today: Long): Flow<Int> =
         dataStore.data.map { prefs ->

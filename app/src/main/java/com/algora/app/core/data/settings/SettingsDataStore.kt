@@ -31,4 +31,8 @@ object SettingsKeys {
     // Finished quiz runs (see QuizAttempt). A quiz used to score you and forget, so nothing could
     // say what you keep getting wrong.
     val QUIZ_ATTEMPTS = stringSetPreferencesKey("quiz_attempts")
+    // The daily drill's chosen problem, pinned to the day it was chosen. Without pinning, solving it
+    // would immediately reroll the pick — the drill would never show as finished.
+    val DRILL_DAY = longPreferencesKey("drill_epoch_day")
+    val DRILL_PROBLEM = stringPreferencesKey("drill_problem_id")
 }
