@@ -815,6 +815,146 @@ private fun lstmFrames(): List<NetFrame> {
     return frames
 }
 
+// ── C5 · BPTT ────────────────────────────────────────────────────────────────
+// Everything here comes out of `BpttLab`, which trains the same 12-unit recurrent classifier at six
+// truncation windows on a task with one informative token nine steps before the decision. The lab
+// ends on a comparison the plan did not expect to have to draw: a window that never reaches the cue
+// solves the task on every seed, and two shorter ones are coin flips.
+
+private fun bpttFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+    val example = BpttLab.trainSet.first { it.label == 1 }
+    val steps = (1..BpttLab.LENGTH).map { "t$it" }
+    val cueName = if (example.label == 1) "B" else "A"
+
+    frames += NetFrame(
+        status = "The task: token 1 is A or B, tokens 2–${BpttLab.LENGTH} are noise, and the answer read off the " +
+            "last step is which letter started the sequence. One informative input, ${BpttLab.LENGTH - 1} steps " +
+            "of nothing, one decision. Forward, this is easy — the state only has to carry a bit.",
+        layers = listOf(
+            NetLayer(
+                "x",
+                example.tokens.mapIndexed { index, token ->
+                    NetNode(if (index == 0) 1f else 0.25f, if (index == 0) NodeMood.OUTPUT else NodeMood.IDLE)
+                },
+            ),
+            NetLayer("h", List(BpttLab.LENGTH) { NetNode(0f, if (it == BpttLab.LENGTH - 1) NodeMood.FORWARD else NodeMood.IDLE) }),
+        ),
+        readout = "cue \"$cueName\" at t1, decision at t${BpttLab.LENGTH}",
+    )
+
+    val gradient = BpttLab.stateGradient
+    val decay = gradient.last() / gradient.first()
+    frames += NetFrame(
+        status = "Training it means walking the loss back along that chain — backpropagation through time, one " +
+            "multiplication by the recurrent matrix per step. Measured at initialization, ‖∂L/∂h‖ leaves the " +
+            "output at ${"%.3f".format(gradient.last())} and arrives at t1 as ${"%.4f".format(gradient.first())}: " +
+            "${"%.0f".format(decay)}× smaller after ${BpttLab.LENGTH - 1} steps. Nothing is broken — this is what " +
+            "repeated multiplication does.",
+        plot = CurvePlot(
+            "‖∂L/∂h_t‖, output on the right",
+            listOf(Curve("gradient", gradient.mapIndexed { i, v -> (i + 1).toFloat() to v.toFloat() }, BackwardColor)),
+            1f..BpttLab.LENGTH.toFloat(), 0f..(gradient.max().toFloat() * 1.1f),
+        ),
+        readout = "${"%.4f".format(gradient.first())} vs ${"%.3f".format(gradient.last())} — ${"%.0f".format(decay)}×",
+    )
+
+    val share = BpttLab.matrixShare
+    frames += NetFrame(
+        status = "∂L/∂W is a sum over steps, and this is each step's share of it. The last step contributes " +
+            "${"%.3f".format(share.last())} and t2 contributes ${"%.4f".format(share[1])}. t1 contributes exactly " +
+            "zero — not from decay, but because h₀ is the zero vector, so that step's outer product is zero by " +
+            "construction. The cue reaches the input matrix and the recurrent matrix never sees it.",
+        bars = listOf(
+            NetBar("share of ∂L/∂W per step", share.map { it.toFloat() }, BackwardColor, steps),
+        ),
+        readout = "t1 share = 0, exactly",
+    )
+
+    val window = 3
+    frames += NetFrame(
+        status = "Truncated BPTT cuts the walk short: keep the forward pass, but stop the gradient after k steps. " +
+            "At k = $window only the last $window steps are credited, and the training step stores " +
+            "${BpttLab.storedActivations(window)} hidden values instead of ${BpttLab.storedActivations(BpttLab.LENGTH)} " +
+            "— which is why long sequences are trained this way at all.",
+        bars = listOf(
+            NetBar(
+                "steps receiving gradient at k = $window",
+                (1..BpttLab.LENGTH).map { if (it > BpttLab.LENGTH - window) 1f else 0f },
+                ForwardColor,
+                steps,
+            ),
+            NetBar("steps receiving gradient, full BPTT", List(BpttLab.LENGTH) { 1f }, NeutralColor, steps),
+        ),
+        readout = "${BpttLab.storedActivations(window)} stored values vs ${BpttLab.storedActivations(BpttLab.LENGTH)}",
+    )
+
+    val agreement = BpttLab.gradientAgreement
+    val magnitude = BpttLab.magnitudeShare.toMap()
+    frames += NetFrame(
+        status = "And the truncated gradient looks almost exactly like the full one. Cosine similarity is " +
+            "${"%.3f".format(agreement.first { it.first == 1 }.second)} with a single step of credit and " +
+            "${"%.3f".format(agreement.first { it.first == 3 }.second)} at k = 3. It is not even smaller: at k = 3 it " +
+            "carries ${"%.1f".format(magnitude.getValue(3) * 100)}% of the full gradient's magnitude, because the " +
+            "dropped terms were partly cancelling the ones that remain.",
+        plot = CurvePlot(
+            "cos(truncated, full)",
+            listOf(
+                Curve(
+                    "agreement",
+                    agreement.map { it.first.toFloat() to it.second.toFloat() },
+                    AccentA,
+                ),
+            ),
+            1f..BpttLab.LENGTH.toFloat(), 0.9f..1.01f,
+        ),
+        readout = "99% aligned at k = 3",
+    )
+
+    val trained = BpttLab.trained
+    frames += NetFrame(
+        status = "So train it and see. Same initialization, same data, same 150 epochs — only the window differs. " +
+            "Test accuracy: " + trained.joinToString(", ") { "k=${it.window} ${"%.2f".format(it.testAccuracy)}" } +
+            ". The two widest windows solve it; the narrow ones sit near the coin flip while fitting the " +
+            "training set, which is memorisation of the noise rather than learning the rule.",
+        bars = listOf(
+            NetBar("test accuracy", trained.map { it.testAccuracy.toFloat() }, OutputColor, trained.map { "k${it.window}" }),
+            NetBar("train accuracy", trained.map { it.trainAccuracy.toFloat() }, NeutralColor, trained.map { "k${it.window}" }),
+        ),
+        readout = "99% gradient agreement, chance-level accuracy",
+    )
+
+    // Two windows across three seeds. This is the frame the batch was rewritten around, so it is
+    // computed here rather than asserted: 5 and 9 are the pair that separates.
+    val reliability = BpttLab.reliability(listOf(5, 9))
+    val short = reliability.first { it.window == 5 }
+    val long = reliability.first { it.window == 9 }
+    frames += NetFrame(
+        status = "One seed is not a result, so here are two windows across ${BpttLab.seeds.size} initializations. " +
+            "k = 9 solves it ${long.solved}/${BpttLab.seeds.size} times; k = 5 solves it ${short.solved}/${BpttLab.seeds.size}. " +
+            "Note what k = 9 is: it never reaches the step the cue enters. It still works — because W is *shared*, " +
+            "so the steps inside the window train the same matrix that carries the cue forward outside it.",
+        bars = listOf(
+            NetBar("k = 9, per seed", long.accuracies.map { it.toFloat() }, OutputColor, BpttLab.seeds.map { "s$it" }),
+            NetBar("k = 5, per seed", short.accuracies.map { it.toFloat() }, BackwardColor, BpttLab.seeds.map { "s$it" }),
+        ),
+        readout = "the window bounds credit assignment, not memory",
+    )
+
+    frames += NetFrame(
+        status = "Which leaves the honest summary. Truncation is not a graceful approximation with a knob: below " +
+            "the length of the dependency, whether it works is a property of the initialization, and the gradient " +
+            "similarity that looks so reassuring above says nothing about it. The real repair for long " +
+            "dependencies is a cell whose state has a path that does not multiply — which is the LSTM.",
+        bars = listOf(
+            NetBar("gradient agreement at k = 3", listOf(agreement.first { it.first == 3 }.second.toFloat()), AccentA, listOf("cosine")),
+            NetBar("seeds solved at k = 5", listOf(short.solved.toFloat() / BpttLab.seeds.size), BackwardColor, listOf("fraction")),
+        ),
+        readout = "similarity is not learnability",
+    )
+    return frames
+}
+
 // ── Config ───────────────────────────────────────────────────────────────────
 
 private val forwardLegend = listOf(
@@ -2923,6 +3063,16 @@ private val netConfigs = mapOf(
             "does to the gradient.",
         legend = forwardLegend,
         build = ::rnnUnrollFrames,
+    ),
+    "bptt" to NetConfig(
+        intro = "One recurrent classifier trained at six truncation windows on a dependency nine steps long. The " +
+            "gradient similarity and the accuracy disagree, and the accuracy is the one that matters.",
+        legend = listOf(
+            BackwardColor to "Gradient",
+            OutputColor to "Learned",
+            NeutralColor to "Full BPTT",
+        ),
+        build = ::bpttFrames,
     ),
     "lstm_gru" to NetConfig(
         intro = "Gate values step by step, including the one step that deliberately wipes the cell — then the " +

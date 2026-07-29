@@ -3325,6 +3325,453 @@ private fun agentFrames(): List<TokenFrame> {
     return frames
 }
 
+// ── C5 · Bidirectional RNNs ──────────────────────────────────────────────────
+// `BiRnnLab` trains two taggers on a corpus of garden-path minimal pairs. What makes the comparison
+// worth drawing is that the left-to-right model's ceiling is enumerated from the corpus before
+// either model exists, so the frames below are checking a prediction rather than reporting a score.
+
+private fun bidirectionalFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val short = BiRnnLab.corpus[4]
+    val long = BiRnnLab.corpus[5]
+    val disputed = 2
+    val forward = BiRnnLab.forwardTagger
+    val bi = BiRnnLab.biTagger
+
+    fun chipsFor(sentence: BiRnnLab.Sentence, highlight: Int, upTo: Int = sentence.words.size) =
+        sentence.words.mapIndexed { index, word ->
+            Chip(
+                word,
+                sentence.labels[index],
+                when {
+                    index == highlight -> ChipMark.ACTIVE
+                    index < upTo -> ChipMark.IDLE
+                    else -> ChipMark.DIM
+                },
+            )
+        }
+
+    frames += TokenFrame(
+        status = "Two sentences that share their first ${disputed + 1} words. In the first, \"raced\" is the main " +
+            "verb. In the second it is a reduced relative — \"the horse [that was] raced past the barn\" — and the " +
+            "main verb is \"fell\", six words later. Nothing before \"raced\" distinguishes them.",
+        chips = chipsFor(short, disputed),
+        chipsLabel = "\"${short.words.joinToString(" ")}\"",
+        rows = listOf(
+            "second reading" to "\"${long.words.joinToString(" ")}\"",
+            "shared prefix" to "\"${short.words.take(disputed + 1).joinToString(" ")}\"",
+            "decided by" to "\"${long.words.last()}\", ${long.words.size - 1 - disputed} words to the right",
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "A left-to-right tagger reads position ${disputed + 1} with only the words up to it in its state. " +
+            "Those words are identical in both sentences, so its state is identical, so its prediction is " +
+            "identical — before any training, and whatever the training does. That is not a weakness of the fit; " +
+            "it is what the architecture can represent.",
+        chips = chipsFor(long, disputed, upTo = disputed + 1),
+        chipsLabel = "what the forward pass has seen at \"${long.words[disputed]}\"",
+        readout = "same prefix → same hidden state → same tag",
+    )
+
+    val ambiguous = BiRnnLab.leftAmbiguous
+    frames += TokenFrame(
+        status = "How much of the corpus that costs is countable, and counting it needs no model at all. Of " +
+            "${BiRnnLab.tokenCount} tagged tokens, ${ambiguous.size} sit at positions where two sentences share a " +
+            "prefix and disagree on the tag. With the whole sentence visible, ${BiRnnLab.fullyAmbiguous.size} do. " +
+            "The best any left-to-right tagger can score here is therefore " +
+            "${"%.1f".format(BiRnnLab.forwardCeiling * 100)}%.",
+        rows = listOf(
+            "tokens" to "${BiRnnLab.tokenCount}",
+            "ambiguous from the left" to "${ambiguous.size} (${"%.1f".format(ambiguous.size * 100.0 / BiRnnLab.tokenCount)}%)",
+            "ambiguous from both sides" to "${BiRnnLab.fullyAmbiguous.size}",
+            "enumerated ceiling" to "${"%.4f".format(BiRnnLab.forwardCeiling)} = ${(BiRnnLab.forwardCeiling * BiRnnLab.tokenCount).toInt()}/${BiRnnLab.tokenCount}",
+        ),
+        readout = "the ceiling is a property of the corpus, not the run",
+    )
+
+    val forwardShort = forward.tagDistribution(short.words, disputed)
+    val forwardLong = forward.tagDistribution(long.words, disputed)
+    frames += TokenFrame(
+        status = "Trained, the forward tagger does exactly that. Its distribution over tags at \"raced\" is the " +
+            "same in both sentences and it is a coin flip: VERB " +
+            "${"%.3f".format(forwardShort[BiRnnLab.tags.indexOf("VERB")])}, PART " +
+            "${"%.3f".format(forwardShort[BiRnnLab.tags.indexOf("PART")])}. It has learned the only thing available " +
+            "— that this prefix is followed by one tag half the time and the other half the time.",
+        bars = listOf(
+            BarRow("forward tagger, sentence 1", forwardShort.map { it.toFloat() }, BarPositive, BiRnnLab.tags),
+            BarRow("forward tagger, sentence 2", forwardLong.map { it.toFloat() }, BarNegative, BiRnnLab.tags),
+        ),
+        readout = "two sentences, one distribution",
+    )
+
+    frames += TokenFrame(
+        status = "A bidirectional layer adds a second pass over the same sentence, right to left, and tags each " +
+            "position from both states joined. At \"raced\", the backward state has already read " +
+            "\"${long.words.drop(disputed + 1).joinToString(" ")}\" — including the word that settles it.",
+        chips = long.words.mapIndexed { index, word ->
+            Chip(
+                word,
+                if (index > disputed) "read" else null,
+                when {
+                    index == disputed -> ChipMark.ACTIVE
+                    index == long.words.size - 1 -> ChipMark.RESULT
+                    index > disputed -> ChipMark.IDLE
+                    else -> ChipMark.DIM
+                },
+            )
+        },
+        chipsLabel = "what the backward pass has seen at \"${long.words[disputed]}\"",
+        readout = "the deciding token is to the right",
+    )
+
+    val biShort = bi.tagDistribution(short.words, disputed)
+    val biLong = bi.tagDistribution(long.words, disputed)
+    frames += TokenFrame(
+        status = "With both directions, the same position gets two different answers in the two sentences: VERB " +
+            "${"%.3f".format(biShort[BiRnnLab.tags.indexOf("VERB")])} in the first, PART " +
+            "${"%.3f".format(biLong[BiRnnLab.tags.indexOf("PART")])} in the second. Every one of the " +
+            "${ambiguous.size} ambiguous positions goes the same way.",
+        bars = listOf(
+            BarRow("bidirectional, sentence 1", biShort.map { it.toFloat() }, BarPositive, BiRnnLab.tags),
+            BarRow("bidirectional, sentence 2", biLong.map { it.toFloat() }, BarNegative, BiRnnLab.tags),
+        ),
+        readout = "0.5/0.5 → 1.0/0.0, in both directions",
+    )
+
+    frames += TokenFrame(
+        status = "Scored over the corpus: the forward tagger lands on ${"%.4f".format(forward.accuracy)} — the " +
+            "enumerated ceiling to four decimals, and ${"%.1f".format(forward.accuracyAt(ambiguous) * 100)}% on the " +
+            "ambiguous positions, which is the coin flip. The bidirectional tagger scores " +
+            "${"%.1f".format(bi.accuracy * 100)}%. The gap is not the optimizer; it was fixed before training " +
+            "started.",
+        bars = listOf(
+            BarRow(
+                "accuracy",
+                listOf(BiRnnLab.forwardCeiling.toFloat(), forward.accuracy.toFloat(), bi.accuracy.toFloat()),
+                ChipResult,
+                listOf("ceiling", "forward", "bi"),
+            ),
+            BarRow(
+                "on the ${ambiguous.size} ambiguous positions",
+                listOf(forward.accuracyAt(ambiguous).toFloat(), bi.accuracyAt(ambiguous).toFloat()),
+                BarPositive,
+                listOf("forward", "bi"),
+            ),
+        ),
+        readout = "predicted ${"%.4f".format(BiRnnLab.forwardCeiling)}, measured ${"%.4f".format(forward.accuracy)}",
+    )
+
+    frames += TokenFrame(
+        status = "What it costs: ${bi.parameterCount} parameters against ${forward.parameterCount}, two passes " +
+            "instead of one, and — the part that decides real systems — no output at all until the sentence ends. " +
+            "A bidirectional tagger cannot label a word as it is typed or transcribed. That is why BERT is " +
+            "bidirectional and a decoder is not.",
+        rows = listOf(
+            "parameters" to "${forward.parameterCount} → ${bi.parameterCount} (${"%.2f".format(bi.parameterCount.toDouble() / forward.parameterCount)}×)",
+            "passes per sentence" to "1 → 2",
+            "streaming" to "possible → impossible",
+            "use it when" to "the whole sequence is already in hand",
+        ),
+        readout = "accuracy bought with latency",
+    )
+    return frames
+}
+
+// ── C5 · Encoder-decoder ─────────────────────────────────────────────────────
+// `Seq2SeqLab` trains two identical models on a copy task. The only difference between them is the
+// order the encoder reads the source, which is Sutskever et al.'s reversal trick — and on a copy
+// task it is exactly the right experiment, because nothing else in the setup moves.
+
+private fun encoderDecoderFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val model = Seq2SeqLab.forwardFed
+    val reversed = Seq2SeqLab.reverseFed
+    val example = Seq2SeqLab.testSet.first { it.source.size == Seq2SeqLab.MAX_LENGTH }
+    val lengths = (1..Seq2SeqLab.MAX_LENGTH).map { "L$it" }
+    val positions = (1..Seq2SeqLab.MAX_LENGTH).map { "p$it" }
+
+    frames += TokenFrame(
+        status = "An encoder-decoder is two recurrent networks joined by one vector. The encoder reads the source " +
+            "and its final state — the context vector — is the decoder's initial state. That vector is the entire " +
+            "channel between them: whatever the source contains has to be in it, or it is gone.",
+        chips = example.source.map { Chip(Seq2SeqLab.symbolNames[it]) },
+        chipsLabel = "source (${example.source.size} symbols)",
+        rows = listOf(
+            "encoder" to "${Seq2SeqLab.HIDDEN}-unit RNN, reads left to right",
+            "context vector" to "${Seq2SeqLab.HIDDEN} numbers",
+            "decoder" to "${Seq2SeqLab.HIDDEN}-unit RNN, emits until EOS",
+            "task" to "copy the source — no transformation at all",
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "Here is that vector for the source above. The task is the weakest thing that can be asked of a " +
+            "sequence model — reproduce the input — which is what makes it a clean test: every failure below is " +
+            "the vector losing the source, not the model failing to compute something.",
+        bars = listOf(BarRow("context vector", model.context(example.source).map { it.toFloat() }, BarPositive)),
+        readout = "${Seq2SeqLab.HIDDEN} numbers, whatever the source length",
+    )
+
+    val byLength = model.exactMatchByLength(Seq2SeqLab.testSet)
+    frames += TokenFrame(
+        status = "Exact-match accuracy against source length, on held-out sources. One symbol: " +
+            "${"%.0f".format(byLength.first().second * 100)}%. Two: " +
+            "${"%.0f".format(byLength[1].second * 100)}%. By four it is gone. Every length was trained on the same " +
+            "way — what changes is how much has to fit through the vector.",
+        bars = listOf(
+            BarRow("exact match by source length", byLength.map { it.second.toFloat() }, ChipResult, lengths),
+        ),
+        readout = "the bottleneck has a length, and it is short",
+    )
+
+    frames += TokenFrame(
+        status = "Stated as capacity: each symbol is one of ${Seq2SeqLab.SYMBOLS}, so a ${Seq2SeqLab.MAX_LENGTH}-symbol " +
+            "source is ${"%.1f".format(Seq2SeqLab.sourceBits(Seq2SeqLab.MAX_LENGTH))} bits, and the context vector " +
+            "has ${Seq2SeqLab.HIDDEN} tanh-squashed numbers to hold them in. The bound is soft — real numbers are " +
+            "not bits — but the direction is the point: the source grows and the vector does not.",
+        bars = listOf(
+            BarRow(
+                "bits in the source",
+                (1..Seq2SeqLab.MAX_LENGTH).map { Seq2SeqLab.sourceBits(it).toFloat() },
+                BarNegative,
+                lengths,
+            ),
+        ),
+        rows = listOf(
+            "source at length ${Seq2SeqLab.MAX_LENGTH}" to "${"%.1f".format(Seq2SeqLab.sourceBits(Seq2SeqLab.MAX_LENGTH))} bits",
+            "context vector" to "${Seq2SeqLab.HIDDEN} dimensions, fixed",
+        ),
+    )
+
+    val forwardProbe = Seq2SeqLab.probeProfile(model)
+    frames += TokenFrame(
+        status = "Which part of the source survives? Freeze the encoder, fit a linear read-out from the context " +
+            "vector to the symbol at one position, and score it on held-out sources. Position " +
+            "${Seq2SeqLab.MAX_LENGTH} is recoverable ${"%.0f".format(forwardProbe.last().second * 100)}% of the " +
+            "time; position 1 — the one the decoder needs first — " +
+            "${"%.0f".format(forwardProbe.first().second * 100)}%. The vector remembers what it read last.",
+        bars = listOf(
+            BarRow("recoverable from the context vector", forwardProbe.map { it.second.toFloat() }, BarPositive, positions),
+        ),
+        readout = "recency, measured on a frozen encoder",
+    )
+
+    val reverseProbe = Seq2SeqLab.probeProfile(reversed)
+    frames += TokenFrame(
+        status = "So feed the encoder the source backwards. Same data, same parameter count, same budget — only " +
+            "the reading order changes, which puts the symbol the decoder emits first nearest the handover. The " +
+            "probe flips: position 1 is now ${"%.0f".format(reverseProbe.first().second * 100)}% recoverable. This " +
+            "is the trick Sutskever et al. reported in 2014, and it costs nothing.",
+        bars = listOf(
+            BarRow("forward-fed encoder", forwardProbe.map { it.second.toFloat() }, BarNegative, positions),
+            BarRow("reverse-fed encoder", reverseProbe.map { it.second.toFloat() }, BarPositive, positions),
+        ),
+        readout = "p1 ${"%.2f".format(forwardProbe.first().second)} → ${"%.2f".format(reverseProbe.first().second)}",
+    )
+
+    val forwardExact = model.exactMatch(Seq2SeqLab.testSet)
+    val reverseExact = reversed.exactMatch(Seq2SeqLab.testSet)
+    frames += TokenFrame(
+        status = "End to end, that reordering takes exact match from ${"%.1f".format(forwardExact * 100)}% to " +
+            "${"%.1f".format(reverseExact * 100)}% and pushes the collapse two lengths further right. Nothing was " +
+            "added: the same ${model.parameterCount} parameters, differently ordered input.",
+        bars = listOf(
+            BarRow("forward-fed, by length", byLength.map { it.second.toFloat() }, BarNegative, lengths),
+            BarRow("reverse-fed, by length", reversed.exactMatchByLength(Seq2SeqLab.testSet).map { it.second.toFloat() }, BarPositive, lengths),
+        ),
+        readout = "${"%.3f".format(forwardExact)} → ${"%.3f".format(reverseExact)} exact match",
+    )
+
+    frames += TokenFrame(
+        status = "But look at what reversal did not fix: length ${Seq2SeqLab.MAX_LENGTH} is still near zero. " +
+            "Reordering moves which end of the source survives; it does not make the vector bigger. Every fix that " +
+            "actually removed this bottleneck — attention, then the transformer — did the same thing instead: keep " +
+            "*all* the encoder states and let the decoder choose among them at each step.",
+        rows = listOf(
+            "reversal" to "changes which positions survive",
+            "a bigger vector" to "buys length, and costs quadratically to train",
+            "attention" to "removes the single-vector constraint entirely",
+            "still true" to "at length ${Seq2SeqLab.MAX_LENGTH}: ${"%.0f".format(byLength.last().second * 100)}% vs ${"%.0f".format(reversed.exactMatchByLength(Seq2SeqLab.testSet).last().second * 100)}%",
+        ),
+        readout = "one vector is the constraint attention deleted",
+    )
+    return frames
+}
+
+// ── C5 · Seq2Seq decoding ────────────────────────────────────────────────────
+// The same trained model as the encoder-decoder lab, decoded three ways. The lab's argument is the
+// error split: separating "the search missed it" from "the model prefers the wrong answer" turns
+// beam width from a knob you turn hopefully into one with a measurable ceiling.
+
+private fun seq2seqFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val model = Seq2SeqLab.forwardFed
+    val width = 5
+    // An example where the search actually changes the answer — picked by running both, not chosen
+    // by hand, so a re-tune cannot leave the frame narrating a difference that is no longer there.
+    val example = Seq2SeqLab.testSet.firstOrNull { item ->
+        val greedy = model.greedy(item.source)
+        val beam = model.beam(item.source, width)
+        !greedy.tokens.contentEquals(beam.tokens) && beam.logProbability > greedy.logProbability
+    } ?: Seq2SeqLab.testSet.first()
+    val greedy = model.greedy(example.source)
+    val beam = model.beam(example.source, width)
+    val symbols = Seq2SeqLab.symbolNames + listOf("EOS")
+
+    frames += TokenFrame(
+        status = "Decoding is a search. At each step the decoder gives a distribution over the next symbol, and " +
+            "something has to pick one — the model does not emit a sequence, it scores them.",
+        chips = example.source.map { Chip(Seq2SeqLab.symbolNames[it]) },
+        chipsLabel = "source",
+        rows = listOf(
+            "gold output" to example.text,
+            "candidates of length ≤ ${Seq2SeqLab.MAX_LENGTH}" to "${(1..Seq2SeqLab.MAX_LENGTH).sumOf { l -> Math.pow(Seq2SeqLab.SYMBOLS.toDouble(), l.toDouble()) }.toLong()}",
+        ),
+    )
+
+    model.decodeTrace(example.source).forEachIndexed { index, step ->
+        val emitted = if (step.emitted == Seq2SeqLab.EOS) "EOS" else Seq2SeqLab.symbolNames[step.emitted]
+        frames += TokenFrame(
+            status = "Greedy step ${index + 1}: take the argmax (${emitted}, " +
+                "p = ${"%.3f".format(step.distribution[step.emitted])}), feed it back in, and never reconsider it. " +
+                (if (step.emitted == Seq2SeqLab.EOS) "EOS ends the sequence." else "A step taken here is a step the rest of the sequence is conditioned on."),
+            chips = (0 until index).map { Chip(Seq2SeqLab.symbolNames[model.decodeTrace(example.source)[it].emitted]) } +
+                listOf(Chip(emitted, "%.3f".format(step.distribution[step.emitted]), ChipMark.RESULT)),
+            chipsLabel = "output so far",
+            bars = listOf(BarRow("next-symbol distribution", step.distribution.map { it.toFloat() }, BarPositive, symbols)),
+        )
+    }
+
+    val trace = model.beamTrace(example.source, width)
+    frames += TokenFrame(
+        status = "Beam search keeps the best $width partial sequences instead of one, scoring each by the sum of " +
+            "its log-probabilities. Here is the beam after each step. A hypothesis that looked second-best early " +
+            "can end up first, which is the whole reason to keep it.",
+        rows = trace.mapIndexed { index, live ->
+            "step ${index + 1}" to live.joinToString("  ") { "${it.text.ifEmpty { "∅" }} ${"%.2f".format(it.score)}" }
+        },
+        readout = "greedy is beam search with width 1",
+    )
+
+    frames += TokenFrame(
+        status = "On this source they disagree. Greedy returns \"${greedy.text}\" at p = " +
+            "${"%.4f".format(greedy.probability)}; the width-$width beam returns \"${beam.text}\" at p = " +
+            "${"%.4f".format(beam.probability)} — ${"%.1f".format(beam.probability / greedy.probability)}× more " +
+            "probable under the same model. The gold answer is \"${example.text}\".",
+        chips = listOf(
+            Chip(greedy.text.ifEmpty { "∅" }, "greedy", if (greedy.tokens.contentEquals(example.target)) ChipMark.RESULT else ChipMark.DIM),
+            Chip(beam.text.ifEmpty { "∅" }, "beam $width", if (beam.tokens.contentEquals(example.target)) ChipMark.RESULT else ChipMark.DIM),
+            Chip(example.text, "gold", ChipMark.ACTIVE),
+        ),
+        rows = listOf(
+            "log P(greedy)" to "%.4f".format(greedy.logProbability),
+            "log P(beam $width)" to "%.4f".format(beam.logProbability),
+            "log P(gold)" to "%.4f".format(model.sequenceLogProbability(example.source, example.target)),
+        ),
+    )
+
+    val sweep = Seq2SeqLab.beamSweep(model, listOf(1, 2, 3, 5, 10))
+    frames += TokenFrame(
+        status = "Across the held-out set, widening the beam does exactly what it promises: mean log-probability " +
+            "rises from ${"%.3f".format(sweep.first().meanLogProbability)} at width 1 to " +
+            "${"%.3f".format(sweep.last().meanLogProbability)} at width 10, and " +
+            "${sweep.last().changed} of ${Seq2SeqLab.testSet.size} outputs change. Exact match moves from " +
+            "${"%.3f".format(sweep.first().exactMatch)} to ${"%.3f".format(sweep.last().exactMatch)} — one " +
+            "sequence.",
+        bars = listOf(
+            BarRow("mean log-probability", sweep.map { it.meanLogProbability.toFloat() }, BarNegative, sweep.map { "k${it.width}" }),
+            BarRow("exact match", sweep.map { it.exactMatch.toFloat() }, ChipResult, sweep.map { "k${it.width}" }),
+        ),
+        readout = "more probable, not more correct",
+    )
+
+    val narrow = Seq2SeqLab.errorSplit(model, 1)
+    val wide = Seq2SeqLab.errorSplit(model, 10)
+    frames += TokenFrame(
+        status = "Which is worth taking apart rather than shrugging at. Score the gold sequence under the same " +
+            "model and every wrong output falls into one of two kinds: the model preferred gold and the search " +
+            "lost it, or the model preferred its own answer. At width 1 that split is " +
+            "${narrow.searchError} search errors against ${narrow.modelError} model errors. At width 10 the search " +
+            "errors are ${wide.searchError}.",
+        bars = listOf(
+            BarRow(
+                "width 1",
+                listOf(narrow.correct.toFloat(), narrow.searchError.toFloat(), narrow.modelError.toFloat()),
+                BarPositive,
+                listOf("correct", "search", "model"),
+            ),
+            BarRow(
+                "width 10",
+                listOf(wide.correct.toFloat(), wide.searchError.toFloat(), wide.modelError.toFloat()),
+                BarNegative,
+                listOf("correct", "search", "model"),
+            ),
+        ),
+        readout = "${wide.modelError} of ${Seq2SeqLab.testSet.size} are beyond any beam width",
+    )
+
+    val reversedModel = Seq2SeqLab.reverseFed
+    val reversedSplit = Seq2SeqLab.errorSplit(reversedModel, width)
+    frames += TokenFrame(
+        status = "And that is the argument for where to spend. Beam width, taken to 10, bought " +
+            "${wide.correct - narrow.correct} sequence${if (wide.correct - narrow.correct == 1) "" else "s"}. " +
+            "Feeding the encoder the source backwards — no extra parameters, no extra decoding cost — bought " +
+            "${reversedSplit.correct - wide.correct}, by converting model errors rather than search errors.",
+        bars = listOf(
+            BarRow(
+                "correct sequences",
+                listOf(narrow.correct.toFloat(), wide.correct.toFloat(), reversedSplit.correct.toFloat()),
+                ChipResult,
+                listOf("greedy", "beam 10", "reversed + beam $width"),
+            ),
+            BarRow(
+                "model errors",
+                listOf(narrow.modelError.toFloat(), wide.modelError.toFloat(), reversedSplit.modelError.toFloat()),
+                BarNegative,
+                listOf("greedy", "beam 10", "reversed + beam $width"),
+            ),
+        ),
+        readout = "fix the model, then widen the search",
+    )
+
+    val effect = Seq2SeqLab.normalizationEffect(model, width)
+    frames += TokenFrame(
+        status = "One more knob, reported as it measured rather than as it is usually described. A beam scored by " +
+            "summed log-probability prefers short sequences, and dividing by length is the standard repair. Here " +
+            "it changes ${effect.changed} of ${Seq2SeqLab.testSet.size} outputs and lengthens them " +
+            "(${"%.2f".format(effect.plainLength)} → ${"%.2f".format(effect.normalizedLength)} symbols) while " +
+            "moving exact match by ${"%+.3f".format(effect.exactMatchDelta)}. On this task the source fixes the " +
+            "length, so there is nothing for it to fix — it earns its keep in translation and summarisation, where " +
+            "the model chooses when to stop.",
+        rows = listOf(
+            "outputs changed" to "${effect.changed} of ${Seq2SeqLab.testSet.size}",
+            "mean length" to "${"%.2f".format(effect.plainLength)} → ${"%.2f".format(effect.normalizedLength)}",
+            "exact match" to "%+.3f".format(effect.exactMatchDelta),
+            "where it matters" to "open-ended output, not fixed-length output",
+        ),
+    )
+
+    val teacher = model.teacherForcedAccuracy(Seq2SeqLab.testSet)
+    val free = model.freeRunningAccuracy(Seq2SeqLab.testSet)
+    frames += TokenFrame(
+        status = "Finally, the gap training hides. Scored with the gold prefix handed to it at every step — which " +
+            "is how it was trained — the model gets ${"%.1f".format(teacher * 100)}% of next symbols right. " +
+            "Reading its own output, as it must at inference, ${"%.1f".format(free * 100)}%. Same weights, same " +
+            "data: one wrong symbol puts the state somewhere training never visited.",
+        bars = listOf(
+            BarRow(
+                "next-symbol accuracy",
+                listOf(teacher.toFloat(), free.toFloat()),
+                ChipResult,
+                listOf("teacher-forced", "free-running"),
+            ),
+        ),
+        readout = "exposure bias: ${"%.3f".format(teacher - free)} on this model",
+    )
+    return frames
+}
+
 private val nbLegend = listOf(
     ChipActive to "Current",
     ChipResult to "Scored",
@@ -3604,6 +4051,28 @@ private val tokenConfigs = mapOf(
             "vectors shown — not asserted.",
         legend = vectorLegend,
         build = ::wordEmbeddingFrames,
+    ),
+    "bidirectional_rnn" to TokenConfig(
+        intro = "Two taggers on a corpus of garden-path minimal pairs. The left-to-right model's ceiling is " +
+            "enumerated from the corpus before either model is trained — then measured against it.",
+        legend = listOf(
+            ChipActive to "Disputed word",
+            ChipResult to "Decides it",
+            BarPositive to "Tag mass",
+        ),
+        build = ::bidirectionalFrames,
+    ),
+    "encoder_decoder" to TokenConfig(
+        intro = "Two RNNs joined by one vector, trained to copy. Accuracy against source length, a linear probe of " +
+            "what the vector kept, and the reversal trick that costs nothing.",
+        legend = vectorLegend,
+        build = ::encoderDecoderFrames,
+    ),
+    "seq2seq" to TokenConfig(
+        intro = "The same trained model decoded greedily, by beam, and with length normalization — then every " +
+            "error sorted into the two kinds, only one of which a wider beam can fix.",
+        legend = vectorLegend,
+        build = ::seq2seqFrames,
     ),
     "rnn_lstm" to TokenConfig(
         intro = "One hidden state, updated token by token. The last two frames show the decay that kills plain RNNs " +

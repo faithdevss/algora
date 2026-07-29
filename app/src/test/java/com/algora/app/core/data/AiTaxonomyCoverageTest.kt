@@ -236,12 +236,12 @@ class AiTaxonomyCoverageTest {
             ),
             "Recurrent Neural Networks (RNN)" to linkedMapOf(
                 "Vanilla RNNs" to listOf("rnn"),
-                "BPTT (Backprop Through Time)" to emptyList(),          // C5
+                "BPTT (Backprop Through Time)" to listOf("bptt"),
                 "LSTM (Long Short-Term Memory)" to listOf("lstm_gru"),
                 "GRU (Gated Recurrent Unit)" to listOf("lstm_gru"),
-                "Bidirectional RNNs" to emptyList(),                    // C5
-                "Encoder-Decoder Architecture" to emptyList(),          // C5
-                "Seq2Seq Models" to emptyList(),                        // C5
+                "Bidirectional RNNs" to listOf("bidirectional_rnn"),
+                "Encoder-Decoder Architecture" to listOf("encoder_decoder"),
+                "Seq2Seq Models" to listOf("seq2seq"),
             ),
             "Transformers & LLMs" to linkedMapOf(
                 "The Attention Mechanism" to listOf("attention"),
@@ -352,9 +352,9 @@ class AiTaxonomyCoverageTest {
                 "Vanilla RNNs" to listOf("rnn"),
                 "LSTMs (Long Short-Term Memory)" to listOf("lstm_gru", "rnn_lstm"),
                 "GRUs (Gated Recurrent Units)" to listOf("lstm_gru"),
-                "Bidirectional LSTMs" to emptyList(),                   // C5
-                "Sequence-to-Sequence (Seq2Seq)" to emptyList(),        // C5
-                "Encoder-Decoder Architecture" to emptyList(),          // C5
+                "Bidirectional LSTMs" to listOf("bidirectional_rnn"),
+                "Sequence-to-Sequence (Seq2Seq)" to listOf("seq2seq"),
+                "Encoder-Decoder Architecture" to listOf("encoder_decoder"),
             ),
             "The Transformer Architecture" to linkedMapOf(
                 "The Attention Mechanism" to listOf("attention"),
@@ -516,7 +516,7 @@ class AiTaxonomyCoverageTest {
 
     // The ratchet. Move it when a batch lands; a batch that does not move it did not close any doc
     // entry, which is worth noticing.
-    private val expectedCoveredCount = 262
+    private val expectedCoveredCount = 269
 
     // Doc entries the app answers from the DSA taxonomy rather than an AI section. Deliberate reuse
     // — the alternative is a duplicate page — but small and explicit, so it cannot grow by accident.

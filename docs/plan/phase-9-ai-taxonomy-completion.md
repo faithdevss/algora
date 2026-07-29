@@ -1,12 +1,13 @@
 # Phase 9 — AI Taxonomy Completion
 
-Status: In progress — Track A complete (RL at 100% of the doc), B1–B7, C1–C4 and D1–D5 done. 143 of
-226 topics authored. AI sections now: ML 75, **DL 50**, NLP 46, RL 74 — 245 AI topics, and 367
+Status: In progress — Track A complete (RL at 100% of the doc), B1–B7, C1–C5 and D1–D5 done. 147 of
+226 topics authored. AI sections now: ML 75, **DL 54**, NLP 49, RL 74 — 252 AI topics, and 374
 browsable topics across the app *counted from the section lists themselves*. (The running "taxonomy at N"
 tallies in earlier revisions of this file drifted from those lists; the measured number is the one to
 trust, and `ContentCoverageTest` is what enforces it.)
-**Doc coverage is measured, not estimated: 262 of the doc's 357 entries (73%).**
-Next: D6 — fine-tuning, beyond-transformers and metrics, the phase's other oversized thin-topic batch.
+**Doc coverage is measured, not estimated: 269 of the doc's 357 entries (75%).**
+Next: C6 — self- vs cross-attention, multi-head, and the pre-trained families, which is where the
+RNN line this batch finished stops being the architecture anyone reaches for.
 Track B was interrupted after B7 by a deliberate jump to Track C; **B8, B9 and B10 remain unbuilt**,
 and `ml_supervised` therefore still holds the four topics they were to redistribute.
 
@@ -58,23 +59,26 @@ foundational sub-sections, and Track A closed both.
 This table is the starting snapshot and is deliberately left unedited. Live status is the table
 below.
 
-## Where the phase stands (last updated after D5)
+## Where the phase stands (last updated after C5)
 
-**143 of 226 topics authored; 83 remain, in three open blocks.**
+**147 of 226 topics authored; 79 remain, in three open blocks.**
 
 | Open block | Topics | What it needs |
 |---|---|---|
 | B8–B10 | 29 | Neural-network foundations, preprocessing, metrics + practice. Track B is not finished until `ml_supervised` is empty — it still holds `perceptron`, `bias_variance`, `regularization`, `model_evaluation` |
-| C5–C9 | 38 | RNN family, transformers, generative, optimizers/regularization, specialized. `dl_fundamentals` and `dl_architectures` are still standing and should end empty |
+| C6–C9 | 34 | Transformers, generative, optimizers/regularization, specialized. `dl_fundamentals` is still standing and should end empty; `dl_architectures` is down to four topics, all of which C6 and C7 take |
 | D6 | 16 | Fine-tuning + beyond-transformers + metrics. The phase's other oversized thin-topic batch, and the last of Track D |
 
 Track A is closed (RL is 71/71 against the doc). Track D is 5 of 6. Every landed batch has updated
 `expectedCoveredCount` in the same change, so the coverage number below is a test result rather than
-a count: **262 of 357**.
+a count: **269 of 357**.
+
+**`nlp_modeling` is gone.** C5 took its last topic, which makes NLP the second section (after ML's
+`ml_unsupervised` in B6) to finish hollowing out one of the mock's two generic buckets.
 
 Nothing is blocked. The one net-new widget the phase planned (`FeatureMapPlayer`) was built in C3,
-and every batch since has run on widgets that already existed — C4 and D1–D4, five in a row, each
-adding only a math file. Before C3 the run was seven (B3–B7, C1, C2). The widget cost really is
+and every batch since has run on widgets that already existed — C4, D1–D5 and C5, seven in a row,
+each adding only a math file. Before C3 the run was seven (B3–B7, C1, C2). The widget cost really is
 front-loaded per *family* rather than per batch, as the risks section predicted after B7.
 
 ## Progress
@@ -96,21 +100,24 @@ front-loaded per *family* rather than per batch, as the risks section predicted 
 | C2 · Activation Functions | 10 | **Done** | No new widget. `autoPlot` retires hand-picked axes |
 | C3 · CNN Mechanics + Architectures | 12 | **Done** | New `FeatureMapPlayer` + `CnnMath.kt`. Plan said 11; the doc lists 12 |
 | C4 · Object Detection & Segmentation | 9 | **Done** | `FeatureMapPlayer` gained a box/mask scene; new `DetectionMath.kt` |
-| C5–C9 | 38 | Planned | |
+| C5 · RNN Mechanics | 4 | **Done** | New `dl_rnn` + `nlp_rnn`, which retires `nlp_modeling`. No new widget; new `RnnMath.kt` trains every model on screen. `RnnMathTest` overturned the batch's planned headline |
+| C6–C9 | 34 | Planned | |
 | D1 · Preprocessing + Statistical NLP | 8 | **Done** | New `nlp_statistical`; no new widget. TokenStrip frame guard + `D1MathTest`, which caught two live errors |
 | D2 · Syntactic & Semantic Analysis | 6 | **Done** | New `nlp_syntax`; no new widget. Taggers and parsers run and scored in `SyntaxMath.kt`; `D2MathTest` |
 | D3 · Word Embeddings | 5 | **Done** | New `nlp_embeddings`; no new widget. Models trained for real in `EmbeddingMath.kt`; `D3MathTest` |
 | D4 · Transformer Internals + Pre-trained LMs | 8 | **Done** | New `nlp_transformer` + `nlp_pretrained`; no new widget. `TransformerMath.kt`; `D4MathTest` |
 | D5 · Modern LLM Techniques | 7 | **Done** | New `nlp_modern_llm`; no new widget. `ModernLlmMath.kt` runs a real Game-of-24 search, a real index and a real retriever; `D5MathTest` overturned four planned claims |
 | D6 | 16 | Planned | |
-| **Total** | **226** | **143 done** | 367 browsable topics, counted from the section lists |
+| **Total** | **226** | **147 done** | 374 browsable topics, counted from the section lists |
 
 Sections against the doc, measured by `AiTaxonomyCoverageTest` rather than counted by hand:
-**RL 71/71**, ML 84/113, **DL 57/96**, NLP 43/77 — **255 of 357 overall**. ML is 75 topics of its
-eventual ~100; DL is at 50; NLP is at 39. Browsable topics across the app: **360**, which
+**RL 71/71**, ML 84/113, **DL 61/96**, NLP 53/77 — **269 of 357 overall**. ML is 75 topics of its
+eventual ~100; DL is at 54; NLP is at 49. Browsable topics across the app: **374**, which
 is what `DataStructuresTopics + AlgorithmsTopics + the four AI sections` actually sum to — the
 "taxonomy 200 → N of 426" running tally this table used to carry had drifted from the lists by two
-dozen, so it has been dropped in favour of the measured figure.
+dozen, so it has been dropped in favour of the measured figure. (The per-section figures in earlier
+revisions of this paragraph had drifted too — NLP was recorded as 43/77 while the map already said
+50. These come from the map now, counted by script, and the total is what the test asserts.)
 
 ## Decisions taken before planning
 
@@ -146,9 +153,10 @@ topics and B10 takes `perceptron`. It should be gone by the end of Track B, and 
 then, something was missed. `CategoryIntegrityTest` is what makes that safe to do incrementally.
 
 **Deep Learning — 11 categories.** Built so far: `dl_basics`, `dl_activations`, `dl_cnn`,
-`dl_detection`. The two
+`dl_detection`, `dl_rnn`. The two
 generic buckets are being hollowed out the same way ML's were — `dl_architectures` lost `cnn` to
-`dl_cnn` and still holds the six topics C5–C7 will take. Full list (`dl_basics`, `dl_activations`,
+`dl_cnn`, then `rnn` and `lstm_gru` to `dl_rnn`, and is down to `autoencoders`, `gans`,
+`transformers` and `diffusion_models`, which C6 and C7 take. Full list (`dl_basics`, `dl_activations`,
 `dl_cnn`, `dl_detection`,
 `dl_rnn`, `dl_transformers`, `dl_generative`, `dl_deep_rl`, `dl_optimizers`, `dl_regularization`,
 `dl_specialized`)
@@ -158,10 +166,10 @@ generic buckets are being hollowed out the same way ML's were — `dl_architectu
 `ner` off Modeling), `nlp_embeddings` (D3, which took the `word_embeddings` umbrella off Modeling and
 kept it as the category's landing topic), and `nlp_transformer` + `nlp_pretrained` (D4, which took
 `attention`, `transformers` and `llms` off Modeling — leaving it holding only `rnn_lstm` and `rag`).
-Full list
+`nlp_modern_llm` (D5, which took `rag` off Modeling), and `nlp_rnn` (C5, which took `rnn_lstm` — the
+last topic in Modeling, so **`nlp_modeling` is retired**). Full list
 (`nlp_preprocessing` (kept), `nlp_statistical`, `nlp_syntax`,
-`nlp_embeddings`, `nlp_rnn`, `nlp_transformer`, `nlp_pretrained`, `nlp_modern_llm` (D5, which took
-`rag` off Modeling — leaving it holding only `rnn_lstm`, which C5 will take),
+`nlp_embeddings`, `nlp_rnn`, `nlp_transformer`, `nlp_pretrained`, `nlp_modern_llm`,
 `nlp_finetuning`, `nlp_beyond`, `nlp_metrics`)
 
 **Reinforcement Learning — 10 categories** (existing 9 + new `rl_tabular`; `rl_foundations` absorbs
@@ -762,10 +770,81 @@ rounding by the *feature* count rather than the bin count and reported 41 px whe
 — seven bins of one cell against a nine-cell RoI — is 32. It read plausibly, which is the recurring
 failure mode this phase keeps recording.
 
-**C5 · RNN Mechanics** — 4 topics
-BPTT · Bidirectional RNNs · Encoder-Decoder Architecture · Seq2Seq
-*Sims:* `NeuralNetPlayer` (unrolled graph, gradient flowing back through time),
-`TokenStripPlayer` (encoder consuming, decoder emitting).
+**C5 · RNN Mechanics** — 4 topics into new `dl_rnn`, cross-listed into new `nlp_rnn` — **Done**
+`bptt` · `bidirectional_rnn` · `encoder_decoder` · `seq2seq`
+
+Two categories, both "Recurrent Networks", because the doc lists this block under Deep Learning
+*and* under NLP. `dl_rnn` ("Recurrent Networks (RNN)", icon `history` — the only icon in the set
+that reads as time) takes `rnn` and `lstm_gru` off Architectures and adds all four new topics;
+`nlp_rnn` ("Recurrent Models", same icon and colour, since it is the same subject read from the
+other section) takes `rnn_lstm` and cross-lists three of the four, the way `perceptron` is
+cross-listed between ML and DL. That empties Modeling, so **`nlp_modeling` is retired**. All four
+premium, honouring the doc's markers where it has them. Seven doc entries closed: 262 → 269.
+
+*Sims:* `NeuralNetPlayer` for `bptt`, `TokenStripPlayer` for the other three — as planned, and the
+first time this phase's plan named the right widgets for a whole batch. No new widget; the seventh
+consecutive batch that needed only a math file.
+
+New `RnnMath.kt` with `RnnMathTest` (23 tests). There is one hand-written RNN cell — tanh state,
+softmax output, gradients derived by hand, Adam — and the four labs are that cell arranged three
+ways: a classifier whose gradient can be cut off at a chosen window, a tagger that reads one
+direction or both, and an encoder-decoder decoded greedily or by beam. Every model on screen is
+trained when the topic opens (310–580 ms each, against the 216 ms `word2vec_cbow` already costs).
+
+**The batch's planned headline was wrong, and the replacement is better.** The plan assumed
+truncated BPTT fails on a dependency longer than its window, "and no amount of training can invent
+one". Measured on a 10-step task whose cue is at step 1:
+- **A window that never reaches the cue solves the task on every seed.** k = 9 covers steps 2–10 and
+  scores 1.00 on all three initializations; k = 7 scores 1.00, 0.60, 0.54. The window bounds credit
+  assignment, not memory — W is *shared*, so the steps inside the window train the same matrix that
+  carries the cue forward outside it.
+- **Below that, whether it works is a property of the initialization.** k = 3 solves it on 1 seed of
+  3, k = 5 on 0 of 3, k = 7 on 1 of 3 — and k = 5's mean is *below* k = 3's, so the sweep is not even
+  monotone. "Truncation degrades gracefully with k" is not what this measures.
+- **Gradient similarity predicts none of it.** The truncated gradient is cosine 0.943 with the full
+  one at k = 1 and 0.990 at k = 3; at k = 3 it also carries **100.2%** of the full gradient's
+  magnitude, because the dropped terms were partly cancelling the ones that remain. The lab says
+  that out loud — otherwise "recovers 99% of the gradient" reads as if the truncated vector were a
+  piece of the full one.
+- Also measured rather than asserted: ‖∂L/∂h‖ falls 0.480 → 0.0085 over nine steps (56×), and step
+  1 contributes **exactly zero** to ∂L/∂W because h₀ is the zero vector — the cue reaches the input
+  matrix and the recurrent matrix never sees it.
+
+**The bidirectional lab computes its own ceiling before training anything.** The corpus is twelve
+sentences of garden-path minimal pairs ("the horse raced past the barn" / "…barn fell"), and 12 of
+its 59 positions are ambiguous given only the words to the left, 0 given the whole sentence. That
+enumeration fixes a ceiling of 53/59 = **0.8983** for any left-to-right tagger; the trained forward
+tagger scores 0.8983 to four decimals, with an exactly 0.500/0.500 split at every disputed position,
+and the bidirectional one scores 1.000. The cost is stated in the same frame: 903 → 1,799
+parameters, two passes, and no output until the sequence ends — which is the reason BERT is
+bidirectional and a decoder cannot be.
+
+**The encoder-decoder lab reproduces Sutskever's reversal trick and explains it with a probe.** On a
+copy task — the weakest possible demand, so every failure is the vector losing the source — exact
+match runs 1.00 / 0.48 / 0.00 at lengths 1 / 2 / 4. Freezing the encoder and fitting a linear
+read-out from the context vector to each source position shows *what* it kept: position 6 is
+recoverable 85% of the time and position 1 only 34%. Feeding the same encoder the same sources
+backwards flips that to 98% at position 1 and takes exact match **0.292 → 0.542** with no extra
+parameters. The closing frame refuses the obvious over-claim: reversal moves the bottleneck, it does
+not remove it — length 6 is near zero either way.
+
+**The seq2seq lab's argument is the error split.** Widening the beam 1 → 10 raises mean
+log-probability −2.284 → −1.994 and changes 45 of 120 outputs, and moves exact match by **one
+sequence** (0.292 → 0.300). Scoring the gold sequence under the same model says why: at width 1 the
+failures are 1 search error against **84 model errors**, and at width 10 the search errors are gone.
+Nine tenths of the failures are outside what any beam width can reach. The same diagnostic prices
+the alternative — feeding the encoder backwards converts 31 model errors, thirty times what beam
+width bought. Two further knobs are reported as they measured: length normalization changes 10 of
+120 outputs, lengthens them (3.23 → 3.32 symbols) and moves accuracy by 0.000, because the source
+fixes the length here; and teacher forcing scores 0.495 next-symbol accuracy against 0.324
+free-running, which is exposure bias in one number.
+
+One process note worth keeping. The first draft of this batch used a *reversal* task, on which the
+d-sweep (context width 2/4/8/16) came out non-monotone — bigger vectors scored worse at equal
+budget, because optimization rather than capacity was binding. Rather than narrate a capacity story
+the numbers did not support, the task became a copy and the capacity claim became the linear probe,
+which measures the thing directly. The discarded sweep is the same class of error as C3's pooling
+patch: a lab that would have read perfectly well and measured the wrong thing.
 
 **C6 · Transformers & Pre-trained Models** — 8 topics
 Self- vs Cross-Attention · Multi-Head Attention · BERT · GPT · T5 · RoBERTa · DistilBERT ·
@@ -1142,7 +1221,7 @@ number closed no doc entry, which is worth noticing at the time rather than at t
 ## Suggested order
 
 ~~A1 → A2~~ → ~~B1 → B2 → B3 → B4 → B5~~ → ~~guards~~ → ~~B6 → B7~~ → **B8** → B9 → B10 → ~~C1 → C2~~
-→ ~~**`FeatureMapPlayer`** → C3 → C4~~ → C5 → C6 → C7 → C8 → C9 → ~~D1~~ → ~~D2~~ → ~~D3~~ → ~~D4~~ → ~~D5~~ → D6.
+→ ~~**`FeatureMapPlayer`** → C3 → C4 → C5~~ → C6 → C7 → C8 → C9 → ~~D1~~ → ~~D2~~ → ~~D3~~ → ~~D4~~ → ~~D5~~ → D6.
 
 Struck-through batches are done. The guards step landed with B6 rather than before it, in the same
 session. The order was then broken deliberately twice, both times at the user's direction and both

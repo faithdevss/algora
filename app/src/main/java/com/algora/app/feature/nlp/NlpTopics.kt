@@ -32,7 +32,7 @@ private val embeddings = NlpCategories.embeddings
 private val transformer = NlpCategories.transformer
 private val pretrained = NlpCategories.pretrained
 private val modernLlm = NlpCategories.modernLlm
-private val modeling = NlpCategories.modeling
+private val recurrent = NlpCategories.rnn
 
 // Ordered as a reading path — clean, split, filter, normalise, then the two vocabulary-building
 // steps — rather than alphabetically.
@@ -114,13 +114,20 @@ private val modernLlmTopics = listOf(
     topic("hallucination_mitigation", "Hallucination Mitigation", modernLlm, "Ground, cite, abstain — and why confidence is the wrong signal.", isPremium = true, difficulty = Difficulty.ADVANCED),
 )
 
-private val modelingTopics = listOf(
-    topic("rnn_lstm", "RNN / LSTM", modeling, "Sequential models that read text one token at a time.", isPremium = true),
+// C5. `rnn_lstm` moves here from Modeling, which retires that category — it was the last topic in
+// it. The three topics after it are cross-listed with Deep Learning (same ids, one content file
+// each), the way `perceptron` is cross-listed between ML and DL: the doc lists this block under both
+// sections, and a reader who arrives from NLP should not be sent to another section to find it.
+private val recurrentTopics = listOf(
+    topic("rnn_lstm", "RNN / LSTM", recurrent, "Sequential models that read text one token at a time.", isPremium = true),
+    topic("bidirectional_rnn", "Bidirectional LSTMs", recurrent, "A second pass right to left, and the ceiling it lifts — counted before it is trained.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("encoder_decoder", "Encoder-Decoder Architecture", recurrent, "Two networks, one vector between them, and what that vector drops.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("seq2seq", "Sequence-to-Sequence (Seq2Seq)", recurrent, "Greedy, beam and the two kinds of error only one of them fixes.", isPremium = true, difficulty = Difficulty.ADVANCED),
 )
 
 object NlpTopics {
     val topics: List<Topic> = preprocessingTopics + statisticalTopics + syntaxTopics + embeddingTopics +
-        transformerTopics + pretrainedTopics + modernLlmTopics + modelingTopics
+        recurrentTopics + transformerTopics + pretrainedTopics + modernLlmTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }

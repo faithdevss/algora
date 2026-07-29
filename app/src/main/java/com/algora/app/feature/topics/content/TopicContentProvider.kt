@@ -204,7 +204,12 @@ object TopicContentProvider {
         "mask_rcnn" to maskRcnnContent,
         "segmentation_types" to segmentationTypesContent,
         "rnn" to rnnContent,
+        "bptt" to bpttContent,
         "lstm_gru" to lstmGruContent,
+        // C5. Cross-listed into NLP as well — one content file serves both section lists.
+        "bidirectional_rnn" to bidirectionalRnnContent,
+        "encoder_decoder" to encoderDecoderContent,
+        "seq2seq" to seq2seqContent,
         "autoencoders" to autoencodersContent,
         "gans" to gansContent,
         "transformers" to transformersContent,

@@ -267,6 +267,10 @@ object PrerequisiteGraph {
         "glove" to listOf("word2vec_skipgram", "bow_tfidf"),
         "fasttext" to listOf("word2vec_skipgram", "bpe"),
         "elmo" to listOf("word2vec_skipgram", "rnn_lstm"),
+        "bptt" to listOf("rnn", "backpropagation"),
+        "bidirectional_rnn" to listOf("rnn", "pos_tagging"),
+        "encoder_decoder" to listOf("rnn", "lstm_gru"),
+        "seq2seq" to listOf("encoder_decoder"),
     )
 
     fun prereqsOf(topicId: String): List<String> = prerequisites[topicId].orEmpty()

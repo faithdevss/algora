@@ -19,8 +19,11 @@ object DeepLearningCategories {
     val cnn = Category("dl_cnn", "Convolutional Networks (CNN)", Section.DL, 0xFF10B981, "stack")
     // C4. "target" is what a detector draws and what its metric is about; unused elsewhere in DL.
     val detection = Category("dl_detection", "Object Detection & Vision Tasks", Section.DL, 0xFF3B82F6, "target")
+    // C5. "history" is the one icon in the set that reads as time, which is the only axis these
+    // topics have; unused elsewhere in this section.
+    val rnn = Category("dl_rnn", "Recurrent Networks (RNN)", Section.DL, 0xFFF97316, "history")
     val fundamentals = Category("dl_fundamentals", "Fundamentals", Section.DL, 0xFFEC4899, "network")
     val architectures = Category("dl_architectures", "Architectures", Section.DL, 0xFF8B5CF6, "chip")
 
-    val all = listOf(basics, activations, cnn, detection, fundamentals, architectures)
+    val all = listOf(basics, activations, cnn, detection, rnn, fundamentals, architectures)
 }

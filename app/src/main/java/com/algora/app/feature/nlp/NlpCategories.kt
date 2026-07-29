@@ -29,7 +29,11 @@ object NlpCategories {
     // section — dl_basics uses it, but icons only have to be unique within a browser.
     val modernLlm = Category("nlp_modern_llm", "Modern LLM Techniques", Section.NLP, 0xFF10B981, "robot")
 
-    val modeling = Category("nlp_modeling", "Modeling", Section.NLP, 0xFF3B82F6, "network")
+    // C5. Same icon and colour as `dl_rnn`, because it is the same subject read from the other
+    // section — the doc lists this block under both Deep Learning and NLP.
+    val rnn = Category("nlp_rnn", "Recurrent Models", Section.NLP, 0xFFF97316, "history")
 
-    val all = listOf(preprocessing, statistical, syntax, embeddings, transformer, pretrained, modernLlm, modeling)
+    // `nlp_modeling` is gone. It was the mock's catch-all, and C5 took its last topic (`rnn_lstm`)
+    // into the category above — the same hollowing-out that retired `ml_unsupervised` in B6.
+    val all = listOf(preprocessing, statistical, syntax, embeddings, rnn, transformer, pretrained, modernLlm)
 }

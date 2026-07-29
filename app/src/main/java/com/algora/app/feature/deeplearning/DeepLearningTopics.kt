@@ -29,6 +29,7 @@ private val basics = DeepLearningCategories.basics
 private val activations = DeepLearningCategories.activations
 private val convolutional = DeepLearningCategories.cnn
 private val detection = DeepLearningCategories.detection
+private val recurrent = DeepLearningCategories.rnn
 private val fundamentals = DeepLearningCategories.fundamentals
 private val architectures = DeepLearningCategories.architectures
 
@@ -107,6 +108,20 @@ private val detectionTopics = listOf(
     topic("segmentation_types", "Semantic vs Instance Segmentation", detection, "Two touching sheep: one region, or two objects.", difficulty = Difficulty.BEGINNER),
 )
 
+// The doc's Recurrent Neural Networks block in full, led by the `rnn` and `lstm_gru` topics moved
+// over from dl_architectures. Ordered as the problem is met and then answered: what a recurrent
+// layer is, what training one costs, the gated cells that were the answer to that cost, the second
+// reading direction, and then the two-network arrangement that turns a sequence model into a
+// sequence *transducer* — which is where the transformer picks up.
+private val rnnTopics = listOf(
+    topic("rnn", "RNNs", recurrent, "Recurrent networks that carry state across a sequence.", isPremium = true),
+    topic("bptt", "BPTT (Backprop Through Time)", recurrent, "Unroll, walk back, and find out what the window really bounds.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("lstm_gru", "LSTMs / GRUs", recurrent, "Gated recurrent cells that remember long-range dependencies.", isPremium = true),
+    topic("bidirectional_rnn", "Bidirectional RNNs", recurrent, "A second pass right to left, and the ceiling it lifts — counted before it is trained.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("encoder_decoder", "Encoder-Decoder Architecture", recurrent, "Two networks, one vector between them, and what that vector drops.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("seq2seq", "Seq2Seq Models", recurrent, "Greedy, beam and the two kinds of error only one of them fixes.", isPremium = true, difficulty = Difficulty.ADVANCED),
+)
+
 private val fundamentalsTopics = listOf(
     topic("gradient_descent_variants", "Gradient Descent Variants", fundamentals, "SGD, Momentum, RMSProp, Adam and friends.", isPremium = true),
     topic("batch_normalization", "Batch Normalization", fundamentals, "Re-centre and re-scale activations so deep stacks stay trainable.", isPremium = true),
@@ -115,8 +130,6 @@ private val fundamentalsTopics = listOf(
 )
 
 private val architecturesTopics = listOf(
-    topic("rnn", "RNNs", architectures, "Recurrent networks that carry state across a sequence.", isPremium = true),
-    topic("lstm_gru", "LSTMs / GRUs", architectures, "Gated recurrent cells that remember long-range dependencies.", isPremium = true),
     topic("autoencoders", "Autoencoders", architectures, "Encode-then-reconstruct networks for compression and denoising.", isPremium = true),
     topic("gans", "GANs", architectures, "A generator and discriminator locked in an adversarial game.", isPremium = true),
     topic("transformers", "Transformers", architectures, "Self-attention architecture behind modern LLMs.", isPremium = true),
@@ -125,7 +138,7 @@ private val architecturesTopics = listOf(
 
 object DeepLearningTopics {
     val topics: List<Topic> = basicsTopics + activationTopics + cnnTopics + detectionTopics +
-        fundamentalsTopics + architecturesTopics
+        rnnTopics + fundamentalsTopics + architecturesTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }
