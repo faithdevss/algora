@@ -143,15 +143,15 @@ class AiTaxonomyCoverageTest {
                 "Prophet (by Meta)" to listOf("prophet"),
             ),
             "Data Preprocessing Techniques" to linkedMapOf(
-                "Normalization (Min-Max)" to emptyList(),               // B8
-                "Standardization (Z-Score)" to emptyList(),             // B8
-                "Label Encoding" to emptyList(),                        // B8
-                "One-Hot Encoding" to emptyList(),                      // B8
-                "Missing Value Imputation" to emptyList(),              // B8
-                "SMOTE (Oversampling)" to emptyList(),                  // B8
-                "Outlier Detection (IQR/Z)" to emptyList(),             // B8
-                "Feature Selection (Chi-Square)" to emptyList(),        // B8
-                "Recursive Feature Elimination" to emptyList(),         // B8
+                "Normalization (Min-Max)" to listOf("min_max_normalization"),
+                "Standardization (Z-Score)" to listOf("z_score_standardization"),
+                "Label Encoding" to listOf("label_encoding"),
+                "One-Hot Encoding" to listOf("one_hot_encoding"),
+                "Missing Value Imputation" to listOf("missing_value_imputation"),
+                "SMOTE (Oversampling)" to listOf("smote"),
+                "Outlier Detection (IQR/Z)" to listOf("outlier_detection"),
+                "Feature Selection (Chi-Square)" to listOf("chi_square_selection"),
+                "Recursive Feature Elimination" to listOf("rfe"),
             ),
             // `model_evaluation` is the umbrella in front of this whole block. B9 authors the 17
             // entries and keeps it as the category's landing topic.
@@ -341,7 +341,7 @@ class AiTaxonomyCoverageTest {
             ),
             // `word_embeddings` is the umbrella; D3 authors the five models under it.
             "Word Embeddings (Vectorization)" to linkedMapOf(
-                "One-Hot Encoding" to emptyList(),                      // B8
+                "One-Hot Encoding" to listOf("one_hot_encoding"),
                 "Word2Vec (CBOW)" to listOf("word2vec_cbow"),
                 "Word2Vec (Skip-Gram)" to listOf("word2vec_skipgram"),
                 "GloVe (Global Vectors)" to listOf("glove"),
@@ -516,7 +516,7 @@ class AiTaxonomyCoverageTest {
 
     // The ratchet. Move it when a batch lands; a batch that does not move it did not close any doc
     // entry, which is worth noticing.
-    private val expectedCoveredCount = 283
+    private val expectedCoveredCount = 293
 
     // Doc entries the app answers from the DSA taxonomy rather than an AI section. Deliberate reuse
     // — the alternative is a duplicate page — but small and explicit, so it cannot grow by accident.

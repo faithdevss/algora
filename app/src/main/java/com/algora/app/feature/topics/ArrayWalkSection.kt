@@ -3060,7 +3060,454 @@ private fun eclatFrames(): List<WalkFrame> {
     return frames
 }
 
+// ── Data preprocessing (phase 9, batch B8) ───────────────────────────────────
+// Five of the nine preprocessing topics are column transforms, and a column is exactly what this
+// widget draws: the cell row is the raw column, the aux row is what the transform did to it. Every
+// number comes from PreprocessMath.kt, which scores each rule against a model rather than asserting
+// it.
+
+private fun labelEncodingFrames(): List<WalkFrame> {
+    val frames = mutableListOf<WalkFrame>()
+    val sample = EncodingLab.rows.take(10)
+    val codes = sample.map { EncodingLab.labelCodes.getValue(it.category) }
+
+    frames += WalkFrame(
+        status = "Label encoding replaces each category with an integer. Ten rows of a colour column, and the " +
+            "codes ${EncodingLab.categories.withIndex().joinToString(", ") { (i, c) -> "$c=$i" }}.",
+        cells = sample.map { CellView(it.category) },
+        aux = codes.map { CellView(it.toInt().toString(), CellMark.WINDOW) },
+        auxLabel = "label code",
+        readout = "one column in, one column out",
+    )
+
+    frames += WalkFrame(
+        status = "What that buys is width: one column instead of ${EncodingLab.categories.size}. What it costs is " +
+            "an ordering and a spacing the categories do not have. Under these codes \"red\" is " +
+            "${EncodingLab.codeDistance("red", "yellow").toInt()} away from \"yellow\" and " +
+            "${EncodingLab.codeDistance("red", "green").toInt()} from \"green\" — but the colours are not ordered " +
+            "at all, and one-hot puts every pair at the same distance, √2 = ${"%.3f".format(EncodingLab.oneHotDistance())}.",
+        cells = EncodingLab.categories.map { CellView(it) },
+        aux = EncodingLab.categories.map { CellView(EncodingLab.labelCodes.getValue(it).toInt().toString(), CellMark.WINDOW) },
+        auxLabel = "implied position on a line",
+        readout = "red→yellow ${EncodingLab.codeDistance("red", "yellow").toInt()}, red→green ${EncodingLab.codeDistance("red", "green").toInt()}",
+    )
+
+    val linear = EncodingLab.linearFits
+    val label = linear.first { it.name == "label encoding" }
+    val oneHot = linear.first { it.name == "one-hot" }
+    frames += WalkFrame(
+        status = "So score it. The true effect per category here is non-monotone in the code order " +
+            "(${EncodingLab.categories.joinToString(", ") { "$it ${EncodingLab.effects.getValue(it).toInt()}" }}), which " +
+            "is the case the rule is really about. A least-squares fit on the label code lands at MSE " +
+            "${"%.2f".format(label.error)}; on one-hot, ${"%.3f".format(oneHot.error)} — " +
+            "${"%.0f".format(label.error / oneHot.error)}× worse.",
+        cells = EncodingLab.categories.map { CellView(it) },
+        aux = EncodingLab.categories.map { CellView(EncodingLab.effects.getValue(it).toInt().toString(), CellMark.ACTIVE) },
+        auxLabel = "true effect",
+        readout = "MSE ${"%.2f".format(label.error)} vs ${"%.3f".format(oneHot.error)}",
+    )
+
+    val depths = listOf(0, 1, 2, 3)
+    frames += WalkFrame(
+        status = "But that verdict is about the *model*, not the encoding. A tree never reads the code as a " +
+            "number, only as somewhere to split — and grown on the same label-coded column it reaches MSE " +
+            "${"%.3f".format(EncodingLab.treeError(2))} at depth 2, which is one-hot's number to three decimals. " +
+            "Label encoding is free for trees and expensive for anything that multiplies the code by a weight.",
+        cells = depths.map { CellView("depth $it") },
+        aux = depths.map { CellView("%.2f".format(EncodingLab.treeError(it)), if (it >= 2) CellMark.DONE else CellMark.DIM) },
+        auxLabel = "tree MSE on the label code",
+        readout = "depth 2 = ${"%.3f".format(EncodingLab.treeError(2))} = one-hot",
+    )
+
+    frames += WalkFrame(
+        status = "Which makes the rule conditional rather than absolute: label-encode for trees and boosted " +
+            "ensembles, one-hot for linear models, distance-based models and anything that reads the number. And " +
+            "if the categories *are* ordered — small, medium, large — the code is the right representation and " +
+            "one-hot throws information away.",
+        cells = listOf(
+            CellView("trees", CellMark.DONE),
+            CellView("linear", CellMark.ACTIVE),
+            CellView("k-NN", CellMark.ACTIVE),
+            CellView("ordinal data", CellMark.DONE),
+        ),
+        aux = listOf(
+            CellView("free", CellMark.DONE),
+            CellView("${"%.0f".format(label.error / oneHot.error)}× worse", CellMark.ACTIVE),
+            CellView("distorted", CellMark.ACTIVE),
+            CellView("correct", CellMark.DONE),
+        ),
+        auxLabel = "label encoding is",
+    )
+    return frames
+}
+
+private fun imputationFrames(): List<WalkFrame> {
+    val frames = mutableListOf<WalkFrame>()
+    val show = 12
+    val values = ImputationLab.complete.take(show)
+    val holes = ImputationLab.missing.take(show)
+
+    fun row(fill: Double?) = values.indices.map { i ->
+        when {
+            !holes[i] -> CellView("%.1f".format(values[i]))
+            fill == null -> CellView("—", CellMark.ACTIVE)
+            else -> CellView("%.1f".format(fill), CellMark.RESULT)
+        }
+    }
+
+    frames += WalkFrame(
+        status = "${ImputationLab.missing.count { it }} of ${ImputationLab.complete.size} values in this column are " +
+            "missing — ${"%.0f".format(ImputationLab.MISSING_RATE * 100)}%, completely at random. Twelve rows of it, " +
+            "with the holes marked.",
+        cells = row(null),
+        readout = "${ImputationLab.observedCount} observed, ${ImputationLab.missing.count { it }} missing",
+    )
+
+    frames += WalkFrame(
+        status = "The cheapest fix is a constant: the mean of what is observed, " +
+            "${"%.3f".format(ImputationLab.meanFill)}. Nothing crashes, no rows are lost, and every downstream " +
+            "model runs. The column, however, is not the column any more.",
+        cells = row(ImputationLab.meanFill),
+        aux = row(null),
+        auxLabel = "before",
+        readout = "fill = ${"%.3f".format(ImputationLab.meanFill)}",
+    )
+
+    val complete = ImputationLab.effects.first { it.name == "complete data" }
+    val meanFill = ImputationLab.effects.first { it.name == "mean imputation" }
+    frames += WalkFrame(
+        status = "Here is what it did, measured against the complete data it came from. Variance falls from " +
+            "${"%.3f".format(complete.variance)} to ${"%.3f".format(meanFill.variance)} — a ratio of " +
+            "${"%.3f".format(meanFill.variance / complete.variance)}, against the " +
+            "${"%.2f".format(ImputationLab.predictedVarianceRatio())} that the missing rate alone predicts, since " +
+            "the filled values contribute nothing to the spread.",
+        cells = ImputationLab.effects.map { CellView(it.name.take(12)) },
+        aux = ImputationLab.effects.map { CellView("%.2f".format(it.variance), if (it.name == "complete data") CellMark.DONE else CellMark.ACTIVE) },
+        auxLabel = "variance",
+        readout = "${"%.3f".format(meanFill.variance / complete.variance)} of the original spread",
+    )
+
+    frames += WalkFrame(
+        status = "And the damage is not confined to one column. This column correlates with another at " +
+            "${"%.3f".format(complete.correlation)} in the complete data; after mean imputation, " +
+            "${"%.3f".format(meanFill.correlation)} — because ${"%.0f".format(ImputationLab.MISSING_RATE * 100)}% of " +
+            "the rows now carry a value that has nothing to do with their partner. Imputation attenuates every " +
+            "relationship the column was in.",
+        cells = ImputationLab.effects.map { CellView(it.name.take(12)) },
+        aux = ImputationLab.effects.map { CellView("%.3f".format(it.correlation), if (it.name == "complete data") CellMark.DONE else CellMark.ACTIVE) },
+        auxLabel = "correlation with partner column",
+        readout = "${"%.3f".format(complete.correlation)} → ${"%.3f".format(meanFill.correlation)}",
+    )
+
+    val dropped = ImputationLab.effects.first { it.name == "drop the rows" }
+    frames += WalkFrame(
+        status = "Dropping the rows instead keeps the column honest — variance ${"%.3f".format(dropped.variance)} " +
+            "and correlation ${"%.3f".format(dropped.correlation)}, both essentially the originals — and costs " +
+            "${ImputationLab.complete.size - dropped.rows} of ${ImputationLab.complete.size} rows. That trade is the " +
+            "actual decision, and it is only this clean because the values here are missing *at random*.",
+        cells = ImputationLab.effects.map { CellView(it.name.take(12)) },
+        aux = ImputationLab.effects.map { CellView(it.rows.toString(), if (it.name == "drop the rows") CellMark.RESULT else CellMark.DIM) },
+        auxLabel = "rows surviving",
+        readout = "unbiased, at ${"%.0f".format((1 - dropped.rows.toDouble() / ImputationLab.complete.size) * 100)}% of the data",
+    )
+
+    frames += WalkFrame(
+        status = "One more choice the constant hides. On a skewed column — nine tenths small values, one tenth " +
+            "large — the mean is ${"%.1f".format(ImputationLab.skewedCentre.mean)} and the median " +
+            "${"%.1f".format(ImputationLab.skewedCentre.median)}. Filling with the mean inserts a value that " +
+            "almost no real row has. Median for skewed columns, mode for categorical ones, and the mean only when " +
+            "the column is roughly symmetric.",
+        cells = listOf(CellView("mean"), CellView("median")),
+        aux = listOf(
+            CellView("%.1f".format(ImputationLab.skewedCentre.mean), CellMark.ACTIVE),
+            CellView("%.1f".format(ImputationLab.skewedCentre.median), CellMark.DONE),
+        ),
+        auxLabel = "centre of the skewed column",
+        readout = "${"%.1f".format(ImputationLab.skewedCentre.mean)} vs ${"%.1f".format(ImputationLab.skewedCentre.median)}",
+    )
+    return frames
+}
+
+private fun outlierFrames(): List<WalkFrame> {
+    val frames = mutableListOf<WalkFrame>()
+
+    fun cellsFor(data: List<Double>, flagged: Set<Double>) = data.sorted().takeLast(14).map { value ->
+        CellView(
+            if (value >= 1000) "%.0f".format(value) else "%.1f".format(value),
+            if (value in flagged) CellMark.RESULT else CellMark.IDLE,
+        )
+    }
+
+    val cleanZ = OutlierLab.zScoreFlags(OutlierLab.clean)
+    val cleanIqr = OutlierLab.iqrFlags(OutlierLab.clean)
+    frames += WalkFrame(
+        status = "A clean column: ${OutlierLab.clean.size} values, no outliers. Both rules agree — z-score flags " +
+            "${cleanZ.flagged.size}, the IQR rule flags ${cleanIqr.flagged.size}. The fences are " +
+            "${cleanIqr.threshold}. Agreement on easy data is not evidence that two rules are equivalent.",
+        cells = cellsFor(OutlierLab.clean, emptySet()),
+        readout = "largest 14 values shown",
+    )
+
+    val z = OutlierLab.zScoreFlags(OutlierLab.contaminated)
+    val iqr = OutlierLab.iqrFlags(OutlierLab.contaminated)
+    frames += WalkFrame(
+        status = "Add one extreme value, ${"%.0f".format(OutlierLab.EXTREME)}. Both rules catch it: its z-score is " +
+            "${"%.2f".format(OutlierLab.selfZScore())}, far past ${OutlierLab.Z_THRESHOLD}, and it is outside the " +
+            "IQR fences too. Note what the extreme value did to the statistics it is being judged by, though — the " +
+            "mean moved to ${"%.1f".format(OutlierLab.contaminated.average())} and σ to " +
+            "${"%.1f".format(kotlin.math.sqrt(OutlierLab.contaminated.let { d -> val m = d.average(); d.sumOf { (it - m) * (it - m) } / (d.size - 1) }))}.",
+        cells = cellsFor(OutlierLab.contaminated, z.flagged.toSet()),
+        aux = listOf(
+            CellView("z flags ${z.flagged.size}", CellMark.RESULT),
+            CellView("IQR flags ${iqr.flagged.size}", CellMark.RESULT),
+        ),
+        auxLabel = "verdicts",
+        readout = "its own z = ${"%.2f".format(OutlierLab.selfZScore())}",
+    )
+
+    val maskedZ = OutlierLab.zScoreFlags(OutlierLab.masked)
+    val maskedIqr = OutlierLab.iqrFlags(OutlierLab.masked)
+    val maskedMad = OutlierLab.modifiedZFlags(OutlierLab.masked)
+    frames += WalkFrame(
+        status = "Now the failure. Outliers that arrive together hide each other: each one inflates σ for the " +
+            "rest. Adding extremes until the largest z-score drops under the threshold takes " +
+            "${OutlierLab.maskingCount} of them — ${"%.1f".format(OutlierLab.maskingShare * 100)}% of the sample — " +
+            "and at that point the z-score rule flags ${maskedZ.flagged.size}. The IQR rule flags all " +
+            "${maskedIqr.flagged.size}, because the quartiles have not moved.",
+        cells = cellsFor(OutlierLab.masked, maskedIqr.flagged.toSet()),
+        aux = listOf(
+            CellView("z flags ${maskedZ.flagged.size}", CellMark.DIM),
+            CellView("IQR flags ${maskedIqr.flagged.size}", CellMark.RESULT),
+            CellView("MAD flags ${maskedMad.flagged.size}", CellMark.RESULT),
+        ),
+        auxLabel = "verdicts",
+        readout = "largest z now ${"%.2f".format(OutlierLab.selfZScore(OutlierLab.masked))} — under ${OutlierLab.Z_THRESHOLD}",
+    )
+
+    val sizes = listOf(5, 10, 11, 20, 61)
+    frames += WalkFrame(
+        status = "There is a second, quieter failure that has nothing to do with masking. A single point in a " +
+            "sample of n can never have |z| above (n−1)/√n, because it is inside the mean and the σ being used to " +
+            "judge it. Below n = ${OutlierLab.smallestUsableSample} that ceiling is under " +
+            "${OutlierLab.Z_THRESHOLD}, so the rule cannot fire at all — it is not strict on small samples, it is " +
+            "inert.",
+        cells = sizes.map { CellView("n=$it") },
+        aux = sizes.map {
+            CellView(
+                "%.2f".format(OutlierLab.maxPossibleZ(it)),
+                if (OutlierLab.maxPossibleZ(it) > OutlierLab.Z_THRESHOLD) CellMark.DONE else CellMark.DIM,
+            )
+        },
+        auxLabel = "max possible |z|",
+        readout = "|z| > 3 is unreachable below n = ${OutlierLab.smallestUsableSample}",
+    )
+
+    val rules = OutlierLab.breakdownPoints.entries.toList()
+    frames += WalkFrame(
+        status = "Both failures are the same property: the z-score rule estimates its threshold from statistics " +
+            "the outliers are inside. The robust alternatives estimate from statistics they are not — quartiles " +
+            "tolerate a quarter of the sample being contaminated, the median and MAD tolerate half. That number " +
+            "is the breakdown point, and it is what to check before trusting any outlier rule.",
+        cells = rules.map { CellView(it.key.take(16)) },
+        aux = rules.map {
+            CellView("${"%.0f".format(it.value * 100)}%", if (it.value > 0) CellMark.DONE else CellMark.ACTIVE)
+        },
+        auxLabel = "breakdown point",
+        readout = "use IQR or MAD; keep z-scores for clean, large, symmetric columns",
+    )
+    return frames
+}
+
+private fun chiSquareFrames(): List<WalkFrame> {
+    val frames = mutableListOf<WalkFrame>()
+    val ranking = FeatureSelectionLab.chiSquareRanking()
+    val usefulTable = FeatureSelectionLab.chiSquare(FeatureSelectionLab.data, 0)
+
+    frames += WalkFrame(
+        status = "Chi-square feature selection scores every feature against the target on its own, from a " +
+            "contingency table. For \"useful\" the table over ${FeatureSelectionLab.data.size} rows is " +
+            "${usefulTable.counts.joinToString(" / ") { it.joinToString(",") }} — observed counts by feature value " +
+            "and label.",
+        cells = listOf("f=0,y=0", "f=0,y=1", "f=1,y=0", "f=1,y=1").mapIndexed { index, label ->
+            CellView(label)
+        },
+        aux = listOf(
+            CellView(usefulTable.counts[0][0].toString(), CellMark.WINDOW),
+            CellView(usefulTable.counts[0][1].toString(), CellMark.WINDOW),
+            CellView(usefulTable.counts[1][0].toString(), CellMark.WINDOW),
+            CellView(usefulTable.counts[1][1].toString(), CellMark.WINDOW),
+        ),
+        auxLabel = "observed",
+        readout = "χ² = Σ (observed − expected)² / expected = ${"%.1f".format(usefulTable.chiSquare)}",
+    )
+
+    frames += WalkFrame(
+        status = "Run over all ${FeatureSelectionLab.featureNames.size} features it ranks them without fitting a " +
+            "single model — which is the whole appeal. \"useful\" scores ${"%.0f".format(ranking.first().second)}, " +
+            "its near-copy \"duplicate\" ${"%.0f".format(ranking[1].second)}, and the rest are noise-level.",
+        cells = ranking.map { CellView(it.first) },
+        aux = ranking.map {
+            CellView("%.1f".format(it.second), if (it.second > 50) CellMark.DONE else CellMark.DIM)
+        },
+        auxLabel = "χ²",
+        readout = "${FeatureSelectionLab.chiSquareFits()} model fits required",
+    )
+
+    frames += WalkFrame(
+        status = "It also cannot tell a useful feature from a copy of one. \"duplicate\" agrees with \"useful\" " +
+            "90% of the time, scores ${"%.0f".format(ranking[1].second)}, and adds nothing a model does not " +
+            "already have — a univariate score has no way to notice, because it never looks at two features " +
+            "together.",
+        cells = listOf(CellView("useful", CellMark.DONE), CellView("duplicate", CellMark.ACTIVE)),
+        aux = listOf(
+            CellView("%.0f".format(ranking.first().second), CellMark.DONE),
+            CellView("%.0f".format(ranking[1].second), CellMark.ACTIVE),
+        ),
+        auxLabel = "χ²",
+        readout = "redundant, and ranked second",
+    )
+
+    val xorRanking = FeatureSelectionLab.chiSquareRanking(FeatureSelectionLab.xorData)
+    frames += WalkFrame(
+        status = "And here is the blind spot that matters. On data where the label is exactly xorA ⊕ xorB — the " +
+            "pair determines it perfectly, with no noise — chi-square ranks " +
+            "\"${xorRanking.first().first}\" first at ${"%.1f".format(xorRanking.first().second)} and puts the two " +
+            "features that *are* the signal at ${xorRanking.filter { it.first.startsWith("xor") }.joinToString(" and ") { "%.1f".format(it.second) }}. " +
+            "A one-at-a-time score cannot see an interaction, and this is what that looks like.",
+        cells = xorRanking.map { CellView(it.first) },
+        aux = xorRanking.map {
+            CellView("%.1f".format(it.second), if (it.first.startsWith("xor")) CellMark.ACTIVE else CellMark.DIM)
+        },
+        auxLabel = "χ² on XOR-labelled data",
+        readout = "the signal ranks below the noise",
+    )
+
+    frames += WalkFrame(
+        status = "So it is a filter, not a decision: use it to drop obviously-dead columns cheaply on wide data, " +
+            "and do not use it to choose between features that might interact. It also requires non-negative " +
+            "counts — chi-square on a scaled or centred numeric column is a category error, not a weak result.",
+        cells = listOf(CellView("wide data"), CellView("interactions"), CellView("redundancy"), CellView("negatives")),
+        aux = listOf(
+            CellView("good", CellMark.DONE),
+            CellView("blind", CellMark.ACTIVE),
+            CellView("blind", CellMark.ACTIVE),
+            CellView("invalid", CellMark.ACTIVE),
+        ),
+        auxLabel = "chi-square is",
+    )
+    return frames
+}
+
+private fun rfeFrames(): List<WalkFrame> {
+    val frames = mutableListOf<WalkFrame>()
+    val rounds = FeatureSelectionLab.recursiveElimination()
+
+    frames += WalkFrame(
+        status = "Recursive feature elimination goes the other way from a filter: fit the model on everything, " +
+            "drop the weakest coefficient, refit, repeat. It sees whatever the model can express, and it costs " +
+            "${FeatureSelectionLab.fitsRequired(FeatureSelectionLab.featureNames.size)} fits instead of " +
+            "${FeatureSelectionLab.chiSquareFits()}.",
+        cells = FeatureSelectionLab.featureNames.map { CellView(it) },
+        aux = rounds.first().remaining.map {
+            CellView("%.3f".format(rounds.first().coefficients.getValue(it)), CellMark.WINDOW)
+        },
+        auxLabel = "coefficient, all features in",
+        readout = "MSE ${"%.4f".format(rounds.first().error)}",
+    )
+
+    rounds.forEach { round ->
+        frames += WalkFrame(
+            status = "Round ${rounds.indexOf(round) + 1}: the smallest coefficient belongs to " +
+                "\"${round.dropped}\" (${"%.3f".format(round.coefficients.getValue(round.dropped))}), so it goes. " +
+                "MSE is ${"%.4f".format(round.error)} — dropping it costs " +
+                (if (rounds.indexOf(round) == rounds.size - 1) "nothing measurable" else "essentially nothing") + ".",
+            cells = round.remaining.map {
+                CellView(it, if (it == round.dropped) CellMark.ACTIVE else CellMark.IDLE)
+            },
+            aux = round.remaining.map {
+                CellView(
+                    "%.3f".format(round.coefficients.getValue(it)),
+                    if (it == round.dropped) CellMark.ACTIVE else CellMark.WINDOW,
+                )
+            },
+            auxLabel = "coefficient",
+            readout = "MSE ${"%.4f".format(round.error)}",
+        )
+    }
+
+    val survivor = rounds.last().remaining.first { it != rounds.last().dropped }
+    frames += WalkFrame(
+        status = "It ends on \"$survivor\" alone, having dropped the noise, the redundant copy and both XOR " +
+            "features — and the MSE barely moved across the whole elimination " +
+            "(${"%.4f".format(rounds.first().error)} → ${"%.4f".format(rounds.last().error)}), which is the honest " +
+            "signal that those four columns were carrying nothing this model could use.",
+        cells = listOf(CellView(survivor, CellMark.RESULT)),
+        aux = listOf(CellView("%.4f".format(rounds.last().error), CellMark.RESULT)),
+        auxLabel = "MSE with one feature",
+        readout = "${rounds.size} rounds, ${rounds.size} fits",
+    )
+
+    val xorRounds = FeatureSelectionLab.recursiveElimination(FeatureSelectionLab.xorData)
+    frames += WalkFrame(
+        status = "RFE is not a cure for the interaction blindness, though — it inherits its model's. On the " +
+            "XOR-labelled data it drops \"${xorRounds.first().dropped}\" first and never finds the pair either, " +
+            "because a linear model cannot express XOR and so gives both features a coefficient near zero. Both " +
+            "selectors fail on that data, for different reasons: chi-square because it looks one at a time, RFE " +
+            "because its model cannot see it.",
+        cells = xorRounds.map { CellView(it.dropped) },
+        aux = xorRounds.map { CellView("%.4f".format(it.error), CellMark.DIM) },
+        auxLabel = "dropped, in order · MSE",
+        readout = "swap the estimator for a tree and this changes",
+    )
+    return frames
+}
+
 private val walkConfigs = mapOf(
+    "label_encoding" to WalkConfig(
+        intro = "A colour column encoded two ways, then scored: 40x the error in a linear model, and exactly nothing in a tree.",
+        legend = listOf(
+            ActiveFill to "Cost",
+            DoneFill to "Free",
+            ResultFill to "Filled",
+        ),
+        build = ::labelEncodingFrames,
+    ),
+    "missing_value_imputation" to WalkConfig(
+        intro = "30% of a column missing. What a constant fill does to its variance and to every correlation it was in, measured against the complete data.",
+        legend = listOf(
+            ActiveFill to "Missing / changed",
+            DoneFill to "Original",
+            ResultFill to "Imputed",
+        ),
+        build = ::imputationFrames,
+    ),
+    "outlier_detection" to WalkConfig(
+        intro = "The z-score rule against the IQR rule, including the sample where the z-score rule flags nothing at all and the sample sizes where it cannot fire.",
+        legend = listOf(
+            ResultFill to "Flagged",
+            ActiveFill to "Missed",
+            DoneFill to "Robust",
+        ),
+        build = ::outlierFrames,
+    ),
+    "chi_square_selection" to WalkConfig(
+        intro = "Contingency tables and chi-square scores over five features — including XOR-labelled data, where it ranks the noise above the signal.",
+        legend = listOf(
+            DoneFill to "Selected",
+            ActiveFill to "Blind spot",
+            WindowFill to "Counts",
+        ),
+        build = ::chiSquareFrames,
+    ),
+    "rfe" to WalkConfig(
+        intro = "Fit, drop the weakest coefficient, refit. Four rounds on five features, then the same run on data its model cannot express.",
+        legend = listOf(
+            ActiveFill to "Being dropped",
+            WindowFill to "Coefficient",
+            ResultFill to "Survivor",
+        ),
+        build = ::rfeFrames,
+    ),
     "apriori" to WalkConfig(
         intro = "Ten baskets, five items, minimum support 3. Level by level: generate candidates, prune what cannot possibly be frequent, then count only what is left.",
         legend = listOf(

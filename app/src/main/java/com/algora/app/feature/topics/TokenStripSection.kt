@@ -4713,6 +4713,112 @@ private fun tokenizerFrames(): List<TokenFrame> {
     return frames
 }
 
+// ── B8 · One-hot encoding ────────────────────────────────────────────────────
+// The one preprocessing topic whose subject is a *matrix* rather than a column, which is what this
+// widget's heat grid draws. Numbers from PreprocessMath.kt's EncodingLab, which fits the same data
+// under both encodings and scores them.
+
+private fun oneHotFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val rows = EncodingLab.rows.take(6)
+    val categories = EncodingLab.categories
+
+    fun matrix(dropFirst: Boolean) = rows.map { row ->
+        EncodingLab.oneHotEncoded(row, dropFirst).map { it.toFloat() }
+    }
+
+    frames += TokenFrame(
+        status = "One-hot encoding turns one categorical column into ${categories.size} binary ones — a column per " +
+            "level, a single 1 per row. Six rows of the colour column, and the matrix they become.",
+        chips = rows.map { Chip(it.category) },
+        chipsLabel = "the categorical column",
+        heat = Heat(rows.indices.map { "row ${it + 1}" }, categories, matrix(dropFirst = false)),
+    )
+
+    frames += TokenFrame(
+        status = "What that fixes is the geometry. A label code puts \"red\" " +
+            "${EncodingLab.codeDistance("red", "yellow").toInt()} away from \"yellow\" and " +
+            "${EncodingLab.codeDistance("red", "green").toInt()} from \"green\", inventing an order and a spacing. " +
+            "One-hot puts every pair at exactly √2 = ${"%.3f".format(EncodingLab.oneHotDistance())} apart, which is " +
+            "the truth about unordered categories.",
+        rows = listOf(
+            "label code: red → green" to "${EncodingLab.codeDistance("red", "green").toInt()}",
+            "label code: red → yellow" to "${EncodingLab.codeDistance("red", "yellow").toInt()}",
+            "one-hot: any pair" to "%.3f".format(EncodingLab.oneHotDistance()),
+        ),
+        bars = listOf(
+            BarRow(
+                "distance from \"red\"",
+                categories.map { EncodingLab.codeDistance("red", it).toFloat() },
+                BarNegative,
+                categories,
+            ),
+            BarRow(
+                "one-hot distance from \"red\"",
+                categories.map { if (it == "red") 0f else EncodingLab.oneHotDistance().toFloat() },
+                BarPositive,
+                categories,
+            ),
+        ),
+    )
+
+    val fits = EncodingLab.linearFits
+    val label = fits.first { it.name == "label encoding" }
+    val oneHot = fits.first { it.name == "one-hot" }
+    frames += TokenFrame(
+        status = "Scored, on data whose true effect per category is non-monotone in the code order: a " +
+            "least-squares fit reaches MSE ${"%.3f".format(oneHot.error)} on the one-hot matrix and " +
+            "${"%.2f".format(label.error)} on the label code — ${"%.0f".format(label.error / oneHot.error)}× worse. " +
+            "The one-hot fit can give each level its own coefficient; the label fit has to pass one straight line " +
+            "through all four.",
+        bars = listOf(
+            BarRow(
+                "mean squared error",
+                fits.map { it.error.toFloat() },
+                ChipResult,
+                listOf("label", "one-hot", "one-hot −1"),
+            ),
+        ),
+        rows = fits.map { it.name to "MSE ${"%.3f".format(it.error)} · ${it.columns} column${if (it.columns == 1) "" else "s"}" },
+        readout = "${"%.0f".format(label.error / oneHot.error)}× the error, from the encoding alone",
+    )
+
+    val dropped = fits.first { it.name.contains("dropped") }
+    frames += TokenFrame(
+        status = "The full matrix has a defect worth knowing: its ${categories.size} columns always sum to 1, so " +
+            "they are collinear with the intercept and the coefficients are not identifiable — any constant can be " +
+            "moved from the intercept into all four. Dropping one level fixes it and costs nothing: MSE " +
+            "${"%.3f".format(dropped.error)} against ${"%.3f".format(oneHot.error)}, on ${dropped.columns} columns " +
+            "instead of ${oneHot.columns}.",
+        heat = Heat(rows.indices.map { "row ${it + 1}" }, categories.drop(1), matrix(dropFirst = true)),
+        rows = listOf(
+            "full matrix" to "rows sum to 1 — collinear with the intercept",
+            "first level dropped" to "the dropped level is the baseline the others are measured against",
+            "MSE" to "${"%.3f".format(oneHot.error)} → ${"%.3f".format(dropped.error)}",
+        ),
+        readout = "drop one level for linear models; keep all for trees and regularised fits",
+    )
+
+    val levels = listOf(4, 12, 50, 5_000)
+    frames += TokenFrame(
+        status = "What it costs is width, and the cost is linear in the number of levels. Four colours is four " +
+            "columns; a postcode column with 5,000 levels is 5,000, most of them almost always zero. That is where " +
+            "one-hot stops being the answer — target encoding, hashing or a learned embedding replace it, and each " +
+            "one trades the honesty of this matrix for width.",
+        bars = listOf(
+            BarRow("columns added", levels.map { it.toFloat() }, BarNegative, levels.map { "$it levels" }),
+        ),
+        rows = listOf(
+            "one-hot" to "one column per level, exact and sparse",
+            "target encoding" to "one column, and a leak risk that needs cross-fitting",
+            "hashing" to "fixed width, with collisions you cannot inspect",
+            "embedding" to "learned width, and it needs a model to learn it",
+        ),
+        readout = "exact, sparse, and linear in the level count",
+    )
+    return frames
+}
+
 private val nbLegend = listOf(
     ChipActive to "Current",
     ChipResult to "Scored",
@@ -5043,6 +5149,11 @@ private val tokenConfigs = mapOf(
             "unknown words, and what a tokenizer choice costs a transformer forever.",
         legend = tokenLegend,
         build = ::tokenizerFrames,
+    ),
+    "one_hot_encoding" to TokenConfig(
+        intro = "One categorical column as a matrix, the false geometry it removes, and the collinearity that makes people drop a level.",
+        legend = vectorLegend,
+        build = ::oneHotFrames,
     ),
     "bidirectional_rnn" to TokenConfig(
         intro = "Two taggers on a corpus of garden-path minimal pairs. The left-to-right model's ceiling is " +

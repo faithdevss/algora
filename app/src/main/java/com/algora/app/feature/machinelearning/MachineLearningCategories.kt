@@ -25,9 +25,15 @@ object MachineLearningCategories {
     // this section, which keeps every ML category on its own glyph.
     val association = Category("ml_association", "Association Rule Learning", Section.ML, 0xFF06B6D4, "link")
     val timeSeries = Category("ml_timeseries", "Time Series Analysis", Section.ML, 0xFF10B981, "history")
+    // B8. "browser" reads as a data table — the thing every topic in this category transforms — and
+    // it was unused in this section.
+    val preprocessing = Category("ml_preprocessing", "Data Preprocessing", Section.ML, 0xFFF97316, "browser")
     val supervised = Category("ml_supervised", "Supervised", Section.ML, 0xFF6366F1, "robot")
 
     // `ml_unsupervised` is gone: B5 took its clustering topics and B6 took `pca`, its last one.
     // `ml_supervised` still holds the four topics B9 and B10 will redistribute.
-    val all = listOf(regression, classification, bayesian, ensemble, clustering, dimReduction, association, timeSeries, supervised)
+    val all = listOf(
+        regression, classification, bayesian, ensemble, clustering, dimReduction, association, timeSeries,
+        preprocessing, supervised,
+    )
 }

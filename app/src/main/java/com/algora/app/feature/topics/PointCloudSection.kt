@@ -3750,7 +3750,259 @@ private fun vectorDbFrames(): List<CloudFrame> {
     return frames
 }
 
+// ── Data preprocessing (phase 9, batch B8) ───────────────────────────────────
+// The three geometric preprocessing topics. Scaling and SMOTE are both claims about distance, and
+// this widget is the one that draws distance — so the frames show the same points before and after,
+// with the k-NN accuracy each arrangement actually produces underneath. All numbers come from
+// PreprocessMath.kt.
+//
+// The canvas maps [0,1], so the raw-units frames divide *both* features by one shared constant
+// rather than normalising each. That is the honest display: it is what "one distance metric over
+// both columns" looks like, and the point of the topic is that age disappears inside it.
+
+private fun sharedScaleDots(data: List<Sample>): List<Dot> {
+    val biggest = data.maxOf { kotlin.math.max(it.features[0], it.features[1]) }
+    return data.map { sample ->
+        Dot(P((sample.features[0] / biggest).toFloat(), (sample.features[1] / biggest).toFloat(), sample.label), sample.label)
+    }
+}
+
+private fun unitDots(data: List<Sample>, pad: Double = 0.05): List<Dot> {
+    val xs = data.map { it.features[0] }
+    val ys = data.map { it.features[1] }
+    val x0 = xs.min(); val x1 = xs.max(); val y0 = ys.min(); val y1 = ys.max()
+    fun scale(v: Double, lo: Double, hi: Double) = (pad + (1 - 2 * pad) * (v - lo) / (hi - lo)).toFloat()
+    return data.map { sample ->
+        Dot(P(scale(sample.features[0], x0, x1), scale(sample.features[1], y0, y1), sample.label), sample.label)
+    }
+}
+
+private fun scalingFrames(minMaxFirst: Boolean): List<CloudFrame> {
+    val frames = mutableListOf<CloudFrame>()
+    val raw = FeatureScalingLab.results.first { it.name == "raw" }
+    val minMax = FeatureScalingLab.results.first { it.name == "min-max" }
+    val zScore = FeatureScalingLab.results.first { it.name == "z-score" }
+    val shares = FeatureScalingLab.distanceShares.toMap()
+    val subject = if (minMaxFirst) minMax else zScore
+    val other = if (minMaxFirst) zScore else minMax
+
+    frames += CloudFrame(
+        status = "Two features on their own units: ${FeatureScalingLab.featureNames.joinToString(" and ")}. Age spans " +
+            "${"%.0f".format(raw.ranges[0])} and income spans ${"%.0f".format(raw.ranges[1])}. Drawn on one shared " +
+            "axis — which is what a single distance metric does to them — every point sits on a line, because age " +
+            "is invisible at income's scale.",
+        dots = sharedScaleDots(FeatureScalingLab.train),
+        readout = "ranges ${"%.0f".format(raw.ranges[0])} vs ${"%.0f".format(raw.ranges[1])}",
+    )
+
+    frames += CloudFrame(
+        status = "That is not a drawing artefact, it is the arithmetic k-NN performs. Averaged over every " +
+            "train/test pair, income contributes ${"%.4f".format(shares.getValue("raw")[1] * 100)}% of the squared " +
+            "distance and age ${"%.4f".format(shares.getValue("raw")[0] * 100)}%. The classifier has two features " +
+            "and uses one.",
+        dots = sharedScaleDots(FeatureScalingLab.train),
+        profile = shares.getValue("raw").mapIndexed { index, value -> ProfileBar(value.toFloat(), index, Emphasis.ACTIVE) },
+        profileLabel = "share of squared distance: age, income",
+        readout = "k-NN accuracy ${"%.3f".format(raw.accuracy)}",
+    )
+
+    frames += CloudFrame(
+        status = if (minMaxFirst) {
+            "Min-max maps each column onto [0,1] using its own minimum and maximum: (x − min) / (max − min). Both " +
+                "ranges become exactly 1, the shape of the cloud is preserved, and the distance split moves to " +
+                "${"%.1f".format(shares.getValue("min-max")[0] * 100)}% / ${"%.1f".format(shares.getValue("min-max")[1] * 100)}%."
+        } else {
+            "Z-score subtracts each column's mean and divides by its standard deviation: (x − μ) / σ. Units are " +
+                "gone, the ranges become ${"%.2f".format(zScore.ranges[0])} and ${"%.2f".format(zScore.ranges[1])} — " +
+                "not 1, because the range depends on how far the extremes sit — and the distance split moves to " +
+                "${"%.1f".format(shares.getValue("z-score")[0] * 100)}% / ${"%.1f".format(shares.getValue("z-score")[1] * 100)}%."
+        },
+        dots = unitDots(if (minMaxFirst) FeatureScalingLab.minMax(FeatureScalingLab.train, FeatureScalingLab.train) else FeatureScalingLab.zScore(FeatureScalingLab.train, FeatureScalingLab.train)),
+        profile = shares.getValue(subject.name).mapIndexed { index, value -> ProfileBar(value.toFloat(), index, Emphasis.NORMAL) },
+        profileLabel = "share of squared distance: age, income",
+        readout = "k-NN accuracy ${"%.3f".format(raw.accuracy)} → ${"%.3f".format(subject.accuracy)}",
+    )
+
+    frames += CloudFrame(
+        status = "Scored on held-out data, the same k-NN with the same k: ${"%.3f".format(raw.accuracy)} raw, " +
+            "${"%.3f".format(minMax.accuracy)} min-max, ${"%.3f".format(zScore.accuracy)} z-score. The model did " +
+            "not change and the data did not change — only the units the distance was measured in.",
+        dots = unitDots(if (minMaxFirst) FeatureScalingLab.minMax(FeatureScalingLab.train, FeatureScalingLab.train) else FeatureScalingLab.zScore(FeatureScalingLab.train, FeatureScalingLab.train)),
+        profile = listOf(
+            ProfileBar(raw.accuracy.toFloat(), 1, Emphasis.FADED),
+            ProfileBar(minMax.accuracy.toFloat(), 0, if (minMaxFirst) Emphasis.ACTIVE else Emphasis.NORMAL),
+            ProfileBar(zScore.accuracy.toFloat(), 2, if (minMaxFirst) Emphasis.NORMAL else Emphasis.ACTIVE),
+        ),
+        profileLabel = "k-NN accuracy: raw, min-max, z-score",
+        readout = "+${"%.1f".format((subject.accuracy - raw.accuracy) * 100)} points from a two-line transform",
+    )
+
+    val effect = FeatureScalingLab.outlierEffect
+    frames += CloudFrame(
+        status = if (minMaxFirst) {
+            "And here is min-max's failure mode. Fit the scaler on data containing one income of " +
+                "${"%.0f".format(effect.outlierIncome)} and every real point is squeezed into " +
+                "${"%.3f".format(effect.minMaxSpan)} of the [0,1] range — the transform is defined by the two most " +
+                "extreme values in the column, so a single bad row rescales everything. Z-score moves too, but " +
+                "the same points still span ${"%.2f".format(effect.zScoreSpan)}."
+        } else {
+            "Z-score's advantage over min-max shows up under contamination. Fit both on data containing one income " +
+                "of ${"%.0f".format(effect.outlierIncome)}: min-max squeezes every real point into " +
+                "${"%.3f".format(effect.minMaxSpan)} of its range, because it is defined by the two extremes, " +
+                "while z-score leaves them spanning ${"%.2f".format(effect.zScoreSpan)}. Neither is robust — σ " +
+                "moves as well — but they do not fail equally."
+        },
+        dots = unitDots(FeatureScalingLab.minMax(FeatureScalingLab.train + Sample(doubleArrayOf(45.0, effect.outlierIncome), 1), FeatureScalingLab.train)),
+        profile = listOf(
+            ProfileBar(effect.minMaxSpan.toFloat(), 3, Emphasis.ACTIVE),
+            ProfileBar((effect.zScoreSpan / 4).toFloat(), 2, Emphasis.NORMAL),
+        ),
+        profileLabel = "span of the real points after fitting on the contaminated column",
+        readout = "min-max ${"%.3f".format(effect.minMaxSpan)} vs z-score ${"%.2f".format(effect.zScoreSpan)}",
+    )
+
+    frames += CloudFrame(
+        status = "Which is the rule that actually follows: min-max when you need a bounded range and the column " +
+            "has no extremes (pixels, bounded scores), z-score when the column is roughly symmetric with tails, " +
+            "and a robust scaler on the median and IQR when it is neither. Fit on the training split only — " +
+            "fitting on everything leaks the test set's minimum, maximum, mean and σ into the transform.",
+        dots = unitDots(if (minMaxFirst) FeatureScalingLab.minMax(FeatureScalingLab.train, FeatureScalingLab.train) else FeatureScalingLab.zScore(FeatureScalingLab.train, FeatureScalingLab.train)),
+        readout = "and never fit the scaler on the test set",
+    )
+    return frames
+}
+
+private fun minMaxFrames(): List<CloudFrame> = scalingFrames(minMaxFirst = true)
+
+private fun zScoreFrames(): List<CloudFrame> = scalingFrames(minMaxFirst = false)
+
+private fun smoteFrames(): List<CloudFrame> {
+    val frames = mutableListOf<CloudFrame>()
+    val all = SmoteLab.majority + SmoteLab.minority
+    val bounds = all.flatMap { listOf(it.features[0], it.features[1]) }
+    val lo = bounds.min()
+    val hi = bounds.max()
+    fun place(sample: Sample, emphasis: Emphasis = Emphasis.NORMAL) = Dot(
+        P(
+            (0.06 + 0.88 * (sample.features[0] - lo) / (hi - lo)).toFloat(),
+            (0.06 + 0.88 * (sample.features[1] - lo) / (hi - lo)).toFloat(),
+            sample.label,
+        ),
+        sample.label,
+        emphasis,
+    )
+
+    frames += CloudFrame(
+        status = "${SmoteLab.majority.size} majority points and ${SmoteLab.minority.size} minority points — " +
+            "${"%.0f".format(SmoteLab.imbalanceRatio)}:1. A classifier that answers \"majority\" every time " +
+            "scores ${"%.1f".format(SmoteLab.majority.size * 100.0 / all.size)}% accuracy here, which is why " +
+            "accuracy is the wrong metric before it is anything else.",
+        dots = all.map { place(it, if (it.label == 1) Emphasis.ACTIVE else Emphasis.NORMAL) },
+        readout = "${SmoteLab.imbalanceRatio.toInt()}:1 imbalance",
+    )
+
+    val minorityTrain = SmoteLab.trainSet.filter { it.label == 1 }
+    val demo = SmoteLab.synthesise(minorityTrain, 3, seed = 71)
+    frames += CloudFrame(
+        status = "SMOTE does not copy minority points, it interpolates between them: pick a minority point, pick " +
+            "one of its ${SmoteLab.K} nearest minority neighbours, and place a new point somewhere on the segment " +
+            "between them. Three of them, drawn with the segments they came from.",
+        dots = SmoteLab.trainSet.map { place(it, if (it.label == 1) Emphasis.ACTIVE else Emphasis.FADED) } +
+            demo.map { place(it, Emphasis.QUERY) },
+        segments = demo.mapIndexed { index, synthetic ->
+            val nearest = minorityTrain.minBy { candidate ->
+                candidate.features.indices.sumOf { i ->
+                    val d = candidate.features[i] - synthetic.features[i]
+                    d * d
+                }
+            }
+            Segment(place(nearest).point, place(synthetic).point, QueryColor, dashed = true)
+        },
+        readout = "new points on the segments, not on top of the old ones",
+    )
+
+    frames += CloudFrame(
+        status = "Resampling the training fold up to balance takes it from ${SmoteLab.trainSet.size} rows to " +
+            "${SmoteLab.resampled.size}. The minority region is now dense — and it is dense with points that were " +
+            "*inferred* from ${minorityTrain.size} real ones, which is the part to keep in mind when the score " +
+            "improves.",
+        dots = SmoteLab.resampled.map { place(it, if (it.label == 1) Emphasis.ACTIVE else Emphasis.FADED) },
+        readout = "${SmoteLab.trainSet.size} → ${SmoteLab.resampled.size} rows, ${minorityTrain.size} real minority points",
+    )
+
+    val before = SmoteLab.scores.first { it.name == "imbalanced" }
+    val after = SmoteLab.scores.first { it.name.startsWith("SMOTE") }
+    frames += CloudFrame(
+        status = "Scored with ${SmoteLab.K}-NN on the untouched real test split: minority recall goes " +
+            "${"%.3f".format(before.minorityRecall)} → ${"%.3f".format(after.minorityRecall)}, which is what SMOTE " +
+            "is for. Precision goes ${"%.3f".format(before.precision)} → ${"%.3f".format(after.precision)} and " +
+            "accuracy ${"%.3f".format(before.accuracy)} → ${"%.3f".format(after.accuracy)}: it buys recall by " +
+            "moving the boundary into majority territory, and that is a trade, not a free win.",
+        dots = SmoteLab.testSet.map { place(it, if (it.label == 1) Emphasis.ACTIVE else Emphasis.NORMAL) },
+        profile = listOf(
+            ProfileBar(before.minorityRecall.toFloat(), 1, Emphasis.FADED),
+            ProfileBar(after.minorityRecall.toFloat(), 1, Emphasis.ACTIVE),
+            ProfileBar(before.precision.toFloat(), 3, Emphasis.FADED),
+            ProfileBar(after.precision.toFloat(), 3, Emphasis.ACTIVE),
+        ),
+        profileLabel = "recall before/after, precision before/after",
+        readout = "recall +${"%.0f".format((after.minorityRecall - before.minorityRecall) * 100)} points, precision −${"%.0f".format((before.precision - after.precision) * 100)}",
+    )
+
+    val leak = SmoteLab.leak
+    frames += CloudFrame(
+        status = "The mistake that matters more than the trade: resampling before the split. A synthetic point is " +
+            "built from a real neighbour, so if that neighbour lands in the validation fold, the training set now " +
+            "contains something interpolated towards a row it is about to be scored on. Measured over " +
+            "${leak.folds} folds at ${leak.neighbours}-NN: ${"%.3f".format(leak.leakyScore)} for the leaky " +
+            "pipeline against ${"%.3f".format(leak.honestScore)} for resampling inside each fold.",
+        dots = SmoteLab.resampled.map { place(it, if (it.label == 1) Emphasis.QUERY else Emphasis.FADED) },
+        profile = listOf(
+            ProfileBar(leak.leakyScore.toFloat(), 3, Emphasis.ACTIVE),
+            ProfileBar(leak.honestScore.toFloat(), 2, Emphasis.NORMAL),
+        ),
+        profileLabel = "cross-validated accuracy: resample first, resample inside folds",
+        readout = "+${"%.1f".format((leak.leakyScore - leak.honestScore) * 100)} points of score that will not reproduce",
+    )
+
+    frames += CloudFrame(
+        status = "So: resample inside the pipeline, never before the split; check precision alongside recall, " +
+            "because the trade is real; and compare against the two cheaper things first — class weights, which " +
+            "cost nothing and invent no data, and moving the decision threshold, which is free at inference time.",
+        dots = all.map { place(it, if (it.label == 1) Emphasis.ACTIVE else Emphasis.NORMAL) },
+        readout = "class weights and thresholds before synthetic rows",
+    )
+    return frames
+}
+
 private val cloudConfigs = mapOf(
+    "min_max_normalization" to CloudConfig(
+        intro = "Age and income on one distance metric: income is 99.99% of it. Both scalers, then the same k-NN scored on all three arrangements.",
+        legend = listOf(
+            CloudColors[0] to "Class 0",
+            CloudColors[1] to "Class 1",
+            QueryColor to "Contaminated fit",
+        ),
+        build = ::minMaxFrames,
+    ),
+    "z_score_standardization" to CloudConfig(
+        intro = "The same comparison from the other side, including what one extreme value does to each scaler.",
+        legend = listOf(
+            CloudColors[0] to "Class 0",
+            CloudColors[1] to "Class 1",
+            QueryColor to "Contaminated fit",
+        ),
+        build = ::zScoreFrames,
+    ),
+    "smote" to CloudConfig(
+        intro = "Interpolated minority points, the recall/precision trade they buy, and the cross-validation score you get for resampling before the split.",
+        legend = listOf(
+            CloudColors[0] to "Majority",
+            CloudColors[1] to "Minority",
+            QueryColor to "Synthetic",
+        ),
+        build = ::smoteFrames,
+    ),
     "vector_databases" to CloudConfig(
         intro = "A real index over ${VectorDbLab.corpusSize} vectors: brute force, an IVF probed at a cell " +
             "boundary, HNSW's greedy walk on a graph that turns out to be disconnected, and the quantization " +

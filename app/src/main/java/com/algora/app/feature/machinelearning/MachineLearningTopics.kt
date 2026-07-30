@@ -35,6 +35,7 @@ private val clustering = MachineLearningCategories.clustering
 private val dimReduction = MachineLearningCategories.dimReduction
 private val association = MachineLearningCategories.association
 private val timeSeries = MachineLearningCategories.timeSeries
+private val preprocessing = MachineLearningCategories.preprocessing
 private val supervised = MachineLearningCategories.supervised
 
 // Ordered as a reading path: the plain fit, then the two penalties, then the estimators that change
@@ -99,6 +100,24 @@ private val ensembleTopics = listOf(
     topic("lightgbm", "LightGBM", ensemble, "Leaf-wise growth and histogram binning — the speed comes from both.", isPremium = true, difficulty = Difficulty.ADVANCED),
     topic("catboost", "CatBoost", ensemble, "Oblivious trees, and an encoding of categoricals that does not leak the target.", isPremium = true, difficulty = Difficulty.ADVANCED),
     topic("isolation_forest", "Isolation Forest (Anomaly Detection)", ensemble, "Anomalies are easy to separate — so count how many random cuts it takes.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+)
+
+// The doc's Data Preprocessing Techniques block in full. Ordered as a pipeline runs rather than as
+// the doc lists it: fix the rows first (missing values, outliers), then the columns (encoding,
+// scaling), then the class balance, and only then decide which features to keep. Every topic's lab
+// scores its rule against a model instead of asserting it, which is why three of them end up
+// conditional. `one_hot_encoding` is cross-listed into NLP, where the doc lists it as the baseline
+// the word-embedding block improves on.
+private val preprocessingTopics = listOf(
+    topic("missing_value_imputation", "Missing Value Imputation", preprocessing, "Fill the holes, and measure what filling them did to the column.", difficulty = Difficulty.BEGINNER),
+    topic("outlier_detection", "Outlier Detection (IQR/Z)", preprocessing, "The z-score rule, the sample it flags nothing in, and the size it cannot fire at.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("label_encoding", "Label Encoding", preprocessing, "40× the error in a linear model, and exactly free in a tree.", difficulty = Difficulty.BEGINNER),
+    topic("one_hot_encoding", "One-Hot Encoding", preprocessing, "A column per level, the false geometry it removes, and the level everyone drops.", difficulty = Difficulty.BEGINNER),
+    topic("min_max_normalization", "Min-Max Normalization", preprocessing, "Two features, one distance metric — and income is 99.99% of it.", difficulty = Difficulty.BEGINNER),
+    topic("z_score_standardization", "Z-Score Standardization", preprocessing, "The same fix with different failure modes under contamination.", isPremium = true, difficulty = Difficulty.BEGINNER),
+    topic("smote", "SMOTE (Oversampling)", preprocessing, "Interpolated minority rows, the precision they cost, and the leak they invite.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("chi_square_selection", "Chi-Square Feature Selection", preprocessing, "Free, univariate, and it ranks noise above an XOR pair.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("rfe", "Recursive Feature Elimination", preprocessing, "Fit, drop the weakest, refit — and inherit your model's blind spots.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
 )
 
 private val supervisedTopics = listOf(
@@ -167,7 +186,7 @@ private val timeSeriesTopics = listOf(
 )
 
 object MachineLearningTopics {
-    val topics: List<Topic> = regressionTopics + classificationTopics + bayesianTopics + ensembleTopics + clusteringTopics + dimReductionTopics + associationTopics + timeSeriesTopics + supervisedTopics
+    val topics: List<Topic> = regressionTopics + classificationTopics + bayesianTopics + ensembleTopics + clusteringTopics + dimReductionTopics + associationTopics + timeSeriesTopics + preprocessingTopics + supervisedTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }

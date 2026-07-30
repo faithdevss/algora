@@ -1,15 +1,15 @@
 # Phase 9 — AI Taxonomy Completion
 
-Status: In progress — Track A complete (RL at 100% of the doc), B1–B7, C1–C6 and D1–D5 done. 155 of
-226 topics authored. AI sections now: ML 75, **DL 63**, NLP 56, RL 74 — 268 AI topics, and 390
+Status: In progress — Track A complete (RL at 100% of the doc), B1–B8, C1–C6 and D1–D5 done. 164 of
+226 topics authored. AI sections now: **ML 84**, DL 63, NLP 57, RL 74 — 278 AI topics, and 400
 browsable topics across the app *counted from the section lists themselves*. (The running "taxonomy at N"
 tallies in earlier revisions of this file drifted from those lists; the measured number is the one to
 trust, and `ContentCoverageTest` is what enforces it.)
-**Doc coverage is measured, not estimated: 283 of the doc's 357 entries (79%).**
-Next: C7 — generative deep learning (VAE, the GAN family, diffusion, style transfer), which empties
-`dl_architectures`.
-Track B was interrupted after B7 by a deliberate jump to Track C; **B8, B9 and B10 remain unbuilt**,
-and `ml_supervised` therefore still holds the four topics they were to redistribute.
+**Doc coverage is measured, not estimated: 293 of the doc's 357 entries (82%).**
+Next: B9 — the 17 evaluation metrics, the phase's largest thin-topic batch, which also takes
+`model_evaluation` off `ml_supervised` as its landing topic.
+Track B was interrupted after B7 by a deliberate jump to Track C; B8 has now landed, **B9 and B10
+remain unbuilt**, and `ml_supervised` therefore still holds the four topics they were to redistribute.
 
 **Both guards are now built.** Phase 10 landed the category-integrity assertion
 (`CategoryIntegrityTest`, generic over all eight sections), and B6 landed
@@ -59,26 +59,26 @@ foundational sub-sections, and Track A closed both.
 This table is the starting snapshot and is deliberately left unedited. Live status is the table
 below.
 
-## Where the phase stands (last updated after C6)
+## Where the phase stands (last updated after B8)
 
-**155 of 226 topics authored; 71 remain, in three open blocks.**
+**164 of 226 topics authored; 62 remain, in three open blocks.**
 
 | Open block | Topics | What it needs |
 |---|---|---|
-| B8–B10 | 29 | Neural-network foundations, preprocessing, metrics + practice. Track B is not finished until `ml_supervised` is empty — it still holds `perceptron`, `bias_variance`, `regularization`, `model_evaluation` |
+| B9–B10 | 20 | Evaluation metrics, then neural-network foundations and the RL view. Track B is not finished until `ml_supervised` is empty — it still holds `perceptron`, `bias_variance`, `regularization`, `model_evaluation` |
 | C7–C9 | 26 | Generative, optimizers/regularization, specialized. `dl_fundamentals` is still standing and should end empty; `dl_architectures` is down to three topics, all of which C7 takes |
 | D6 | 16 | Fine-tuning + beyond-transformers + metrics. The phase's other oversized thin-topic batch, and the last of Track D |
 
 Track A is closed (RL is 71/71 against the doc). Track D is 5 of 6. Every landed batch has updated
 `expectedCoveredCount` in the same change, so the coverage number below is a test result rather than
-a count: **283 of 357**.
+a count: **293 of 357**.
 
 **`nlp_modeling` is gone.** C5 took its last topic, which makes NLP the second section (after ML's
 `ml_unsupervised` in B6) to finish hollowing out one of the mock's two generic buckets.
 
 Nothing is blocked. The one net-new widget the phase planned (`FeatureMapPlayer`) was built in C3,
-and every batch since has run on widgets that already existed — C4, D1–D5, C5 and C6, eight in a row,
-each adding only math files. Before C3 the run was seven (B3–B7, C1, C2). The widget cost really is
+and every batch since has run on widgets that already existed — C4, D1–D5, C5, C6 and B8, nine in a
+row, each adding only math files. B8 is the first of those to reuse *three* widgets at once. Before C3 the run was seven (B3–B7, C1, C2). The widget cost really is
 front-loaded per *family* rather than per batch, as the risks section predicted after B7.
 
 ## Progress
@@ -95,7 +95,8 @@ front-loaded per *family* rather than per batch, as the risks section predicted 
 | B6 · Dimensionality Reduction | 8 | **Done** | New `DimReductionMath.kt`; no new widget. `ml_unsupervised` retired |
 | — · Guards | — | **Done** | `AiTaxonomyCoverageTest` + `DimReductionMathTest` |
 | B7 · Association Rules + Time Series | 9 | **Done** | No new widget; one additive `LabCanvas` fix. `B7MathTest` added |
-| B8–B10 | 29 | **Skipped for now** | Deliberate jump to Track C; `ml_supervised` still awaits them |
+| B8 · Data Preprocessing | 9 | **Done** | New `ml_preprocessing`; `one_hot_encoding` cross-listed into `nlp_embeddings`. No new widget — three existing ones. `PreprocessMath.kt`; three of the nine rules came out conditional |
+| B9–B10 | 20 | **Still open** | `ml_supervised` awaits them |
 | C1 · NN Basics | 4 | **Done** | No new widget. New `NeuralNetPlayer` frame guard found 4 live bugs |
 | C2 · Activation Functions | 10 | **Done** | No new widget. `autoPlot` retires hand-picked axes |
 | C3 · CNN Mechanics + Architectures | 12 | **Done** | New `FeatureMapPlayer` + `CnnMath.kt`. Plan said 11; the doc lists 12 |
@@ -109,11 +110,11 @@ front-loaded per *family* rather than per batch, as the risks section predicted 
 | D4 · Transformer Internals + Pre-trained LMs | 8 | **Done** | New `nlp_transformer` + `nlp_pretrained`; no new widget. `TransformerMath.kt`; `D4MathTest` |
 | D5 · Modern LLM Techniques | 7 | **Done** | New `nlp_modern_llm`; no new widget. `ModernLlmMath.kt` runs a real Game-of-24 search, a real index and a real retriever; `D5MathTest` overturned four planned claims |
 | D6 | 16 | Planned | |
-| **Total** | **226** | **155 done** | 390 browsable topics, counted from the section lists |
+| **Total** | **226** | **164 done** | 400 browsable topics, counted from the section lists |
 
 Sections against the doc, measured by `AiTaxonomyCoverageTest` rather than counted by hand:
-**RL 71/71**, ML 84/113, **DL 69/96**, NLP 59/77 — **283 of 357 overall**. ML is 75 topics of its
-eventual ~100; DL is at 63; NLP is at 56. Browsable topics across the app: **390**, which
+**RL 71/71**, **ML 93/113**, DL 69/96, NLP 60/77 — **293 of 357 overall**. ML is 84 topics of its
+eventual ~100; DL is at 63; NLP is at 57. Browsable topics across the app: **400**, which
 is what `DataStructuresTopics + AlgorithmsTopics + the four AI sections` actually sum to — the
 "taxonomy 200 → N of 426" running tally this table used to carry had drifted from the lists by two
 dozen, so it has been dropped in favour of the measured figure. (The per-section figures in earlier
@@ -143,8 +144,8 @@ Existing categories are kept where a doc heading matches; the two generic ML/DL/
 retired once their topics are redistributed.
 
 **Machine Learning — 12 categories.** Built so far: `ml_regression`, `ml_classification`,
-`ml_bayesian`, `ml_ensemble`, `ml_clustering`, `ml_dimreduction`, `ml_association`, `ml_timeseries`.
-Still to come: `ml_nn_foundations`, `ml_preprocessing`, `ml_metrics`, `ml_rl_fundamentals`.
+`ml_bayesian`, `ml_ensemble`, `ml_clustering`, `ml_dimreduction`, `ml_association`, `ml_timeseries`,
+`ml_preprocessing`. Still to come: `ml_nn_foundations`, `ml_metrics`, `ml_rl_fundamentals`.
 
 `ml_supervised` and `ml_unsupervised` were hollowed out a batch at a time rather than deleted up
 front, so that no category was ever empty mid-phase. **`ml_unsupervised` is now gone** — B5 took its
@@ -548,11 +549,76 @@ hand-checkable; the time-series ones are orderings — which method beats which,
 which way — because those orderings *are* the copy. A re-tune that flipped one would leave every frame
 internally consistent (all numbers are computed) and teaching the opposite of what it says.
 
-**B8 · Data Preprocessing** — 9 topics
-Min-Max Normalization · Z-Score Standardization · Label Encoding · One-Hot Encoding ·
-Missing Value Imputation · SMOTE · Outlier Detection (IQR/Z) · Chi-Square Feature Selection · RFE
-*Sims:* `ArrayWalkPlayer` (per-column transforms in place), `PointCloudPlayer` (SMOTE synthesizing
-minority points along neighbour segments; IQR fences).
+**B8 · Data Preprocessing** — 9 topics into new `ml_preprocessing` — **Done**
+`missing_value_imputation` · `outlier_detection` · `label_encoding` · `one_hot_encoding` ·
+`min_max_normalization` · `z_score_standardization` · `smote` · `chi_square_selection` · `rfe`
+
+New category `ml_preprocessing` ("Data Preprocessing", icon `browser` — a data table is what every
+topic in it transforms). Ordered as a pipeline runs rather than as the doc lists it: fix the rows
+(missing values, outliers), then the columns (encoding, scaling), then the class balance, and only
+then decide which features to keep. `one_hot_encoding` is cross-listed into `nlp_embeddings`, where
+the doc lists it as the baseline the word-embedding block improves on. Four free, five premium; the
+doc has no markers on this block, so the free four are the ones that are definitional. Ten doc
+entries closed (9 ML + 1 NLP): 283 → 293.
+
+*Sims:* three existing widgets and no new one — `PointCloudPlayer` for the three geometric topics
+(both scalers and SMOTE), `ArrayWalkPlayer` for the five column transforms, and `TokenStripPlayer`
+for `one_hot_encoding`, whose subject is a *matrix* and which the heat grid draws directly. The
+plan's suggestion was right about the first two widgets. One display decision worth recording: the
+raw-units frames divide both features by one shared constant rather than normalising each, because
+the canvas maps [0,1] and normalising per axis would perform the very transform the topic is about.
+
+New `PreprocessMath.kt` with `PreprocessMathTest` (20 tests). Preprocessing is where a plan is most
+likely to have copied a rule of thumb, so every rule is scored against a model — k-NN for the
+distance claims, least squares and a depth-limited tree for the encoding claims, honest against leaky
+cross-validation for SMOTE. **Three of the nine rules came out conditional rather than true:**
+
+- **"Scale your features" — priced.** Unscaled, income supplies **99.996%** of the k-NN squared
+  distance and age 0.004%: the classifier has two features and uses one. Scaling moves the same
+  model, untouched, from 0.738 to **0.900** (min-max) and 0.888 (z-score), with the distance split
+  becoming 44/56 and 51/49. On clean data the two scalers are a point apart, so the choice between
+  them is not about accuracy — fit either on a column containing one 5,000,000 value and min-max
+  squeezes every real point into **0.026** of its range against z-score's 0.289.
+- **"Never label-encode" — half right, and the other half is what every boosting library does.** On
+  a non-monotone target a least-squares fit scores MSE **11.26** on the label code against one-hot's
+  **0.280** — 40× — because it must pass one line through four unordered levels. A tree grown on the
+  same column reaches **0.280 at depth 2**, one-hot's number to three decimals, because two splits
+  separate four categories. The rule is a property of the (data, model) pair, not of the encoding.
+- **Neither feature selector finds an interaction, for different reasons.** On data where the label
+  is exactly xorA ⊕ xorB, chi-square ranks **noise first at 3.79** and the two features that *are*
+  the signal at 2.62 and 1.98 — each is individually independent of the label, so no univariate score
+  can rank them. RFE with a linear model fails too, dropping `useful` first, because a linear model
+  cannot express XOR and gives both halves a coefficient near zero. Chi-square is blind because it
+  looks one at a time; RFE is blind because its estimator is. On the ordinary data RFE does what
+  chi-square cannot: it drops the 90%-identical copy that chi-square ranked *second*, because with
+  the original present its coefficient collapses to −0.015.
+
+Two more measured results, both of which replace a hedge with a number:
+
+- **Imputation is not a fill, it is an edit.** At 30% missing, mean imputation takes the column's
+  variance from 8.09 to 5.89 — ratio **0.728** against the **0.70** the missing rate alone predicts —
+  and its correlation with another column from 0.982 to **0.829**. The damage crosses columns and it
+  is silent. Dropping the rows keeps both statistics intact and costs 60 of 200 rows, which is the
+  actual decision. On a skewed column the mean is 43.3 and the median 5.3.
+- **SMOTE, and the leak it invites.** Minority recall 0.667 → **1.000** on an untouched real test
+  split, with precision 0.400 → **0.333** and accuracy 0.879 → 0.818: recall was bought, not found.
+  Resampling *before* the split then reports **0.954** against the honest pipeline's **0.908** over
+  five folds at 1-NN — 4.6 points of score that will not reproduce, because a synthetic point built
+  from a validation-fold neighbour sits next to it.
+
+**The outlier topic's two failures are both solved for rather than asserted.** Masking is usually
+described with one dramatic value; measured, a single extreme *cannot* mask itself — its z-score here
+is 7.68. What masks is a group, and the lab adds extremes until the largest z falls under the
+threshold: **7 of 67 values, 10.4% of the sample**, at which point the z-score rule flags **zero**
+while IQR and MAD flag all seven. Separately, a single point in a sample of n can never exceed
+(n−1)/√n standard deviations, so **below n = 11 a threshold of 3 can never fire** — the rule is not
+strict on small samples, it is inert. Both failures are one property (the estimator is inside the
+contamination), which is what the breakdown-point table then names: 0% for mean/σ, 25% for quartiles,
+50% for median/MAD.
+
+One bug the probe caught, of the recurring kind: the distance-share measurement compared *scaled*
+reference points against *raw* queries, so it dutifully reported the raw 0/100 split for every
+scaler. The frames read perfectly well and were narrating a transform that had not happened.
 
 **B9 · Evaluation Metrics** — 17 topics
 Confusion Matrix · Accuracy · MSE · RMSE · MAE · R² · Adjusted R² · Precision & Recall · F1 ·
@@ -1310,7 +1376,7 @@ number closed no doc entry, which is worth noticing at the time rather than at t
 
 ## Suggested order
 
-~~A1 → A2~~ → ~~B1 → B2 → B3 → B4 → B5~~ → ~~guards~~ → ~~B6 → B7~~ → **B8** → B9 → B10 → ~~C1 → C2~~
+~~A1 → A2~~ → ~~B1 → B2 → B3 → B4 → B5~~ → ~~guards~~ → ~~B6 → B7 → B8~~ → **B9** → B10 → ~~C1 → C2~~
 → ~~**`FeatureMapPlayer`** → C3 → C4 → C5 → C6~~ → C7 → C8 → C9 → ~~D1~~ → ~~D2~~ → ~~D3~~ → ~~D4~~ → ~~D5~~ → D6.
 
 Struck-through batches are done. The guards step landed with B6 rather than before it, in the same

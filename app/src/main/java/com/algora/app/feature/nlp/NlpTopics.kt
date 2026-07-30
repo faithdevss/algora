@@ -73,6 +73,8 @@ private val syntaxTopics = listOf(
 // the umbrella the doc's five models sit under, and the five below author them properly.
 private val embeddingTopics = listOf(
     topic("word_embeddings", "Word Embeddings", embeddings, "Dense vectors that place similar words near each other.", isPremium = true),
+    // B8, cross-listed from ML — the doc lists one-hot as the baseline this block improves on.
+    topic("one_hot_encoding", "One-Hot Encoding", embeddings, "A column per level, the false geometry it removes, and the level everyone drops.", difficulty = Difficulty.BEGINNER),
     topic("word2vec_cbow", "Word2Vec (CBOW)", embeddings, "Predict the missing centre word from its averaged context.", isPremium = true),
     topic("word2vec_skipgram", "Word2Vec (Skip-Gram)", embeddings, "Predict each neighbour from the centre word, one pair at a time.", isPremium = true),
     topic("glove", "GloVe", embeddings, "Fit vectors to the whole corpus co-occurrence matrix at once.", isPremium = true),

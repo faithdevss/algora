@@ -279,6 +279,15 @@ object PrerequisiteGraph {
         "roberta" to listOf("bert"),
         "distilbert" to listOf("bert", "transfer_learning"),
         "hf_tokenizers" to listOf("bpe", "tokenization"),
+        "min_max_normalization" to listOf("knn"),
+        "z_score_standardization" to listOf("min_max_normalization"),
+        "label_encoding" to listOf("decision_trees"),
+        "one_hot_encoding" to listOf("label_encoding"),
+        "missing_value_imputation" to listOf("bias_variance"),
+        "outlier_detection" to listOf("z_score_standardization"),
+        "smote" to listOf("knn", "model_evaluation"),
+        "chi_square_selection" to listOf("model_evaluation"),
+        "rfe" to listOf("chi_square_selection", "regularization"),
     )
 
     fun prereqsOf(topicId: String): List<String> = prerequisites[topicId].orEmpty()
