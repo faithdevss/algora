@@ -22,7 +22,8 @@ misrepresentation Play can act on.
 | Tags | Computer science, Programming, Interview prep, Machine learning |
 | Content rating | Everyone (no user content, no communication features) |
 | Price | Free, with one lifetime in-app purchase |
-| Contact | *(fill in support email before submitting)* |
+| Contact | `hafsasultana0106@gmail.com` |
+| Privacy policy | `https://saimumislam.github.io/algora/` (source: `gh-pages` branch, `index.html`) |
 
 ---
 
