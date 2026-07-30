@@ -8,11 +8,14 @@ import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Circle
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DataArray
+import androidx.compose.material.icons.filled.Functions
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Hub
@@ -29,12 +32,16 @@ import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Quiz
+import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.SportsEsports
+import androidx.compose.material.icons.filled.Style
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material.icons.filled.TrackChanges
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -81,5 +88,16 @@ fun resolveIcon(name: String): ImageVector = when (name) {
     "bulb" -> Icons.Filled.Lightbulb
     "info" -> Icons.Filled.Info
     "menu" -> Icons.Filled.Menu
+    // Practice tab's 4-card grid: concept-specific glyphs rather than the generic
+    // chip/help/stack/target reused for the Learning-tab category cards.
+    "code" -> Icons.Filled.Code
+    "quiz" -> Icons.Filled.Quiz
+    "cards" -> Icons.Filled.Style
+    "mic" -> Icons.Filled.RecordVoiceOver
+    // Home's Quick Access grid: Data Structures/Algorithms/NLP get glyphs tied to their
+    // actual subject matter instead of the generic stack/chip/globe reused elsewhere.
+    "tree" -> Icons.Filled.AccountTree
+    "functions" -> Icons.Filled.Functions
+    "translate" -> Icons.Filled.Translate
     else -> Icons.Filled.Circle
 }

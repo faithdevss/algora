@@ -1774,7 +1774,139 @@ private fun treeOfThoughtsFrames(): List<TreeFrame> {
     return frames
 }
 
+// ── Interview-prep pattern trees ─────────────────────────────────────────────
+
+// One value tree, built once, so the two pattern topics differ only in how they walk it.
+private class PatternTree(val b: TreeBuilder) {
+    val root = b.add("5", null, 0)
+    val n4 = b.add("4", root, 0)
+    val n8 = b.add("8", root, 1)
+    val n11 = b.add("11", n4, 0)
+    val n13 = b.add("13", n8, 0)
+    val n4b = b.add("4", n8, 1)
+    val n7 = b.add("7", n11, 0)
+    val n2 = b.add("2", n11, 1)
+    val n1 = b.add("1", n4b, 0)
+
+    val children = mapOf(
+        root to listOf(n4, n8),
+        n4 to listOf(n11),
+        n8 to listOf(n13, n4b),
+        n11 to listOf(n7, n2),
+        n4b to listOf(n1),
+    )
+
+    fun valueOf(id: Int) = b.labelOf(id).toInt()
+    fun childrenOf(id: Int) = children[id].orEmpty()
+    fun isLeaf(id: Int) = childrenOf(id).isEmpty()
+}
+
+// Level order, with the queue size frozen at the top of each level — the one detail that separates a
+// level-grouped answer from a flat traversal.
+private fun treeBfsPatternFrames(): List<TreeFrame> {
+    val b = TreeBuilder()
+    val tree = PatternTree(b)
+    b.frame("Level order needs the nodes grouped by depth, not just visited in the right sequence. The queue holds one contiguous frontier.")
+
+    val queue = ArrayDeque(listOf(tree.root))
+    val done = mutableSetOf<Int>()
+    var depth = 0
+    while (queue.isNotEmpty()) {
+        val size = queue.size                     // frozen: exactly this level
+        val level = mutableListOf<Int>()
+        b.frame(
+            "Level $depth starts. Freeze size = $size before touching the queue — those $size node(s) are this level, " +
+                "and everything pushed from here belongs to the next one.",
+            active = queue.toSet(),
+            marked = done.toSet(),
+        )
+        repeat(size) {
+            val id = queue.removeFirst()
+            level += id
+            done += id
+            tree.childrenOf(id).forEach { queue.addLast(it) }
+            b.frame(
+                "Pop ${b.labelOf(id)} and enqueue its ${tree.childrenOf(id).size} child(ren). The queue now mixes " +
+                    "level $depth leftovers with level ${depth + 1} — which is why the size was frozen.",
+                active = setOf(id),
+                path = queue.toSet(),
+                marked = done - id,
+            )
+        }
+        b.frame(
+            "Level $depth = [${level.joinToString(", ") { b.labelOf(it) }}].",
+            marked = done.toSet(),
+        )
+        depth++
+    }
+
+    b.frame(
+        "$depth levels, ${done.size} nodes, each enqueued and dequeued exactly once — O(n) time, and peak memory is " +
+            "the widest level rather than the height.",
+        marked = done.toSet(),
+    )
+    return b.frames
+}
+
+// Root-to-leaf path sum: state pushed down as an argument, un-chosen on the way out.
+private fun treeDfsPatternFrames(): List<TreeFrame> {
+    val b = TreeBuilder()
+    val tree = PatternTree(b)
+    val target = 22
+    val path = mutableListOf<Int>()
+    val found = mutableSetOf<Int>()
+
+    b.frame("Find every root-to-leaf path summing to $target. The running total travels down as an argument; nothing has to be returned up.")
+
+    fun walk(id: Int, remaining: Int) {
+        path.add(id)
+        val left = remaining - tree.valueOf(id)
+        if (tree.isLeaf(id)) {
+            val hit = left == 0
+            if (hit) found.addAll(path)
+            b.frame(
+                "Leaf ${b.labelOf(id)}: budget after subtracting is $left. " +
+                    if (hit) "Exactly spent — the path ${path.joinToString(" → ") { b.labelOf(it) }} sums to $target."
+                    else "Not zero, so this path misses. Pop back up.",
+                active = setOf(id),
+                path = path.toSet() - id,
+                marked = found.toSet(),
+            )
+        } else {
+            b.frame(
+                "At ${b.labelOf(id)}: $remaining − ${tree.valueOf(id)} = $left left for the subtree below.",
+                active = setOf(id),
+                path = path.toSet() - id,
+                marked = found.toSet(),
+            )
+            tree.childrenOf(id).forEach { walk(it, left) }
+        }
+        path.removeAt(path.lastIndex)             // un-choose, so the sibling starts clean
+    }
+
+    walk(tree.root, target)
+
+    b.frame(
+        "Every node was entered once — O(n) — and the only extra memory was the call stack plus the current path, " +
+            "so O(h). A skewed tree, not a wide one, is this pattern's expensive case.",
+        marked = found.toSet(),
+    )
+    return b.frames
+}
+
 private val treeConfigs = mapOf(
+    "tree_bfs_pattern" to TreeConfig(
+        intro = "Level-order traversal with the queue size frozen per level. Watch the queue hold two levels at once " +
+            "mid-sweep — that is exactly what the frozen size protects against.",
+        markedLabel = "Visited",
+        build = ::treeBfsPatternFrames,
+    ),
+    "tree_dfs_pattern" to TreeConfig(
+        intro = "Root-to-leaf paths summing to 22. The budget is carried down as an argument and the path is popped " +
+            "on the way out, so siblings never inherit each other's state.",
+        markedLabel = "On a matching path",
+        build = ::treeDfsPatternFrames,
+    ),
     "tree_of_thoughts" to TreeConfig(
         intro = "Game of 24 searched for real: the greedy chain that fails, the evaluator's ranking measured " +
             "against what can actually reach 24, and the beam width that fixes it — priced against a better " +

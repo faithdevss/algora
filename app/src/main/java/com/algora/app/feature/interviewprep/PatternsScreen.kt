@@ -10,24 +10,22 @@ import com.algora.app.core.data.progress.progressDataStore
 import com.algora.app.core.ui.components.BrowserSection
 import com.algora.app.core.ui.components.CategoryBrowserScreen
 
+// Home's DSA Quick Access "Patterns" card lands here: the Patterns category alone, on the same
+// browser chrome as every other category screen. InterviewPrepScreen still shows all five
+// categories — this one exists so the pattern guides are one tap from Home rather than three.
 @Composable
-fun InterviewPrepScreen(onTopicClick: (String) -> Unit, onBack: () -> Unit) {
+fun PatternsScreen(onTopicClick: (String) -> Unit, onBack: () -> Unit) {
     val context = LocalContext.current
     val repository = remember { ProgressRepository(context.progressDataStore) }
     val completedIds by repository.completedTopicIds.collectAsState(initial = emptySet())
 
-    // Patterns is deliberately absent: it has its own Home Quick Access card and PatternsScreen, and
-    // listing it here too would give the same category two entry points on the same surface.
     val sections = remember {
-        InterviewPrepCategories.all
-            .filter { it.id != InterviewPrepCategories.patterns.id }
-            .map { category ->
-                BrowserSection(category, InterviewPrepTopics.topics.filter { it.categoryId == category.id })
-            }
+        val patterns = InterviewPrepCategories.patterns
+        listOf(BrowserSection(patterns, InterviewPrepTopics.topics.filter { it.categoryId == patterns.id }))
     }
 
     CategoryBrowserScreen(
-        screenTitle = "Interview Prep",
+        screenTitle = "Patterns",
         sections = sections,
         completedIds = completedIds,
         onTopicClick = onTopicClick,

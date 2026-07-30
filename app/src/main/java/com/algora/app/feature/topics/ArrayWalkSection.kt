@@ -3462,6 +3462,461 @@ private fun rfeFrames(): List<WalkFrame> {
     return frames
 }
 
+// ── Interview-prep pattern walks ─────────────────────────────────────────────
+// The pattern topics are the interview framing of algorithms that already have a walk, so each one
+// runs the variant an interviewer actually asks for rather than repeating the textbook version:
+// prefix sums against a hash map instead of a range query, binary search over an answer range
+// instead of over the array.
+
+private fun prefixSumPatternFrames(): List<WalkFrame> {
+    val a = listOf(3, 4, 7, 2, -3, 1, 4, 2)
+    val k = 7
+    val seen = LinkedHashMap<Int, Int>()
+    seen[0] = 1
+    var total = 0
+    var count = 0
+    val frames = mutableListOf<WalkFrame>()
+
+    fun mapRow(hit: Int? = null) = seen.entries.map { (prefix, times) ->
+        CellView("$prefix×$times", if (prefix == hit) CellMark.ACTIVE else CellMark.WINDOW)
+    }
+
+    frames += WalkFrame(
+        status = "Counting subarrays that sum to $k. The map is seeded with prefix 0 seen once, so a subarray " +
+            "starting at index 0 needs no special case. Note the negative value — a sliding window would break here.",
+        cells = a.map { CellView(it.toString(), CellMark.DIM) },
+        aux = mapRow(),
+        auxLabel = "prefix totals seen",
+        readout = "count = 0",
+    )
+
+    a.forEachIndexed { i, x ->
+        total += x
+        val need = total - k
+        val hits = seen[need] ?: 0
+        count += hits
+        frames += WalkFrame(
+            status = "total = $total after a[$i] = $x. A subarray ending here sums to $k exactly when some earlier " +
+                "prefix equals $need — " +
+                if (hits > 0) "that prefix was seen $hits time(s), so $hits subarray(s) end here."
+                else "no prefix of $need has been seen, so none end here.",
+            cells = a.mapIndexed { j, v ->
+                CellView(
+                    v.toString(),
+                    when {
+                        j == i -> CellMark.ACTIVE
+                        j < i -> CellMark.WINDOW
+                        else -> CellMark.IDLE
+                    },
+                )
+            },
+            pointers = mapOf(i to "i"),
+            aux = mapRow(hit = if (hits > 0) need else null),
+            auxLabel = "prefix totals seen",
+            readout = "count = $count",
+        )
+        seen[total] = (seen[total] ?: 0) + 1
+    }
+
+    frames += WalkFrame(
+        status = "$count subarrays sum to $k, found in one pass. The map holds totals, not indices — that is what " +
+            "makes counting O(n) instead of checking every (l, r) pair.",
+        cells = a.map { CellView(it.toString(), CellMark.RESULT) },
+        aux = mapRow(),
+        auxLabel = "prefix totals seen",
+        readout = "count = $count",
+    )
+    return frames
+}
+
+private fun binarySearchAnswerFrames(): List<WalkFrame> {
+    val weights = listOf(3, 2, 2, 4, 1, 4)
+    val days = 3
+    val frames = mutableListOf<WalkFrame>()
+
+    // Day index each package lands on under a given capacity; also the feasibility answer.
+    fun pack(cap: Int): List<Int> {
+        val assigned = mutableListOf<Int>()
+        var day = 1
+        var load = 0
+        for (w in weights) {
+            if (load + w > cap) {
+                day++
+                load = 0
+            }
+            load += w
+            assigned += day
+        }
+        return assigned
+    }
+
+    fun dayRow(assigned: List<Int>) = assigned.map { CellView("d$it", CellMark.WINDOW) }
+
+    var lo = weights.max()
+    var hi = weights.sum()
+
+    frames += WalkFrame(
+        status = "Ship these packages in order within $days days, minimising the ship's capacity. The array is not " +
+            "sorted and never will be — what is monotone is the question \"does capacity x work?\".",
+        cells = weights.map { CellView(it.toString(), CellMark.IDLE) },
+        readout = "lo = $lo (largest package) · hi = $hi (all in one day)",
+    )
+
+    while (lo < hi) {
+        val mid = (lo + hi) / 2
+        val assigned = pack(mid)
+        val used = assigned.last()
+        val ok = used <= days
+        frames += WalkFrame(
+            status = "Probe capacity $mid: packing left to right needs $used day(s). " +
+                if (ok) "That fits in $days — keep $mid as a candidate and search below it (hi = mid)."
+                else "That exceeds $days — $mid is too small, so every capacity ≤ $mid is too (lo = mid + 1).",
+            cells = weights.mapIndexed { i, w ->
+                CellView(w.toString(), if (assigned[i] % 2 == 1) CellMark.WINDOW else CellMark.ACTIVE)
+            },
+            aux = dayRow(assigned),
+            auxLabel = "day each package sails on",
+            readout = "lo = $lo · mid = $mid · hi = $hi · feasible = $ok",
+        )
+        if (ok) hi = mid else lo = mid + 1
+    }
+
+    val assigned = pack(lo)
+    frames += WalkFrame(
+        status = "lo and hi meet at $lo — the smallest capacity that still fits in $days days. ${weights.size} packages " +
+            "were rescanned once per probe: O(n log R) where R is the width of the answer range, not the array.",
+        cells = weights.mapIndexed { i, w ->
+            CellView(w.toString(), if (assigned[i] % 2 == 1) CellMark.RESULT else CellMark.DONE)
+        },
+        aux = dayRow(assigned),
+        auxLabel = "day each package sails on",
+        readout = "answer = $lo",
+    )
+    return frames
+}
+
+private fun monotonicStackFrames(): List<WalkFrame> {
+    val a = listOf(2, 1, 5, 6, 2, 3)
+    val nge = IntArray(a.size) { -1 }
+    val st = ArrayDeque<Int>()
+    val frames = mutableListOf<WalkFrame>()
+
+    fun stackRow() = st.map { CellView("a[$it]=${a[it]}", CellMark.WINDOW) }
+        .ifEmpty { listOf(CellView("empty", CellMark.DIM)) }
+
+    fun row(current: Int) = a.mapIndexed { i, v ->
+        CellView(
+            v.toString(),
+            when {
+                i == current -> CellMark.ACTIVE
+                nge[i] != -1 -> CellMark.DONE
+                st.contains(i) -> CellMark.WINDOW
+                else -> CellMark.IDLE
+            },
+        )
+    }
+
+    frames += WalkFrame(
+        status = "Next greater element for every index. The stack will hold indices whose answer is still unknown, " +
+            "kept in decreasing value order — anything smaller than the incoming element cannot stay.",
+        cells = a.map { CellView(it.toString(), CellMark.IDLE) },
+        aux = stackRow(),
+        auxLabel = "stack (indices, values decreasing)",
+    )
+
+    a.forEachIndexed { i, x ->
+        val resolved = mutableListOf<Int>()
+        while (st.isNotEmpty() && a[st.last()] < x) {
+            val idx = st.removeLast()
+            nge[idx] = x
+            resolved += idx
+        }
+        st.addLast(i)
+        frames += WalkFrame(
+            status = "a[$i] = $x. " +
+                if (resolved.isEmpty()) "Nothing on the stack is smaller, so nothing is resolved — push $i and wait."
+                else "It beats ${resolved.joinToString(", ") { "a[$it]=${a[it]}" }}, so $x is their next greater " +
+                    "element. Pop them, then push $i.",
+            cells = row(i),
+            pointers = mapOf(i to "i"),
+            aux = stackRow(),
+            auxLabel = "stack (indices, values decreasing)",
+        )
+    }
+
+    frames += WalkFrame(
+        status = "The ${st.size} index(es) still on the stack have nothing greater to their right, so they keep −1. " +
+            "Every index was pushed once and popped at most once — O(n), not the O(n²) of scanning right each time.",
+        cells = nge.mapIndexed { i, v ->
+            CellView(if (v == -1) "−1" else v.toString(), if (v == -1) CellMark.DIM else CellMark.RESULT)
+        },
+        aux = a.map { CellView(it.toString(), CellMark.IDLE) },
+        auxLabel = "input",
+        readout = "row above = next greater per index",
+    )
+    return frames
+}
+
+private fun cyclicSortFrames(): List<WalkFrame> {
+    val a = intArrayOf(3, 1, 5, 4, 3)
+    val n = a.size
+    val frames = mutableListOf<WalkFrame>()
+
+    fun row(current: Int, settledUpTo: Int) = a.mapIndexed { i, v ->
+        CellView(
+            v.toString(),
+            when {
+                i == current -> CellMark.ACTIVE
+                v == i + 1 && i < settledUpTo -> CellMark.DONE
+                else -> CellMark.IDLE
+            },
+        )
+    }
+
+    frames += WalkFrame(
+        status = "$n values that should be 1..$n, one of them repeated. Because every value knows the index it " +
+            "belongs at, sorting needs no comparisons — only swaps.",
+        cells = a.map { CellView(it.toString(), CellMark.IDLE) },
+        aux = List(n) { CellView("${it + 1}", CellMark.DIM) },
+        auxLabel = "index i wants value i+1",
+    )
+
+    var i = 0
+    while (i < n) {
+        val home = a[i] - 1
+        if (a[i] != a[home]) {
+            val moved = a[i]
+            val displaced = a[home]
+            a[i] = displaced
+            a[home] = moved
+            frames += WalkFrame(
+                status = "a[$i] = $moved belongs at index $home. Swap it there; index $i now holds $displaced and " +
+                    "still has to be placed, so i does not advance.",
+                cells = row(i, i),
+                pointers = mapOf(i to "i", home to "home"),
+                aux = List(n) { CellView("${it + 1}", if (it == home) CellMark.DONE else CellMark.DIM) },
+                auxLabel = "index i wants value i+1",
+            )
+        } else {
+            frames += WalkFrame(
+                status = if (a[i] == i + 1) "a[$i] = ${a[i]} is already home. Advance."
+                else "a[$i] = ${a[i]}, but index $home already holds ${a[home]} — a duplicate, so nothing can be " +
+                    "placed here. Advance and let the final scan report it.",
+                cells = row(i, i + 1),
+                pointers = mapOf(i to "i"),
+                aux = List(n) { CellView("${it + 1}", if (it <= i) CellMark.DONE else CellMark.DIM) },
+                auxLabel = "index i wants value i+1",
+            )
+            i++
+        }
+    }
+
+    val bad = (0 until n).firstOrNull { a[it] != it + 1 }
+    frames += WalkFrame(
+        status = if (bad == null) "Every value sits at its own index — nothing missing, nothing duplicated."
+        else "Index $bad holds ${a[bad]} instead of ${bad + 1}: ${a[bad]} is the duplicate and ${bad + 1} is missing. " +
+            "At most $n swaps, no hash set, O(1) extra space.",
+        cells = a.mapIndexed { j, v ->
+            CellView(v.toString(), if (j == bad) CellMark.RESULT else CellMark.DONE)
+        },
+        aux = List(n) { CellView("${it + 1}", if (it == bad) CellMark.RESULT else CellMark.DIM) },
+        auxLabel = "index i wants value i+1",
+        readout = bad?.let { "duplicate = ${a[it]} · missing = ${it + 1}" },
+    )
+    return frames
+}
+
+private fun inPlaceReversalFrames(): List<WalkFrame> {
+    val nodes = listOf("A", "B", "C", "D", "E")
+    val frames = mutableListOf<WalkFrame>()
+    var prev = -1
+    var cur = 0
+
+    fun chainRow(): List<CellView> {
+        val chain = mutableListOf<CellView>()
+        var walk = prev
+        while (walk >= 0) {
+            chain += CellView(nodes[walk], CellMark.DONE)
+            walk--
+        }
+        return chain.ifEmpty { listOf(CellView("empty", CellMark.DIM)) }
+    }
+
+    fun row() = nodes.indices.map { i ->
+        CellView(
+            nodes[i],
+            when {
+                i == cur -> CellMark.ACTIVE
+                i < cur -> CellMark.DONE
+                else -> CellMark.IDLE
+            },
+        )
+    }
+
+    fun pointerRow(): Map<Int, String> {
+        val labels = mutableMapOf<Int, String>()
+        if (prev >= 0) labels[prev] = "prev"
+        if (cur in nodes.indices) labels[cur] = "cur"
+        return labels
+    }
+
+    frames += WalkFrame(
+        status = "A → B → C → D → E, to be reversed without allocating a second list. prev starts null, cur starts " +
+            "at the head; the reversed part grows behind cur.",
+        cells = row(),
+        pointers = pointerRow(),
+        aux = chainRow(),
+        auxLabel = "reversed so far (head first)",
+    )
+
+    while (cur in nodes.indices) {
+        val next = cur + 1
+        val nextLabel = if (next in nodes.indices) nodes[next] else "null"
+        val prevLabel = if (prev >= 0) nodes[prev] else "null"
+        val moved = nodes[cur]
+        prev = cur
+        cur = next
+        frames += WalkFrame(
+            status = "Save next = $nextLabel first — the instant $moved.next is reassigned, the rest of the list is " +
+                "unreachable. Then $moved.next = $prevLabel, and both pointers slide right.",
+            cells = row(),
+            pointers = pointerRow(),
+            aux = chainRow(),
+            auxLabel = "reversed so far (head first)",
+            readout = "prev = ${nodes[prev]} · cur = ${if (cur in nodes.indices) nodes[cur] else "null"}",
+        )
+    }
+
+    frames += WalkFrame(
+        status = "cur ran off the end, so prev — ${nodes[prev]} — is the new head. One pass, three references, no " +
+            "extra list: O(n) time and O(1) space.",
+        cells = nodes.indices.reversed().map { CellView(nodes[it], CellMark.RESULT) },
+        aux = chainRow(),
+        auxLabel = "reversed so far (head first)",
+        readout = "new head = ${nodes[prev]}",
+    )
+    return frames
+}
+
+private fun kWayMergeFrames(): List<WalkFrame> {
+    val lists = listOf(
+        listOf(2, 6, 8),
+        listOf(3, 6, 7),
+        listOf(1, 3, 4),
+    )
+    val k = lists.size
+    val total = lists.sumOf { it.size }
+    val cursor = IntArray(k)
+    val out = mutableListOf<Int>()
+    val frames = mutableListOf<WalkFrame>()
+
+    // Heap entry per list: the head still unmerged. Kept as a sorted view — the point is its size, k.
+    fun heapEntries() = (0 until k).filter { cursor[it] < lists[it].size }
+        .map { it to lists[it][cursor[it]] }
+        .sortedBy { it.second }
+
+    fun heapRow(popped: Int? = null) = heapEntries().map { (list, value) ->
+        CellView("$value·L${list + 1}", if (list == popped) CellMark.ACTIVE else CellMark.DONE)
+    }.ifEmpty { listOf(CellView("empty", CellMark.DIM)) }
+
+    fun outRow() = List(total) { i ->
+        if (i < out.size) CellView(out[i].toString(), CellMark.WINDOW) else CellView("·", CellMark.DIM)
+    }
+
+    frames += WalkFrame(
+        status = "Three sorted lists: ${lists.joinToString("  ") { it.joinToString(",") }}. Concatenating and sorting " +
+            "throws the existing order away; a heap of one head per list keeps it.",
+        cells = outRow(),
+        aux = heapRow(),
+        auxLabel = "min-heap of list heads (size ≤ $k)",
+    )
+
+    while (out.size < total) {
+        val (list, value) = heapEntries().first()
+        out += value
+        cursor[list]++
+        val refill = if (cursor[list] < lists[list].size) lists[list][cursor[list]] else null
+        frames += WalkFrame(
+            status = "Smallest head is $value from L${list + 1} — pop it into the output, then " +
+                (refill?.let { "push L${list + 1}'s next element, $it." } ?: "L${list + 1} is exhausted, so the heap shrinks."),
+            cells = outRow(),
+            aux = heapRow(popped = list),
+            auxLabel = "min-heap of list heads (size ≤ $k)",
+            readout = "merged ${out.size} of $total",
+        )
+    }
+
+    frames += WalkFrame(
+        status = "$total elements merged with a heap that never held more than $k entries: O(n log $k). Sorting the " +
+            "concatenation would have been O(n log n) and would have ignored the sortedness you were handed.",
+        cells = out.map { CellView(it.toString(), CellMark.RESULT) },
+        aux = heapRow(),
+        auxLabel = "min-heap of list heads (size ≤ $k)",
+        readout = "merged = ${out.joinToString(", ")}",
+    )
+    return frames
+}
+
+private fun greedyIntervalsFrames(): List<WalkFrame> {
+    val raw = listOf(1 to 4, 2 to 3, 3 to 5, 0 to 7, 6 to 8, 5 to 9)
+    val sorted = raw.sortedBy { it.second }
+    val frames = mutableListOf<WalkFrame>()
+
+    fun label(iv: Pair<Int, Int>) = "${iv.first}–${iv.second}"
+
+    frames += WalkFrame(
+        status = "Six meetings, one room: keep as many as possible. Sorting by start or by duration both have " +
+            "counterexamples — sort by end time, because finishing early is what frees the room.",
+        cells = raw.map { CellView(label(it), CellMark.IDLE) },
+        intervals = raw.map { IntervalView(it.first, it.second, CellMark.IDLE) },
+    )
+    frames += WalkFrame(
+        status = "Sorted by end: ${sorted.joinToString(", ") { label(it) }}. Now one scan decides everything.",
+        cells = sorted.map { CellView(label(it), CellMark.WINDOW) },
+        intervals = sorted.map { IntervalView(it.first, it.second, CellMark.WINDOW) },
+    )
+
+    val kept = mutableListOf<Pair<Int, Int>>()
+    var last = Int.MIN_VALUE
+    sorted.forEachIndexed { index, iv ->
+        val take = iv.first >= last
+        if (take) {
+            kept += iv
+            last = iv.second
+        }
+        frames += WalkFrame(
+            status = if (take) "${label(iv)} starts at ${iv.first}, at or after the room frees at " +
+                (if (kept.size == 1) "the start of the day" else "${kept[kept.size - 2].second}") +
+                " — keep it. The room is now busy until ${iv.second}."
+            else "${label(iv)} starts at ${iv.first}, before the room frees at $last — it clashes, so drop it. " +
+                "Nothing kept so far needs revisiting.",
+            cells = sorted.mapIndexed { i, v ->
+                CellView(
+                    label(v),
+                    when {
+                        i == index -> CellMark.ACTIVE
+                        v in kept -> CellMark.DONE
+                        i < index -> CellMark.DIM
+                        else -> CellMark.IDLE
+                    },
+                )
+            },
+            pointers = mapOf(index to "i"),
+            intervals = kept.map { IntervalView(it.first, it.second, CellMark.DONE) } +
+                IntervalView(iv.first, iv.second, if (take) CellMark.DONE else CellMark.ACTIVE),
+        )
+    }
+
+    frames += WalkFrame(
+        status = "${kept.size} of ${raw.size} meetings fit: ${kept.joinToString(", ") { label(it) }}. The same scan " +
+            "answers \"minimum removals\" — ${raw.size - kept.size} — because the two questions are complements.",
+        cells = kept.map { CellView(label(it), CellMark.RESULT) },
+        intervals = kept.map { IntervalView(it.first, it.second, CellMark.RESULT) },
+        readout = "kept ${kept.size} · removed ${raw.size - kept.size}",
+    )
+    return frames
+}
+
 private val walkConfigs = mapOf(
     "label_encoding" to WalkConfig(
         intro = "A colour column encoded two ways, then scored: 40x the error in a linear model, and exactly nothing in a tree.",
@@ -3623,6 +4078,76 @@ private val walkConfigs = mapOf(
             "the log factor at log k rather than log m.",
         legend = heapLegend,
         build = ::topKFrequentFrames,
+    ),
+    "prefix_sum_pattern" to WalkConfig(
+        intro = "The interview form of prefix sums: counting subarrays that hit a target, with a map of totals " +
+            "already seen. The negative value in the input is there to show why a window cannot do this.",
+        legend = listOf(
+            ActiveFill to "Reading",
+            WindowFill to "In prefix",
+            ResultFill to "Answer",
+        ),
+        build = ::prefixSumPatternFrames,
+    ),
+    "binary_search_answer" to WalkConfig(
+        intro = "Binary search where the array is unsorted and the search runs over candidate answers instead. Each " +
+            "probe repacks the ships; the row underneath is which day every package sails on.",
+        legend = listOf(
+            ActiveFill to "Even-numbered day",
+            WindowFill to "Odd-numbered day",
+            ResultFill to "Final packing",
+        ),
+        build = ::binarySearchAnswerFrames,
+    ),
+    "monotonic_stack_pattern" to WalkConfig(
+        intro = "Next greater element. Watch the aux row stay in decreasing order — every pop is one index learning " +
+            "its answer, which is why the whole scan is O(n).",
+        legend = listOf(
+            ActiveFill to "Incoming",
+            WindowFill to "On stack",
+            DoneFill to "Answered",
+        ),
+        build = ::monotonicStackFrames,
+    ),
+    "cyclic_sort_pattern" to WalkConfig(
+        intro = "Values 1..n placed by swapping each one to the index it names. The array ends sorted with a single " +
+            "mismatch, and that mismatch is both the duplicate and the missing value.",
+        legend = listOf(
+            ActiveFill to "Being placed",
+            DoneFill to "Home",
+            ResultFill to "Mismatch",
+        ),
+        build = ::cyclicSortFrames,
+    ),
+    "in_place_reversal_pattern" to WalkConfig(
+        intro = "Reversing a linked list with prev / cur / next. The aux row is the reversed chain as it grows — no " +
+            "second list is ever allocated.",
+        legend = listOf(
+            ActiveFill to "cur",
+            DoneFill to "Reversed",
+            ResultFill to "Final order",
+        ),
+        build = ::inPlaceReversalFrames,
+    ),
+    "k_way_merge_pattern" to WalkConfig(
+        intro = "Three sorted lists merged through a heap that never holds more than one head per list. The output " +
+            "row fills left to right; the heap row is what makes each choice O(log k).",
+        legend = listOf(
+            ActiveFill to "Popped",
+            DoneFill to "In heap",
+            ResultFill to "Merged",
+        ),
+        build = ::kWayMergeFrames,
+    ),
+    "greedy_intervals_pattern" to WalkConfig(
+        intro = "Earliest-finish-first on one room. The track underneath shows the kept set growing, and the count " +
+            "of drops is the answer to the \"minimum removals\" phrasing of the same problem.",
+        legend = listOf(
+            ActiveFill to "Considering",
+            DoneFill to "Kept",
+            ResultFill to "Final set",
+        ),
+        build = ::greedyIntervalsFrames,
     ),
     "quickselect" to WalkConfig(
         intro = "Partition, then recurse into one side only. The comparison count at the end is the argument for " +

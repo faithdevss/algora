@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.BorderStroke
@@ -27,6 +28,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -100,28 +103,28 @@ fun PracticeScreen(onNavigate: (String) -> Unit, modifier: Modifier = Modifier) 
             route = ProblemsRoute.ROUTE,
             title = "Problem Solving",
             subtitle = "$problemCount problems · $solvedCount solved",
-            iconName = "chip",
+            iconName = "code",
             gradient = Gradients.Blue,
         ),
         PracticeEntry(
             route = QuizCatalogRoute.ROUTE,
             title = "Quizzes",
             subtitle = "$quizCount timed sets",
-            iconName = "help",
+            iconName = "quiz",
             gradient = Gradients.Amber,
         ),
         PracticeEntry(
             route = ReviewRoute.ROUTE,
             title = "Flashcards",
             subtitle = cardSubtitle,
-            iconName = "stack",
+            iconName = "cards",
             gradient = Gradients.Violet,
         ),
         PracticeEntry(
             route = Screen.InterviewPrep.route,
             title = "Interview Prep",
-            subtitle = "Patterns, company sets, mock rounds",
-            iconName = "target",
+            subtitle = "Company sets, mock rounds, AI rounds",
+            iconName = "mic",
             gradient = Gradients.Pink,
         ),
     )
@@ -224,29 +227,43 @@ private fun DailyDrillBanner(onClick: () -> Unit) {
 
 @Composable
 private fun PracticeCard(entry: PracticeEntry, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Column(
+    Box(
         modifier = modifier
             .heightIn(min = 150.dp)
-            .background(Brush.linearGradient(entry.gradient), RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick)
-            .padding(16.dp),
+            .clip(RoundedCornerShape(20.dp))
+            .background(Brush.linearGradient(entry.gradient))
+            .clickable(onClick = onClick),
     ) {
-        Box(
+        // Oversized, low-opacity echo of the card's own icon — a "meaningful" background motif
+        // rather than a generic texture, kept subtle enough not to fight the flat-gradient style.
+        Icon(
+            resolveIcon(entry.iconName),
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.14f),
             modifier = Modifier
-                .size(44.dp)
-                .background(Color.White.copy(alpha = 0.22f), RoundedCornerShape(14.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(resolveIcon(entry.iconName), contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
-        }
-        Spacer(modifier = Modifier.weight(1f))
-        Text(
-            entry.title,
-            color = Color.White,
-            fontFamily = SpaceGrotesk,
-            fontWeight = FontWeight.Bold,
-            fontSize = 16.5.sp,
+                .size(108.dp)
+                .align(Alignment.BottomEnd)
+                .offset(x = 26.dp, y = 26.dp)
+                .rotate(-18f),
         )
-        Text(entry.subtitle, color = Color.White.copy(alpha = 0.82f), fontSize = 12.5.sp)
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(Color.White.copy(alpha = 0.22f), RoundedCornerShape(14.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(resolveIcon(entry.iconName), contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                entry.title,
+                color = Color.White,
+                fontFamily = SpaceGrotesk,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.5.sp,
+            )
+            Text(entry.subtitle, color = Color.White.copy(alpha = 0.82f), fontSize = 12.5.sp)
+        }
     }
 }

@@ -417,6 +417,66 @@ private fun modularPowerTrace(exponent: Int): RecTrace {
     return RecTrace(t.nodes, t.frames)
 }
 
+// ── Interview-prep pattern traces ────────────────────────────────────────────
+
+// Combination sum: choose / recurse / un-choose, with the two prunes an interviewer asks about —
+// `start` (no earlier element may be reused, which is what stops duplicate combinations) and the
+// sorted break that kills a whole subtree the moment a candidate exceeds what is left.
+private fun combinationSumTrace(itemCount: Int): RecTrace {
+    val t = Tracer()
+    val nums = listOf(2, 3, 5, 6, 7).take(itemCount)
+    val target = 8
+    val path = mutableListOf<Int>()
+    var solutions = 0
+
+    fun walk(parent: Int?, start: Int, remaining: Int) {
+        val label = if (path.isEmpty()) "[] need $remaining" else "[${path.joinToString(",")}] need $remaining"
+        val id = t.call(parent, label)
+        if (remaining == 0) {
+            solutions++
+            t.ret(id, "✓ solution #$solutions")
+            return
+        }
+        var explored = 0
+        for (i in start until nums.size) {
+            // Sorted input, so every later candidate is worse — the whole rest of the loop dies here.
+            if (nums[i] > remaining) break
+            explored++
+            path.add(nums[i])
+            walk(id, i, remaining - nums[i])
+            path.removeAt(path.lastIndex)
+        }
+        t.ret(id, if (explored == 0) "dead end — every candidate overshoots" else "tried $explored candidate(s)")
+    }
+
+    walk(null, 0, target)
+    return RecTrace(t.nodes, t.frames)
+}
+
+// The power set as a decision tree: every node is itself a valid subset, and `start` is what keeps
+// {2,3} and {3,2} from both appearing.
+private fun subsetsTrace(itemCount: Int): RecTrace {
+    val t = Tracer()
+    val items = listOf("a", "b", "c", "d").take(itemCount)
+    val path = mutableListOf<String>()
+    var emitted = 0
+
+    fun walk(parent: Int?, start: Int) {
+        val index = ++emitted
+        val label = if (path.isEmpty()) "{}" else "{${path.joinToString(",")}}"
+        val id = t.call(parent, label)
+        for (i in start until items.size) {
+            path.add(items[i])
+            walk(id, i + 1)
+            path.removeAt(path.lastIndex)
+        }
+        t.ret(id, "subset $index of ${1 shl items.size}")
+    }
+
+    walk(null, 0)
+    return RecTrace(t.nodes, t.frames)
+}
+
 private val recursionConfigs = mapOf(
     "fast_power" to RecursionConfig(1f..20f, 13, "exponent") { fastPowerTrace(it) },
     "modular_exponentiation" to RecursionConfig(1f..20f, 13, "exponent") { modularPowerTrace(it) },
@@ -428,6 +488,8 @@ private val recursionConfigs = mapOf(
     "fibonacci_recursive" to RecursionConfig(1f..6f, 4, "n") { fibonacciTrace(it) },
     "tower_of_hanoi" to RecursionConfig(1f..4f, 3, "disks") { hanoiTrace(it) },
     "n_queens" to RecursionConfig(4f..6f, 4, "board size") { nQueensTrace(it) },
+    "backtracking_pattern" to RecursionConfig(2f..5f, 4, "candidate values") { combinationSumTrace(it) },
+    "subsets_pattern" to RecursionConfig(2f..4f, 3, "elements") { subsetsTrace(it) },
 )
 
 private fun recursionConfigFor(topicId: String): RecursionConfig =

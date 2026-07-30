@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -31,6 +32,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -47,6 +50,7 @@ import com.algora.app.core.data.settings.settingsDataStore
 import com.algora.app.core.nav.AppMode
 import com.algora.app.core.data.entitlement.EntitlementRepository
 import com.algora.app.core.data.entitlement.entitlementDataStore
+import com.algora.app.core.nav.PatternsRoute
 import com.algora.app.core.nav.PremiumRoute
 import com.algora.app.core.nav.Screen
 import com.algora.app.core.nav.SettingsRoute
@@ -348,44 +352,60 @@ private fun ModeTab(label: String, selected: Boolean, modifier: Modifier = Modif
 
 @Composable
 private fun QuickAccessCard(card: QuickCard, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Column(
+    Box(
         modifier = modifier
             .heightIn(min = 150.dp)
-            .background(Brush.linearGradient(card.gradient), RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick)
-            .padding(16.dp),
+            .clip(RoundedCornerShape(20.dp))
+            .background(Brush.linearGradient(card.gradient))
+            .clickable(onClick = onClick),
     ) {
-        Box(
+        // Oversized, low-opacity echo of the card's own icon — mirrors PracticeCard's motif so
+        // Home and Practice keep reading as the same surface.
+        Icon(
+            resolveIcon(card.iconName),
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.14f),
             modifier = Modifier
-                .size(44.dp)
-                .background(Color.White.copy(alpha = 0.22f), RoundedCornerShape(14.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(resolveIcon(card.iconName), contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
-        }
-        Spacer(modifier = Modifier.weight(1f))
-        Text(
-            card.title,
-            color = Color.White,
-            fontFamily = SpaceGrotesk,
-            fontWeight = FontWeight.Bold,
-            fontSize = 16.5.sp,
+                .size(108.dp)
+                .align(Alignment.BottomEnd)
+                .offset(x = 26.dp, y = 26.dp)
+                .rotate(-18f),
         )
-        Text(card.sub, color = Color.White.copy(alpha = 0.82f), fontSize = 12.5.sp)
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(Color.White.copy(alpha = 0.22f), RoundedCornerShape(14.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(resolveIcon(card.iconName), contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                card.title,
+                color = Color.White,
+                fontFamily = SpaceGrotesk,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.5.sp,
+            )
+            Text(card.sub, color = Color.White.copy(alpha = 0.82f), fontSize = 12.5.sp)
+        }
     }
 }
 
 private val dsaCards = listOf(
-    QuickCard(Screen.DataStructures.route, "Data Structures", "Build your foundation", "stack", Gradients.Green),
-    QuickCard(Screen.Algorithms.route, "Algorithms", "Master problem solving", "chip", Gradients.Blue),
-    // Interview Prep lives in the Practice tab, not here — one entry point per surface.
+    QuickCard(Screen.DataStructures.route, "Data Structures", "Build your foundation", "tree", Gradients.Green),
+    QuickCard(Screen.Algorithms.route, "Algorithms", "Master problem solving", "functions", Gradients.Blue),
+    // The rest of Interview Prep — quizzes, mock rounds, company sets — stays in the Practice tab.
+    // This card is the Patterns category alone, which is reference material rather than practice.
+    QuickCard(PatternsRoute.ROUTE, "Patterns", "Recognise the shape", "bulb", Gradients.Amber),
     QuickCard(Screen.Analysis.route, "Analysis", "Time & Space efficiency", "trend", Gradients.Violet),
 )
 
 private val aiCards = listOf(
     QuickCard(Screen.MachineLearning.route, "Machine Learning", "Learn from data", "robot", Gradients.Indigo),
     QuickCard(Screen.DeepLearning.route, "Deep Learning", "Neural networks", "network", Gradients.Pink),
-    QuickCard(Screen.Nlp.route, "NLP", "Language & text", "globe", Gradients.Teal),
+    QuickCard(Screen.Nlp.route, "NLP", "Language & text", "translate", Gradients.Teal),
     QuickCard(Screen.ReinforcementLearning.route, "Reinforcement Learning", "Trial & error", "game", Gradients.Orange),
 )
 

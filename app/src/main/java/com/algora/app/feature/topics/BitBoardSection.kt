@@ -375,7 +375,75 @@ private fun xorTricksFrames(): List<BitFrame> {
     return frames
 }
 
+// ── Interview-prep pattern: two unpaired numbers ─────────────────────────────
+// The single-number scan is the easy half; the interview version hides two unpaired values, and the
+// split that separates them is n & −n on the XOR of everything.
+private fun twoSinglesFrames(): List<BitFrame> {
+    val a = listOf(4, 1, 2, 1, 3, 2)          // 4 and 3 are unpaired
+    val frames = mutableListOf<BitFrame>()
+    var acc = 0
+
+    frames += BitFrame(
+        status = "Every value appears twice except two of them. No hash set is allowed, so the only tool left is " +
+            "XOR's self-inverse property: x ^ x = 0.",
+        rows = listOf(row("acc", 0)),
+        readout = "input: ${a.joinToString(", ")}",
+    )
+
+    for (x in a) {
+        val before = acc
+        acc = acc xor x
+        frames += BitFrame(
+            status = "acc ^= $x. Bits where the two agreed cancel to 0; bits where they differed survive.",
+            rows = listOf(
+                row("acc", before),
+                row("x", x, marks = arrayOf("active" to (0 until BIT_WIDTH).filter { (x shr it) and 1 == 1 }.toSet())),
+                row("acc ^ x", acc, marks = arrayOf("result" to (0 until BIT_WIDTH).filter { (acc shr it) and 1 == 1 }.toSet())),
+            ),
+        )
+    }
+
+    val lowest = acc and -acc
+    val bitIndex = Integer.numberOfTrailingZeros(lowest)
+    frames += BitFrame(
+        status = "The pairs are gone, so acc = $acc is p ^ q for the two unpaired values. It cannot be 0 — they " +
+            "differ somewhere — and n & −n isolates the lowest place where they differ, bit $bitIndex.",
+        rows = listOf(
+            row("acc = p^q", acc),
+            row("−acc", -acc and ((1 shl BIT_WIDTH) - 1)),
+            row("acc & −acc", lowest, marks = arrayOf("result" to setOf(bitIndex))),
+        ),
+        readout = "split on bit $bitIndex (value ${1 shl bitIndex})",
+    )
+
+    var withBit = 0
+    var withoutBit = 0
+    for (x in a) {
+        if (x and lowest != 0) withBit = withBit xor x else withoutBit = withoutBit xor x
+    }
+    frames += BitFrame(
+        status = "Split the input on bit $bitIndex. Each duplicate pair lands wholly in one group, and p and q land " +
+            "in different ones — so XOR-ing each group separately leaves exactly one value in each.",
+        rows = listOf(
+            row("group with bit", withBit, marks = arrayOf("result" to (0 until BIT_WIDTH).filter { (withBit shr it) and 1 == 1 }.toSet())),
+            row("group without", withoutBit, marks = arrayOf("result" to (0 until BIT_WIDTH).filter { (withoutBit shr it) and 1 == 1 }.toSet())),
+        ),
+        readout = "answers: $withBit and $withoutBit — two passes, O(1) space",
+    )
+    return frames
+}
+
 private val bitConfigs = mapOf(
+    "bit_manipulation_pattern" to BitConfig(
+        intro = "Two values appear once, everything else twice. XOR collapses the pairs, then the lowest set bit of " +
+            "the result splits the input into two groups that each hide exactly one answer.",
+        legend = listOf(
+            OneFill to "Set bit",
+            ActiveFillBit to "Incoming value",
+            ResultFillBit to "Result",
+        ),
+        build = ::twoSinglesFrames,
+    ),
     "bit_basics" to BitConfig(
         intro = "One integer as eight place-value cells. Parity, powers of two and the n & (n−1) trick are all statements about " +
             "which places are occupied — the arithmetic is incidental.",

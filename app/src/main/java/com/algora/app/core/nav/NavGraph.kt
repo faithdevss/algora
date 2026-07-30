@@ -14,6 +14,7 @@ import com.algora.app.feature.datastructures.DataStructuresScreen
 import com.algora.app.feature.deeplearning.DeepLearningScreen
 import com.algora.app.feature.home.HomeScreen
 import com.algora.app.feature.interviewprep.InterviewPrepScreen
+import com.algora.app.feature.interviewprep.PatternsScreen
 import com.algora.app.feature.machinelearning.MachineLearningScreen
 import com.algora.app.feature.nlp.NlpScreen
 import com.algora.app.feature.practice.PracticeScreen
@@ -45,6 +46,7 @@ fun NavGraph(
     NavHost(navController = navController, startDestination = Screen.Home.route, modifier = modifier) {
         // DSA mode
         composable(Screen.InterviewPrep.route) { InterviewPrepScreen(onTopicClick = openTopic, onBack = goBack) }
+        composable(PatternsRoute.ROUTE) { PatternsScreen(onTopicClick = openTopic, onBack = goBack) }
         composable(Screen.DataStructures.route) { DataStructuresScreen(onTopicClick = openTopic, onBack = goBack) }
         composable(Screen.Algorithms.route) { AlgorithmsScreen(onTopicClick = openTopic, onBack = goBack) }
         composable(Screen.Analysis.route) { AnalysisScreen(onTopicClick = openTopic, onBack = goBack) }

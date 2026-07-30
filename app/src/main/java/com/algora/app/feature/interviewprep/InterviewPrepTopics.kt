@@ -26,6 +26,21 @@ private val patternTopics = listOf(
     topic("fast_slow_pointers", "Fast & Slow Pointers", patterns, "Cycle detection and midpoint-finding pattern.", isPremium = true),
     topic("merge_intervals_pattern", "Merge Intervals", patterns, "Recognize and apply the merge-intervals pattern.", isPremium = true),
     topic("top_k_pattern", "Top-K Pattern", patterns, "Recognize and apply the top-k heap pattern.", isPremium = true),
+    topic("prefix_sum_pattern", "Prefix Sum Pattern", patterns, "Turn repeated range questions into two lookups.", isPremium = true),
+    topic("binary_search_answer", "Binary Search on Answer", patterns, "Search the answer space, not the array.", isPremium = true),
+    topic("monotonic_stack_pattern", "Monotonic Stack", patterns, "Next-greater / previous-smaller in one pass.", isPremium = true),
+    topic("cyclic_sort_pattern", "Cyclic Sort", patterns, "Place 1..n values by index to find what's missing.", isPremium = true),
+    topic("in_place_reversal_pattern", "In-place Linked List Reversal", patterns, "Rewire next-pointers with three moving references.", isPremium = true),
+    topic("k_way_merge_pattern", "K-way Merge", patterns, "Merge k sorted inputs through a size-k heap.", isPremium = true),
+    topic("greedy_intervals_pattern", "Greedy Intervals", patterns, "Sort by end time and take the earliest finisher.", isPremium = true),
+    topic("backtracking_pattern", "Backtracking Pattern", patterns, "Choose, explore, un-choose — with pruning.", isPremium = true),
+    topic("subsets_pattern", "Subsets & Combinations", patterns, "Enumerate the power set without duplicates.", isPremium = true),
+    topic("tree_bfs_pattern", "Tree BFS (Level Order)", patterns, "Queue-driven level-by-level tree traversal.", isPremium = true),
+    topic("tree_dfs_pattern", "Tree DFS (Path Sum)", patterns, "Recursive root-to-leaf paths carrying state down.", isPremium = true),
+    topic("topological_sort_pattern", "Topological Sort Pattern", patterns, "Order tasks under prerequisite constraints.", isPremium = true),
+    topic("union_find_pattern", "Union-Find Pattern", patterns, "Group merging and connectivity queries.", isPremium = true),
+    topic("matrix_islands_pattern", "Matrix Traversal (Islands)", patterns, "Flood-fill a grid to count connected regions.", isPremium = true),
+    topic("bit_manipulation_pattern", "Bit Manipulation Pattern", patterns, "XOR pairing, masks and low-bit tricks.", isPremium = true),
 )
 
 private val companySetTopics = listOf(

@@ -420,6 +420,21 @@ object TopicContentProvider {
         "fast_slow_pointers" to fastSlowPointersContent,
         "merge_intervals_pattern" to mergeIntervalsPatternContent,
         "top_k_pattern" to topKPatternContent,
+        "prefix_sum_pattern" to prefixSumPatternContent,
+        "binary_search_answer" to binarySearchAnswerContent,
+        "monotonic_stack_pattern" to monotonicStackPatternContent,
+        "cyclic_sort_pattern" to cyclicSortPatternContent,
+        "in_place_reversal_pattern" to inPlaceReversalPatternContent,
+        "k_way_merge_pattern" to kWayMergePatternContent,
+        "greedy_intervals_pattern" to greedyIntervalsPatternContent,
+        "backtracking_pattern" to backtrackingPatternContent,
+        "subsets_pattern" to subsetsPatternContent,
+        "tree_bfs_pattern" to treeBfsPatternContent,
+        "tree_dfs_pattern" to treeDfsPatternContent,
+        "topological_sort_pattern" to topologicalSortPatternContent,
+        "union_find_pattern" to unionFindPatternContent,
+        "matrix_islands_pattern" to matrixIslandsPatternContent,
+        "bit_manipulation_pattern" to bitManipulationPatternContent,
     )
 
     fun get(topicId: String): TopicContent? = byId[topicId]

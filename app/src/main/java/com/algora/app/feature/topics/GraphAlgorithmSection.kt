@@ -1469,7 +1469,243 @@ private fun hamiltonianFrames(): List<GraphAlgoFrame> {
     return frames
 }
 
+// ── Interview-prep pattern graphs ────────────────────────────────────────────
+
+// Course numbers rather than letters, because that is the wording the question arrives in. The last
+// edge closes a cycle and stays hidden until the second act.
+private val courseGraph = GraphDef(
+    nodes = listOf(
+        GNode("101", 0.08f, 0.50f),
+        GNode("201", 0.34f, 0.18f),
+        GNode("210", 0.34f, 0.82f),
+        GNode("301", 0.62f, 0.50f),
+        GNode("330", 0.90f, 0.18f),
+        GNode("401", 0.90f, 0.82f),
+    ),
+    edges = listOf(
+        GEdge("101", "201", directed = true),
+        GEdge("101", "210", directed = true),
+        GEdge("201", "301", directed = true),
+        GEdge("210", "301", directed = true),
+        GEdge("301", "330", directed = true),
+        GEdge("301", "401", directed = true),
+        GEdge("401", "201", directed = true),
+    ),
+)
+
+// Kahn's algorithm run twice on the same node set: once on the DAG, once after a back edge turns the
+// curriculum into an impossible one. The emitted count is the only cycle check either run needs.
+private fun courseScheduleFrames(): List<GraphAlgoFrame> {
+    val def = courseGraph
+    val cycleEdge = def.edges.lastIndex
+    val frames = mutableListOf<GraphAlgoFrame>()
+
+    fun run(active: List<Int>, hidden: Set<Int>, opening: String): List<String> {
+        val edges = active.map { it to def.edges[it] }
+        val inDeg = def.ids.associateWith { id -> edges.count { (_, e) -> e.to == id } }.toMutableMap()
+        val done = mutableSetOf<String>()
+        val emitted = mutableListOf<String>()
+
+        fun badges() = inDeg.mapValues { (id, d) -> if (id in done) "✓" else d.toString() }
+
+        frames += GraphAlgoFrame(status = opening, badges = badges(), hiddenEdges = hidden)
+
+        val ready = ArrayDeque(def.ids.filter { inDeg.getValue(it) == 0 })
+        frames += GraphAlgoFrame(
+            status = "Ready now: ${ready.joinToString(", ").ifEmpty { "nothing — every course is waiting on another" }}. " +
+                "In-degree is the count of prerequisites still unmet.",
+            nodeMarks = ready.associateWith { NodeMark.FRONTIER },
+            badges = badges(),
+            hiddenEdges = hidden,
+        )
+
+        while (ready.isNotEmpty()) {
+            val u = ready.removeFirst()
+            emitted += u
+            done += u
+            val outgoing = edges.filter { (_, e) -> e.from == u }
+
+            frames += GraphAlgoFrame(
+                status = "Take $u (${emitted.joinToString(" → ")}). It unlocks ${outgoing.size} course(s).",
+                nodeMarks = buildMap {
+                    putAll(done.associateWith { NodeMark.DONE })
+                    putAll(ready.associateWith { NodeMark.FRONTIER })
+                    put(u, NodeMark.ACTIVE)
+                },
+                badges = badges(),
+                edgeMarks = outgoing.associate { it.first to EdgeMark.ACTIVE },
+                hiddenEdges = hidden,
+            )
+
+            val freed = mutableListOf<String>()
+            for ((_, edge) in outgoing) {
+                val left = inDeg.getValue(edge.to) - 1
+                inDeg[edge.to] = left
+                if (left == 0) {
+                    ready += edge.to
+                    freed += edge.to
+                }
+            }
+            if (freed.isNotEmpty()) {
+                frames += GraphAlgoFrame(
+                    status = "${freed.joinToString(" and ")} drop${if (freed.size == 1) "s" else ""} to in-degree 0 — " +
+                        "every prerequisite met, so ${if (freed.size == 1) "it joins" else "they join"} the queue.",
+                    nodeMarks = buildMap {
+                        putAll(done.associateWith { NodeMark.DONE })
+                        putAll(ready.associateWith { NodeMark.FRONTIER })
+                        putAll(freed.associateWith { NodeMark.UPDATED })
+                    },
+                    badges = badges(),
+                    hiddenEdges = hidden,
+                )
+            }
+        }
+        return emitted
+    }
+
+    val order = run(
+        active = def.edges.indices.filter { it != cycleEdge },
+        hidden = setOf(cycleEdge),
+        opening = "Six courses, each arrow meaning \"must come first\". The question is whether a legal order exists " +
+            "at all, and Kahn's algorithm answers both halves at once.",
+    )
+    frames += GraphAlgoFrame(
+        status = "${order.size} of ${def.ids.size} courses emitted, so the order ${order.joinToString(" → ")} is valid. " +
+            "It is not the only one — 201 and 210 were ready simultaneously.",
+        nodeMarks = def.ids.associateWith { NodeMark.DONE },
+        badges = def.ids.associateWith { "✓" },
+        hiddenEdges = setOf(cycleEdge),
+    )
+
+    val cyclic = run(
+        active = def.edges.indices.toList(),
+        hidden = emptySet(),
+        opening = "Now add one prerequisite: 401 → 201, so 201 needs a course that needs 201. Nothing about the " +
+            "algorithm changes — only the in-degrees do.",
+    )
+    frames += GraphAlgoFrame(
+        status = "The queue drained after ${cyclic.size} of ${def.ids.size} courses. The ${def.ids.size - cyclic.size} " +
+            "left all still have an unmet prerequisite, which can only happen inside a cycle — that count is the whole " +
+            "cycle check.",
+        nodeMarks = def.ids.associateWith { if (it in cyclic) NodeMark.DONE else NodeMark.ACTIVE },
+        badges = def.ids.associateWith { if (it in cyclic) "✓" else "stuck" },
+        edgeMarks = mapOf(cycleEdge to EdgeMark.REJECTED),
+    )
+    return frames
+}
+
+private val unionFindGraph = GraphDef(
+    nodes = listOf(
+        GNode("A", 0.10f, 0.22f),
+        GNode("B", 0.10f, 0.78f),
+        GNode("C", 0.38f, 0.50f),
+        GNode("D", 0.66f, 0.18f),
+        GNode("E", 0.66f, 0.82f),
+        GNode("F", 0.92f, 0.50f),
+    ),
+    edges = listOf(
+        GEdge("A", "B"),
+        GEdge("C", "D"),
+        GEdge("B", "C"),
+        GEdge("A", "D"),
+        GEdge("E", "F"),
+        GEdge("D", "E"),
+    ),
+)
+
+// Edges arriving one at a time — the case where re-running a traversal per edge would be O(E²) and
+// where the second find of a union doubles as the cycle test.
+private fun unionFindFrames(): List<GraphAlgoFrame> {
+    val def = unionFindGraph
+    val frames = mutableListOf<GraphAlgoFrame>()
+    val parent = def.ids.associateWith { it }.toMutableMap()
+    var components = def.ids.size
+
+    fun find(x: String): String {
+        var node = x
+        while (parent.getValue(node) != node) {
+            parent[node] = parent.getValue(parent.getValue(node))   // path compression
+            node = parent.getValue(node)
+        }
+        return node
+    }
+
+    // Group index per node, ordered by first appearance so a colour never jumps between frames.
+    fun groups(): Map<String, Int> {
+        val order = LinkedHashMap<String, Int>()
+        return def.ids.associateWith { id ->
+            val root = find(id)
+            order.getOrPut(root) { order.size % GroupColors.size }
+        }
+    }
+
+    fun badges() = def.ids.associateWith { find(it) }
+
+    frames += GraphAlgoFrame(
+        status = "Six nodes, no edges yet: ${def.ids.size} components, each its own root. The edges below arrive one " +
+            "at a time, which is what rules out re-running BFS after every one.",
+        badges = badges(),
+        groups = groups(),
+        hiddenEdges = def.edges.indices.toSet(),
+        undirected = true,
+    )
+
+    def.edges.forEachIndexed { index, edge ->
+        val ra = find(edge.from)
+        val rb = find(edge.to)
+        val merged = ra != rb
+        if (merged) {
+            parent[rb] = ra
+            components--
+        }
+        frames += GraphAlgoFrame(
+            status = if (merged) "Edge ${edge.from}–${edge.to}: roots $ra and $rb differ, so attach $rb under $ra. " +
+                "Components ${components + 1} → $components."
+            else "Edge ${edge.from}–${edge.to}: both already find their way to $ra. Merging would change nothing — " +
+                "in an undirected graph that is exactly a cycle.",
+            nodeMarks = mapOf(edge.from to NodeMark.ACTIVE, edge.to to NodeMark.ACTIVE),
+            badges = badges(),
+            groups = groups(),
+            edgeMarks = mapOf(index to if (merged) EdgeMark.ACCEPTED else EdgeMark.REJECTED),
+            hiddenEdges = (index + 1 until def.edges.size).toSet(),
+            undirected = true,
+        )
+    }
+
+    frames += GraphAlgoFrame(
+        status = "$components component(s) left after ${def.edges.size} edges, and the one rejected edge is the " +
+            "graph's cycle. Every find ran in near-constant time because path compression flattened the trees as it " +
+            "went — α(n), under 5 for any n you will meet.",
+        badges = badges(),
+        groups = groups(),
+        undirected = true,
+    )
+    return frames
+}
+
 private val graphAlgoConfigs = mapOf(
+    "topological_sort_pattern" to GraphAlgoConfig(
+        intro = "Course schedule, the interview phrasing of a topological sort: first a curriculum that works, then " +
+            "the same one with a back edge added — where the emitted count, not a separate check, catches the cycle.",
+        def = courseGraph,
+        legend = listOf(
+            NodeMarkColors.getValue(NodeMark.ACTIVE) to "Taken now",
+            NodeMarkColors.getValue(NodeMark.FRONTIER) to "Ready",
+            NodeMarkColors.getValue(NodeMark.DONE) to "Completed",
+        ),
+        build = ::courseScheduleFrames,
+    ),
+    "union_find_pattern" to GraphAlgoConfig(
+        intro = "Connectivity as edges stream in. Node badges are the current root, colours are the components, and " +
+            "the one edge whose two finds agree is the cycle.",
+        def = unionFindGraph,
+        legend = listOf(
+            NodeMarkColors.getValue(NodeMark.ACTIVE) to "Edge endpoints",
+            EdgeMarkColors.getValue(EdgeMark.ACCEPTED) to "Merged",
+            EdgeMarkColors.getValue(EdgeMark.REJECTED) to "Cycle edge",
+        ),
+        build = ::unionFindFrames,
+    ),
     "bayesian_networks" to GraphAlgoConfig(
         intro = "The sprinkler network: how the missing edges buy the parameter saving, and the two ways conditioning changes what is independent of what.",
         def = bayesNetGraph,

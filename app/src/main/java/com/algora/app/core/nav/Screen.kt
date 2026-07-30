@@ -64,6 +64,12 @@ object PracticeRoute {
     const val ROUTE = "practice"
 }
 
+// The Patterns category of Interview Prep on its own, reached from Home's DSA Quick Access grid.
+// Deliberately narrower than Screen.InterviewPrep: pattern guides only, no quizzes or mock rounds.
+object PatternsRoute {
+    const val ROUTE = "patterns"
+}
+
 // Catalog of every timed quiz in QuizRegistry.
 object QuizCatalogRoute {
     const val ROUTE = "quizzes"

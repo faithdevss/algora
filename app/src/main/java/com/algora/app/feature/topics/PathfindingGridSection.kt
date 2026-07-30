@@ -358,7 +358,85 @@ private fun idaStarFrames(): List<PathFrame> {
     return frames
 }
 
+// ── Interview-prep pattern: grid as a graph ──────────────────────────────────
+// Land cells; everything else is water and reuses the wall colour. START and GOAL are deliberately
+// water so the renderer's start/goal markers never appear — this lab has neither.
+private val islandLand = setOf(
+    key(0, 0), key(0, 1), key(1, 0), key(1, 1),
+    key(0, 5), key(0, 6), key(1, 6),
+    key(2, 3), key(3, 3), key(3, 4),
+    key(4, 0), key(5, 0), key(5, 1),
+    key(4, 6), key(4, 7), key(5, 7),
+)
+
+// The outer scan starts one flood per unvisited land cell, so the number of floods started is the
+// number of connected components — no counting of anything else is needed.
+private fun islandCountFrames(): List<PathFrame> {
+    val water = (0 until GRID_ROWS * GRID_COLS).toSet() - islandLand
+    val frames = mutableListOf<PathFrame>()
+    val finished = mutableSetOf<Int>()
+    val visited = mutableSetOf<Int>()
+    var islands = 0
+
+    frames += PathFrame(
+        emptySet(), emptySet(), null, emptySet(), water,
+        "A grid is a graph: cells are nodes, the four neighbours are edges, and \"count the islands\" is \"count the " +
+            "connected components\". ${islandLand.size} land cells, no start and no goal.",
+    )
+
+    for (cell in 0 until GRID_ROWS * GRID_COLS) {
+        if (cell !in islandLand || cell in visited) continue
+        islands++
+        val region = mutableListOf(cell)
+        val queue = ArrayDeque(listOf(cell))
+        visited += cell                              // marked on enqueue, never on pop
+
+        frames += PathFrame(
+            visited.toSet() - region, queue.toSet(), cell, finished.toSet(), water,
+            "The scan hits unvisited land at (${rowOf(cell)}, ${colOf(cell)}). That is island #$islands — flood it, " +
+                "and the whole region is consumed before the scan resumes.",
+        )
+
+        while (queue.isNotEmpty()) {
+            val current = queue.removeFirst()
+            val added = mutableListOf<Int>()
+            for (next in neighbours(current, water)) {
+                if (next in visited) continue
+                visited += next                      // marking here, not on pop, keeps duplicates out of the queue
+                queue.addLast(next)
+                region += next
+                added += next
+            }
+            frames += PathFrame(
+                visited.toSet() - queue.toSet(), queue.toSet(), current, finished.toSet(), water,
+                "Expand (${rowOf(current)}, ${colOf(current)}): " +
+                    if (added.isEmpty()) "every neighbour is water or already marked."
+                    else "${added.size} new land neighbour(s) marked and queued. Marking on enqueue is what stops a " +
+                        "cell entering the queue twice.",
+            )
+        }
+
+        finished += region
+        frames += PathFrame(
+            visited.toSet() - finished, emptySet(), null, finished.toSet(), water,
+            "Island #$islands is complete at ${region.size} cell(s). Resume the outer scan from where it left off.",
+        )
+    }
+
+    frames += PathFrame(
+        emptySet(), emptySet(), null, finished.toSet(), water,
+        "$islands islands. Every cell was examined a constant number of times, so the whole thing is O(rows × cols) — " +
+            "the count comes from how many floods were started, not from anything the floods measured.",
+    )
+    return frames
+}
+
 private val pathConfigs = mapOf(
+    "matrix_islands_pattern" to PathConfig(
+        intro = "Counting islands by flood fill. Dark cells are water, and each fill consumes one whole region before " +
+            "the outer scan moves on — the number of fills started is the answer.",
+        build = ::islandCountFrames,
+    ),
     "dijkstras_algorithm" to PathConfig(
         intro = "Dijkstra on a walled grid, every step costing 1. With no sense of direction it expands in rings until the goal happens to fall inside one.",
         build = ::dijkstraFrames,
