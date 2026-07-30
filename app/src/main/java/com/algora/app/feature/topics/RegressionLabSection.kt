@@ -893,7 +893,211 @@ private fun prophetConfig() = LabConfig(
     },
 )
 
+// ── Evaluation metrics (phase 9, batch B9) ───────────────────────────────────
+// The five regression metrics are the batch's one genuinely interactive group: every one of them is a
+// function of the residuals, so a slider that moves the line moves all five at once and the
+// disagreements between them are something to be found rather than read. The dataset is the one from
+// MetricsMath.kt — 40 clean points and 4 contaminating ones — so the numbers here are the numbers
+// that file's tests pin.
+
+private fun metricPoints(seed: Int): List<LabPoint> =
+    RegressionMetricsLab.points.map { LabPoint(it.x.toFloat(), it.y.toFloat()) }
+        .let { if (seed == 4) it else it }   // fixed dataset: the metric comparison needs one picture
+
+private fun contaminatedIndices(): Set<Int> =
+    RegressionMetricsLab.points.indices.filter { RegressionMetricsLab.points[it].contaminated }.toSet()
+
+private fun metricResiduals(points: List<LabPoint>, slope: Double, intercept: Double) =
+    points.map { it.y - (intercept + slope * it.x) }
+
+private fun metricMse(points: List<LabPoint>, slope: Double, intercept: Double) =
+    metricResiduals(points, slope, intercept).sumOf { it * it } / points.size
+
+private fun metricMae(points: List<LabPoint>, slope: Double, intercept: Double) =
+    metricResiduals(points, slope, intercept).sumOf { kotlin.math.abs(it) } / points.size
+
+private fun metricR2(points: List<LabPoint>, slope: Double, intercept: Double): Double {
+    val mean = points.map { it.y.toDouble() }.average()
+    val residual = metricResiduals(points, slope, intercept).sumOf { it * it }
+    val total = points.sumOf { (it.y - mean) * (it.y - mean) }
+    return 1 - residual / total
+}
+
+private fun lineSliders(): List<LabSlider> = listOf(
+    LabSlider("Slope", 0.5f..2.6f, 1.86f),
+    LabSlider("Intercept", -2f..6f, 0.98f),
+)
+
+private fun solveToLeastSquares(points: List<LabPoint>, current: FloatArray): FloatArray {
+    val (m, c) = ordinaryLeastSquares(points)
+    return floatArrayOf(m.toFloat(), c.toFloat())
+}
+
+private fun mseConfig() = LabConfig(
+    intro = "Forty points on a line plus four from somewhere else. Move the line and watch squared error respond — then press Solve to jump to the line that minimises it.",
+    data = ::metricPoints,
+    sliders = lineSliders(),
+    solveLabel = "Least squares",
+    solve = ::solveToLeastSquares,
+    legend = listOf(LabFit to "Your line", LabReference to "MAE-optimal", LabHighlight to "Contaminating point"),
+    evaluate = { points, values ->
+        val slope = values[0].toDouble()
+        val intercept = values[1].toDouble()
+        val (xMin, xMax) = points.xRange()
+        val residuals = metricResiduals(points, slope, intercept)
+        val squared = residuals.map { it * it }
+        val badShare = contaminatedIndices().sumOf { squared[it] } / squared.sum()
+        val worst = squared.indices.maxBy { squared[it] }
+        LabResult(
+            curves = listOf(
+                sampleCurve(xMin, xMax, LabReference, dashed = true, width = 4f) {
+                    RegressionMetricsLab.absoluteLossFit.predict(it.toDouble())
+                },
+                sampleCurve(xMin, xMax, LabFit) { intercept + slope * it },
+            ),
+            readouts = listOf(
+                LabReadout(metricMse(points, slope, intercept).fmt(), "MSE"),
+                LabReadout(metricMae(points, slope, intercept).fmt(), "MAE"),
+                LabReadout("${(badShare * 100).roundToInt()}%", "Error from 4 points"),
+            ),
+            note = "MSE squares each residual, so it is a statement about the worst points rather than the typical one. The four contaminating points are ${(contaminatedIndices().size * 100.0 / points.size).roundToInt()}% of the data and currently account for ${(badShare * 100).roundToInt()}% of the total squared error — the single largest residual alone contributes ${(squared[worst] * 100 / squared.sum()).roundToInt()}%. That is why the least-squares line tilts towards them and why the dashed MAE-optimal line does not.",
+            highlighted = contaminatedIndices(),
+        )
+    },
+)
+
+private fun rmseConfig() = LabConfig(
+    intro = "The same fit scored two ways. RMSE is the square root of MSE, which changes nothing about the ranking and everything about whether the number means anything.",
+    data = ::metricPoints,
+    sliders = lineSliders(),
+    solveLabel = "Least squares",
+    solve = ::solveToLeastSquares,
+    legend = listOf(LabFit to "Your line", LabBand to "±1 RMSE", LabHighlight to "Contaminating point"),
+    evaluate = { points, values ->
+        val slope = values[0].toDouble()
+        val intercept = values[1].toDouble()
+        val (xMin, xMax) = points.xRange()
+        val mse = metricMse(points, slope, intercept)
+        val rmse = kotlin.math.sqrt(mse)
+        val mae = metricMae(points, slope, intercept)
+        val ySpread = points.maxOf { it.y } - points.minOf { it.y }
+        LabResult(
+            curves = listOf(
+                sampleCurve(xMin, xMax, LabBand, dashed = true, width = 3f) { intercept + slope * it - rmse },
+                sampleCurve(xMin, xMax, LabBand, dashed = true, width = 3f) { intercept + slope * it + rmse },
+                sampleCurve(xMin, xMax, LabFit) { intercept + slope * it },
+            ),
+            readouts = listOf(
+                LabReadout(rmse.fmt(), "RMSE"),
+                LabReadout(mse.fmt(), "MSE"),
+                LabReadout("${((rmse / ySpread) * 100).roundToInt()}%", "RMSE / y-range"),
+            ),
+            note = "MSE is ${mse.fmt()} in squared units of y, which is not a quantity anyone has intuition about. RMSE is ${rmse.fmt()} in the units of y itself, so the shaded band is a distance you can look at and judge — here it is ${((rmse / ySpread) * 100).roundToInt()}% of the full spread of the data. Note also that RMSE ≥ MAE always, and the ratio ${(rmse / mae).fmt()} is itself a diagnostic: the further above 1, the more the error is concentrated in a few points.",
+            highlighted = contaminatedIndices(),
+        )
+    },
+)
+
+private fun maeConfig() = LabConfig(
+    intro = "Two objectives, two different lines on the same data. Solve jumps to the MAE-optimal fit; the dashed line is where least squares ends up.",
+    data = ::metricPoints,
+    sliders = lineSliders(),
+    solveLabel = "Minimise MAE",
+    solve = { _, _ ->
+        floatArrayOf(
+            RegressionMetricsLab.absoluteLossFit.slope.toFloat(),
+            RegressionMetricsLab.absoluteLossFit.intercept.toFloat(),
+        )
+    },
+    legend = listOf(LabFit to "Your line", LabReference to "Least squares", LabHighlight to "Contaminating point"),
+    evaluate = { points, values ->
+        val slope = values[0].toDouble()
+        val intercept = values[1].toDouble()
+        val (xMin, xMax) = points.xRange()
+        val mae = metricMae(points, slope, intercept)
+        val mse = metricMse(points, slope, intercept)
+        LabResult(
+            curves = listOf(
+                sampleCurve(xMin, xMax, LabReference, dashed = true, width = 4f) {
+                    RegressionMetricsLab.squaredLossFit.predict(it.toDouble())
+                },
+                sampleCurve(xMin, xMax, LabFit) { intercept + slope * it },
+            ),
+            readouts = listOf(
+                LabReadout(mae.fmt(), "MAE"),
+                LabReadout(mse.fmt(), "MSE"),
+                LabReadout(slope.fmt(), "Your slope"),
+            ),
+            note = "The data was generated with slope ${RegressionMetricsLab.trueSlope}. Least squares returns ${RegressionMetricsLab.squaredLossFit.slope.fmt()} because four contaminating points dominate a squared penalty; minimising absolute error returns ${RegressionMetricsLab.absoluteLossFit.slope.fmt()}, which is the honest slope. MAE is not merely a gentler way to report the same fit — it is a different objective that selects a different model, and on contaminated data it is usually the one you want.",
+            highlighted = contaminatedIndices(),
+        )
+    },
+)
+
+private fun rSquaredConfig() = LabConfig(
+    intro = "R² compares your line against one specific rival: the horizontal line at the mean of y. Move the line below that baseline and R² goes negative.",
+    data = ::metricPoints,
+    sliders = lineSliders(),
+    solveLabel = "Least squares",
+    solve = ::solveToLeastSquares,
+    legend = listOf(LabFit to "Your line", LabReference to "Mean of y", LabHighlight to "Contaminating point"),
+    evaluate = { points, values ->
+        val slope = values[0].toDouble()
+        val intercept = values[1].toDouble()
+        val (xMin, xMax) = points.xRange()
+        val mean = points.map { it.y.toDouble() }.average()
+        val r2 = metricR2(points, slope, intercept)
+        val residual = metricResiduals(points, slope, intercept).sumOf { it * it }
+        val total = points.sumOf { (it.y - mean) * (it.y - mean) }
+        LabResult(
+            curves = listOf(
+                sampleCurve(xMin, xMax, LabReference, dashed = true, width = 4f) { mean },
+                sampleCurve(xMin, xMax, LabFit) { intercept + slope * it },
+            ),
+            readouts = listOf(
+                LabReadout(r2.fmt(), "R²"),
+                LabReadout(residual.fmt(), "SS residual"),
+                LabReadout(total.fmt(), "SS total"),
+            ),
+            note = "R² = 1 − SS_res / SS_tot, so it is the share of variance your line explains *relative to predicting the mean every time*. That baseline is the whole content of the metric: at R² = 0 your line is exactly as good as the dashed one, and below it R² is negative — currently ${r2.fmt()}. A high R² therefore says nothing about whether the model is useful, only that it beats a horizontal line, which is a low bar on data with any trend at all.",
+            highlighted = contaminatedIndices(),
+        )
+    },
+)
+
+private fun adjustedRSquaredConfig() = LabConfig(
+    intro = "One slider: how many columns of pure random noise to add to the fit. R² can only rise. Adjusted R² does not have to.",
+    data = ::metricPoints,
+    sliders = listOf(LabSlider("Noise columns", 0f..8f, 0f, steps = 8) { it.roundToInt().toString() }),
+    solveLabel = null,
+    solve = null,
+    legend = listOf(LabFit to "R²", LabReference to "Adjusted R²"),
+    evaluate = { points, values ->
+        val extra = values[0].roundToInt()
+        val steps = RegressionMetricsLab.noiseColumns
+        val here = steps.first { it.extraColumns == extra }
+        val first = steps.first()
+        LabResult(
+            curves = listOf(
+                LabCurve(steps.map { it.extraColumns.toFloat() to it.adjusted.toFloat() }, LabReference, dashed = true, width = 4f),
+                LabCurve(steps.map { it.extraColumns.toFloat() to it.rSquared.toFloat() }, LabFit),
+            ),
+            readouts = listOf(
+                LabReadout(here.rSquared.fmt(), "R²"),
+                LabReadout(here.adjusted.fmt(), "Adjusted R²"),
+                LabReadout("${extra + 1}", "Predictors"),
+            ),
+            note = "Every added column is random numbers, and yet R² rises from ${first.rSquared.fmt()} to ${steps.last().rSquared.fmt()} across the sweep — it has to, because least squares can always use one more column to fit a little more noise. Adjusted R² multiplies the unexplained share by (n−1)/(n−p−1), so it falls from ${first.adjusted.fmt()} to ${steps.last().adjusted.fmt()} over the same range. Currently ${here.rSquared.fmt()} against ${here.adjusted.fmt()}: the gap is what the extra columns cost.",
+        )
+    },
+)
+
 private val regressionLabConfigs: Map<String, () -> LabConfig> = mapOf(
+    "mse" to ::mseConfig,
+    "rmse" to ::rmseConfig,
+    "mae" to ::maeConfig,
+    "r_squared" to ::rSquaredConfig,
+    "adjusted_r_squared" to ::adjustedRSquaredConfig,
     "moving_average" to ::movingAverageConfig,
     "autoregression" to ::autoregressionConfig,
     "arima" to ::arimaConfig,
@@ -912,6 +1116,45 @@ private val regressionLabConfigs: Map<String, () -> LabConfig> = mapOf(
     "isotonic_regression" to ::isotonicConfig,
     "lars" to ::larsConfig,
 )
+
+internal val regressionLabTopicIds: Set<String> get() = regressionLabConfigs.keys
+
+/**
+ * Frame guard, added with B9 — this widget carries seventeen topics and had none. It is interactive
+ * rather than frame-based, so "does it build" means "does `evaluate` run and return finite curves at
+ * every slider setting", which is what silently produced an empty canvas before.
+ */
+internal fun regressionLabProbe(topicId: String): Int {
+    val config = (regressionLabConfigs[topicId] ?: error("no config for $topicId"))()
+    val points = config.data(4)
+    require(points.isNotEmpty()) { "$topicId produced no data" }
+    var evaluations = 0
+    val settings = mutableListOf(FloatArray(config.sliders.size) { config.sliders[it].initial })
+    config.sliders.forEachIndexed { index, slider ->
+        listOf(slider.range.start, slider.range.endInclusive, (slider.range.start + slider.range.endInclusive) / 2)
+            .forEach { value ->
+                settings += FloatArray(config.sliders.size) { if (it == index) value else config.sliders[it].initial }
+            }
+    }
+    settings.forEach { values ->
+        val result = config.evaluate(points, values)
+        result.curves.forEach { curve ->
+            require(curve.points.isNotEmpty()) { "$topicId drew an empty curve" }
+            require(curve.points.all { it.first.isFinite() && it.second.isFinite() }) {
+                "$topicId drew a non-finite point at ${values.toList()}"
+            }
+        }
+        require(result.readouts.all { it.value.isNotBlank() }) { "$topicId has a blank readout" }
+        require(result.note.isNotBlank()) { "$topicId has no note" }
+        config.solve?.let { solve ->
+            val solved = solve(points, values)
+            require(solved.size == config.sliders.size) { "$topicId solved to the wrong slider count" }
+            require(solved.all { it.isFinite() }) { "$topicId solved to a non-finite slider value" }
+        }
+        evaluations += 1
+    }
+    return evaluations
+}
 
 // ── UI ───────────────────────────────────────────────────────────────────────
 

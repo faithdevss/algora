@@ -28,12 +28,16 @@ object MachineLearningCategories {
     // B8. "browser" reads as a data table — the thing every topic in this category transforms — and
     // it was unused in this section.
     val preprocessing = Category("ml_preprocessing", "Data Preprocessing", Section.ML, 0xFFF97316, "browser")
+    // B9. "check" is the verdict every one of these seventeen topics produces, and it was unused in
+    // this section.
+    val metrics = Category("ml_metrics", "Evaluation Metrics", Section.ML, 0xFF0EA5E9, "check")
     val supervised = Category("ml_supervised", "Supervised", Section.ML, 0xFF6366F1, "robot")
 
     // `ml_unsupervised` is gone: B5 took its clustering topics and B6 took `pca`, its last one.
-    // `ml_supervised` still holds the four topics B9 and B10 will redistribute.
+    // `ml_supervised` is down to `perceptron`, `bias_variance` and `regularization` — B9 took
+    // `model_evaluation` into `ml_metrics` as its landing topic, and B10 takes the rest.
     val all = listOf(
         regression, classification, bayesian, ensemble, clustering, dimReduction, association, timeSeries,
-        preprocessing, supervised,
+        preprocessing, metrics, supervised,
     )
 }

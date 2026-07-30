@@ -36,6 +36,7 @@ private val dimReduction = MachineLearningCategories.dimReduction
 private val association = MachineLearningCategories.association
 private val timeSeries = MachineLearningCategories.timeSeries
 private val preprocessing = MachineLearningCategories.preprocessing
+private val metrics = MachineLearningCategories.metrics
 private val supervised = MachineLearningCategories.supervised
 
 // Ordered as a reading path: the plain fit, then the two penalties, then the estimators that change
@@ -120,6 +121,33 @@ private val preprocessingTopics = listOf(
     topic("rfe", "Recursive Feature Elimination", preprocessing, "Fit, drop the weakest, refit — and inherit your model's blind spots.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
 )
 
+// The doc's Model Evaluation Metrics block in full, led by the `model_evaluation` umbrella moved
+// over from ml_supervised. Ordered as a reading path: the confusion matrix first because every
+// classification metric below is a function of its four cells, then the summaries of it, then the
+// two curves, then the probability and agreement corrections, then the regression group, the two
+// loss functions and finally the two clustering indices — which are the only ones here that work
+// without labels.
+private val metricsTopics = listOf(
+    topic("model_evaluation", "Model Evaluation", metrics, "Precision, recall, F1, ROC-AUC and the thresholds behind them.", isPremium = true),
+    topic("confusion_matrix", "Confusion Matrix", metrics, "Four cells, and the only object here that loses no information.", difficulty = Difficulty.BEGINNER),
+    topic("accuracy", "Accuracy", metrics, "0.947 from the model, 0.912 from answering \"no\" every time.", difficulty = Difficulty.BEGINNER),
+    topic("precision_recall", "Precision & Recall", metrics, "Perfect precision with 53 misses, or perfect recall with 325 false alarms.", difficulty = Difficulty.BEGINNER),
+    topic("f1_score", "F1 Score", metrics, "Why the mean is harmonic, and the threshold that takes 0.569 to 0.776.", isPremium = true, difficulty = Difficulty.BEGINNER),
+    topic("roc_curve", "ROC Curve", metrics, "Threshold-free by construction — which is also what it cannot see.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("auc", "AUC Score", metrics, "One number, two definitions, and blind to calibration by design.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("log_loss", "Log Loss (Cross-Entropy)", metrics, "The metric that reads probabilities — and punishes one confident error 13×.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("cohens_kappa", "Cohen's Kappa", metrics, "Accuracy 0.912 with kappa 0.000, on the same predictions.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("mse", "Mean Squared Error (MSE)", metrics, "Four points out of 44 carrying 81% of the error.", difficulty = Difficulty.BEGINNER),
+    topic("rmse", "Root Mean Squared Error (RMSE)", metrics, "The same ranking in units you can actually judge.", difficulty = Difficulty.BEGINNER),
+    topic("mae", "Mean Absolute Error (MAE)", metrics, "Not a gentler report — a different objective that picks a different line.", isPremium = true, difficulty = Difficulty.BEGINNER),
+    topic("r_squared", "R-Squared (R²)", metrics, "Better than predicting the mean, and nothing more than that.", isPremium = true, difficulty = Difficulty.BEGINNER),
+    topic("adjusted_r_squared", "Adjusted R²", metrics, "Eight columns of noise: R² rises every time, adjusted R² does not.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("gini_impurity", "Gini Impurity", metrics, "A splitting criterion, not a metric — and not the Gini coefficient.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("hinge_loss", "Hinge Loss", metrics, "Zero past the margin, so 890 of 1,000 examples stop mattering.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("silhouette_score", "Silhouette Score", metrics, "Finds k = 3 on blobs and k = 6 on two rings.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("davies_bouldin", "Davies-Bouldin Index", metrics, "Agrees with silhouette, including when both are wrong.", isPremium = true, difficulty = Difficulty.ADVANCED),
+)
+
 private val supervisedTopics = listOf(
     topic(
         "perceptron", "The Perceptron", supervised,
@@ -128,7 +156,6 @@ private val supervisedTopics = listOf(
     ),
     topic("bias_variance", "Bias-Variance Tradeoff", supervised, "Why underfitting and overfitting pull in opposite directions.", isPremium = true),
     topic("regularization", "Regularization (L1 / L2)", supervised, "Penalize large weights so the model stops memorizing noise.", isPremium = true),
-    topic("model_evaluation", "Model Evaluation", supervised, "Precision, recall, F1, ROC-AUC and the thresholds behind them.", isPremium = true),
 )
 
 // The doc's Clustering block in full. Ordered by family: centroid, hierarchical, density, then the
@@ -186,7 +213,7 @@ private val timeSeriesTopics = listOf(
 )
 
 object MachineLearningTopics {
-    val topics: List<Topic> = regressionTopics + classificationTopics + bayesianTopics + ensembleTopics + clusteringTopics + dimReductionTopics + associationTopics + timeSeriesTopics + preprocessingTopics + supervisedTopics
+    val topics: List<Topic> = regressionTopics + classificationTopics + bayesianTopics + ensembleTopics + clusteringTopics + dimReductionTopics + associationTopics + timeSeriesTopics + preprocessingTopics + metricsTopics + supervisedTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }

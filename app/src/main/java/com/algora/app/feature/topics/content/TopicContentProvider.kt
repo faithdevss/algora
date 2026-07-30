@@ -139,6 +139,27 @@ object TopicContentProvider {
         "bias_variance" to biasVarianceContent,
         "regularization" to regularizationContent,
         "model_evaluation" to modelEvaluationContent,
+        // B9. ml_metrics, in the reading-path order MachineLearningTopics.kt lists them: confusion
+        // matrix first (every classification metric below is a function of its four cells), then
+        // its summaries, the two curves, the probability and agreement corrections, the regression
+        // group, the two loss functions, and finally the two label-free clustering indices.
+        "confusion_matrix" to confusionMatrixContent,
+        "accuracy" to accuracyContent,
+        "precision_recall" to precisionRecallContent,
+        "f1_score" to f1ScoreContent,
+        "roc_curve" to rocCurveContent,
+        "auc" to aucContent,
+        "log_loss" to logLossContent,
+        "cohens_kappa" to cohensKappaContent,
+        "mse" to mseContent,
+        "rmse" to rmseContent,
+        "mae" to maeContent,
+        "r_squared" to rSquaredContent,
+        "adjusted_r_squared" to adjustedRSquaredContent,
+        "gini_impurity" to giniImpurityContent,
+        "hinge_loss" to hingeLossContent,
+        "silhouette_score" to silhouetteScoreContent,
+        "davies_bouldin" to daviesBouldinContent,
         // B8. `one_hot_encoding` is cross-listed into NLP's embeddings category.
         "missing_value_imputation" to missingValueImputationContent,
         "outlier_detection" to outlierDetectionContent,

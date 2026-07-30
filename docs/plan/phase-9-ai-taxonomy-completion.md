@@ -1,15 +1,15 @@
 # Phase 9 — AI Taxonomy Completion
 
-Status: In progress — Track A complete (RL at 100% of the doc), B1–B8, C1–C6 and D1–D5 done. 164 of
-226 topics authored. AI sections now: **ML 84**, DL 63, NLP 57, RL 74 — 278 AI topics, and 400
+Status: In progress — Track A complete (RL at 100% of the doc), B1–B9, C1–C6 and D1–D5 done. 181 of
+226 topics authored. AI sections now: **ML 101**, DL 63, NLP 57, RL 74 — 295 AI topics, and 417
 browsable topics across the app *counted from the section lists themselves*. (The running "taxonomy at N"
 tallies in earlier revisions of this file drifted from those lists; the measured number is the one to
 trust, and `ContentCoverageTest` is what enforces it.)
-**Doc coverage is measured, not estimated: 293 of the doc's 357 entries (82%).**
-Next: B9 — the 17 evaluation metrics, the phase's largest thin-topic batch, which also takes
-`model_evaluation` off `ml_supervised` as its landing topic.
-Track B was interrupted after B7 by a deliberate jump to Track C; B8 has now landed, **B9 and B10
-remain unbuilt**, and `ml_supervised` therefore still holds the four topics they were to redistribute.
+**Doc coverage is measured, not estimated: 310 of the doc's 357 entries (87%).**
+Next: B10 — Restricted Boltzmann Machines, Deep Belief Networks and Multi-Armed Bandit, the last
+three topics standing between `ml_supervised` and empty.
+Track B was interrupted after B7 by a deliberate jump to Track C; B8 and B9 have now landed, **B10
+remains unbuilt**, and `ml_supervised` therefore still holds the three topics it was to redistribute.
 
 **Both guards are now built.** Phase 10 landed the category-integrity assertion
 (`CategoryIntegrityTest`, generic over all eight sections), and B6 landed
@@ -59,26 +59,28 @@ foundational sub-sections, and Track A closed both.
 This table is the starting snapshot and is deliberately left unedited. Live status is the table
 below.
 
-## Where the phase stands (last updated after B8)
+## Where the phase stands (last updated after B9)
 
-**164 of 226 topics authored; 62 remain, in three open blocks.**
+**181 of 226 topics authored; 45 remain, in three open blocks.**
 
 | Open block | Topics | What it needs |
 |---|---|---|
-| B9–B10 | 20 | Evaluation metrics, then neural-network foundations and the RL view. Track B is not finished until `ml_supervised` is empty — it still holds `perceptron`, `bias_variance`, `regularization`, `model_evaluation` |
+| B10 | 3 | Restricted Boltzmann Machines, Deep Belief Networks, Multi-Armed Bandit — cross-listed from existing DL/RL topics, no new content files. Track B is not finished until `ml_supervised` is empty — it still holds `perceptron`, `bias_variance`, `regularization` |
 | C7–C9 | 26 | Generative, optimizers/regularization, specialized. `dl_fundamentals` is still standing and should end empty; `dl_architectures` is down to three topics, all of which C7 takes |
 | D6 | 16 | Fine-tuning + beyond-transformers + metrics. The phase's other oversized thin-topic batch, and the last of Track D |
 
 Track A is closed (RL is 71/71 against the doc). Track D is 5 of 6. Every landed batch has updated
 `expectedCoveredCount` in the same change, so the coverage number below is a test result rather than
-a count: **293 of 357**.
+a count: **310 of 357**.
 
 **`nlp_modeling` is gone.** C5 took its last topic, which makes NLP the second section (after ML's
 `ml_unsupervised` in B6) to finish hollowing out one of the mock's two generic buckets.
 
 Nothing is blocked. The one net-new widget the phase planned (`FeatureMapPlayer`) was built in C3,
-and every batch since has run on widgets that already existed — C4, D1–D5, C5, C6 and B8, nine in a
-row, each adding only math files. B8 is the first of those to reuse *three* widgets at once. Before C3 the run was seven (B3–B7, C1, C2). The widget cost really is
+and every batch since has run on widgets that already existed — C4, D1–D5, C5, C6, B8 and B9, ten in
+a row, each adding only math files. B8 was the first of those to reuse three widgets at once; B9
+reuses three again (`PointCloudPlayer`, `NeuralNetPlayer`, `RegressionLab`), split across substrates
+rather than sim types. Before C3 the run was seven (B3–B7, C1, C2). The widget cost really is
 front-loaded per *family* rather than per batch, as the risks section predicted after B7.
 
 ## Progress
@@ -96,7 +98,8 @@ front-loaded per *family* rather than per batch, as the risks section predicted 
 | — · Guards | — | **Done** | `AiTaxonomyCoverageTest` + `DimReductionMathTest` |
 | B7 · Association Rules + Time Series | 9 | **Done** | No new widget; one additive `LabCanvas` fix. `B7MathTest` added |
 | B8 · Data Preprocessing | 9 | **Done** | New `ml_preprocessing`; `one_hot_encoding` cross-listed into `nlp_embeddings`. No new widget — three existing ones. `PreprocessMath.kt`; three of the nine rules came out conditional |
-| B9–B10 | 20 | **Still open** | `ml_supervised` awaits them |
+| B9 · Evaluation Metrics | 17 | **Done** | New `ml_metrics`; three existing widgets, no new one. `MetricsMath.kt` + `MetricsMathTest` (21 tests) |
+| B10 | 3 | **Still open** | `ml_supervised` awaits it |
 | C1 · NN Basics | 4 | **Done** | No new widget. New `NeuralNetPlayer` frame guard found 4 live bugs |
 | C2 · Activation Functions | 10 | **Done** | No new widget. `autoPlot` retires hand-picked axes |
 | C3 · CNN Mechanics + Architectures | 12 | **Done** | New `FeatureMapPlayer` + `CnnMath.kt`. Plan said 11; the doc lists 12 |
@@ -620,14 +623,77 @@ One bug the probe caught, of the recurring kind: the distance-share measurement 
 reference points against *raw* queries, so it dutifully reported the raw 0/100 split for every
 scaler. The frames read perfectly well and were narrating a transform that had not happened.
 
-**B9 · Evaluation Metrics** — 17 topics
+**B9 · Evaluation Metrics** — 17 topics into new `ml_metrics` — **Done**
 Confusion Matrix · Accuracy · MSE · RMSE · MAE · R² · Adjusted R² · Precision & Recall · F1 ·
 ROC Curve · AUC · Log Loss · Gini Impurity · Hinge Loss · Cohen's Kappa · Silhouette · Davies-Bouldin
-*Sims:* `PointCloudPlayer` threshold sweep with live cells/metrics (the `model_evaluation` frame
-builder already does this — extend it per metric), `RegressionExplorer` (error metrics reacting to a
-dragged outlier — the MAE-vs-MSE robustness payoff).
-*Note:* the existing `model_evaluation` topic stays as the umbrella overview and becomes the
-category's landing/prerequisite topic.
+
+New category `ml_metrics` ("Evaluation Metrics", icon `check` — the verdict every one of these
+topics produces). `model_evaluation` moves in from `ml_supervised` as the category's landing topic,
+which is why the doc's 17 entries land as 18 registry topics. `ml_supervised` is down to
+`perceptron`, `bias_variance` and `regularization` for B10. Ordered as a reading path rather than as
+the doc lists it: the confusion matrix first (every classification metric below is a function of its
+four cells), then its direct summaries, the two curves, the probability and agreement corrections,
+the regression group, the two loss functions, and finally the two clustering indices — the only two
+that work without labels. Two free (Confusion Matrix, Accuracy), the rest premium. 17 doc entries
+closed: 293 → **310** (87%). ML: 84 → **101**.
+
+*Sims:* no new widget — three existing ones split by substrate. `PointCloudPlayer` for Confusion
+Matrix, Accuracy, Precision & Recall, F1 (a live threshold slider over one scatter, extending the
+`model_evaluation` frame builder per metric) and for Silhouette/Davies-Bouldin (a k sweep over the
+blob/ring scatters). `NeuralNetPlayer` for ROC, AUC, Log Loss, Cohen's Kappa, Gini Impurity and Hinge
+Loss (curves and bars over the same fitted model). `RegressionLab` for MSE, RMSE, MAE, R² and
+Adjusted R² (the config-driven version, not `RegressionExplorer` — the plan's suggested widget turned
+out to take no `topicId`, the second time that's happened this phase, after C2).
+
+New `MetricsMath.kt`: one real fitted logistic model (`ScoredLab`, gradient descent on an
+imbalanced 1,000-case problem) backs every threshold metric, one pair of real fits (`RegressionMetricsLab`,
+least squares vs least-absolute-deviations on 44 points) backs the regression group, plus
+`ImpurityLab`, `MarginLab` and `ClusterMetricsLab` (real k-means with restarts over blobs and rings).
+`MetricsMathTest` (21 tests) pins the numbers every content file quotes.
+
+**The batch's throughline: metrics that look identical on one axis and diverge sharply on another.**
+
+- **Cohen's kappa on a degenerate model.** At t = 0.9 the model predicts negative for all 1,000
+  cases — accuracy **0.912**, which is also exactly the majority-class baseline. Kappa correctly
+  reports **0.000**: zero agreement beyond chance, on the same predictions accuracy called strong. At
+  t = 0.5 the model does real work — accuracy 0.947, kappa **0.546**, MCC 0.613 — a real but
+  substantial discount from the headline number.
+- **F1's threshold is not the one anyone chose.** At t = 0.5, precision 1.000 and recall 0.398 give
+  F1 **0.569**. Sweeping every threshold, F1 peaks at t = 0.34 with **0.776** — a 20-point gain from
+  moving a threshold, not retraining. The same sweep gives Fβ 0.735 (β=2) and 0.822 (β=0.5), so the
+  1:1 weighting F1 defaults to is a choice, not a law.
+- **AUC is blind to calibration by design, measured directly.** A monotone transform that pushes the
+  model's scores toward 0 and 1 leaves AUC unchanged at **0.9692** to four digits, because rank order
+  is preserved. Log loss on the same pair moves from 0.1750 to **0.2876** (+64%) and Brier from 0.0437
+  to **0.0556** (+27%) — log loss reacts harder than its squared-error cousin, and both catch what a
+  ranking metric structurally cannot.
+- **Log loss's confident-error multiplier.** The single worst prediction (the model said 0.109 for a
+  true positive) contributes 2.214 to the loss sum against a mean per-example contribution of 0.1750
+  — a **12.7×** multiplier, close enough to round to the "punishes one confident error 13×" the topic
+  leads with.
+- **Misclassification rate ties two splits that Gini and entropy correctly separate.** Two candidate
+  splits of a balanced 400-example node score identically on error-rate gain (**0.2500** both), while
+  Gini gain (0.1250 vs **0.1667**) and entropy gain (0.1887 vs **0.3113**) both prefer the second — the
+  actual, measured reason trees are grown on Gini or entropy rather than error rate.
+- **Hinge loss's flat zero, counted.** Only **110 of 1,000** margins have nonzero hinge loss — the
+  support vectors; the other 890 contribute nothing to the loss or its gradient. Logistic loss, same
+  margins, is nonzero for all 1,000: even at margin 10 its gradient is a nonzero 4.54×10⁻⁵.
+- **R² can only rise; adjusted R² doesn't have to.** Adding 8 columns of pure random noise raises R²
+  at every single step (0.6106 → 0.6453, strictly). Adjusted R² on the identical fits nets a 5-point
+  *drop* over the same run (0.6014 → 0.5514) — not perfectly monotone (one step, p=4, rises against
+  the trend) but the correction is real where plain R² has none.
+- **Silhouette and Davies-Bouldin agree — including when both are wrong.** On three well-separated
+  blobs both correctly peak/trough at k = 3 (silhouette 0.8452, DB 0.2214). On two concentric rings,
+  whose true structure is k = 2, both instead pick k = 6 (silhouette 0.4629, DB 0.6741) — the true k
+  scores only 0.3632 / 1.1400. Two indices built from unrelated formulas fail identically because both
+  assume compact, convex clusters, which a ring is not: agreement between them here is not independent
+  confirmation, it's the same blind spot measured twice.
+- **MSE vs MAE pick different lines, and neither dominates.** On 44 points (4 deliberately
+  contaminated), the least-squares fit scores MSE 18.482 but MAE 2.601; a fit trained to minimize MAE
+  directly scores MAE **1.894** but MSE **21.765** — worse under the other's metric. The 4
+  contaminated points (9.1% of the data) carry **81.2%** of the least-squares fit's total squared
+  error, and the MAE-optimal fit's slope (1.434) sits far closer to the true 1.4 than least squares'
+  slope, which squaring drags to 1.861.
 
 **B10 · NN Foundations + RL Fundamentals (ML view)** — 3 topics
 Restricted Boltzmann Machines · Deep Belief Networks · Multi-Armed Bandit
@@ -1371,12 +1437,14 @@ number closed no doc entry, which is worth noticing at the time rather than at t
 - **Browse-list length.** 426 topics changes the character of the category screens, and ML alone is
   heading for 12 categories. Per-category search exists (Phase 2); scroll performance and whether
   Home's Quick Access grid is still a sensible sole entry point are both unchecked.
-- **Batch B9 (17 metrics) and D6 (16)** remain the thin-topic batches, and the most likely to read as
-  filler if authored mechanically. Each metric needs its own "when this one misleads you" angle.
+- **D6 (16)** remains the phase's other oversized thin-topic batch, and the most likely to read as
+  filler if authored mechanically. B9 (17 metrics) landed with each metric given its own "when this
+  one misleads you" angle, scored against real models rather than asserted — D6 needs the same
+  treatment.
 
 ## Suggested order
 
-~~A1 → A2~~ → ~~B1 → B2 → B3 → B4 → B5~~ → ~~guards~~ → ~~B6 → B7 → B8~~ → **B9** → B10 → ~~C1 → C2~~
+~~A1 → A2~~ → ~~B1 → B2 → B3 → B4 → B5~~ → ~~guards~~ → ~~B6 → B7 → B8 → B9~~ → **B10** → ~~C1 → C2~~
 → ~~**`FeatureMapPlayer`** → C3 → C4 → C5 → C6~~ → C7 → C8 → C9 → ~~D1~~ → ~~D2~~ → ~~D3~~ → ~~D4~~ → ~~D5~~ → D6.
 
 Struck-through batches are done. The guards step landed with B6 rather than before it, in the same

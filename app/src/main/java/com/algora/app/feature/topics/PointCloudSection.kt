@@ -3975,7 +3975,555 @@ private fun smoteFrames(): List<CloudFrame> {
     return frames
 }
 
+// ── Evaluation metrics (phase 9, batch B9) ───────────────────────────────────
+// Six of the seventeen metric topics are geometric. The four classification ones all draw the same
+// 1,000-point feature space and the same fitted logistic boundary, moved to a different threshold —
+// so accuracy 0.947 and F1 0.569 at t = 0.5 are two readings of one picture rather than two
+// examples. The two clustering indices score real k-means runs. Numbers from MetricsMath.kt.
+
+private fun metricBounds(): List<Double> {
+    val xs = ScoredLab.samples.map { it.features[0] }
+    val ys = ScoredLab.samples.map { it.features[1] }
+    return listOf(xs.min(), xs.max(), ys.min(), ys.max())
+}
+
+private fun metricPlace(x: Double, y: Double): P {
+    val (x0, x1, y0, y1) = metricBounds().let { listOf(it[0], it[1], it[2], it[3]) }
+    return P(
+        (0.05 + 0.9 * (x - x0) / (x1 - x0)).toFloat(),
+        (0.05 + 0.9 * (y - y0) / (y1 - y0)).toFloat(),
+    )
+}
+
+/** Groups: 0 true negative, 1 true positive, 2 false positive, 3 false negative. */
+private fun metricDots(threshold: Double, dimCorrect: Boolean = false): List<Dot> =
+    ScoredLab.samples.zip(ScoredLab.scored).map { (sample, scored) ->
+        val predicted = scored.score >= threshold
+        val group = when {
+            predicted && scored.label == 1 -> 1
+            predicted && scored.label == 0 -> 2
+            !predicted && scored.label == 1 -> 3
+            else -> 0
+        }
+        val emphasis = when {
+            group >= 2 -> Emphasis.ACTIVE
+            dimCorrect -> Emphasis.FADED
+            else -> Emphasis.NORMAL
+        }
+        Dot(metricPlace(sample.features[0], sample.features[1]), group, emphasis)
+    }
+
+private fun boundarySegment(threshold: Double): Segment {
+    val (slope, intercept) = ScoredLab.boundaryFor(threshold)
+    val bounds = metricBounds()
+    val x0 = bounds[0]
+    val x1 = bounds[1]
+    return Segment(
+        metricPlace(x0, (slope * x0 + intercept).coerceIn(bounds[2], bounds[3])),
+        metricPlace(x1, (slope * x1 + intercept).coerceIn(bounds[2], bounds[3])),
+        AxisColor,
+    )
+}
+
+private fun cellProfile(cells: ScoredLab.Cells): List<ProfileBar> {
+    val biggest = maxOf(cells.tp, cells.fp, cells.fn, cells.tn).toFloat()
+    return listOf(
+        ProfileBar(cells.tp / biggest, 1, Emphasis.NORMAL),
+        ProfileBar(cells.fp / biggest, 2, Emphasis.ACTIVE),
+        ProfileBar(cells.fn / biggest, 3, Emphasis.ACTIVE),
+        ProfileBar(cells.tn / biggest, 0, Emphasis.NORMAL),
+    )
+}
+
+private fun confusionMatrixFrames(): List<CloudFrame> {
+    val frames = mutableListOf<CloudFrame>()
+    val half = ScoredLab.cellsAt(0.5)
+
+    frames += CloudFrame(
+        status = "${ScoredLab.scored.size} cases, ${ScoredLab.positives} of them positive — a " +
+            "${"%.0f".format(ScoredLab.positives * 100.0 / ScoredLab.scored.size)}% base rate. The line is a " +
+            "fitted logistic model's decision boundary at the default threshold of 0.5. Every metric in this " +
+            "category is a summary of the four groups this picture already contains.",
+        dots = metricDots(0.5),
+        segments = listOf(boundarySegment(0.5)),
+        readout = "${ScoredLab.positives} positives, ${ScoredLab.negatives} negatives",
+    )
+
+    frames += CloudFrame(
+        status = "Those four groups are the confusion matrix. At t = 0.5: ${half.tp} true positives, " +
+            "${half.fp} false positives, ${half.fn} false negatives, ${half.tn} true negatives. Nothing is " +
+            "summarised yet — this is the raw material, and it is the only object in this category that loses no " +
+            "information.",
+        dots = metricDots(0.5),
+        segments = listOf(boundarySegment(0.5)),
+        profile = cellProfile(half),
+        profileLabel = "TP ${half.tp} · FP ${half.fp} · FN ${half.fn} · TN ${half.tn}",
+        readout = "four numbers, and every metric below is a function of them",
+    )
+
+    frames += CloudFrame(
+        status = "The asymmetry is the point. ${half.tn} of the ${half.total} cases sit in one cell, so any metric " +
+            "that averages over all four is dominated by it. The two error cells — ${half.fp} false alarms and " +
+            "${half.fn} misses — are the ones a decision actually turns on, and they are ${"%.1f".format((half.fp + half.fn) * 100.0 / half.total)}% " +
+            "of the table.",
+        dots = metricDots(0.5, dimCorrect = true),
+        segments = listOf(boundarySegment(0.5)),
+        profile = cellProfile(half),
+        profileLabel = "the two error cells, against the two correct ones",
+        readout = "${half.fp} false alarms, ${half.fn} misses",
+    )
+
+    val low = ScoredLab.cellsAt(0.2)
+    frames += CloudFrame(
+        status = "Moving the threshold slides the same line — a logistic boundary is w₀ + w₁x + w₂y = logit(t), so " +
+            "the model does not change, only where it is cut. At t = 0.2 the matrix becomes ${low.tp} / ${low.fp} / " +
+            "${low.fn} / ${low.tn}: ${low.tp - half.tp} more positives found, at ${low.fp - half.fp} more false " +
+            "alarms.",
+        dots = metricDots(0.2),
+        segments = listOf(boundarySegment(0.5), boundarySegment(0.2)),
+        profile = cellProfile(low),
+        profileLabel = "TP ${low.tp} · FP ${low.fp} · FN ${low.fn} · TN ${low.tn}",
+        readout = "one model, many matrices",
+    )
+
+    frames += CloudFrame(
+        status = "Which is why a confusion matrix has to be read alongside the threshold that produced it. " +
+            "\"The model has ${half.fn} misses\" is not a property of the model; it is a property of the model at " +
+            "0.5. The four cells at every threshold are what the ROC and precision-recall curves plot.",
+        dots = metricDots(0.2, dimCorrect = true),
+        segments = ScoredLab.thresholds.map { boundarySegment(it) },
+        readout = "${ScoredLab.thresholds.size} thresholds, ${ScoredLab.thresholds.size} matrices, one model",
+    )
+    return frames
+}
+
+private fun accuracyFrames(): List<CloudFrame> {
+    val frames = mutableListOf<CloudFrame>()
+    val half = ScoredLab.cellsAt(0.5)
+    val extreme = ScoredLab.cellsAt(0.99)
+
+    frames += CloudFrame(
+        status = "Accuracy is (TP + TN) / everything: the share of cases the model gets right. At t = 0.5 that is " +
+            "(${half.tp} + ${half.tn}) / ${half.total} = ${"%.3f".format(half.accuracy)}, which sounds like a " +
+            "finished result.",
+        dots = metricDots(0.5),
+        segments = listOf(boundarySegment(0.5)),
+        readout = "accuracy ${"%.3f".format(half.accuracy)}",
+    )
+
+    frames += CloudFrame(
+        status = "Here is the same number without a model. Predict \"negative\" for every case and accuracy is " +
+            "${"%.3f".format(ScoredLab.majorityAccuracy)} — because ${ScoredLab.negatives} of ${ScoredLab.scored.size} " +
+            "cases are negative. The trained model's ${"%.3f".format(half.accuracy)} is worth " +
+            "${"%.1f".format((half.accuracy - ScoredLab.majorityAccuracy) * 100)} points over answering the same " +
+            "way every time.",
+        dots = ScoredLab.samples.zip(ScoredLab.scored).map { (sample, scored) ->
+            Dot(metricPlace(sample.features[0], sample.features[1]), if (scored.label == 1) 3 else 0, if (scored.label == 1) Emphasis.ACTIVE else Emphasis.FADED)
+        },
+        profile = listOf(
+            ProfileBar(ScoredLab.majorityAccuracy.toFloat(), 0, Emphasis.ACTIVE),
+            ProfileBar(half.accuracy.toFloat(), 1, Emphasis.NORMAL),
+        ),
+        profileLabel = "accuracy: predict-all-negative, then the model",
+        readout = "the baseline is ${"%.3f".format(ScoredLab.majorityAccuracy)}, not 0.5",
+    )
+
+    frames += CloudFrame(
+        status = "And it gets worse the harder you push. At t = 0.99 the model predicts almost nothing positive: " +
+            "${extreme.tp} true positives, ${extreme.fn} misses — it has found " +
+            "${"%.0f".format(extreme.recall * 100)}% of the cases anyone cares about — and accuracy is " +
+            "${"%.3f".format(extreme.accuracy)}, which is *higher* than at some thresholds that work far better.",
+        dots = metricDots(0.99),
+        segments = listOf(boundarySegment(0.99)),
+        profile = cellProfile(extreme),
+        profileLabel = "TP ${extreme.tp} · FP ${extreme.fp} · FN ${extreme.fn} · TN ${extreme.tn}",
+        readout = "accuracy ${"%.3f".format(extreme.accuracy)}, recall ${"%.3f".format(extreme.recall)}",
+    )
+
+    val sweep = ScoredLab.thresholds.map { it to ScoredLab.cellsAt(it) }
+    frames += CloudFrame(
+        status = "Across the whole threshold range, accuracy is nearly flat while the thing the model is for is " +
+            "not. From t = ${sweep.first().first} to t = ${sweep.last().first}, accuracy moves between " +
+            "${"%.3f".format(sweep.minOf { it.second.accuracy })} and ${"%.3f".format(sweep.maxOf { it.second.accuracy })} " +
+            "while recall moves between ${"%.3f".format(sweep.minOf { it.second.recall })} and " +
+            "${"%.3f".format(sweep.maxOf { it.second.recall })}. A metric that barely responds cannot be used to " +
+            "choose an operating point.",
+        dots = metricDots(0.5, dimCorrect = true),
+        profile = sweep.map { ProfileBar(it.second.accuracy.toFloat(), 0, Emphasis.NORMAL) } +
+            sweep.map { ProfileBar(it.second.recall.toFloat(), 1, Emphasis.ACTIVE) },
+        profileLabel = "accuracy at each threshold, then recall at each threshold",
+        readout = "flat metric, moving model",
+    )
+
+    frames += CloudFrame(
+        status = "So accuracy is honest on balanced data and misleading on everything else. Two rules follow: " +
+            "always report the majority-class baseline next to it — ${"%.3f".format(ScoredLab.majorityAccuracy)} " +
+            "here — and reach for precision, recall or a chance-corrected metric like Cohen's kappa when the " +
+            "classes are not balanced. Kappa on this same matrix reads ${"%.3f".format(half.kappa)}.",
+        dots = metricDots(0.5),
+        segments = listOf(boundarySegment(0.5)),
+        profile = listOf(
+            ProfileBar(half.accuracy.toFloat(), 1, Emphasis.NORMAL),
+            ProfileBar(ScoredLab.majorityAccuracy.toFloat(), 0, Emphasis.FADED),
+            ProfileBar(half.kappa.toFloat(), 2, Emphasis.ACTIVE),
+        ),
+        profileLabel = "accuracy · baseline · kappa",
+        readout = "accuracy ${"%.3f".format(half.accuracy)} vs kappa ${"%.3f".format(half.kappa)}",
+    )
+    return frames
+}
+
+private fun precisionRecallFrames(): List<CloudFrame> {
+    val frames = mutableListOf<CloudFrame>()
+    val half = ScoredLab.cellsAt(0.5)
+    val low = ScoredLab.cellsAt(0.1)
+
+    frames += CloudFrame(
+        status = "Precision and recall split the model's errors into the two kinds a decision can care about. " +
+            "Precision is TP / (TP + FP) — of everything flagged, how much was real. Recall is TP / (TP + FN) — of " +
+            "everything real, how much was found. Neither one mentions the ${half.tn} true negatives at all.",
+        dots = metricDots(0.5),
+        segments = listOf(boundarySegment(0.5)),
+        profile = cellProfile(half),
+        profileLabel = "TP ${half.tp} · FP ${half.fp} · FN ${half.fn} · TN ${half.tn} (unused by both)",
+        readout = "precision ${"%.3f".format(half.precision)}, recall ${"%.3f".format(half.recall)}",
+    )
+
+    frames += CloudFrame(
+        status = "At t = 0.5 this model is precise and timid: precision ${"%.3f".format(half.precision)} — " +
+            "everything it flags is real — and recall ${"%.3f".format(half.recall)}, so it misses " +
+            "${half.fn} of ${ScoredLab.positives} positives. A fraud team reading only the precision would call " +
+            "this perfect; the ${half.fn} missed cases are the entire cost of that reading.",
+        dots = metricDots(0.5, dimCorrect = true),
+        segments = listOf(boundarySegment(0.5)),
+        readout = "${half.fn} misses, 0 false alarms",
+    )
+
+    frames += CloudFrame(
+        status = "Drop the threshold to 0.1 and the trade reverses: recall ${"%.3f".format(low.recall)} — every " +
+            "positive found — at precision ${"%.3f".format(low.precision)}, meaning " +
+            "${"%.0f".format((1 - low.precision) * 100)}% of the flags are false alarms. Same model, same scores. " +
+            "The threshold is a business decision, not a modelling one.",
+        dots = metricDots(0.1),
+        segments = listOf(boundarySegment(0.5), boundarySegment(0.1)),
+        profile = cellProfile(low),
+        profileLabel = "TP ${low.tp} · FP ${low.fp} · FN ${low.fn} · TN ${low.tn}",
+        readout = "recall ${"%.3f".format(low.recall)}, precision ${"%.3f".format(low.precision)}",
+    )
+
+    val sweep = ScoredLab.thresholds.map { it to ScoredLab.cellsAt(it) }
+    frames += CloudFrame(
+        status = "The whole trade, threshold by threshold. Precision rises and recall falls monotonically, and " +
+            "there is no threshold where both are high — that is the shape of the problem, not a defect of the " +
+            "model. Which end you choose depends on whether a miss or a false alarm costs more.",
+        dots = metricDots(0.3, dimCorrect = true),
+        profile = sweep.map { ProfileBar(it.second.precision.toFloat(), 1, Emphasis.NORMAL) } +
+            sweep.map { ProfileBar(it.second.recall.toFloat(), 3, Emphasis.ACTIVE) },
+        profileLabel = "precision at each threshold, then recall",
+        readout = "one curve, and the cost ratio picks the point on it",
+    )
+
+    frames += CloudFrame(
+        status = "One more thing both metrics hide, and it is the reason they are always quoted as a pair: " +
+            "neither uses TN, so both are blind to the size of the negative class. Precision " +
+            "${"%.3f".format(low.precision)} at t = 0.1 would be the same number if there were ten times as many " +
+            "negatives and the model flagged ten times as many of them — the base rate is inside precision, and " +
+            "outside recall entirely.",
+        dots = metricDots(0.1, dimCorrect = true),
+        segments = listOf(boundarySegment(0.1)),
+        readout = "quote both, with the threshold",
+    )
+    return frames
+}
+
+private fun f1Frames(): List<CloudFrame> {
+    val frames = mutableListOf<CloudFrame>()
+    val half = ScoredLab.cellsAt(0.5)
+    val best = ScoredLab.cellsAt(ScoredLab.bestF1Threshold)
+
+    frames += CloudFrame(
+        status = "F1 is the harmonic mean of precision and recall: 2PR / (P + R). The harmonic part is the whole " +
+            "design — it is dragged towards the smaller of the two, so a model cannot score well by being " +
+            "excellent at one and hopeless at the other.",
+        dots = metricDots(0.5),
+        segments = listOf(boundarySegment(0.5)),
+        profile = listOf(
+            ProfileBar(half.precision.toFloat(), 1, Emphasis.NORMAL),
+            ProfileBar(half.recall.toFloat(), 3, Emphasis.NORMAL),
+            ProfileBar(half.f1.toFloat(), 2, Emphasis.ACTIVE),
+        ),
+        profileLabel = "precision · recall · F1",
+        readout = "P ${"%.3f".format(half.precision)}, R ${"%.3f".format(half.recall)} → F1 ${"%.3f".format(half.f1)}",
+    )
+
+    frames += CloudFrame(
+        status = "Compare the two means on this matrix. The arithmetic mean of ${"%.3f".format(half.precision)} and " +
+            "${"%.3f".format(half.recall)} is ${"%.3f".format((half.precision + half.recall) / 2)}; the harmonic " +
+            "mean is ${"%.3f".format(half.f1)}. A perfect-precision, one-case model would score 0.5 on the first " +
+            "and almost 0 on the second, which is why F1 is the one that gets used.",
+        dots = metricDots(0.5, dimCorrect = true),
+        profile = listOf(
+            ProfileBar(((half.precision + half.recall) / 2).toFloat(), 0, Emphasis.FADED),
+            ProfileBar(half.f1.toFloat(), 2, Emphasis.ACTIVE),
+        ),
+        profileLabel = "arithmetic mean, then harmonic mean",
+        readout = "${"%.3f".format((half.precision + half.recall) / 2)} vs ${"%.3f".format(half.f1)}",
+    )
+
+    frames += CloudFrame(
+        status = "F1 also has an optimum, and it is not at 0.5. Sweeping every threshold, F1 peaks at " +
+            "t = ${ScoredLab.bestF1Threshold} with ${"%.3f".format(ScoredLab.bestF1)} — against " +
+            "${"%.3f".format(half.f1)} at the default. Nothing about the model changed; the default threshold was " +
+            "simply the wrong place to cut it.",
+        dots = metricDots(ScoredLab.bestF1Threshold),
+        segments = listOf(boundarySegment(0.5), boundarySegment(ScoredLab.bestF1Threshold)),
+        profile = cellProfile(best),
+        profileLabel = "TP ${best.tp} · FP ${best.fp} · FN ${best.fn} · TN ${best.tn} at the F1-optimal threshold",
+        readout = "F1 ${"%.3f".format(half.f1)} → ${"%.3f".format(ScoredLab.bestF1)} by moving t alone",
+    )
+
+    frames += CloudFrame(
+        status = "What F1 leaves out is the ${half.tn} true negatives — it is a function of TP, FP and FN only. " +
+            "That makes it the right summary when the positive class is the subject and the negative class is " +
+            "just background, and the wrong one when both classes matter, where accuracy or kappa belong instead.",
+        dots = metricDots(ScoredLab.bestF1Threshold, dimCorrect = true),
+        profile = cellProfile(best),
+        profileLabel = "F1 reads three of these four cells",
+        readout = "asymmetric by design",
+    )
+
+    frames += CloudFrame(
+        status = "And if the two errors do not cost the same, F1's built-in 1:1 weighting is a choice you did not " +
+            "make. Fβ generalises it: β = 2 weights recall twice as heavily (${"%.3f".format(best.fBeta(2.0))} " +
+            "here), β = 0.5 weights precision (${"%.3f".format(best.fBeta(0.5))}). Pick β from the cost ratio " +
+            "rather than defaulting to 1.",
+        dots = metricDots(ScoredLab.bestF1Threshold),
+        segments = listOf(boundarySegment(ScoredLab.bestF1Threshold)),
+        profile = listOf(
+            ProfileBar(best.fBeta(0.5).toFloat(), 1, Emphasis.NORMAL),
+            ProfileBar(best.f1.toFloat(), 2, Emphasis.ACTIVE),
+            ProfileBar(best.fBeta(2.0).toFloat(), 3, Emphasis.NORMAL),
+        ),
+        profileLabel = "F0.5 · F1 · F2 at the same threshold",
+        readout = "β encodes which error you are afraid of",
+    )
+    return frames
+}
+
+// ── Clustering indices ───────────────────────────────────────────────────────
+
+private fun clusterDots(data: List<ClusterMetricsLab.Point2>, assignment: List<Int>, silhouettes: List<Double>? = null) =
+    data.mapIndexed { index, point ->
+        Dot(
+            P(point.x.toFloat(), point.y.toFloat()),
+            assignment[index],
+            if (silhouettes != null && silhouettes[index] < 0) Emphasis.QUERY else Emphasis.NORMAL,
+        )
+    }
+
+private fun silhouetteFrames(): List<CloudFrame> {
+    val frames = mutableListOf<CloudFrame>()
+    val blobs = ClusterMetricsLab.blobs
+    val three = ClusterMetricsLab.kMeans(blobs, 3)
+    val threeScores = ClusterMetricsLab.silhouettes(blobs, three)
+    val sweep = ClusterMetricsLab.blobSweep
+
+    frames += CloudFrame(
+        status = "Clustering has no labels to score against, so its metrics score *shape* instead. Silhouette asks, " +
+            "per point: how far is it from its own cluster on average (a), and from the nearest other cluster (b)? " +
+            "The score is (b − a) / max(a, b), between −1 and 1.",
+        dots = clusterDots(blobs, three),
+        readout = "${blobs.size} points, k = 3",
+    )
+
+    frames += CloudFrame(
+        status = "Drawn per point, the profile is more useful than the average. Here every point scores positive " +
+            "and the mean is ${"%.3f".format(ClusterMetricsLab.silhouetteScore(blobs, three))} — the clusters are " +
+            "compact and far apart, which is exactly the situation silhouette was designed for.",
+        dots = clusterDots(blobs, three, threeScores),
+        profile = threeScores.sortedDescending().map { ProfileBar(it.toFloat().coerceIn(0f, 1f), 1, Emphasis.NORMAL) },
+        profileLabel = "per-point silhouette, sorted",
+        readout = "mean ${"%.3f".format(ClusterMetricsLab.silhouetteScore(blobs, three))}, ${ClusterMetricsLab.negativeCount(blobs, three)} negative",
+    )
+
+    frames += CloudFrame(
+        status = "Because it needs no labels, it can be swept over k — and on this dataset it gets the answer " +
+            "right: " + sweep.joinToString(", ") { "k=${it.k} ${"%.2f".format(it.silhouette)}" } +
+            ". The peak is at k = ${ClusterMetricsLab.bestBySilhouette(sweep)}, which is how many blobs were " +
+            "generated. Note that inertia cannot do this — it falls monotonically with k by construction.",
+        dots = clusterDots(blobs, three),
+        profile = sweep.map {
+            ProfileBar(it.silhouette.toFloat(), if (it.k == ClusterMetricsLab.bestBySilhouette(sweep)) 1 else 0, if (it.k == ClusterMetricsLab.bestBySilhouette(sweep)) Emphasis.ACTIVE else Emphasis.NORMAL)
+        },
+        profileLabel = "silhouette at k = 2..6",
+        readout = "peak at k = ${ClusterMetricsLab.bestBySilhouette(sweep)}",
+    )
+
+    val rings = ClusterMetricsLab.rings
+    val ringTwo = ClusterMetricsLab.kMeans(rings, 2)
+    frames += CloudFrame(
+        status = "Now the failure, and it is not subtle. Two concentric rings — obviously two clusters to any " +
+            "human — clustered at the true k = ${ClusterMetricsLab.RING_TRUTH} score only " +
+            "${"%.3f".format(ClusterMetricsLab.silhouetteScore(rings, ringTwo))}, because k-means cuts them in " +
+            "half and neither half is compact.",
+        dots = clusterDots(rings, ringTwo, ClusterMetricsLab.silhouettes(rings, ringTwo)),
+        readout = "true structure, poor silhouette ${"%.3f".format(ClusterMetricsLab.silhouetteScore(rings, ringTwo))}",
+    )
+
+    val ringSweep = ClusterMetricsLab.ringSweep
+    val ringBest = ClusterMetricsLab.bestBySilhouette(ringSweep)
+    frames += CloudFrame(
+        status = "Swept over k, silhouette picks k = $ringBest on the rings — " +
+            ringSweep.joinToString(", ") { "k=${it.k} ${"%.2f".format(it.silhouette)}" } +
+            " — and prefers it *confidently*. It is not confused; it is answering the question it was built to " +
+            "answer, which is \"are these clusters compact and separated\" and not \"is this the right structure\".",
+        dots = clusterDots(rings, ClusterMetricsLab.kMeans(rings, ringBest)),
+        profile = ringSweep.map {
+            ProfileBar(it.silhouette.toFloat(), if (it.k == ringBest) 2 else 0, if (it.k == ringBest) Emphasis.ACTIVE else Emphasis.NORMAL)
+        },
+        profileLabel = "silhouette at k = 2..6 on the rings",
+        readout = "picks $ringBest, truth is ${ClusterMetricsLab.RING_TRUTH}",
+    )
+
+    frames += CloudFrame(
+        status = "So read it as what it is: a compactness-and-separation score, valid for centroid-shaped " +
+            "clusters and no others. On non-convex structure it will confidently prefer the wrong k, and the " +
+            "per-point profile — not the average — is what shows you that something is wrong.",
+        dots = clusterDots(rings, ringTwo, ClusterMetricsLab.silhouettes(rings, ringTwo)),
+        profile = ClusterMetricsLab.silhouettes(rings, ringTwo).sortedDescending()
+            .map { ProfileBar(it.toFloat().coerceIn(0f, 1f), 3, Emphasis.NORMAL) },
+        profileLabel = "per-point silhouette on the true-but-unrewarded clustering",
+        readout = "the average hides what the profile shows",
+    )
+    return frames
+}
+
+private fun daviesBouldinFrames(): List<CloudFrame> {
+    val frames = mutableListOf<CloudFrame>()
+    val blobs = ClusterMetricsLab.blobs
+    val three = ClusterMetricsLab.kMeans(blobs, 3)
+    val sweep = ClusterMetricsLab.blobSweep
+    val best = ClusterMetricsLab.bestByDaviesBouldin(sweep)
+
+    frames += CloudFrame(
+        status = "Davies-Bouldin scores the same idea as silhouette from the cluster's side rather than the " +
+            "point's: for each cluster, find the worst ratio of (its spread + another's spread) to the distance " +
+            "between their centroids, then average those worst cases. Lower is better, and 0 is unreachable.",
+        dots = clusterDots(blobs, three),
+        centroids = (0..2).map { cluster ->
+            val members = blobs.filterIndexed { index, _ -> three[index] == cluster }
+            Dot(P(members.map { it.x }.average().toFloat(), members.map { it.y }.average().toFloat()), cluster, Emphasis.ACTIVE)
+        },
+        readout = "DB = ${"%.3f".format(ClusterMetricsLab.daviesBouldin(blobs, three))} at k = 3",
+    )
+
+    frames += CloudFrame(
+        status = "The two indices are not the same computation and they do not have the same range — silhouette " +
+            "runs −1 to 1 and higher is better, Davies-Bouldin runs 0 upward and lower is better — so a paper " +
+            "quoting one cannot be compared against a paper quoting the other. On this dataset they agree: both " +
+            "pick k = $best.",
+        dots = clusterDots(blobs, three),
+        profile = sweep.map {
+            ProfileBar((it.daviesBouldin / sweep.maxOf { s -> s.daviesBouldin }).toFloat(), if (it.k == best) 1 else 0, if (it.k == best) Emphasis.ACTIVE else Emphasis.NORMAL)
+        },
+        profileLabel = "Davies-Bouldin at k = 2..6 (lower is better)",
+        readout = "silhouette picks ${ClusterMetricsLab.bestBySilhouette(sweep)}, DB picks $best",
+    )
+
+    frames += CloudFrame(
+        status = "Agreement here is not evidence that they are interchangeable — it is evidence that this dataset " +
+            "is easy. Both indices are built on centroids and Euclidean spread, so they share the same " +
+            "assumption, and when the assumption fails they fail *together*.",
+        dots = clusterDots(blobs, ClusterMetricsLab.kMeans(blobs, 5)),
+        profile = sweep.map { ProfileBar(it.silhouette.toFloat(), 2, Emphasis.NORMAL) } +
+            sweep.map { ProfileBar((1 - it.daviesBouldin / sweep.maxOf { s -> s.daviesBouldin }).toFloat(), 1, Emphasis.NORMAL) },
+        profileLabel = "silhouette, then inverted Davies-Bouldin — same shape",
+        readout = "two readings of one assumption",
+    )
+
+    val rings = ClusterMetricsLab.rings
+    val ringSweep = ClusterMetricsLab.ringSweep
+    val ringBest = ClusterMetricsLab.bestByDaviesBouldin(ringSweep)
+    frames += CloudFrame(
+        status = "On the concentric rings, Davies-Bouldin picks k = $ringBest — " +
+            ringSweep.joinToString(", ") { "k=${it.k} ${"%.2f".format(it.daviesBouldin)}" } +
+            " — the same wrong answer silhouette gives, against a true structure of " +
+            "${ClusterMetricsLab.RING_TRUTH}. Two independent-looking indices agreeing is exactly what shared " +
+            "assumptions look like from outside.",
+        dots = clusterDots(rings, ClusterMetricsLab.kMeans(rings, ringBest)),
+        profile = ringSweep.map {
+            ProfileBar((it.daviesBouldin / ringSweep.maxOf { s -> s.daviesBouldin }).toFloat(), if (it.k == ringBest) 2 else 0, if (it.k == ringBest) Emphasis.ACTIVE else Emphasis.NORMAL)
+        },
+        profileLabel = "Davies-Bouldin on the rings (lower is better)",
+        readout = "both indices pick $ringBest; the answer is ${ClusterMetricsLab.RING_TRUTH}",
+    )
+
+    frames += CloudFrame(
+        status = "The practical rule: use Davies-Bouldin the way you would use silhouette, expect them to agree, " +
+            "and treat agreement as no information. If the clusters might not be convex, validate with something " +
+            "that does not assume they are — a density-based algorithm's own diagnostics, or a labelled subset.",
+        dots = clusterDots(rings, ClusterMetricsLab.kMeans(rings, ClusterMetricsLab.RING_TRUTH)),
+        readout = "no internal index knows what a cluster should look like",
+    )
+    return frames
+}
+
 private val cloudConfigs = mapOf(
+    "confusion_matrix" to CloudConfig(
+        intro = "1,000 cases, 88 positive, one fitted logistic boundary — and the four cells every other metric in this category is a function of.",
+        legend = listOf(
+            CloudColors[1] to "True positive",
+            CloudColors[2] to "False positive",
+            CloudColors[3] to "False negative",
+            CloudColors[0] to "True negative",
+        ),
+        build = ::confusionMatrixFrames,
+    ),
+    "accuracy" to CloudConfig(
+        intro = "0.947 from the model, 0.912 from answering \"negative\" every time. The gap is what accuracy is worth on a 9% base rate.",
+        legend = listOf(
+            CloudColors[1] to "Correct",
+            CloudColors[2] to "False positive",
+            CloudColors[3] to "Missed",
+            CloudColors[0] to "True negative",
+        ),
+        build = ::accuracyFrames,
+    ),
+    "precision_recall" to CloudConfig(
+        intro = "The same model at two thresholds: perfect precision with 53 misses, or perfect recall with 325 false alarms.",
+        legend = listOf(
+            CloudColors[1] to "True positive",
+            CloudColors[2] to "False positive",
+            CloudColors[3] to "False negative",
+            CloudColors[0] to "True negative",
+        ),
+        build = ::precisionRecallFrames,
+    ),
+    "f1_score" to CloudConfig(
+        intro = "The harmonic mean, why it is harmonic, and the threshold sweep that finds F1 0.776 where the default gives 0.569.",
+        legend = listOf(
+            CloudColors[1] to "Precision side",
+            CloudColors[3] to "Recall side",
+            CloudColors[2] to "F1",
+        ),
+        build = ::f1Frames,
+    ),
+    "silhouette_score" to CloudConfig(
+        intro = "Per-point compactness against separation. It finds k = 3 on three blobs and k = 6 on two concentric rings.",
+        legend = listOf(
+            CloudColors[0] to "Cluster",
+            QueryColor to "Negative silhouette",
+        ),
+        build = ::silhouetteFrames,
+    ),
+    "davies_bouldin" to CloudConfig(
+        intro = "The same assumption from the cluster's side. It agrees with silhouette on the easy dataset and makes the identical mistake on the hard one.",
+        legend = listOf(
+            CloudColors[0] to "Cluster",
+            CloudColors[1] to "Centroid",
+        ),
+        build = ::daviesBouldinFrames,
+    ),
     "min_max_normalization" to CloudConfig(
         intro = "Age and income on one distance metric: income is 99.99% of it. Both scalers, then the same k-NN scored on all three arrangements.",
         legend = listOf(

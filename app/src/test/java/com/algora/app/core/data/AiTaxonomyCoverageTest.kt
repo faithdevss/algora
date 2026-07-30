@@ -156,23 +156,23 @@ class AiTaxonomyCoverageTest {
             // `model_evaluation` is the umbrella in front of this whole block. B9 authors the 17
             // entries and keeps it as the category's landing topic.
             "Model Evaluation Metrics" to linkedMapOf(
-                "Confusion Matrix" to emptyList(),                      // B9
-                "Accuracy" to emptyList(),                              // B9
-                "Mean Squared Error (MSE)" to emptyList(),              // B9
-                "Root Mean Squared Error (RMSE)" to emptyList(),        // B9
-                "Mean Absolute Error (MAE)" to emptyList(),             // B9
-                "R-Squared (R²)" to emptyList(),                        // B9
-                "Adjusted R²" to emptyList(),                           // B9
-                "Precision & Recall" to emptyList(),                    // B9
-                "F1 Score" to emptyList(),                              // B9
-                "ROC Curve" to emptyList(),                             // B9
-                "AUC Score" to emptyList(),                             // B9
-                "Log Loss (Cross-Entropy)" to emptyList(),              // B9
-                "Gini Impurity" to emptyList(),                         // B9
-                "Hinge Loss" to emptyList(),                            // B9 / C8
-                "Cohen's Kappa" to emptyList(),                         // B9
-                "Silhouette Score" to emptyList(),                      // B9
-                "Davies-Bouldin Index" to emptyList(),                  // B9
+                "Confusion Matrix" to listOf("confusion_matrix"),
+                "Accuracy" to listOf("accuracy"),
+                "Mean Squared Error (MSE)" to listOf("mse"),
+                "Root Mean Squared Error (RMSE)" to listOf("rmse"),
+                "Mean Absolute Error (MAE)" to listOf("mae"),
+                "R-Squared (R²)" to listOf("r_squared"),
+                "Adjusted R²" to listOf("adjusted_r_squared"),
+                "Precision & Recall" to listOf("precision_recall"),
+                "F1 Score" to listOf("f1_score"),
+                "ROC Curve" to listOf("roc_curve"),
+                "AUC Score" to listOf("auc"),
+                "Log Loss (Cross-Entropy)" to listOf("log_loss"),
+                "Gini Impurity" to listOf("gini_impurity"),
+                "Hinge Loss" to listOf("hinge_loss"),
+                "Cohen's Kappa" to listOf("cohens_kappa"),
+                "Silhouette Score" to listOf("silhouette_score"),
+                "Davies-Bouldin Index" to listOf("davies_bouldin"),
             ),
             "RL Fundamentals" to linkedMapOf(
                 "Multi-Armed Bandit" to emptyList(),                    // B10
@@ -516,7 +516,7 @@ class AiTaxonomyCoverageTest {
 
     // The ratchet. Move it when a batch lands; a batch that does not move it did not close any doc
     // entry, which is worth noticing.
-    private val expectedCoveredCount = 293
+    private val expectedCoveredCount = 310
 
     // Doc entries the app answers from the DSA taxonomy rather than an AI section. Deliberate reuse
     // — the alternative is a duplicate page — but small and explicit, so it cannot grow by accident.

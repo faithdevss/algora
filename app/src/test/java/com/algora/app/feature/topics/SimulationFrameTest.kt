@@ -71,6 +71,14 @@ class SimulationFrameTest {
     fun `every token-strip config builds frames whose bars and heat grids are labelled`() =
         check("TokenStrip", tokenStripTopicIds, ::tokenStripFrameCount)
 
+    // Added with B9. The regression lab is interactive rather than frame-based and had no guard at
+    // all, despite carrying seventeen topics: a config missing from the map silently falls back to
+    // the polynomial one, and a non-finite curve silently draws nothing. This runs every config at
+    // each slider's extremes and midpoint.
+    @Test
+    fun `every regression-lab config evaluates across its slider range`() =
+        check("RegressionLab", regressionLabTopicIds, ::regressionLabProbe)
+
     // The recursion tree is the one widget with a live parameter, so this covers every n the slider
     // can reach, not just the default one.
     @Test
