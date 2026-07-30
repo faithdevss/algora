@@ -21,11 +21,11 @@ private val topicQuizzes = InterviewPrepCategories.topicQuizzes
 private val aiInterview = InterviewPrepCategories.aiInterview
 
 private val patternTopics = listOf(
-    topic("sliding_window_pattern", "Sliding Window Pattern", patterns, "Recognize and apply the sliding-window pattern."),
-    topic("two_pointer_pattern", "Two Pointer Pattern", patterns, "Recognize and apply the two-pointer pattern."),
-    topic("fast_slow_pointers", "Fast & Slow Pointers", patterns, "Cycle detection and midpoint-finding pattern."),
-    topic("merge_intervals_pattern", "Merge Intervals", patterns, "Recognize and apply the merge-intervals pattern."),
-    topic("top_k_pattern", "Top-K Pattern", patterns, "Recognize and apply the top-k heap pattern."),
+    topic("sliding_window_pattern", "Sliding Window Pattern", patterns, "Recognize and apply the sliding-window pattern.", isPremium = true),
+    topic("two_pointer_pattern", "Two Pointer Pattern", patterns, "Recognize and apply the two-pointer pattern.", isPremium = true),
+    topic("fast_slow_pointers", "Fast & Slow Pointers", patterns, "Cycle detection and midpoint-finding pattern.", isPremium = true),
+    topic("merge_intervals_pattern", "Merge Intervals", patterns, "Recognize and apply the merge-intervals pattern.", isPremium = true),
+    topic("top_k_pattern", "Top-K Pattern", patterns, "Recognize and apply the top-k heap pattern.", isPremium = true),
 )
 
 private val companySetTopics = listOf(
