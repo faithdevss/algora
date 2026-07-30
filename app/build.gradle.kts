@@ -115,6 +115,12 @@ dependencies {
     implementation("com.android.billingclient:billing-ktx:8.0.0")
     implementation("com.google.android.gms:play-services-ads:24.6.0")
 
+    // Play In-App Review — the rating prompt shown once a learner is genuinely invested.
+    implementation("com.google.android.play:review-ktx:2.0.2")
+
+    // Deferred work for the lapsed-learner reminder notification (core/notify).
+    implementation("androidx.work:work-runtime-ktx:2.10.1")
+
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     testImplementation("junit:junit:4.13.2")

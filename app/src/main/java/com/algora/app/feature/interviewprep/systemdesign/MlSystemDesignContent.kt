@@ -94,5 +94,35 @@ internal val mlSystemDesignPrimer = SystemDesignPrimer(
             "Shrinking a model by lowering numeric precision or training a small model to imitate a large one.",
             "When the latency or cost budget will not fit the model that scores best offline.",
         ),
+        SystemDesignConcept(
+            "Label Delay & Proxy Labels", "Data",
+            "Ground truth that arrives days later (a chargeback, a churn event), so a proxy signal stands in meanwhile.",
+            "Fraud, churn and long-horizon predictions. Say how long the delay is and what the proxy costs you in bias.",
+        ),
+        SystemDesignConcept(
+            "Class Imbalance Handling", "Data",
+            "Resampling, class weights or threshold tuning when positives are a fraction of a percent.",
+            "Fraud, spam, rare-disease and safety models. Always pair it with a metric that survives imbalance — never accuracy.",
+        ),
+        SystemDesignConcept(
+            "Embedding Store & ANN Index", "Architecture",
+            "Vectors served through an approximate nearest-neighbour index (HNSW, IVF) rather than exact search.",
+            "Retrieval, semantic search and RAG. Name the recall/latency knob and how the index is rebuilt as embeddings change.",
+        ),
+        SystemDesignConcept(
+            "Human-in-the-Loop Review", "Monitoring",
+            "Low-confidence or high-impact predictions route to a reviewer, whose decisions become training labels.",
+            "Moderation, medical and financial decisions. It gives both a safety net and a cheap stream of high-quality labels.",
+        ),
+        SystemDesignConcept(
+            "Guardrails & Fallbacks", "Serving",
+            "Rules, filters and a default response wrapping the model for when it is wrong, slow or unavailable.",
+            "Any user-facing model, and mandatory for LLM designs. State what the system returns when inference times out.",
+        ),
+        SystemDesignConcept(
+            "Experiment Design (A/B)", "Evaluation",
+            "Randomised assignment, a pre-declared primary metric, and enough traffic to detect the expected effect.",
+            "Every model rollout. Bring up sample size, guardrail metrics and the risk of peeking at results early.",
+        ),
     ),
 )

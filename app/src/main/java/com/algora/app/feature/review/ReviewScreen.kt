@@ -47,14 +47,22 @@ import com.algora.app.core.ui.theme.SpaceGrotesk
 import com.algora.app.feature.topics.content.TopicContentProvider
 import kotlinx.coroutines.launch
 
-data class ReviewCard(val key: String, val topicName: String, val takeaway: String)
+// `prompt` is the front of the card. Takeaway cards have none — they ask the generic "recall a key
+// takeaway" — while curated deck cards carry their own question.
+data class ReviewCard(
+    val key: String,
+    val topicName: String,
+    val takeaway: String,
+    val prompt: String? = null,
+)
 
-// Every takeaway across every authored topic, keyed stably as "topicId#index".
+// Every takeaway across every authored topic, keyed stably as "topicId#index", plus the curated
+// interview decks from FlashcardDecks.kt.
 fun allReviewCards(): List<ReviewCard> =
     TopicContentProvider.all.flatMap { (topicId, content) ->
         val name = TopicRegistry.find(topicId)?.name ?: topicId
         content.takeaways.mapIndexed { i, t -> ReviewCard("$topicId#$i", name, t) }
-    }
+    } + curatedFlashcards()
 
 // How many cards a "study ahead" session pulls forward when nothing is actually due.
 private const val STUDY_AHEAD_BATCH = 20
@@ -201,12 +209,31 @@ fun ReviewScreen(onBack: () -> Unit) {
                         )
                         Spacer(modifier = Modifier.size(18.dp))
                         if (flipped) {
+                            // A deck card keeps its question visible above the answer, so the recall
+                            // being graded stays on screen.
+                            if (card.prompt != null) {
+                                Text(
+                                    card.prompt,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center,
+                                )
+                                Spacer(modifier = Modifier.size(14.dp))
+                            }
                             Text(card.takeaway, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
                         } else {
                             Text(
-                                "Recall a key takeaway",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                card.prompt ?: "Recall a key takeaway",
+                                style = if (card.prompt != null) {
+                                    MaterialTheme.typography.titleLarge
+                                } else {
+                                    MaterialTheme.typography.bodyLarge
+                                },
+                                color = if (card.prompt != null) {
+                                    MaterialTheme.colorScheme.onSurface
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
                                 textAlign = TextAlign.Center,
                             )
                             Spacer(modifier = Modifier.size(10.dp))

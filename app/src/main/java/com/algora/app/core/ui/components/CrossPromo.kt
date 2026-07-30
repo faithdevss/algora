@@ -3,7 +3,9 @@ package com.algora.app.core.ui.components
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,7 +20,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -26,14 +27,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
-import com.algora.app.core.ui.theme.Gradients
+import com.algora.app.R
 import com.algora.app.core.ui.theme.SpaceGrotesk
 
 /**
@@ -50,7 +53,7 @@ object CrossPromoApp {
         pitch = "This primer covers the framework and the building blocks. Systa goes deeper — a " +
             "full system design curriculum in the same hands-on style.",
         shortPitch = "The developer's system design companion app",
-        gradient = Gradients.Blue,
+        iconRes = R.drawable.ic_systa_icon,
     )
 }
 
@@ -59,8 +62,22 @@ data class CrossPromo(
     val title: String,
     val pitch: String,
     val shortPitch: String,
-    val gradient: List<Color>,
+    // The promoted app's real listing icon — a stand-in glyph would misrepresent what the user lands
+    // on in Play.
+    @param:DrawableRes val iconRes: Int,
 )
+
+/** The icon tile, sized for whichever surface hosts it. Clipped so it reads as an app icon. */
+@Composable
+private fun PromoIcon(promo: CrossPromo, size: Dp) {
+    Image(
+        painter = painterResource(promo.iconRes),
+        contentDescription = null,
+        modifier = Modifier
+            .size(size)
+            .clip(RoundedCornerShape(size / 3.4f)),
+    )
+}
 
 /**
  * Opens the Play listing. Tries the Play app first, then the web listing — `market://` resolves to
@@ -107,19 +124,7 @@ fun CrossPromoCard(promo: CrossPromo, modifier: Modifier = Modifier) {
             )
             Spacer(modifier = Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .background(Brush.linearGradient(promo.gradient), RoundedCornerShape(14.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        Icons.Filled.Dns,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
+                PromoIcon(promo, size = 46.dp)
                 Column(modifier = Modifier.padding(start = 12.dp)) {
                     Text(
                         promo.title,
@@ -173,19 +178,7 @@ fun CrossPromoRow(promo: CrossPromo, modifier: Modifier = Modifier) {
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .background(Brush.linearGradient(promo.gradient), RoundedCornerShape(12.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                Icons.Filled.Dns,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(21.dp),
-            )
-        }
+        PromoIcon(promo, size = 40.dp)
         Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
             Text(
                 promo.title,

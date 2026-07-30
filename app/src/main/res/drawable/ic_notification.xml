@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Status-bar icon for the study reminder. Same mark as ic_launcher_monochrome, but without that
+  file's 0.6 shrink (which exists for the adaptive-icon safe zone) — a status-bar glyph should fill
+  its canvas. White on transparent, since the system tints and masks it.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="300"
+    android:viewportHeight="300"
+    android:tint="#FFFFFF">
+    <group
+        android:pivotX="150"
+        android:pivotY="167"
+        android:scaleX="0.95"
+        android:scaleY="0.95"
+        android:translateY="-17">
+        <path
+            android:pathData="M150,95 L78,240"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="21"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M150,95 L222,240"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="21"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M105,185 L195,185"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="21"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M114,95 a36,36 0 1,0 72,0 a36,36 0 1,0 -72,0z"
+            android:fillColor="#FFFFFF" />
+        <path
+            android:pathData="M48,240 a30,30 0 1,0 60,0 a30,30 0 1,0 -60,0z"
+            android:fillColor="#FFFFFF" />
+        <path
+            android:pathData="M192,240 a30,30 0 1,0 60,0 a30,30 0 1,0 -60,0z"
+            android:fillColor="#FFFFFF" />
+    </group>
+</vector>

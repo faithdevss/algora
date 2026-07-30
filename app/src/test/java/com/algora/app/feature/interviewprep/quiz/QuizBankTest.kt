@@ -54,6 +54,12 @@ class QuizBankTest {
 
     @Test
     fun `the catalog has grown past the original four sets`() {
-        assertTrue("Expected at least 16 quizzes, found ${QuizRegistry.all.size}", QuizRegistry.all.size >= 16)
+        assertTrue("Expected at least 23 quizzes, found ${QuizRegistry.all.size}", QuizRegistry.all.size >= 23)
+    }
+
+    @Test
+    fun `no two quizzes share a title`() {
+        val duplicates = QuizRegistry.all.groupBy { it.second.title }.filter { it.value.size > 1 }.keys
+        assertTrue("Quiz titles used more than once: $duplicates", duplicates.isEmpty())
     }
 }

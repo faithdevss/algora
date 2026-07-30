@@ -1,11 +1,15 @@
 package com.algora.app
 
+import android.Manifest
 import android.graphics.Color.TRANSPARENT
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +41,8 @@ import com.algora.app.core.data.settings.settingsDataStore
 import com.algora.app.core.nav.AppMode
 import com.algora.app.core.nav.NavGraph
 import com.algora.app.core.nav.NavTab
+import com.algora.app.core.notify.StudyReminder
+import com.algora.app.core.notify.StudyReminderWorker
 import com.algora.app.core.nav.PracticeRoute
 import com.algora.app.core.nav.ProblemDetailRoute
 import com.algora.app.core.nav.ProblemsRoute
@@ -48,6 +54,7 @@ import com.algora.app.core.nav.SimulationsRoute
 import com.algora.app.core.ui.components.resolveIcon
 import com.algora.app.core.ui.theme.AlgoraTheme
 import com.algora.app.core.ui.theme.accent
+import kotlinx.coroutines.flow.first
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -62,6 +69,27 @@ class MainActivity : ComponentActivity() {
             val accentChoice by settings.accent.collectAsState(initial = null)
             var mode by rememberSaveable { mutableStateOf(AppMode.DSA) }
             LaunchedEffect(Unit) { settings.recordActivityToday() }
+
+            // Study reminder: keep the daily check enqueued while the user wants reminders, and ask
+            // for the Android 13+ notification grant once — the system dialog is one-shot, so a
+            // second request would be a no-op the user never sees.
+            val permissionLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestPermission(),
+            ) { /* Either answer is fine; the worker checks the grant before posting. */ }
+            LaunchedEffect(Unit) {
+                StudyReminder.ensureChannel(context)
+                if (settings.remindersEnabled.first()) {
+                    StudyReminderWorker.schedule(context)
+                    if (!StudyReminder.hasPermission(context) && !settings.notificationPermissionAsked.first()) {
+                        settings.markNotificationPermissionAsked()
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                    }
+                } else {
+                    StudyReminderWorker.cancel(context)
+                }
+            }
             // Connecting on launch re-syncs entitlement with Play, so a refund or account switch
             // takes effect without the user opening the paywall.
             LaunchedEffect(Unit) { BillingProvider.get(context).refresh() }
@@ -97,11 +125,14 @@ fun AlgoraApp(mode: AppMode, onModeChange: (AppMode) -> Unit) {
     val onFullScreen = currentDestination?.hierarchy?.any { it.route == ReviewRoute.ROUTE } == true
 
     // Fixed four-destination bar from docs/design/Algora.dc.html (navDefs) — identical in both modes.
+    // A tab tap discards whatever was stacked above Home — including the tab's own previous
+    // sub-stack — so every tab always opens at its root rather than resuming mid-flow. Home itself
+    // stays at the bottom, so back from any tab returns there instead of leaving the app.
     fun navigate(route: String) {
         navController.navigate(route) {
-            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            popUpTo(navController.graph.findStartDestination().id) { saveState = false }
             launchSingleTop = true
-            restoreState = true
+            restoreState = false
         }
     }
     fun onRoute(route: String) = currentDestination?.hierarchy?.any { it.route == route } == true

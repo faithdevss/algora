@@ -3,6 +3,7 @@ package com.algora.app.core.data.settings
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -35,4 +36,14 @@ object SettingsKeys {
     // would immediately reroll the pick — the drill would never show as finished.
     val DRILL_DAY = longPreferencesKey("drill_epoch_day")
     val DRILL_PROBLEM = stringPreferencesKey("drill_problem_id")
+    // The epoch day the Play review flow was launched. Present = already asked; the prompt is
+    // one-shot regardless of what the user did with it, since Play reports no outcome and
+    // rate-limits the flow anyway.
+    val REVIEW_PROMPT_DAY = longPreferencesKey("review_prompt_epoch_day")
+    // Study reminder (core/notify): the user's opt-out, the day the last reminder was posted (so a
+    // lapsed user is nudged once a week, not once a day), and whether the Android 13+ notification
+    // permission has been asked for — the system only shows that dialog once.
+    val REMINDERS_ENABLED = booleanPreferencesKey("study_reminders_enabled")
+    val LAST_REMINDER_DAY = longPreferencesKey("last_reminder_epoch_day")
+    val NOTIF_PERMISSION_ASKED = booleanPreferencesKey("notification_permission_asked")
 }

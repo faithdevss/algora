@@ -29,7 +29,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -51,13 +53,16 @@ import com.algora.app.core.data.progress.progressDataStore
 import com.algora.app.core.data.settings.SettingsRepository
 import com.algora.app.core.data.settings.settingsDataStore
 import com.algora.app.core.nav.AppMode
+import com.algora.app.core.nav.PatternsRoute
 import com.algora.app.core.nav.Screen
+import com.algora.app.core.playreview.AppReviewPrompt
 import com.algora.app.core.ui.components.resolveIcon
 import com.algora.app.core.ui.theme.SpaceGrotesk
 import com.algora.app.feature.algorithms.AlgorithmsTopics
 import com.algora.app.feature.analysis.AnalysisTopics
 import com.algora.app.feature.datastructures.DataStructuresTopics
 import com.algora.app.feature.deeplearning.DeepLearningTopics
+import com.algora.app.feature.interviewprep.InterviewPrepCategories
 import com.algora.app.feature.interviewprep.InterviewPrepTopics
 import com.algora.app.feature.machinelearning.MachineLearningTopics
 import com.algora.app.feature.nlp.NlpTopics
@@ -74,10 +79,16 @@ private data class ProgressGroup(
     val route: String,
 )
 
+private val patternTopics = InterviewPrepTopics.topics.filter { it.categoryId == InterviewPrepCategories.patterns.id }
+private val interviewPrepTopics = InterviewPrepTopics.topics - patternTopics.toSet()
+
 private val dsaGroups = listOf(
     ProgressGroup("Data Structures", "stack", Color(0xFF10B981), DataStructuresTopics.topics, Screen.DataStructures.route),
     ProgressGroup("Algorithms", "chip", Color(0xFF3B82F6), AlgorithmsTopics.topics, Screen.Algorithms.route),
-    ProgressGroup("Interview Prep", "help", Color(0xFFF59E0B), InterviewPrepTopics.topics, Screen.InterviewPrep.route),
+    // Split to match where each topic is actually reachable: Patterns has its own screen now, so its
+    // rows must not deep-link into Interview Prep, which no longer lists them.
+    ProgressGroup("Patterns", "help", Color(0xFFF59E0B), patternTopics, PatternsRoute.ROUTE),
+    ProgressGroup("Interview Prep", "mic", Color(0xFFEC4899), interviewPrepTopics, Screen.InterviewPrep.route),
     ProgressGroup("Analysis", "trend", Color(0xFF8B5CF6), AnalysisTopics.topics, Screen.Analysis.route),
 )
 
@@ -130,6 +141,23 @@ fun ProgressScreen(
     val modeLabel = if (mode == AppMode.DSA) "DSA TRACK" else "AI SIMULATION TRACK"
     val solvedCount = solvedIds.count { ProblemRegistry.get(it) != null }
     val milestones = remember(overallTotal) { milestonesFor(overallTotal) }
+
+    // Ask for a Play rating once the track is past the threshold. This screen is the natural place:
+    // the user opened it to look at their own progress, so the prompt lands on a good moment rather
+    // than interrupting a lesson or a timed quiz. -1 is the still-loading value — asking before the
+    // stored day arrives would re-prompt someone who was already asked.
+    val activity = LocalActivity.current
+    val reviewPromptedDay by settings.reviewPromptedDay.collectAsState(initial = -1L)
+    LaunchedEffect(activity, overallPct, reviewPromptedDay) {
+        val host = activity ?: return@LaunchedEffect
+        if (reviewPromptedDay < 0L) return@LaunchedEffect
+        AppReviewPrompt.maybeAsk(
+            activity = host,
+            settings = settings,
+            progressPercent = overallPct,
+            promptedDay = reviewPromptedDay.takeIf { it > 0L },
+        )
+    }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),

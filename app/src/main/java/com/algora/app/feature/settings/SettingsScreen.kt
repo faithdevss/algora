@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -45,6 +46,8 @@ import com.algora.app.core.data.settings.SettingsRepository
 import com.algora.app.core.data.settings.ThemeMode
 import com.algora.app.core.data.settings.settingsDataStore
 import com.algora.app.core.nav.AppMode
+import com.algora.app.core.notify.StudyReminder
+import com.algora.app.core.notify.StudyReminderWorker
 import com.algora.app.core.ui.components.CrossPromoApp
 import com.algora.app.core.ui.components.CrossPromoRow
 import com.algora.app.core.ui.theme.SpaceGrotesk
@@ -63,6 +66,7 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val themeMode by settings.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
     // null = the Auto option: the accent tracks the DSA/AI mode instead of a fixed swatch.
     val accent by settings.accent.collectAsState(initial = null)
+    val remindersEnabled by settings.remindersEnabled.collectAsState(initial = true)
 
     Column(
         modifier = modifier
@@ -161,6 +165,45 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 13.sp,
             )
+        }
+
+        SettingsCard(
+            title = "Study reminders",
+            subtitle = "One nudge after a week away — never more than one a week",
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        if (remindersEnabled) "On" else "Off",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        if (remindersEnabled) {
+                            "You'll hear from Algora only if you go quiet for ${StudyReminder.INACTIVE_DAYS} days."
+                        } else {
+                            "Algora will never send you a notification."
+                        },
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp,
+                    )
+                }
+                Switch(
+                    checked = remindersEnabled,
+                    onCheckedChange = { enabled ->
+                        scope.launch {
+                            settings.setRemindersEnabled(enabled)
+                            // Flipping the toggle takes effect now rather than at the next launch.
+                            if (enabled) {
+                                StudyReminderWorker.schedule(context)
+                            } else {
+                                StudyReminderWorker.cancel(context)
+                            }
+                        }
+                    },
+                )
+            }
         }
 
         SettingsCard(title = "More from the developer", subtitle = "Other apps by the Algora developer") {

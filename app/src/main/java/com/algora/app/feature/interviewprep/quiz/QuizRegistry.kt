@@ -8,6 +8,7 @@ object QuizRegistry {
         "faang_set" to faangSet,
         "startup_set" to startupSet,
         "finance_trading_set" to financeTradingSet,
+        "ml_engineer_set" to mlEngineerSet,
         // Subject quizzes (QuizContentTopics.kt / QuizContentAi.kt)
         "arrays_strings_quiz" to arraysStringsQuiz,
         "linked_lists_quiz" to linkedListsQuiz,
@@ -18,11 +19,20 @@ object QuizRegistry {
         "hashing_heaps_quiz" to hashingHeapsQuiz,
         "dp_greedy_quiz" to dpGreedyQuiz,
         "complexity_quiz" to complexityQuiz,
+        // Second DSA batch (QuizContentTopicsExtra.kt)
+        "recursion_backtracking_quiz" to recursionBacktrackingQuiz,
+        "bit_manipulation_quiz" to bitManipulationQuiz,
+        "string_matching_quiz" to stringMatchingQuiz,
+        "math_number_theory_quiz" to mathNumberTheoryQuiz,
         "ml_foundations_quiz" to mlFoundationsQuiz,
         "deep_learning_quiz" to deepLearningQuiz,
         "nlp_rl_quiz" to nlpRlQuiz,
         "transformers_llm_quiz" to transformersLlmQuiz,
         "rl_algorithms_quiz" to rlAlgorithmsQuiz,
+        // Second AI batch (QuizContentAiExtra.kt)
+        "unsupervised_learning_quiz" to unsupervisedLearningQuiz,
+        "computer_vision_quiz" to computerVisionQuiz,
+        "data_preprocessing_quiz" to dataPreprocessingQuiz,
         "ai_ml_mock_interview" to aiMockInterview,
     )
 

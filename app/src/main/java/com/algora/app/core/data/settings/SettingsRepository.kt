@@ -131,6 +131,45 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         }
     }
 
+    // 0 until the Play review flow has been launched once, then the day it was. A day rather than a
+    // boolean so a future re-ask policy has the date it would need. Callers distinguish "not asked"
+    // (0) from "still loading" by their own initial value — a null here would conflate the two.
+    val reviewPromptedDay: Flow<Long> =
+        dataStore.data.map { prefs -> prefs[SettingsKeys.REVIEW_PROMPT_DAY] ?: 0L }
+
+    suspend fun markReviewPrompted(day: Long = System.currentTimeMillis() / 86_400_000L) {
+        dataStore.edit { prefs -> prefs[SettingsKeys.REVIEW_PROMPT_DAY] = day }
+    }
+
+    // Study reminder state. Reminders default on; the worker reads these on every run, so switching
+    // the toggle off silences it even before the scheduled work is cancelled.
+    val remindersEnabled: Flow<Boolean> =
+        dataStore.data.map { prefs -> prefs[SettingsKeys.REMINDERS_ENABLED] ?: true }
+
+    suspend fun setRemindersEnabled(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[SettingsKeys.REMINDERS_ENABLED] = enabled }
+    }
+
+    /** 0 until a reminder has been posted. Keeps a lapsed user to one nudge a week, not one a day. */
+    val lastReminderDay: Flow<Long> =
+        dataStore.data.map { prefs -> prefs[SettingsKeys.LAST_REMINDER_DAY] ?: 0L }
+
+    suspend fun markReminderPosted(day: Long = System.currentTimeMillis() / 86_400_000L) {
+        dataStore.edit { prefs -> prefs[SettingsKeys.LAST_REMINDER_DAY] = day }
+    }
+
+    /** The Android 13+ notification dialog is one-shot; asking again does nothing but flicker. */
+    val notificationPermissionAsked: Flow<Boolean> =
+        dataStore.data.map { prefs -> prefs[SettingsKeys.NOTIF_PERMISSION_ASKED] ?: false }
+
+    suspend fun markNotificationPermissionAsked() {
+        dataStore.edit { prefs -> prefs[SettingsKeys.NOTIF_PERMISSION_ASKED] = true }
+    }
+
+    /** The last day the app was opened, or null if it never has been. */
+    val lastActiveDay: Flow<Long?> =
+        dataStore.data.map { prefs -> prefs[SettingsKeys.STREAK_LAST_DAY] }
+
     // New cards introduced on `today`. Any other stored day means the allowance has rolled over.
     fun newCardsIntroduced(today: Long): Flow<Int> =
         dataStore.data.map { prefs ->

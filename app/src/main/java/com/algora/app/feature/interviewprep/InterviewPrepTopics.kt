@@ -47,6 +47,7 @@ private val companySetTopics = listOf(
     topic("faang_set", "FAANG Set", companySets, "Curated question set from large tech companies.", isPremium = true),
     topic("startup_set", "Startup Set", companySets, "Curated question set from startup-style interviews.", isPremium = true),
     topic("finance_trading_set", "Finance / Trading Set", companySets, "Curated question set from finance and trading firms.", isPremium = true),
+    topic("ml_engineer_set", "ML Engineer Set", companySets, "Curated ML-engineer screen — modelling plus production reality.", isPremium = true),
 )
 
 private val mockTopics = listOf(
@@ -67,11 +68,18 @@ private val quizTopics = listOf(
     topic("hashing_heaps_quiz", "Hashing & Heaps Quiz", topicQuizzes, "Collisions, load factor and priority queues."),
     topic("dp_greedy_quiz", "DP & Greedy Quiz", topicQuizzes, "States, recurrences and when greedy is provably safe."),
     topic("complexity_quiz", "Complexity Analysis Quiz", topicQuizzes, "Big-O, amortized cost and space trade-offs."),
+    topic("recursion_backtracking_quiz", "Recursion & Backtracking Quiz", topicQuizzes, "Base cases, call-stack cost, pruning and un-choosing."),
+    topic("bit_manipulation_quiz", "Bit Manipulation Quiz", topicQuizzes, "Masks, XOR pairing, low-bit tricks and bitmask states."),
+    topic("string_matching_quiz", "String Matching Quiz", topicQuizzes, "Prefix functions, rolling hashes, palindromes and tries."),
+    topic("math_number_theory_quiz", "Math & Number Theory Quiz", topicQuizzes, "GCD, modular arithmetic, fast power and primes."),
     topic("ml_foundations_quiz", "ML Foundations Quiz", topicQuizzes, "Bias/variance, loss functions and evaluation."),
     topic("deep_learning_quiz", "Deep Learning Quiz", topicQuizzes, "Backpropagation, activations and regularisation."),
     topic("nlp_rl_quiz", "NLP & RL Quiz", topicQuizzes, "Embeddings, attention, rewards and policies."),
     topic("transformers_llm_quiz", "Transformers & LLMs Quiz", topicQuizzes, "Attention cost, positional information and decoding."),
     topic("rl_algorithms_quiz", "RL Algorithms Quiz", topicQuizzes, "Value versus policy methods and stability tricks."),
+    topic("unsupervised_learning_quiz", "Unsupervised Learning Quiz", topicQuizzes, "Clustering assumptions and dimensionality reduction."),
+    topic("computer_vision_quiz", "Computer Vision Quiz", topicQuizzes, "Convolutions, receptive fields, detection and segmentation."),
+    topic("data_preprocessing_quiz", "Data Preprocessing Quiz", topicQuizzes, "Imputation, encoding, scaling, imbalance and leakage."),
 )
 
 // AI-mode interview rounds, mirroring the DSA mock + system-design pair.

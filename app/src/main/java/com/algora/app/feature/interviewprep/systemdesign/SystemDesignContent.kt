@@ -62,5 +62,45 @@ internal val systemDesignPrimer = SystemDesignPrimer(
             "A secondary structure that speeds lookups at the cost of extra writes and space.",
             "Frequent reads that filter or sort on a column. Every index you add taxes writes — don't over-index.",
         ),
+        SystemDesignConcept(
+            "Idempotency", "Reliability",
+            "A repeated request has the same effect as a single one, usually via a client-supplied key.",
+            "Anywhere retries exist — payments, webhooks, queue consumers. It is what makes at-least-once delivery survivable.",
+        ),
+        SystemDesignConcept(
+            "Circuit Breaker", "Reliability",
+            "Stops calling a failing dependency for a cooling-off period instead of retrying into the fire.",
+            "Any synchronous call to a service that can degrade. Without it, retries turn one slow dependency into a cascading outage.",
+        ),
+        SystemDesignConcept(
+            "Write-Ahead Log", "Storage",
+            "Appends every change to a durable sequential log before applying it to the main structure.",
+            "Durability and crash recovery, and the same log doubles as the replication stream and a change-data-capture feed.",
+        ),
+        SystemDesignConcept(
+            "Leader Election", "Reliability",
+            "Consensus (Raft/Paxos, or a coordination service) picks one node to accept writes.",
+            "Any replicated store or scheduler that needs a single writer. State how a failover is detected and what happens to in-flight writes.",
+        ),
+        SystemDesignConcept(
+            "Blob Store + Metadata DB", "Storage",
+            "Large objects live in object storage; the database holds only pointers and attributes.",
+            "Media, uploads and attachments. Keeping megabyte payloads out of the primary database is what keeps its working set cacheable.",
+        ),
+        SystemDesignConcept(
+            "Fan-out on Write vs Read", "Architecture",
+            "Push a new item into every follower's feed at write time, or assemble the feed per request.",
+            "Feed and notification designs. Write fan-out gives fast reads but explodes for celebrity accounts — real systems mix both.",
+        ),
+        SystemDesignConcept(
+            "Backpressure", "Scaling",
+            "Signals producers to slow down when consumers or queues fall behind, instead of buffering forever.",
+            "Any pipeline with variable load. Without it, an unbounded queue converts a throughput problem into an out-of-memory crash.",
+        ),
+        SystemDesignConcept(
+            "Bloom Filter", "Storage",
+            "A compact probabilistic membership test: no false negatives, some false positives.",
+            "Skipping expensive lookups — checking whether an SSTable or a cache could possibly hold a key before reading it.",
+        ),
     ),
 )
