@@ -137,11 +137,18 @@ First release.
 | Asset | File | Spec |
 |---|---|---|
 | Feature graphic | `graphics/feature-graphic-1024x500.png` | 1024×500 PNG, no alpha |
+| — source | `graphics/feature-graphic.html` | render with headless Chrome; command is in the file header |
 | App icon | `graphics/icon-512.png` | 512×512 PNG |
 
 Both are generated from `docs/design/Algora Icon.html`'s brand tile — the same
 `#6366F1 → #7C3AED → #C026D3` gradient and node-graph mark the launcher icon uses — so the store
 page and the installed icon read as one thing.
+
+**The feature graphic quotes no counts, deliberately.** It used to read "176 topics · 91 problems ·
+19 quizzes", which was three releases stale and unfixable without redrawing the art. Its pills now
+say what the app *has* rather than how much of it — `DSA · AI · interview prep`, `Problems, quizzes,
+flashcards`, `Works offline` — so the library can grow without dating the image. Numbers belong in
+the text fields below, where they are re-derived from the registries before each upload.
 
 ---
 

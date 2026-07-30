@@ -34,15 +34,32 @@ implementations write the result into `EntitlementRepository`, which is what the
   immediately** (Google auto-refunds anything unacknowledged for 3 days).
   `queryPurchasesAsync` is the source of truth and runs on every connect, so refunds, reinstalls and
   account switches all converge; it doubles as "Restore purchase".
-- `FakePremiumBilling` — debug stand-in, price `$14.99`, grants after a short delay.
-- `BillingProvider` picks by `BuildConfig.DEBUG` (needs `buildConfig = true`, now enabled).
+- `FakePremiumBilling` — debug stand-in, price `$9.99` (the launch price, so the debug paywall reads
+  like the shipped one), grants after a short delay. **Lives in `src/debug/`, not `src/main/`.**
+- `BillingProvider` (main) holds the singleton and delegates construction to `BillingFactory`, which
+  exists once in `src/debug/` and once in `src/release/`.
+
+**The implementation is chosen by source set, not by `BuildConfig.DEBUG`.** It was originally an
+`if (BuildConfig.DEBUG)` branch inside `BillingProvider`, and that is not the same guarantee:
+`isMinifyEnabled = false` on the release build type means R8 never runs, so `FakePremiumBilling` —
+whose `launchPurchase()` calls `setPremium(true)` with no payment at all — was being compiled into
+the release APK and left reachable by reflection. Splitting the factory means the release compiler
+never sees the class, so the guarantee holds regardless of shrinker settings. `FakeRewardedAds` and
+`AdsFactory` are arranged the same way. Verify after any refactor with:
+
+```
+./gradlew compileReleaseKotlin
+find app/build/intermediates/built_in_kotlinc/release -iname "Fake*"   # must print nothing
+```
 
 ### Ads — `core/ads/`
 `RewardedAds` interface (`isReady` / `overlay` / `preload` / `show`). `AdMobRewardedAds` keeps one
 rewarded ad warm and reloads after each dismissal; `MobileAds.initialize()` runs on an IO dispatcher
 inside the impl, so `MainActivity` stays clean. `FakeRewardedAds` renders a 5s countdown via the
-`overlay` flow (debug builds never touch the AdMob SDK). Ad ids live only in `AdIds.kt`; the AdMob
-app id lives only in `AndroidManifest.xml` — both currently Google's public test values.
+`overlay` flow (debug builds never touch the AdMob SDK) and, like the billing fake, lives in
+`src/debug/` with `AdsFactory` split across `src/debug/` and `src/release/`. Ad ids live only in
+`AdIds.kt`; the AdMob app id lives only in `AndroidManifest.xml` — both currently Google's public
+test values.
 
 ### UI
 - `feature/premium/PremiumScreen.kt` — the mock's `isPremium` block (`docs/design/Algora.dc.html`
@@ -82,8 +99,19 @@ app id lives only in `AndroidManifest.xml` — both currently Google's public te
 
 ## To go live
 
-1. Create the `algora_premium_lifetime` managed product in Play Console; create the AdMob app +
-   rewarded unit.
-2. Replace the ids in `core/ads/AdIds.kt` and `AndroidManifest.xml`'s `APPLICATION_ID` meta-data.
-3. Test with a licence-tester account on an internal-testing track (release build → real
+1. Create the `algora_premium_lifetime` managed product in Play Console at **$9.99 USD**; create the
+   AdMob app + rewarded unit.
+2. **Set regional prices by hand.** Play's automatic conversion prices South and Southeast Asia at
+   near-full USD, which is far above local purchasing power and is where most of this app's audience
+   is. Turn on Play's purchasing-power price recommendations, then override at least: BDT 299–399,
+   ₹199–299, PKR 699–899, Rp 39–49k, R$ 14,90.
+3. Replace the ids in `core/ads/AdIds.kt` and `AndroidManifest.xml`'s `APPLICATION_ID` meta-data.
+4. Test with a licence-tester account on an internal-testing track (release build → real
    `PlayPremiumBilling` + `AdMobRewardedAds`).
+
+**Why $9.99 and not more.** The rewarded-ad path opens any locked topic for 24h, so the ceiling on
+the lifetime price is not the value of the content — it is the point at which grinding ads beats
+paying. $9.99 also sits under the $10 mental threshold that separates an impulse buy from a
+considered one, which matters for a first release with no brand behind it. Play permits raising the
+price for new buyers later and existing lifetime entitlements survive it, so launching low and
+raising is recoverable in a way that launching high and discounting is not.

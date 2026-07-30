@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Algora — Play feature graphic (1024×500)</title>
+<!--
+  Source for docs/store/graphics/feature-graphic-1024x500.png.
+
+  Render (from the repo root; needs network for the two web fonts):
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+      --headless --disable-gpu --hide-scrollbars --force-device-scale-factor=1 \
+      --window-size=1024,500 --virtual-time-budget=6000 \
+      --screenshot="$PWD/docs/store/graphics/feature-graphic-1024x500.png" \
+      "file://$PWD/docs/store/graphics/feature-graphic.html"
+
+  Do not pass --default-background-color=00000000: Play rejects a feature
+  graphic with an alpha channel, and the opaque body here is what keeps the
+  export RGB.
+
+  Deliberately carries no counts. The library grows most releases and a number
+  burned into a PNG cannot be re-derived at upload time the way listing.md's can.
+
+  Brand: the node-graph mark and the #6366F1 → #7C3AED → #C026D3 ramp are lifted
+  from docs/design/Algora Icon.html so the store page, the launcher icon and the
+  in-app topbar read as one thing.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1024px; height: 500px; background: #000; }
+
+  .canvas {
+    position: relative;
+    width: 1024px;
+    height: 500px;
+    overflow: hidden;
+    background:
+      radial-gradient(680px 560px at 83% 4%,   rgba(175, 72, 215, .285), transparent 76%),
+      radial-gradient(640px 520px at 0% 104%,  rgba(110, 125, 255, .30), transparent 76%),
+      #161a22;
+  }
+
+  /* ---- decorative node-graph marks ------------------------------------- */
+  /* Both are drawn in canvas coordinates, so the numbers below are the
+     positions they occupy in the 1024×500 export. */
+  .mark { position: absolute; left: 0; top: 0; }
+  .mark .edge { stroke: rgba(200, 175, 255, .075); stroke-linecap: round; fill: none; }
+  .mark .node { fill: rgba(200, 175, 255, .075); }
+
+  /* ---- content --------------------------------------------------------- */
+  .tile { position: absolute; left: 72px; top: 115px; }
+
+  .wordmark {
+    position: absolute; left: 202px; top: 128px;
+    font: 700 78px/1 'Space Grotesk', sans-serif;
+    letter-spacing: -.015em;
+    color: #fff;
+  }
+
+  .headline {
+    position: absolute; left: 73px; top: 250px;
+    font: 700 30px/1 'Space Grotesk', sans-serif;
+    letter-spacing: -.007em;
+    color: #fff;
+  }
+
+  .sub {
+    position: absolute; left: 73px; top: 300px;
+    font: 400 19px/1 'IBM Plex Sans', sans-serif;
+    color: rgba(255, 255, 255, .62);
+  }
+
+  .pills {
+    position: absolute; left: 72px; top: 346px;
+    display: flex; gap: 12px;
+  }
+  .pill {
+    display: flex; align-items: center; gap: 9px;
+    height: 39px; padding: 0 15px;
+    border: 1px solid rgba(255, 255, 255, .16);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, .06);
+    font: 600 14.5px/1 'IBM Plex Sans', sans-serif;
+    color: #eceef5;
+    white-space: nowrap;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; }
+</style>
+</head>
+<body>
+<div class="canvas">
+
+  <svg class="mark" width="1024" height="500" viewBox="0 0 1024 500">
+    <!-- large mark, top right -->
+    <g class="edge" stroke-width="17">
+      <line x1="845" y1="100" x2="743" y2="305"></line>
+      <line x1="845" y1="100" x2="947" y2="305"></line>
+      <line x1="786" y1="232" x2="904" y2="232"></line>
+    </g>
+    <circle class="node" cx="845" cy="100" r="37"></circle>
+    <circle class="node" cx="743" cy="305" r="29"></circle>
+    <circle class="node" cx="947" cy="305" r="29"></circle>
+
+    <!-- smaller mark, bottom left, tilted and cropped by the canvas edge -->
+    <g class="edge" stroke-width="13">
+      <line x1="150" y1="370" x2="18"  y2="474"></line>
+      <line x1="150" y1="370" x2="167" y2="537"></line>
+      <line x1="68"  y1="434" x2="161" y2="474"></line>
+    </g>
+    <circle class="node" cx="150" cy="370" r="24"></circle>
+    <circle class="node" cx="18"  cy="474" r="20"></circle>
+    <circle class="node" cx="167" cy="537" r="20"></circle>
+  </svg>
+
+  <!-- app icon tile: docs/design/Algora Icon.html, 300-unit artwork at 104px -->
+  <svg class="tile" width="104" height="104" viewBox="0 0 300 300">
+    <defs>
+      <linearGradient id="tileRamp" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0"    stop-color="#6366f1"></stop>
+        <stop offset="0.52" stop-color="#7c3aed"></stop>
+        <stop offset="1"    stop-color="#c026d3"></stop>
+      </linearGradient>
+    </defs>
+    <rect x="0" y="0" width="300" height="300" rx="70" fill="url(#tileRamp)"></rect>
+    <g stroke="rgba(255,255,255,.35)" stroke-width="21" stroke-linecap="round">
+      <line x1="150" y1="95" x2="78"  y2="240"></line>
+      <line x1="150" y1="95" x2="222" y2="240"></line>
+      <line x1="105" y1="185" x2="195" y2="185"></line>
+    </g>
+    <circle cx="150" cy="95"  r="36" fill="#fff"></circle>
+    <circle cx="78"  cy="240" r="30" fill="#fff"></circle>
+    <circle cx="222" cy="240" r="30" fill="#fff"></circle>
+    <circle cx="150" cy="95"  r="14" fill="#5b21b6"></circle>
+  </svg>
+
+  <div class="wordmark">Algora</div>
+  <div class="headline">Algorithms and AI you can actually see</div>
+  <div class="sub">Every topic ships with a lab you can run — offline, no account.</div>
+
+  <div class="pills">
+    <div class="pill"><span class="dot" style="background:#8b5cf6"></span>DSA · AI · interview prep</div>
+    <div class="pill"><span class="dot" style="background:#3b82f6"></span>Problems, quizzes, flashcards</div>
+    <div class="pill"><span class="dot" style="background:#10b981"></span>Works offline</div>
+  </div>
+
+</div>
+</body>
+</html>
