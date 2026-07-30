@@ -30,6 +30,7 @@ private val activations = DeepLearningCategories.activations
 private val convolutional = DeepLearningCategories.cnn
 private val detection = DeepLearningCategories.detection
 private val recurrent = DeepLearningCategories.rnn
+private val transformers = DeepLearningCategories.transformers
 private val fundamentals = DeepLearningCategories.fundamentals
 private val architectures = DeepLearningCategories.architectures
 
@@ -122,6 +123,25 @@ private val rnnTopics = listOf(
     topic("seq2seq", "Seq2Seq Models", recurrent, "Greedy, beam and the two kinds of error only one of them fixes.", isPremium = true, difficulty = Difficulty.ADVANCED),
 )
 
+// The doc's Transformers & LLMs block in full. `attention` is cross-listed from NLP and `transformers`
+// moves here from Architectures, both as landing topics. Ordered as the mechanism is assembled and
+// then as the families were published: the operation, the two ways it is wired, the head split, the
+// block itself, then encoder-only, decoder-only, encoder-decoder, and the two models that are
+// arguments about BERT's recipe rather than its architecture. `hf_tokenizers` sits last because it
+// is the one thing on this list you choose *before* any of the rest exists.
+private val transformerTopics = listOf(
+    topic("attention", "Attention", transformers, "Let the model weigh every token against every other.", isPremium = true),
+    topic("self_cross_attention", "Self- vs Cross-Attention", transformers, "One operation, two wirings — and the experiment that ends the RNN bottleneck story.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("multi_head_attention", "Multi-Head Attention", transformers, "Free in parameters, and what it actually buys is simultaneous reads.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("transformers", "Transformers", transformers, "Self-attention architecture behind modern LLMs.", isPremium = true),
+    topic("bert", "BERT (Bidirectional Encoder)", transformers, "Fill in the blanks — 2× the context per prediction, 6.4× fewer of them.", difficulty = Difficulty.INTERMEDIATE),
+    topic("gpt", "GPT (Decoder-Only)", transformers, "One triangular mask, and everything that follows from it.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("t5", "T5 (Text-to-Text)", transformers, "Every task as text, and span corruption priced at 512 tokens.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("roberta", "RoBERTa", transformers, "Same architecture, better recipe — and 0.85ᵏ is the whole masking argument.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("distilbert", "DistilBERT", transformers, "Half the layers, 40% smaller — and why it is not 50%.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("hf_tokenizers", "Hugging Face Tokenizers", transformers, "BPE, WordPiece and Unigram trained side by side on one corpus.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+)
+
 private val fundamentalsTopics = listOf(
     topic("gradient_descent_variants", "Gradient Descent Variants", fundamentals, "SGD, Momentum, RMSProp, Adam and friends.", isPremium = true),
     topic("batch_normalization", "Batch Normalization", fundamentals, "Re-centre and re-scale activations so deep stacks stay trainable.", isPremium = true),
@@ -132,13 +152,12 @@ private val fundamentalsTopics = listOf(
 private val architecturesTopics = listOf(
     topic("autoencoders", "Autoencoders", architectures, "Encode-then-reconstruct networks for compression and denoising.", isPremium = true),
     topic("gans", "GANs", architectures, "A generator and discriminator locked in an adversarial game.", isPremium = true),
-    topic("transformers", "Transformers", architectures, "Self-attention architecture behind modern LLMs.", isPremium = true),
     topic("diffusion_models", "Diffusion Models", architectures, "Learn to reverse a noising process and sample images from noise.", isPremium = true),
 )
 
 object DeepLearningTopics {
     val topics: List<Topic> = basicsTopics + activationTopics + cnnTopics + detectionTopics +
-        rnnTopics + fundamentalsTopics + architecturesTopics
+        rnnTopics + transformerTopics + fundamentalsTopics + architecturesTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }

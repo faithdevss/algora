@@ -271,6 +271,14 @@ object PrerequisiteGraph {
         "bidirectional_rnn" to listOf("rnn", "pos_tagging"),
         "encoder_decoder" to listOf("rnn", "lstm_gru"),
         "seq2seq" to listOf("encoder_decoder"),
+        "self_cross_attention" to listOf("attention", "encoder_decoder"),
+        "multi_head_attention" to listOf("self_cross_attention"),
+        "bert" to listOf("transformers", "bidirectional_rnn"),
+        "gpt" to listOf("transformers", "self_cross_attention"),
+        "t5" to listOf("bert", "gpt", "encoder_decoder"),
+        "roberta" to listOf("bert"),
+        "distilbert" to listOf("bert", "transfer_learning"),
+        "hf_tokenizers" to listOf("bpe", "tokenization"),
     )
 
     fun prereqsOf(topicId: String): List<String> = prerequisites[topicId].orEmpty()

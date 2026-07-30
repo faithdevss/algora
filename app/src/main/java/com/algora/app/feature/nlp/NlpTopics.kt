@@ -84,6 +84,9 @@ private val embeddingTopics = listOf(
 // Architecture" heading is exactly what they cover; C6 adds self-attention and multi-head.
 private val transformerTopics = listOf(
     topic("attention", "Attention", transformer, "Let the model weigh every token against every other.", isPremium = true),
+    // C6, cross-listed with Deep Learning — the doc lists these under both sections.
+    topic("self_cross_attention", "Self-Attention", transformer, "One operation, two wirings — and the experiment that ends the RNN bottleneck story.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("multi_head_attention", "Multi-Head Attention", transformer, "Free in parameters, and what it actually buys is simultaneous reads.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
     topic("positional_encodings", "Positional Encodings", transformer, "Inject order into a mechanism that cannot see it.", isPremium = true, difficulty = Difficulty.ADVANCED),
     topic("feed_forward", "Feed-Forward Networks", transformer, "Two thirds of a transformer block, and where facts appear to live.", isPremium = true),
     topic("transformers", "Transformers", transformer, "Stacked self-attention — the backbone of modern NLP.", isPremium = true),
@@ -92,6 +95,12 @@ private val transformerTopics = listOf(
 // D4. `llms` moves here from Modeling as the landing topic for the model families.
 private val pretrainedTopics = listOf(
     topic("llms", "LLMs", pretrained, "Transformers scaled to billions of parameters.", isPremium = true),
+    // C6, cross-listed with Deep Learning. Gating follows the doc: BERT is the one free entry here.
+    topic("bert", "BERT (Encoder Only)", pretrained, "Fill in the blanks — 2× the context per prediction, 6.4× fewer of them.", difficulty = Difficulty.INTERMEDIATE),
+    topic("gpt", "GPT-2 (Decoder Only)", pretrained, "One triangular mask, and everything that follows from it.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("t5", "T5 (Text-to-Text)", pretrained, "Every task as text, and span corruption priced at 512 tokens.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("roberta", "RoBERTa", pretrained, "Same architecture, better recipe — and 0.85ᵏ is the whole masking argument.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("distilbert", "DistilBERT", pretrained, "Half the layers, 40% smaller — and why it is not 50%.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
     topic("bart", "BART", pretrained, "Corrupt a document five ways, then reconstruct it.", isPremium = true),
     topic("xlnet", "XLNet", pretrained, "Autoregression over permuted orders, with no [MASK] anywhere.", isPremium = true, difficulty = Difficulty.ADVANCED),
     topic("gpt3_gpt4", "GPT-3 & GPT-4", pretrained, "Scale as the contribution — and the law that made it predictable.", isPremium = true),

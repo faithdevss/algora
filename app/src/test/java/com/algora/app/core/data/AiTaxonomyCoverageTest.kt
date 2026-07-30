@@ -245,15 +245,15 @@ class AiTaxonomyCoverageTest {
             ),
             "Transformers & LLMs" to linkedMapOf(
                 "The Attention Mechanism" to listOf("attention"),
-                "Self-Attention vs Cross-Attention" to emptyList(),     // C6
-                "Multi-Head Attention" to emptyList(),                  // C6
+                "Self-Attention vs Cross-Attention" to listOf("self_cross_attention"),
+                "Multi-Head Attention" to listOf("multi_head_attention"),
                 "The Transformer (Attention Is All You Need)" to listOf("transformers"),
-                "BERT (Bidirectional Encoder)" to emptyList(),          // C6
-                "GPT (Generative Pre-trained Transformer)" to emptyList(),   // C6
-                "T5 (Text-to-Text)" to emptyList(),                     // C6
-                "RoBERTa" to emptyList(),                               // C6
-                "DistilBERT" to emptyList(),                            // C6
-                "Hugging Face Tokenizers" to emptyList(),               // C6
+                "BERT (Bidirectional Encoder)" to listOf("bert"),
+                "GPT (Generative Pre-trained Transformer)" to listOf("gpt"),
+                "T5 (Text-to-Text)" to listOf("t5"),
+                "RoBERTa" to listOf("roberta"),
+                "DistilBERT" to listOf("distilbert"),
+                "Hugging Face Tokenizers" to listOf("hf_tokenizers"),
                 "RLHF (Reinforcement Learning from Human Feedback)" to listOf("rlhf"),
             ),
             "Generative Deep Learning" to linkedMapOf(
@@ -358,18 +358,18 @@ class AiTaxonomyCoverageTest {
             ),
             "The Transformer Architecture" to linkedMapOf(
                 "The Attention Mechanism" to listOf("attention"),
-                "Self-Attention" to emptyList(),                        // C6
-                "Multi-Head Attention" to emptyList(),                  // C6
+                "Self-Attention" to listOf("self_cross_attention"),
+                "Multi-Head Attention" to listOf("multi_head_attention"),
                 "Positional Encodings" to listOf("positional_encodings"),
                 "Layer Normalization" to emptyList(),                   // C9
                 "Feed-Forward Networks" to listOf("feed_forward"),
             ),
             // `llms` is the umbrella in front of this whole block; C6 and D4 author the models.
             "Pre-trained Language Models" to linkedMapOf(
-                "BERT (Encoder Only)" to emptyList(),                   // C6
-                "GPT-2 (Decoder Only)" to emptyList(),                  // C6
-                "T5 (Text-to-Text)" to emptyList(),                     // C6
-                "RoBERTa & DistilBERT" to emptyList(),                  // C6
+                "BERT (Encoder Only)" to listOf("bert"),
+                "GPT-2 (Decoder Only)" to listOf("gpt"),
+                "T5 (Text-to-Text)" to listOf("t5"),
+                "RoBERTa & DistilBERT" to listOf("roberta", "distilbert"),
                 "BART" to listOf("bart"),
                 "XLNet" to listOf("xlnet"),
                 "GPT-3 & GPT-4" to listOf("gpt3_gpt4"),
@@ -516,7 +516,7 @@ class AiTaxonomyCoverageTest {
 
     // The ratchet. Move it when a batch lands; a batch that does not move it did not close any doc
     // entry, which is worth noticing.
-    private val expectedCoveredCount = 269
+    private val expectedCoveredCount = 283
 
     // Doc entries the app answers from the DSA taxonomy rather than an AI section. Deliberate reuse
     // — the alternative is a duplicate page — but small and explicit, so it cannot grow by accident.

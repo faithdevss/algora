@@ -46,7 +46,7 @@ internal class Param(val rows: Int, val cols: Int, random: Random? = null) {
     }
 }
 
-private fun Param.matVec(x: DoubleArray): DoubleArray {
+internal fun Param.matVec(x: DoubleArray): DoubleArray {
     val out = DoubleArray(rows)
     for (r in 0 until rows) {
         var sum = 0.0
@@ -57,7 +57,7 @@ private fun Param.matVec(x: DoubleArray): DoubleArray {
 }
 
 /** The column the one-hot index `i` selects, added into `out`. */
-private fun Param.addColumn(i: Int, out: DoubleArray) {
+internal fun Param.addColumn(i: Int, out: DoubleArray) {
     for (r in 0 until rows) out[r] += this[r, i]
 }
 
@@ -157,7 +157,7 @@ internal class Recurrence(vocab: Int, val hidden: Int, random: Random) {
 }
 
 /** ∂L/∂h injected at the last state only — the shape a sequence classifier needs. */
-private fun lastOnly(length: Int, hidden: Int, dh: DoubleArray): Array<DoubleArray> =
+internal fun lastOnly(length: Int, hidden: Int, dh: DoubleArray): Array<DoubleArray> =
     Array(length + 1) { if (it == length) dh else DoubleArray(hidden) }
 
 // ── BPTT ─────────────────────────────────────────────────────────────────────

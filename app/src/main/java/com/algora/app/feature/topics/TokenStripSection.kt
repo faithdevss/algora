@@ -3772,6 +3772,947 @@ private fun seq2seqFrames(): List<TokenFrame> {
     return frames
 }
 
+// ── C6 · Self- and cross-attention ───────────────────────────────────────────
+// The centrepiece is the model C5's encoder-decoder topic ended by pointing at: the same task, the
+// same data and the same budget, with cross-attention instead of a single context vector — plus a
+// fixed-vector model widened until its parameter count matches, so the result cannot be explained
+// by size.
+
+private fun selfCrossAttentionFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val sentence = MaskLab.sentence
+    val n = sentence.size
+
+    frames += TokenFrame(
+        status = "Attention is one operation: score every query against every key, softmax the scores, and return " +
+            "that weighted mixture of the values. What changes between its two uses is only where the queries and " +
+            "the keys come from.",
+        chips = sentence.map { Chip(it) },
+        chipsLabel = "one sequence",
+        rows = listOf(
+            "self-attention" to "Q, K, V all from the same sequence",
+            "cross-attention" to "Q from the target, K and V from the source",
+            "the operation" to "softmax(QKᵀ/√d)·V — identical in both",
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "Self-attention over ${n} tokens scores ${MaskLab.pairs(n)} pairs — every position against every " +
+            "position, including itself. Cross-attention scores ${MaskLab.crossPairs(4, MaskLab.source.size)} for a " +
+            "${MaskLab.source.size}-token source and a 4-token target: the two sides do not have to be the same " +
+            "length, which is exactly what a translation model needs.",
+        chips = MaskLab.source.map { Chip(it, "source") },
+        chipsLabel = "the other sequence, in cross-attention",
+        rows = listOf(
+            "self, ${n} tokens" to "${MaskLab.pairs(n)} scores",
+            "cross, ${MaskLab.source.size} → 4" to "${MaskLab.crossPairs(4, MaskLab.source.size)} scores",
+            "causal self" to "${MaskLab.causalPairs(n)} scores — half the matrix is masked away",
+        ),
+    )
+
+    val comparison = AttentionLab.comparison
+    val fixed = comparison.first { it.name == "fixed vector" }
+    val matched = comparison.first { it.name == "fixed vector, widened to match" }
+    val attention = comparison.first { it.name == "cross-attention" }
+    frames += TokenFrame(
+        status = "The encoder-decoder topic ends on the claim that attention removes the fixed-vector bottleneck. " +
+            "Here is that claim on the same task, the same 120 training pairs and the same 100 epochs: exact match " +
+            "${"%.3f".format(fixed.exactMatch)} with one context vector, ${"%.3f".format(attention.exactMatch)} " +
+            "with cross-attention.",
+        bars = listOf(
+            BarRow(
+                "exact match",
+                comparison.map { it.exactMatch.toFloat() },
+                ChipResult,
+                listOf("fixed", "reversed", "widened", "attention"),
+            ),
+        ),
+        rows = comparison.map { it.name to "${"%.3f".format(it.exactMatch)} · ${it.parameters} parameters" },
+        readout = "${"%.3f".format(fixed.exactMatch)} → ${"%.3f".format(attention.exactMatch)}",
+    )
+
+    frames += TokenFrame(
+        status = "And it is not the parameter count. Widening the fixed-vector model to " +
+            "${matched.parameters} parameters — within ${attention.parameters - matched.parameters} of the " +
+            "attention model — scores ${"%.3f".format(matched.exactMatch)}, barely above the narrow one. The " +
+            "collapse with length is still there: " +
+            matched.byLength.joinToString(", ") { "%.2f".format(it.second) } + ".",
+        bars = listOf(
+            BarRow("widened fixed vector, by length", matched.byLength.map { it.second.toFloat() }, BarNegative, (1..6).map { "L$it" }),
+            BarRow("cross-attention, by length", attention.byLength.map { it.second.toFloat() }, BarPositive, (1..6).map { "L$it" }),
+        ),
+        readout = "capacity was never the missing thing",
+    )
+
+    val model = AttentionLab.single
+    val example = Seq2SeqLab.testSet.first { it.source.size == 5 && model.decode(it.source).tokens.contentEquals(it.target) }
+    val alignment = model.alignmentMatrix(example.source)
+    frames += TokenFrame(
+        status = "What the decoder learned to do is visible. Each row is one decoder step and each column a source " +
+            "position; the mass sits on the diagonal because the task is to copy, and nobody told it that — the " +
+            "alignment is what the gradient found.",
+        heat = Heat(
+            alignment.indices.map { "step ${it + 1}" },
+            example.source.map { Seq2SeqLab.symbolNames[it] },
+            alignment.map { row -> row.map { it.toFloat() } },
+        ),
+        readout = "${example.text} → ${model.decode(example.source).text}",
+    )
+
+    frames += TokenFrame(
+        status = "Scored over the whole held-out set rather than one picture: the attention mass landing on the " +
+            "position the step should be reading is ${"%.3f".format(model.diagonalMass())}, and the average " +
+            "distance between where the mass sits and where it belongs is " +
+            "${"%.3f".format(model.diagonalOffset())} positions.",
+        bars = listOf(
+            BarRow("mass on the right position", listOf(model.diagonalMass().toFloat()), ChipResult, listOf("mean")),
+            BarRow("offset, in positions", listOf(model.diagonalOffset().toFloat()), BarNegative, listOf("mean")),
+        ),
+        readout = "the alignment is learned, not supplied",
+    )
+
+    frames += TokenFrame(
+        status = "The gradients through this attention block are derived by hand, so they are checked against " +
+            "finite differences rather than trusted: the worst relative disagreement over sampled coordinates in " +
+            "every parameter is ${"%.1e".format(AttentionLab.single.gradientCheck())}. The first run of that check " +
+            "reported a uniform 1 − 1/T error, which was the loss being averaged on one side and summed on the " +
+            "other — a scale bug, not a derivation bug, and worth being able to tell apart.",
+        rows = listOf(
+            "analytic vs numeric" to "%.1e".format(AttentionLab.single.gradientCheck()),
+            "what a derivation bug looks like" to "one parameter block wrong, the rest exact",
+            "what a scale bug looks like" to "every block wrong by the same factor",
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "One thing the frames above do not show: cost. Self-attention over n tokens is n² scores and the " +
+            "whole matrix has to exist, so doubling the sequence quadruples the work — the price paid for the " +
+            "single-step path between any two positions that the recurrent models could not offer.",
+        bars = listOf(
+            BarRow(
+                "pairwise scores",
+                listOf(8f, 16f, 32f, 64f).map { it * it },
+                BarNegative,
+                listOf("n=8", "n=16", "n=32", "n=64"),
+            ),
+        ),
+        rows = listOf(
+            "recurrent path length" to "O(n) steps between distant tokens",
+            "attention path length" to "1 step, at O(n²) cost",
+        ),
+    )
+    return frames
+}
+
+// ── C6 · Multi-head attention ────────────────────────────────────────────────
+
+private fun multiHeadFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val d = MultiHeadLab.MODEL_DIM
+
+    frames += TokenFrame(
+        status = "Multi-head attention splits the d-dimensional space into h slices and runs the same operation " +
+            "in each, then concatenates. The first thing to be clear about is what it costs: nothing. Q, K, V and " +
+            "the output projection are four d×d matrices at every head count — ${MultiHeadLab.attentionParameters()} " +
+            "parameters at d = $d, whether h is 1 or 16.",
+        bars = listOf(
+            BarRow(
+                "attention parameters",
+                MultiHeadLab.headCounts.map { MultiHeadLab.attentionParameters().toFloat() },
+                ChipResult,
+                MultiHeadLab.headCounts.map { "h=$it" },
+            ),
+            BarRow(
+                "dimensions per head",
+                MultiHeadLab.headCounts.map { MultiHeadLab.headDim(it).toFloat() },
+                BarPositive,
+                MultiHeadLab.headCounts.map { "h=$it" },
+            ),
+        ),
+        readout = "same parameters, differently partitioned",
+    )
+
+    val read = MultiHeadLab.simultaneousRead()
+    frames += TokenFrame(
+        status = "So what does the split buy? Not rank, which is the usual story — a single head at d = $d can " +
+            "represent any pattern this length. What one head cannot do is read two places at once: it emits *one* " +
+            "distribution, so attending to two positions means splitting the mass between them and receiving a " +
+            "blend of both values.",
+        rows = listOf(
+            "target" to "position a into one half of the output, position b into the other",
+            "best single head" to "α = ${"%.2f".format(read.bestAlpha)}, error ${"%.3f".format(read.singleHeadError)}",
+            "two heads" to "error ${"%.3f".format(read.twoHeadError)} — exact, by construction",
+        ),
+        bars = listOf(
+            BarRow(
+                "reconstruction error",
+                listOf(read.singleHeadError.toFloat(), read.twoHeadError.toFloat()),
+                BarNegative,
+                listOf("1 head", "2 heads"),
+            ),
+        ),
+        readout = "measured over 200 random value pairs",
+    )
+
+    frames += TokenFrame(
+        status = "The rank argument does bite, but at the other end. One head's score matrix is Q·Kᵀ with an inner " +
+            "dimension of d/h, so it cannot have rank above d/h however it is trained. Four alignment patterns " +
+            "summed need rank ${MultiHeadLab.combinedRank()}; at h = 8 each head has ${MultiHeadLab.headDim(8)} " +
+            "dimensions and the best it can do is " +
+            "${"%.1f".format(MultiHeadLab.rankError(MultiHeadLab.combinedPatterns(), MultiHeadLab.headDim(8)) * 100)}% " +
+            "error. Too many heads is a real failure mode, not a hypothetical one.",
+        bars = listOf(
+            BarRow(
+                "error of the best rank-(d/h) fit",
+                MultiHeadLab.headCounts.map {
+                    MultiHeadLab.rankError(MultiHeadLab.combinedPatterns(), MultiHeadLab.headDim(it)).toFloat()
+                },
+                BarNegative,
+                MultiHeadLab.headCounts.map { "h=$it" },
+            ),
+        ),
+        readout = "heads get thinner as they get more numerous",
+    )
+
+    val single = AttentionLab.single
+    val multi = AttentionLab.multi
+    frames += TokenFrame(
+        status = "On the copy task from the previous topic, trained identically at 1 head and at 4: exact match " +
+            "${"%.3f".format(single.exactMatch())} and ${"%.3f".format(multi.exactMatch())}. Four heads is slightly " +
+            "*worse*, and that is the honest result — this task has one alignment to learn, so there is nothing for " +
+            "the other three heads to do but split the width.",
+        bars = listOf(
+            BarRow(
+                "exact match",
+                listOf(single.exactMatch().toFloat(), multi.exactMatch().toFloat()),
+                ChipResult,
+                listOf("1 head", "4 heads"),
+            ),
+        ),
+        rows = listOf(
+            "parameters" to "${single.parameterCount} both",
+            "dimensions per head" to "${AttentionLab.HIDDEN} → ${AttentionLab.HIDDEN / 4}",
+        ),
+        readout = "heads help when there is more than one thing to attend to",
+    )
+
+    frames += TokenFrame(
+        status = "The four heads did not collapse into copies of each other, though. Measured on the held-out set, " +
+            "the mass each head puts on the position the step is copying ranges from " +
+            "${"%.2f".format((0..3).minOf { multi.diagonalMass(it) })} to " +
+            "${"%.2f".format((0..3).maxOf { multi.diagonalMass(it) })}: one head carries the alignment and the " +
+            "others drift off it. Head specialisation is real; it is just not free accuracy.",
+        bars = listOf(
+            BarRow(
+                "mass on the copied position",
+                (0..3).map { multi.diagonalMass(it).toFloat() },
+                BarPositive,
+                (0..3).map { "head $it" },
+            ),
+            BarRow(
+                "offset, in positions",
+                (0..3).map { multi.diagonalOffset(it).toFloat() },
+                BarNegative,
+                (0..3).map { "head $it" },
+            ),
+        ),
+        readout = "one head aligned, three doing something else",
+    )
+
+    frames += TokenFrame(
+        status = "Which is the rule of thumb worth keeping: the head count is a partition of a fixed budget. More " +
+            "heads means more simultaneous reads and thinner ones; the published transformers sit at 64 dimensions " +
+            "per head almost regardless of size, which is what the two measurements above jointly recommend.",
+        rows = listOf(
+            "BERT-base" to "d 768, 12 heads → 64 per head",
+            "GPT-2 small" to "d 768, 12 heads → 64 per head",
+            "GPT-3 175B" to "d 12288, 96 heads → 128 per head",
+            "the trade" to "simultaneous reads against expressiveness per read",
+        ),
+    )
+    return frames
+}
+
+// ── C6 · BERT ────────────────────────────────────────────────────────────────
+
+private fun bertFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val sentence = PretrainCorpus.tokens[0]
+    val masked = PretrainLab.maskSentence(sentence)
+
+    frames += TokenFrame(
+        status = "BERT is a transformer encoder trained by filling in blanks. Every position sees every other one " +
+            "— no causal mask anywhere — which is only possible because it is never asked to continue text, only " +
+            "to reconstruct it.",
+        chips = masked.map { (token, kind) ->
+            Chip(token, kind, if (kind == "kept") ChipMark.IDLE else ChipMark.ACTIVE)
+        },
+        chipsLabel = "one masked input",
+        rows = listOf(
+            "objective" to "predict the tokens at the selected positions",
+            "context per prediction" to "every other token in the sequence",
+            "what it cannot do" to "generate — there is no next-token objective",
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "Selection is 15% of positions, and what happens to a selected position is 80/10/10: replaced " +
+            "with [MASK], replaced with a random token, or left exactly as it was. On this ${PretrainCorpus.tokenCount}-token " +
+            "corpus that is ${PretrainLab.corruption.masked} masked, ${PretrainLab.corruption.randomised} " +
+            "randomised and ${PretrainLab.corruption.kept} untouched — all ${PretrainLab.maskedTargets} of them " +
+            "still scored.",
+        bars = listOf(
+            BarRow(
+                "positions",
+                listOf(
+                    PretrainLab.corruption.masked.toFloat(),
+                    PretrainLab.corruption.randomised.toFloat(),
+                    PretrainLab.corruption.kept.toFloat(),
+                ),
+                ChipResult,
+                listOf("[MASK] 80%", "random 10%", "kept 10%"),
+            ),
+        ),
+        readout = "${PretrainLab.maskedTargets} targets from ${PretrainCorpus.tokenCount} tokens",
+    )
+
+    frames += TokenFrame(
+        status = "The 10% random and 10% unchanged branches exist because of a mismatch that is easy to state as a " +
+            "number: [MASK] appears on ${"%.0f".format(PretrainLab.maskTokenShare * 100)}% of positions during " +
+            "pre-training and on 0% of them during fine-tuning. A model allowed to key off the token itself would " +
+            "learn a feature that disappears the moment it is used.",
+        bars = listOf(
+            BarRow(
+                "[MASK] share of input positions",
+                listOf((PretrainLab.maskTokenShare * 100).toFloat(), 0f),
+                BarNegative,
+                listOf("pre-training", "fine-tuning"),
+            ),
+        ),
+        rows = listOf(
+            "why 10% random" to "the model cannot trust an unmasked token either",
+            "why 10% unchanged" to "it must keep a good representation of every position",
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "What bidirectionality buys, counted on the same corpus: a causal model's prediction at position " +
+            "i sees i tokens, averaging ${"%.2f".format(PretrainLab.causalContext)} tokens of context per " +
+            "prediction. A masked model's prediction sees every other position — " +
+            "${"%.2f".format(PretrainLab.maskedContext)}, exactly twice as much.",
+        bars = listOf(
+            BarRow(
+                "context tokens per prediction",
+                listOf(PretrainLab.causalContext.toFloat(), PretrainLab.maskedContext.toFloat()),
+                BarPositive,
+                listOf("causal", "masked"),
+            ),
+        ),
+        readout = "2× the context per prediction",
+    )
+
+    frames += TokenFrame(
+        status = "And what it costs, counted the same way: a causal objective turns every one of the " +
+            "${PretrainLab.causalTargets} tokens into a target, and masking at 15% turns " +
+            "${PretrainLab.maskedTargets} of them into targets. Same forward pass, " +
+            "${"%.1f".format(PretrainLab.signalRatio)}× less signal — which is why BERT-style models need more " +
+            "passes over the data than their parameter count suggests.",
+        bars = listOf(
+            BarRow(
+                "targets per pass over the corpus",
+                listOf(PretrainLab.causalTargets.toFloat(), PretrainLab.maskedTargets.toFloat()),
+                ChipResult,
+                listOf("causal", "masked 15%"),
+            ),
+        ),
+        readout = "${"%.1f".format(PretrainLab.signalRatio)}× fewer targets per pass",
+    )
+
+    val config = ModelTableLab.bertBase
+    val breakdown = ModelTableLab.breakdown(config)
+    frames += TokenFrame(
+        status = "BERT-base's size, summed from its own config rather than quoted: " +
+            "${breakdown.total} parameters. ${config.layers} layers of " +
+            "${ModelTableLab.encoderLayer(config)} each, an embedding table of ${breakdown.embeddings}, and a " +
+            "${breakdown.head}-parameter pooler. The paper's \"110M\" is this number rounded.",
+        bars = listOf(
+            BarRow(
+                "parameters (millions)",
+                listOf(
+                    (breakdown.embeddings / 1e6).toFloat(),
+                    (breakdown.encoder / 1e6).toFloat(),
+                    (breakdown.head / 1e6).toFloat(),
+                ),
+                BarPositive,
+                listOf("embeddings", "12 layers", "pooler"),
+            ),
+        ),
+        rows = listOf(
+            "attention block per layer" to "${ModelTableLab.attentionBlock(config)}",
+            "feed-forward per layer" to "${ModelTableLab.ffnBlock(config)}",
+            "embeddings' share" to "${"%.1f".format(ModelTableLab.embeddingShare(config) * 100)}%",
+            "total" to "${breakdown.total}",
+        ),
+        readout = "109,482,240 — the \"110M\" in full",
+    )
+
+    frames += TokenFrame(
+        status = "The shape of that table is the argument for the encoder-only design. Two thirds of a layer is " +
+            "the feed-forward block, not attention, and a fifth of the whole model is the embedding table — which " +
+            "is where RoBERTa's larger vocabulary and DistilBERT's layer cut both land.",
+        rows = listOf(
+            "attention" to "${"%.0f".format(ModelTableLab.attentionBlock(config) * 100.0 / ModelTableLab.encoderLayer(config))}% of a layer",
+            "feed-forward" to "${"%.0f".format(ModelTableLab.ffnBlock(config) * 100.0 / ModelTableLab.encoderLayer(config))}% of a layer",
+            "use it for" to "classification, tagging, retrieval, reranking",
+            "do not use it for" to "generation of any kind",
+        ),
+    )
+    return frames
+}
+
+// ── C6 · GPT ─────────────────────────────────────────────────────────────────
+
+private fun gptFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val sentence = MaskLab.sentence
+    val n = sentence.size
+    val causal = List(n) { i -> List(n) { j -> if (j <= i) 1f / (i + 1) else 0f } }
+
+    frames += TokenFrame(
+        status = "GPT is the same transformer block with one line added to the attention: positions to the right " +
+            "of the query are set to −∞ before the softmax. That single mask is the whole difference between a " +
+            "model that reconstructs text and one that continues it.",
+        chips = sentence.mapIndexed { index, token ->
+            Chip(token, if (index <= 2) "visible" else "masked", if (index <= 2) ChipMark.IDLE else ChipMark.DIM)
+        },
+        chipsLabel = "what position 3 can see",
+        readout = "causal mask: attend to j ≤ i only",
+    )
+
+    frames += TokenFrame(
+        status = "Drawn as a matrix it is exactly triangular. Bidirectional attention over $n tokens scores " +
+            "${MaskLab.pairs(n)} pairs; the causal version scores ${MaskLab.causalPairs(n)} — a little over half " +
+            "— and the first position attends only to itself, which is why the first token of a sequence carries " +
+            "no information about anything.",
+        heat = Heat(sentence, sentence, causal, focusRow = 3),
+        readout = "${MaskLab.causalPairs(n)} of ${MaskLab.pairs(n)} pairs survive the mask",
+    )
+
+    frames += TokenFrame(
+        status = "The payoff is that every position is a training target. The same forward pass that gives a " +
+            "masked model ${PretrainLab.maskedTargets} predictions on this corpus gives a causal model " +
+            "${PretrainLab.causalTargets} — ${"%.1f".format(PretrainLab.signalRatio)}× more — and the objective is " +
+            "exactly the task the model will be asked to do at inference.",
+        bars = listOf(
+            BarRow(
+                "targets per pass",
+                listOf(PretrainLab.causalTargets.toFloat(), PretrainLab.maskedTargets.toFloat()),
+                ChipResult,
+                listOf("causal", "masked"),
+            ),
+            BarRow(
+                "context per prediction",
+                listOf(PretrainLab.causalContext.toFloat(), PretrainLab.maskedContext.toFloat()),
+                BarPositive,
+                listOf("causal", "masked"),
+            ),
+        ),
+        readout = "more targets, each with less context",
+    )
+
+    frames += TokenFrame(
+        status = "The mask also makes generation cheap in a way a bidirectional model can never be. Because no " +
+            "position attends to the right, the keys and values of the tokens already generated never change — " +
+            "cache them and each new token costs one row of scores instead of a whole matrix. Over a " +
+            "${n}-token generation that is ${MaskLab.scoresWithCache(n)} score computations instead of " +
+            "${MaskLab.scoresWithoutCache(n)}.",
+        bars = listOf(
+            BarRow(
+                "score computations over the generation",
+                listOf(MaskLab.scoresWithoutCache(n).toFloat(), MaskLab.scoresWithCache(n).toFloat()),
+                BarNegative,
+                listOf("recompute", "KV cache"),
+            ),
+        ),
+        rows = listOf(
+            "cache size" to "2 · layers · d · tokens",
+            "GPT-2 small at 1024 tokens" to "${MaskLab.kvCacheValues(12, 768, 1024)} values",
+            "why it works" to "nothing to the left ever changes",
+        ),
+    )
+
+    val config = ModelTableLab.gpt2Small
+    val breakdown = ModelTableLab.breakdown(config)
+    val published = ModelTableLab.published.getValue(config.name)
+    frames += TokenFrame(
+        status = "GPT-2 small, summed from its config: ${breakdown.total} parameters. The paper reports 117M. The " +
+            "gap is not rounding — it is ${"%.1f".format((breakdown.total - published) * 100.0 / published)}%, and " +
+            "the released checkpoint has the larger number. Sum the table before quoting a headline figure.",
+        bars = listOf(
+            BarRow(
+                "parameters (millions)",
+                listOf((breakdown.total / 1e6).toFloat(), (published / 1e6).toFloat()),
+                ChipResult,
+                listOf("summed", "reported"),
+            ),
+        ),
+        rows = listOf(
+            "embeddings" to "${breakdown.embeddings} (${"%.1f".format(ModelTableLab.embeddingShare(config) * 100)}%)",
+            "12 layers" to "${breakdown.encoder}",
+            "final layer norm" to "${breakdown.head}",
+            "summed total" to "${breakdown.total}",
+        ),
+        readout = "124,439,808 against a reported 117M",
+    )
+
+    frames += TokenFrame(
+        status = "Note where GPT-2's parameters sit against BERT's. Its vocabulary is byte-level BPE at " +
+            "${config.vocab} against BERT's ${ModelTableLab.bertBase.vocab} WordPiece, and its context is " +
+            "${config.positions} against ${ModelTableLab.bertBase.positions} — so the embedding table is " +
+            "${"%.1f".format(ModelTableLab.embeddingShare(config) * 100)}% of the model rather than " +
+            "${"%.1f".format(ModelTableLab.embeddingShare(ModelTableLab.bertBase) * 100)}%. The layers are " +
+            "identical in size.",
+        bars = listOf(
+            BarRow(
+                "embedding share of the model",
+                listOf(
+                    (ModelTableLab.embeddingShare(ModelTableLab.bertBase) * 100).toFloat(),
+                    (ModelTableLab.embeddingShare(config) * 100).toFloat(),
+                ),
+                BarPositive,
+                listOf("BERT-base", "GPT-2 small"),
+            ),
+        ),
+        readout = "same layers, different vocabulary bill",
+    )
+    return frames
+}
+
+// ── C6 · T5 ──────────────────────────────────────────────────────────────────
+
+private fun t5Frames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val corrupted = SpanCorruptionLab.corrupt()
+    val scaled = SpanCorruptionLab.atScale()
+
+    frames += TokenFrame(
+        status = "T5's argument is that every NLP task is text in, text out — so classification, translation, " +
+            "summarisation and regression all become one problem with a task prefix on the front, trained by one " +
+            "encoder-decoder with one objective.",
+        chips = listOf(
+            Chip("translate English to German:", "prefix", ChipMark.ACTIVE),
+            Chip("that is good", "input"),
+        ),
+        chipsLabel = "one task, framed as text",
+        rows = listOf(
+            "classification" to "\"cola sentence: …\" → \"acceptable\"",
+            "similarity" to "\"stsb sentence1: … sentence2: …\" → \"3.8\"",
+            "why it matters" to "one model, one loss, one decoding path for all of them",
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "The pre-training objective corrupts *spans*, not single tokens. Each contiguous run of dropped " +
+            "tokens is replaced by one sentinel in the input, and the target is only the dropped runs, each " +
+            "introduced by its sentinel.",
+        chips = SpanCorruptionLab.sentence.map { Chip(it) },
+        chipsLabel = "original (${SpanCorruptionLab.sentence.size} tokens)",
+    )
+
+    frames += TokenFrame(
+        status = "On this sentence at the published settings — 15% corrupted, mean span 3 — the input keeps " +
+            "${corrupted.input.size} tokens with ${corrupted.spans} sentinel, and the target is " +
+            "${corrupted.target.size} tokens: the dropped span, its sentinel, and a final sentinel to stop on.",
+        chips = corrupted.input.map { Chip(it, mark = if (it.startsWith("<X")) ChipMark.ACTIVE else ChipMark.IDLE) },
+        chipsLabel = "encoder input (${corrupted.input.size})",
+        rows = listOf(
+            "target" to corrupted.target.joinToString(" "),
+            "target length" to "${corrupted.target.size} tokens",
+            "corrupted" to "${corrupted.corruptedTokens} tokens in ${corrupted.spans} span",
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "At the length these models actually run, that shape is the point. 512 tokens, 15% corrupted, " +
+            "mean span 3: the encoder reads ${scaled.inputLength} tokens and the decoder emits " +
+            "${scaled.targetLength}. BERT's objective makes the model produce an output at all " +
+            "${scaled.maskedOutputLength} positions — so T5 pays " +
+            "${"%.1f".format(scaled.maskedOutputLength.toDouble() / scaled.targetLength)}× fewer decoder steps for " +
+            "the same corruption budget.",
+        bars = listOf(
+            BarRow(
+                "output positions per pass",
+                listOf(scaled.maskedOutputLength.toFloat(), scaled.targetLength.toFloat()),
+                ChipResult,
+                listOf("masked LM", "span corruption"),
+            ),
+        ),
+        rows = listOf(
+            "tokens" to "${scaled.tokens}",
+            "corrupted" to "${scaled.corrupted} in ${scaled.spans} spans",
+            "encoder input" to "${scaled.inputLength}",
+            "decoder target" to "${scaled.targetLength}",
+        ),
+        readout = "short targets are the whole economy of it",
+    )
+
+    val config = ModelTableLab.t5Base
+    val breakdown = ModelTableLab.breakdown(config)
+    frames += TokenFrame(
+        status = "T5-base summed from its config: ${breakdown.total} parameters, against a reported 220M. Note " +
+            "where they are — the decoder is ${breakdown.decoder} against the encoder's ${breakdown.encoder}, " +
+            "because every decoder layer carries a cross-attention block the encoder layers do not have.",
+        bars = listOf(
+            BarRow(
+                "parameters (millions)",
+                listOf(
+                    (breakdown.embeddings / 1e6).toFloat(),
+                    (breakdown.encoder / 1e6).toFloat(),
+                    (breakdown.decoder / 1e6).toFloat(),
+                ),
+                BarPositive,
+                listOf("embeddings", "encoder", "decoder"),
+            ),
+        ),
+        rows = listOf(
+            "encoder layer" to "${ModelTableLab.encoderLayer(config)}",
+            "decoder layer" to "${ModelTableLab.decoderLayer(config)} — self, cross, and feed-forward",
+            "embeddings' share" to "${"%.1f".format(ModelTableLab.embeddingShare(config) * 100)}%",
+            "no biases anywhere" to "T5 drops them; that is ~${config.layers * 4 * config.dim} parameters saved per stack",
+        ),
+        readout = "the decoder is the expensive half",
+    )
+
+    frames += TokenFrame(
+        status = "Which is the trade against an encoder-only or decoder-only model of the same width: T5 pays for " +
+            "two stacks and cross-attention, and gets a model that can read bidirectionally *and* generate. BERT " +
+            "cannot generate; GPT reads only leftwards. This is the architecture that does both, at roughly double " +
+            "the layer bill.",
+        rows = listOf(
+            "BERT-base" to "${ModelTableLab.total(ModelTableLab.bertBase)} — encoder only, no generation",
+            "GPT-2 small" to "${ModelTableLab.total(ModelTableLab.gpt2Small)} — decoder only, one direction",
+            "T5-base" to "${ModelTableLab.total(config)} — both, at the cost of both",
+        ),
+    )
+    return frames
+}
+
+// ── C6 · RoBERTa ─────────────────────────────────────────────────────────────
+
+private fun robertaFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val epochs = listOf(1, 4, 10, PretrainLab.EPOCHS)
+
+    frames += TokenFrame(
+        status = "RoBERTa changed no part of BERT's architecture. Same layers, same width, same objective — the " +
+            "paper is a list of things the original training run did that turned out to be suboptimal, which makes " +
+            "it the most useful kind of ablation study.",
+        rows = listOf(
+            "architecture" to "unchanged",
+            "dynamic masking" to "a fresh mask every epoch",
+            "NSP" to "removed",
+            "batch size" to "256 → 8,000 sequences",
+            "data" to "16GB → 160GB",
+            "vocabulary" to "30,522 WordPiece → 50,265 byte-level BPE",
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "Static masking, as BERT did it: duplicate the corpus ${PretrainLab.STATIC_DUPLICATES}× with a " +
+            "different mask each time, then train ${PretrainLab.EPOCHS} epochs — so every mask pattern is seen " +
+            "${PretrainLab.staticReuse} times and a token that was never selected in those " +
+            "${PretrainLab.STATIC_DUPLICATES} draws is never predicted at all.",
+        bars = listOf(
+            BarRow(
+                "distinct masks per sequence",
+                listOf(PretrainLab.staticDistinctMasks.toFloat(), PretrainLab.dynamicDistinctMasks.toFloat()),
+                ChipResult,
+                listOf("static", "dynamic"),
+            ),
+        ),
+        readout = "${PretrainLab.staticDistinctMasks} patterns reused ${PretrainLab.staticReuse}× each",
+    )
+
+    frames += TokenFrame(
+        status = "How much that leaves untouched is a probability, not an opinion. A token is selected with " +
+            "probability 0.15 per masking, so after k independent maskings the chance it was never selected is " +
+            "0.85ᵏ: ${"%.1f".format(PretrainLab.neverMasked(PretrainLab.STATIC_DUPLICATES) * 100)}% of tokens are " +
+            "never predicted under ${PretrainLab.STATIC_DUPLICATES} static masks, against " +
+            "${"%.2f".format(PretrainLab.neverMasked(PretrainLab.EPOCHS) * 100)}% under " +
+            "${PretrainLab.EPOCHS} dynamic ones.",
+        bars = listOf(
+            BarRow(
+                "never predicted",
+                epochs.map { PretrainLab.neverMasked(it).toFloat() },
+                BarNegative,
+                epochs.map { "k=$it" },
+            ),
+        ),
+        rows = epochs.map { "after $it maskings" to "${"%.2f".format(PretrainLab.neverMasked(it) * 100)}% never selected" },
+        readout = "one in five tokens, versus one in 650",
+    )
+
+    val roberta = ModelTableLab.robertaBase
+    val bert = ModelTableLab.bertBase
+    frames += TokenFrame(
+        status = "The vocabulary change is the one that shows up in the parameter count. Byte-level BPE at " +
+            "${roberta.vocab} entries against WordPiece at ${bert.vocab} makes the embedding table " +
+            "${ModelTableLab.breakdown(roberta).embeddings} against ${ModelTableLab.breakdown(bert).embeddings} — " +
+            "${"%.0f".format((ModelTableLab.breakdown(roberta).embeddings.toDouble() / ModelTableLab.breakdown(bert).embeddings - 1) * 100)}% " +
+            "more — while the twelve layers are byte-for-byte identical.",
+        bars = listOf(
+            BarRow(
+                "parameters (millions)",
+                listOf(
+                    (ModelTableLab.breakdown(bert).embeddings / 1e6).toFloat(),
+                    (ModelTableLab.breakdown(roberta).embeddings / 1e6).toFloat(),
+                ),
+                BarPositive,
+                listOf("BERT emb", "RoBERTa emb"),
+            ),
+            BarRow(
+                "total (millions)",
+                listOf((ModelTableLab.total(bert) / 1e6).toFloat(), (ModelTableLab.total(roberta) / 1e6).toFloat()),
+                ChipResult,
+                listOf("BERT", "RoBERTa"),
+            ),
+        ),
+        readout = "${ModelTableLab.total(bert)} → ${ModelTableLab.total(roberta)}",
+    )
+
+    frames += TokenFrame(
+        status = "Byte-level BPE also removes the [UNK] token entirely: every string is representable, because " +
+            "the base vocabulary is the 256 bytes. What it costs is fertility — more pieces per word on anything " +
+            "unusual — which is the trade the tokenizer topic measures directly.",
+        rows = listOf(
+            "WordPiece" to "unseen word → [UNK], if no piece matches",
+            "byte-level BPE" to "unseen word → several pieces, never [UNK]",
+            "the cost" to "longer sequences, and attention is quadratic in length",
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "The lesson RoBERTa is actually about is not any single change on this list. It is that BERT's " +
+            "reported numbers were a *training run*, not a ceiling on the architecture — and that a careful " +
+            "ablation of the recipe beat a year of architecture search on the same benchmarks.",
+        rows = listOf(
+            "same architecture" to "every gain came from the recipe",
+            "biggest single change" to "more data and more steps",
+            "cheapest change" to "dynamic masking — one line",
+            "what it retired" to "NSP, which the paper shows was doing nothing",
+        ),
+    )
+    return frames
+}
+
+// ── C6 · DistilBERT ──────────────────────────────────────────────────────────
+
+private fun distilBertFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val teacher = DistillLab.teacher
+    val softened = DistillLab.soften(teacher, DistillLab.TEMPERATURE)
+    val labels = Seq2SeqLab.symbolNames + listOf("EOS")
+
+    frames += TokenFrame(
+        status = "Distillation trains a small model on a large one's *distribution* rather than on the labels. The " +
+            "distribution below is a real one — a decoding step from a trained model, taken at the step it was " +
+            "least certain about — and the point is what a hard label would throw away.",
+        bars = listOf(BarRow("teacher distribution", teacher.map { it.toFloat() }, BarPositive, labels)),
+        rows = listOf(
+            "top choice" to "%.3f".format(teacher.max()),
+            "everything else" to "${"%.3f".format(DistillLab.offTopMass(teacher))} of the mass",
+            "runner-up / top" to "%.3f".format(DistillLab.runnerUpRatio(teacher)),
+        ),
+        readout = "a hard label keeps ${"%.0f".format(teacher.max() * 100)}% and discards the rest",
+    )
+
+    frames += TokenFrame(
+        status = "Temperature is what makes that structure trainable. Dividing the logits by T = " +
+            "${DistillLab.TEMPERATURE.toInt()} flattens the distribution — entropy " +
+            "${"%.3f".format(DistillLab.entropy(teacher))} → ${"%.3f".format(DistillLab.entropy(softened))} nats, " +
+            "top choice ${"%.3f".format(teacher.max())} → ${"%.3f".format(softened.max())} — so the gradient " +
+            "carries information about the ranking of the alternatives, not only about the winner.",
+        bars = listOf(
+            BarRow("T = 1", teacher.map { it.toFloat() }, BarPositive, labels),
+            BarRow("T = ${DistillLab.TEMPERATURE.toInt()}", softened.map { it.toFloat() }, ChipResult, labels),
+        ),
+        rows = listOf(
+            "entropy" to "${"%.3f".format(DistillLab.entropy(teacher))} → ${"%.3f".format(DistillLab.entropy(softened))}",
+            "off-top mass" to "${"%.3f".format(DistillLab.offTopMass(teacher))} → ${"%.3f".format(DistillLab.offTopMass(softened))}",
+            "loss is scaled by T²" to "${DistillLab.gradientScale().toInt()}× — soft-target gradients shrink as 1/T²",
+        ),
+    )
+
+    val bert = ModelTableLab.bertBase
+    val distil = ModelTableLab.distilBert
+    frames += TokenFrame(
+        status = "DistilBERT's recipe is short: take every second layer of BERT-base, keep the embeddings, drop " +
+            "the pooler, and train on the teacher's distributions plus the masked-LM loss plus a cosine term on " +
+            "the hidden states. Summed from the config that is ${ModelTableLab.total(distil)} parameters against " +
+            "${ModelTableLab.total(bert)} — ${"%.1f".format((1 - DistillLab.sizeRatio) * 100)}% smaller.",
+        bars = listOf(
+            BarRow(
+                "parameters (millions)",
+                listOf((ModelTableLab.total(bert) / 1e6).toFloat(), (ModelTableLab.total(distil) / 1e6).toFloat()),
+                ChipResult,
+                listOf("BERT-base", "DistilBERT"),
+            ),
+            BarRow(
+                "layers",
+                listOf(bert.layers.toFloat(), distil.layers.toFloat()),
+                BarPositive,
+                listOf("BERT-base", "DistilBERT"),
+            ),
+        ),
+        readout = "${ModelTableLab.total(bert)} → ${ModelTableLab.total(distil)}",
+    )
+
+    frames += TokenFrame(
+        status = "Half the layers, but nothing like half the parameters — because the embedding table does not " +
+            "shrink. It is ${ModelTableLab.breakdown(distil).embeddings} parameters in both models, which is " +
+            "${"%.0f".format(ModelTableLab.embeddingShare(distil) * 100)}% of DistilBERT against " +
+            "${"%.0f".format(ModelTableLab.embeddingShare(bert) * 100)}% of BERT. Depth is what compression " +
+            "reaches; vocabulary is what it cannot.",
+        bars = listOf(
+            BarRow(
+                "embedding share",
+                listOf(
+                    (ModelTableLab.embeddingShare(bert) * 100).toFloat(),
+                    (ModelTableLab.embeddingShare(distil) * 100).toFloat(),
+                ),
+                BarNegative,
+                listOf("BERT-base", "DistilBERT"),
+            ),
+        ),
+        rows = listOf(
+            "layers removed" to "${bert.layers - distil.layers} of ${bert.layers}",
+            "layer parameters saved" to "${ModelTableLab.breakdown(bert).encoder - ModelTableLab.breakdown(distil).encoder}",
+            "embedding parameters saved" to "0",
+        ),
+        readout = "50% of the layers, ${"%.0f".format((1 - DistillLab.sizeRatio) * 100)}% of the size",
+    )
+
+    frames += TokenFrame(
+        status = "The published result is 97% of BERT's GLUE score at 60% of the inference time, and the shape of " +
+            "the table above is why that is believable: the layers are where the compute goes, and the layers are " +
+            "what was halved. It is also why the same trick applied to the vocabulary would not have worked.",
+        rows = listOf(
+            "reported GLUE retention" to "97%",
+            "reported speed-up" to "60% faster inference",
+            "what was halved" to "layers — the compute",
+            "what was kept" to "embeddings — the memory",
+            "the general rule" to "distil depth, not width, when the table looks like this",
+        ),
+    )
+    return frames
+}
+
+// ── C6 · Hugging Face tokenizers ─────────────────────────────────────────────
+
+private fun tokenizerFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val fertilities = TokenizerLab.fertilities
+    val word = "gardener"
+    val unseen = "unbelievable"
+
+    frames += TokenFrame(
+        status = "Three algorithms, one library, one corpus. All three are trained here on the same " +
+            "${TokenizerLab.corpus.size} sentences and compared on held-out text — because the choice between them " +
+            "is usually made by copying whatever the model card said, and it has measurable consequences.",
+        chips = TokenizerLab.heldOut.map { Chip(it) },
+        chipsLabel = "held-out text",
+        rows = listOf(
+            "BPE" to "merge the most frequent adjacent pair, repeatedly",
+            "WordPiece" to "merge the pair that most increases corpus likelihood",
+            "Unigram" to "start large, prune the pieces you can most afford to lose",
+        ),
+    )
+
+    frames += TokenFrame(
+        status = "Fertility — pieces per word — is the number that matters, because sequence length is attention " +
+            "cost. On the held-out sentence: " +
+            fertilities.filter { !it.name.contains("floor") }
+                .joinToString(", ") { "${it.name} ${"%.3f".format(it.perWord)}" } + ".",
+        bars = listOf(
+            BarRow(
+                "pieces per word",
+                fertilities.filter { !it.name.contains("floor") }.map { it.perWord.toFloat() },
+                ChipResult,
+                fertilities.filter { !it.name.contains("floor") }.map { it.name },
+            ),
+        ),
+        rows = fertilities.filter { !it.name.contains("floor") }
+            .map { it.name to "${it.pieces} pieces from ${it.words} words, vocabulary ${it.vocabulary}" },
+        readout = "Unigram is shortest here, at the same vocabulary budget",
+    )
+
+    frames += TokenFrame(
+        status = "Where they disagree is more instructive than the average. \"$word\" is a word the corpus " +
+            "contains, and the three still split it differently — BPE replays its merge list, WordPiece takes the " +
+            "longest match from the left, and Unigram searches for the most probable segmentation, which is the " +
+            "only one of the three that can revise an early choice.",
+        rows = TokenizerLab.segmentations(word).map { (name, pieces) -> name to pieces.joinToString(" · ") },
+        chips = TokenizerLab.unigramEncode(word).map { Chip(it, "unigram") },
+        chipsLabel = "\"$word\"",
+    )
+
+    frames += TokenFrame(
+        status = "On a word the corpus never contained the difference is not cosmetic. BPE falls back to " +
+            "characters, Unigram to its own smallest pieces — and WordPiece emits [UNK], losing the word " +
+            "outright, because greedy longest-match has no fallback when no piece matches.",
+        rows = TokenizerLab.segmentations(unseen).map { (name, pieces) ->
+            name to pieces.joinToString(" · ").take(70)
+        },
+        readout = "this is why byte-level BPE has no [UNK] at all",
+    )
+
+    val floored = fertilities.first { it.name == "WordPiece" }
+    val unfloored = fertilities.first { it.name.contains("floor") }
+    frames += TokenFrame(
+        status = "One measured detail that explains a hyper-parameter nobody reads. WordPiece scores a pair by " +
+            "freq(ab)/(freq(a)·freq(b)), which is maximal — exactly 1 — when both halves occur once. Without a " +
+            "minimum-frequency floor the trainer spends its whole budget on one-off letter pairs: fertility " +
+            "${"%.3f".format(unfloored.perWord)} pieces per word, worse than characters. With the floor at " +
+            "${TokenizerLab.MIN_PAIR_FREQUENCY}, ${"%.3f".format(floored.perWord)}.",
+        bars = listOf(
+            BarRow(
+                "pieces per word",
+                listOf(unfloored.perWord.toFloat(), floored.perWord.toFloat()),
+                BarNegative,
+                listOf("no floor", "floor ${TokenizerLab.MIN_PAIR_FREQUENCY}"),
+            ),
+        ),
+        rows = listOf(
+            "no floor" to "vocabulary ${unfloored.vocabulary}, fertility ${"%.3f".format(unfloored.perWord)}",
+            "floor ${TokenizerLab.MIN_PAIR_FREQUENCY}" to "vocabulary ${floored.vocabulary}, fertility ${"%.3f".format(floored.perWord)}",
+            "the real fix" to "billions of tokens, where singleton pairs are rare",
+        ),
+        readout = "the floor is not a detail on a small corpus",
+    )
+
+    val bpePieces = fertilities.first { it.name == "BPE" }.pieces
+    val unigramPieces = fertilities.first { it.name == "Unigram" }.pieces
+    frames += TokenFrame(
+        status = "What fertility costs, in the only currency a transformer has: attention is quadratic in " +
+            "sequence length, so ${bpePieces} pieces cost ${TokenizerLab.attentionCost(bpePieces)} pairwise scores " +
+            "and ${unigramPieces} cost ${TokenizerLab.attentionCost(unigramPieces)}. A 10% fertility difference is " +
+            "a 20% attention bill on every sequence, for the life of the model.",
+        bars = listOf(
+            BarRow(
+                "pairwise scores",
+                listOf(TokenizerLab.attentionCost(bpePieces).toFloat(), TokenizerLab.attentionCost(unigramPieces).toFloat()),
+                BarNegative,
+                listOf("BPE", "Unigram"),
+            ),
+        ),
+        rows = listOf(
+            "why it is permanent" to "the tokenizer is fixed before pre-training starts",
+            "what a bad choice costs" to "every sequence, every forward pass, forever",
+        ),
+    )
+    return frames
+}
+
 private val nbLegend = listOf(
     ChipActive to "Current",
     ChipResult to "Scored",
@@ -4051,6 +4992,57 @@ private val tokenConfigs = mapOf(
             "vectors shown — not asserted.",
         legend = vectorLegend,
         build = ::wordEmbeddingFrames,
+    ),
+    "self_cross_attention" to TokenConfig(
+        intro = "The same operation with the queries moved. Includes the experiment C5's encoder-decoder topic " +
+            "pointed at: cross-attention against a fixed context vector, same task, same budget, parameters matched.",
+        legend = attentionLegend,
+        build = ::selfCrossAttentionFrames,
+    ),
+    "multi_head_attention" to TokenConfig(
+        intro = "What splitting the width into heads buys — measured as simultaneous reads rather than as the rank " +
+            "story — and what it costs when the heads get thin.",
+        legend = attentionLegend,
+        build = ::multiHeadFrames,
+    ),
+    "bert" to TokenConfig(
+        intro = "Masked language modelling counted on a real corpus: targets per pass, context per prediction, the " +
+            "80/10/10 corruption, and 109,482,240 parameters summed from the config.",
+        legend = listOf(
+            ChipActive to "Selected",
+            ChipResult to "Predicted",
+        ),
+        build = ::bertFrames,
+    ),
+    "gpt" to TokenConfig(
+        intro = "One triangular mask, and everything that follows from it: more targets, less context, and a KV " +
+            "cache a bidirectional model can never have.",
+        legend = attentionLegend,
+        build = ::gptFrames,
+    ),
+    "t5" to TokenConfig(
+        intro = "Every task as text-to-text, and span corruption priced at the length these models really run — " +
+            "512 tokens in, 104 out.",
+        legend = tokenLegend,
+        build = ::t5Frames,
+    ),
+    "roberta" to TokenConfig(
+        intro = "The same architecture, trained properly. Static masking leaves one token in five never predicted; " +
+            "the arithmetic is 0.85ᵏ.",
+        legend = vectorLegend,
+        build = ::robertaFrames,
+    ),
+    "distilbert" to TokenConfig(
+        intro = "A real teacher distribution, softened by temperature, and the parameter table that shows why " +
+            "halving the layers does not halve the model.",
+        legend = vectorLegend,
+        build = ::distilBertFrames,
+    ),
+    "hf_tokenizers" to TokenConfig(
+        intro = "BPE, WordPiece and Unigram trained here on one corpus and compared on held-out text — fertility, " +
+            "unknown words, and what a tokenizer choice costs a transformer forever.",
+        legend = tokenLegend,
+        build = ::tokenizerFrames,
     ),
     "bidirectional_rnn" to TokenConfig(
         intro = "Two taggers on a corpus of garden-path minimal pairs. The left-to-right model's ceiling is " +

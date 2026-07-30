@@ -22,8 +22,11 @@ object DeepLearningCategories {
     // C5. "history" is the one icon in the set that reads as time, which is the only axis these
     // topics have; unused elsewhere in this section.
     val rnn = Category("dl_rnn", "Recurrent Networks (RNN)", Section.DL, 0xFFF97316, "history")
+    // C6. "share" is the all-to-all graph attention actually is; `chip` already belongs to
+    // Architectures and would render the same glyph twice while that category still exists.
+    val transformers = Category("dl_transformers", "Transformers & LLMs", Section.DL, 0xFF6366F1, "share")
     val fundamentals = Category("dl_fundamentals", "Fundamentals", Section.DL, 0xFFEC4899, "network")
     val architectures = Category("dl_architectures", "Architectures", Section.DL, 0xFF8B5CF6, "chip")
 
-    val all = listOf(basics, activations, cnn, detection, rnn, fundamentals, architectures)
+    val all = listOf(basics, activations, cnn, detection, rnn, transformers, fundamentals, architectures)
 }

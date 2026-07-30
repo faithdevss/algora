@@ -1,13 +1,13 @@
 # Phase 9 — AI Taxonomy Completion
 
-Status: In progress — Track A complete (RL at 100% of the doc), B1–B7, C1–C5 and D1–D5 done. 147 of
-226 topics authored. AI sections now: ML 75, **DL 54**, NLP 49, RL 74 — 252 AI topics, and 374
+Status: In progress — Track A complete (RL at 100% of the doc), B1–B7, C1–C6 and D1–D5 done. 155 of
+226 topics authored. AI sections now: ML 75, **DL 63**, NLP 56, RL 74 — 268 AI topics, and 390
 browsable topics across the app *counted from the section lists themselves*. (The running "taxonomy at N"
 tallies in earlier revisions of this file drifted from those lists; the measured number is the one to
 trust, and `ContentCoverageTest` is what enforces it.)
-**Doc coverage is measured, not estimated: 269 of the doc's 357 entries (75%).**
-Next: C6 — self- vs cross-attention, multi-head, and the pre-trained families, which is where the
-RNN line this batch finished stops being the architecture anyone reaches for.
+**Doc coverage is measured, not estimated: 283 of the doc's 357 entries (79%).**
+Next: C7 — generative deep learning (VAE, the GAN family, diffusion, style transfer), which empties
+`dl_architectures`.
 Track B was interrupted after B7 by a deliberate jump to Track C; **B8, B9 and B10 remain unbuilt**,
 and `ml_supervised` therefore still holds the four topics they were to redistribute.
 
@@ -59,26 +59,26 @@ foundational sub-sections, and Track A closed both.
 This table is the starting snapshot and is deliberately left unedited. Live status is the table
 below.
 
-## Where the phase stands (last updated after C5)
+## Where the phase stands (last updated after C6)
 
-**147 of 226 topics authored; 79 remain, in three open blocks.**
+**155 of 226 topics authored; 71 remain, in three open blocks.**
 
 | Open block | Topics | What it needs |
 |---|---|---|
 | B8–B10 | 29 | Neural-network foundations, preprocessing, metrics + practice. Track B is not finished until `ml_supervised` is empty — it still holds `perceptron`, `bias_variance`, `regularization`, `model_evaluation` |
-| C6–C9 | 34 | Transformers, generative, optimizers/regularization, specialized. `dl_fundamentals` is still standing and should end empty; `dl_architectures` is down to four topics, all of which C6 and C7 take |
+| C7–C9 | 26 | Generative, optimizers/regularization, specialized. `dl_fundamentals` is still standing and should end empty; `dl_architectures` is down to three topics, all of which C7 takes |
 | D6 | 16 | Fine-tuning + beyond-transformers + metrics. The phase's other oversized thin-topic batch, and the last of Track D |
 
 Track A is closed (RL is 71/71 against the doc). Track D is 5 of 6. Every landed batch has updated
 `expectedCoveredCount` in the same change, so the coverage number below is a test result rather than
-a count: **269 of 357**.
+a count: **283 of 357**.
 
 **`nlp_modeling` is gone.** C5 took its last topic, which makes NLP the second section (after ML's
 `ml_unsupervised` in B6) to finish hollowing out one of the mock's two generic buckets.
 
 Nothing is blocked. The one net-new widget the phase planned (`FeatureMapPlayer`) was built in C3,
-and every batch since has run on widgets that already existed — C4, D1–D5 and C5, seven in a row,
-each adding only a math file. Before C3 the run was seven (B3–B7, C1, C2). The widget cost really is
+and every batch since has run on widgets that already existed — C4, D1–D5, C5 and C6, eight in a row,
+each adding only math files. Before C3 the run was seven (B3–B7, C1, C2). The widget cost really is
 front-loaded per *family* rather than per batch, as the risks section predicted after B7.
 
 ## Progress
@@ -101,18 +101,19 @@ front-loaded per *family* rather than per batch, as the risks section predicted 
 | C3 · CNN Mechanics + Architectures | 12 | **Done** | New `FeatureMapPlayer` + `CnnMath.kt`. Plan said 11; the doc lists 12 |
 | C4 · Object Detection & Segmentation | 9 | **Done** | `FeatureMapPlayer` gained a box/mask scene; new `DetectionMath.kt` |
 | C5 · RNN Mechanics | 4 | **Done** | New `dl_rnn` + `nlp_rnn`, which retires `nlp_modeling`. No new widget; new `RnnMath.kt` trains every model on screen. `RnnMathTest` overturned the batch's planned headline |
-| C6–C9 | 34 | Planned | |
+| C6 · Transformers & Pre-trained Models | 8 | **Done** | New `dl_transformers`; cross-listed into `nlp_transformer` and `nlp_pretrained`. No new widget; new `AttentionMath.kt` + `PretrainMath.kt`. The cross-attention model closes C5's open claim, and the multi-head rank story in the plan was wrong |
+| C7–C9 | 26 | Planned | |
 | D1 · Preprocessing + Statistical NLP | 8 | **Done** | New `nlp_statistical`; no new widget. TokenStrip frame guard + `D1MathTest`, which caught two live errors |
 | D2 · Syntactic & Semantic Analysis | 6 | **Done** | New `nlp_syntax`; no new widget. Taggers and parsers run and scored in `SyntaxMath.kt`; `D2MathTest` |
 | D3 · Word Embeddings | 5 | **Done** | New `nlp_embeddings`; no new widget. Models trained for real in `EmbeddingMath.kt`; `D3MathTest` |
 | D4 · Transformer Internals + Pre-trained LMs | 8 | **Done** | New `nlp_transformer` + `nlp_pretrained`; no new widget. `TransformerMath.kt`; `D4MathTest` |
 | D5 · Modern LLM Techniques | 7 | **Done** | New `nlp_modern_llm`; no new widget. `ModernLlmMath.kt` runs a real Game-of-24 search, a real index and a real retriever; `D5MathTest` overturned four planned claims |
 | D6 | 16 | Planned | |
-| **Total** | **226** | **147 done** | 374 browsable topics, counted from the section lists |
+| **Total** | **226** | **155 done** | 390 browsable topics, counted from the section lists |
 
 Sections against the doc, measured by `AiTaxonomyCoverageTest` rather than counted by hand:
-**RL 71/71**, ML 84/113, **DL 61/96**, NLP 53/77 — **269 of 357 overall**. ML is 75 topics of its
-eventual ~100; DL is at 54; NLP is at 49. Browsable topics across the app: **374**, which
+**RL 71/71**, ML 84/113, **DL 69/96**, NLP 59/77 — **283 of 357 overall**. ML is 75 topics of its
+eventual ~100; DL is at 63; NLP is at 56. Browsable topics across the app: **390**, which
 is what `DataStructuresTopics + AlgorithmsTopics + the four AI sections` actually sum to — the
 "taxonomy 200 → N of 426" running tally this table used to carry had drifted from the lists by two
 dozen, so it has been dropped in favour of the measured figure. (The per-section figures in earlier
@@ -153,10 +154,10 @@ topics and B10 takes `perceptron`. It should be gone by the end of Track B, and 
 then, something was missed. `CategoryIntegrityTest` is what makes that safe to do incrementally.
 
 **Deep Learning — 11 categories.** Built so far: `dl_basics`, `dl_activations`, `dl_cnn`,
-`dl_detection`, `dl_rnn`. The two
+`dl_detection`, `dl_rnn`, `dl_transformers`. The two
 generic buckets are being hollowed out the same way ML's were — `dl_architectures` lost `cnn` to
-`dl_cnn`, then `rnn` and `lstm_gru` to `dl_rnn`, and is down to `autoencoders`, `gans`,
-`transformers` and `diffusion_models`, which C6 and C7 take. Full list (`dl_basics`, `dl_activations`,
+`dl_cnn`, then `rnn` and `lstm_gru` to `dl_rnn`, then `transformers` to `dl_transformers`, and is
+down to `autoencoders`, `gans` and `diffusion_models`, which C7 takes. Full list (`dl_basics`, `dl_activations`,
 `dl_cnn`, `dl_detection`,
 `dl_rnn`, `dl_transformers`, `dl_generative`, `dl_deep_rl`, `dl_optimizers`, `dl_regularization`,
 `dl_specialized`)
@@ -846,11 +847,100 @@ the numbers did not support, the task became a copy and the capacity claim becam
 which measures the thing directly. The discarded sweep is the same class of error as C3's pooling
 patch: a lab that would have read perfectly well and measured the wrong thing.
 
-**C6 · Transformers & Pre-trained Models** — 8 topics
-Self- vs Cross-Attention · Multi-Head Attention · BERT · GPT · T5 · RoBERTa · DistilBERT ·
-Hugging Face Tokenizers
-*Sims:* `TokenStripPlayer` (attention weights per head, masked-LM vs causal masking side by side,
-text-to-text framing).
+**C6 · Transformers & Pre-trained Models** — 8 topics into new `dl_transformers`, cross-listed into
+`nlp_transformer` and `nlp_pretrained` — **Done**
+`self_cross_attention` · `multi_head_attention` · `bert` · `gpt` · `t5` · `roberta` · `distilbert` ·
+`hf_tokenizers`
+
+New category `dl_transformers` ("Transformers & LLMs", icon `share` — the all-to-all graph attention
+is; `chip` still belongs to Architectures). It takes `transformers` off Architectures and cross-lists
+`attention` in from NLP as its two landing topics, so the category is the doc's "Transformers & LLMs"
+block in full. The NLP side gets the same ids in the categories D4 built: the two attention topics
+into `nlp_transformer`, the five model families into `nlp_pretrained`. `hf_tokenizers` is DL-only —
+the doc lists it under Deep Learning and nowhere else. Gating follows the doc's markers exactly,
+which means **`bert` is the batch's one free topic**. Fourteen doc entries closed (8 DL + 6 NLP):
+269 → 283.
+
+*Sims:* `TokenStripPlayer` for all eight — the first batch this phase where the plan named the right
+widget for every topic. No new widget; two new math files, `AttentionMath.kt` and `PretrainMath.kt`,
+with `AttentionMathTest` (11) and `PretrainMathTest` (23).
+
+**The batch's centrepiece is the experiment C5 left owing.** The encoder-decoder topic ends on
+"attention removes this bottleneck", which was a claim about work not yet done. `AttentionSeq2Seq` is
+C5's model with cross-attention in place of the single handover — same task, same 120 pairs, same 100
+epochs, gradients derived by hand. Results:
+- **0.292 → 0.867 exact match**, and the per-length collapse is gone: 1.00 / 0.92 / 0.89 / 0.95 /
+  0.93 / 0.47 against the fixed vector's 1.00 / 0.48 / 0 / 0 / 0 / 0.
+- **The parameter objection is answered by a control, not by argument.** A fixed-vector model widened
+  to 1,069 parameters — within 18 of the attention model's 1,087 — scores **0.300**, and still
+  collapses at length 3. Capacity was never the missing thing.
+- **The alignment is learned and it is the right one:** 0.942 of the attention mass lands on the
+  position each decoder step should be copying, offset 0.087 positions, on held-out sources.
+- The hand-derived attention gradients are **checked against finite differences** (worst relative
+  error 1.7e-5). The first run of that check failed at 0.857, which was the loss averaged on one side
+  and summed on the other — a scale bug. The distinction is now in the copy: a derivation error puts
+  one parameter block wrong, a scale error puts every block wrong by the same factor.
+
+**The plan's multi-head rationale was wrong, and the replacement is provable.** The plan (and most
+textbooks) argue from rank: one head cannot represent as many patterns. At realistic widths that is
+backwards — a single full-width head at d = 64 fits a rank-12 alignment target *exactly*. What one
+head cannot do is read two positions at once: it emits one distribution, so two reads means splitting
+the mass. Measured over 200 random value pairs, the best single head sits at α = 0.500 with **0.697**
+relative error; two heads are exact. The rank ceiling does bite, at the other end — 13.4% error at 8
+dimensions per head, 37.1% at 4 — so the two measurements jointly explain why published models hold
+d/h ≈ 64 from BERT-base to GPT-3. And on the lab's own task, which has exactly one alignment to
+learn, **4 heads score 0.842 against 1 head's 0.867**: reported as measured, with the
+simultaneous-read result as the reason that is expected rather than a failure.
+
+**The parameter tables are summed, and one of them contradicts its paper.** Same method as C3's CNN
+tables, applied to five configs with the two conventions that move the totals stated (layer-norm
+scale and bias count; a tied output embedding counts once):
+
+| Model | Summed | Published |
+|---|---|---|
+| BERT-base | 109,482,240 | 110M |
+| GPT-2 small | **124,439,808** | **117M (+6.4%)** |
+| RoBERTa-base | 124,645,632 | 125M |
+| DistilBERT | 66,362,880 | 66M |
+| T5-base | 222,903,552 | 220M |
+
+Getting GPT-2 to match the released checkpoint exactly took finding 1,536 parameters: the first
+version gave it BERT's embedding layer norm, which it does not have. The gap to the *paper* is real
+and stays in the copy. The tables then carry the rest of the batch's arguments rather than prose
+doing it: two thirds of every layer is the feed-forward block; RoBERTa's 50,265-piece vocabulary is
++63.6% embedding parameters with the twelve layers byte-identical; T5's decoder is 113M against the
+encoder's 85M because of the extra cross-attention block; and DistilBERT is **39.4% smaller at half
+the layers** because the embedding table does not shrink — 36% of the student against 22% of the
+teacher, which is the general rule about when to distil depth rather than width.
+
+**Objectives are counted on a corpus rather than described.** Causal LM extracts 64 targets from the
+lab's 64-token corpus and masked LM extracts 10 — **6.4× less signal per pass** — in exchange for
+exactly **2× the context per prediction** (5.44 tokens against 2.72). The 80/10/10 rule is priced by
+the mismatch it patches: [MASK] covers 12% of pre-training positions and 0% of fine-tuning ones.
+RoBERTa's cheapest change is one line of probability: 0.85¹⁰ = **19.7%** of tokens never predicted
+under ten static masks, 0.85⁴⁰ = **0.15%** under forty dynamic ones. T5's span corruption is priced
+at the length it runs — 512 tokens, 77 corrupted in 26 spans, encoder input 461, decoder target 104,
+which is **4.9× fewer decoder steps** than a masked model's 512 output positions.
+
+**The tokenizer lab trains all three algorithms and caught its own bug by fertility.** BPE, WordPiece
+and Unigram on one corpus to one budget: fertility 1.667 / 1.667 / 1.500 pieces per word on held-out
+text, with Unigram shortest because it decodes by Viterbi and can revise an early choice. On an unseen
+word, BPE and Unigram fall back to small pieces and **WordPiece emits [UNK] and loses the word**.
+Two bugs surfaced here, both caught by the measurement rather than by a crash:
+- The first WordPiece merge concatenated raw strings, so "s" + "##m" entered the vocabulary as "sm"
+  and the working set as "s##m". Fertility came out at 4.67 — *worse than characters* — which is what
+  flagged it.
+- With that fixed it was still 4.33, and this one is not a bug: freq(ab)/(freq(a)·freq(b)) is maximal
+  at exactly 1 when both halves occur once, so on a small corpus the criterion spends its budget on
+  one-off letter pairs. The fix is the minimum-frequency floor real trainers ship, and the unfloored
+  run is **kept as a lab frame**, because it is the measured justification for a hyper-parameter the
+  copy notes nobody reads.
+
+Cost note: `self_cross_attention` is the phase's most expensive lab at ~1.24 s cold, because it
+trains four models to make its comparison honest (C5's two, the widened control, and the attention
+model). That is ~6× `word2vec_cbow`'s 216 ms. The 100-epoch budget was kept deliberately even though
+40 epochs scores *higher* (0.892), because matching C5's budget is what makes the comparison a
+comparison.
 
 **C7 · Generative Deep Learning** — 7 topics
 VAE · DCGAN · CycleGAN · StyleGAN · Stable Diffusion Architecture · Neural Style Transfer · DeepFakes
@@ -1221,7 +1311,7 @@ number closed no doc entry, which is worth noticing at the time rather than at t
 ## Suggested order
 
 ~~A1 → A2~~ → ~~B1 → B2 → B3 → B4 → B5~~ → ~~guards~~ → ~~B6 → B7~~ → **B8** → B9 → B10 → ~~C1 → C2~~
-→ ~~**`FeatureMapPlayer`** → C3 → C4 → C5~~ → C6 → C7 → C8 → C9 → ~~D1~~ → ~~D2~~ → ~~D3~~ → ~~D4~~ → ~~D5~~ → D6.
+→ ~~**`FeatureMapPlayer`** → C3 → C4 → C5 → C6~~ → C7 → C8 → C9 → ~~D1~~ → ~~D2~~ → ~~D3~~ → ~~D4~~ → ~~D5~~ → D6.
 
 Struck-through batches are done. The guards step landed with B6 rather than before it, in the same
 session. The order was then broken deliberately twice, both times at the user's direction and both
