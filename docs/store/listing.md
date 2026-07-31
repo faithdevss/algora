@@ -23,7 +23,7 @@ misrepresentation Play can act on.
 | Content rating | Everyone (no user content, no communication features) |
 | Price | Free, with one lifetime in-app purchase |
 | Contact | `hafsasultana0106@gmail.com` |
-| Privacy policy | `https://saimumislam.github.io/algora/` (source: `gh-pages` branch, `index.html`) |
+| Privacy policy | *(host `docs/privacy-policy.md` somewhere public; fill in URL before submitting)* |
 
 ---
 
