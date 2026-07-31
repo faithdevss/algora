@@ -2,9 +2,6 @@
 
 *Effective July 31, 2026*
 
-Source of truth for the published page at `gh-pages` branch `index.html`
-(https://saimumislam.github.io/algora/). Keep both in sync when this changes.
-
 Algora ("the app") is a data structures, algorithms, and AI/ML learning app published by
 Saimum Islam. This policy explains what data the app touches and why. If a category of data
 isn't listed below, the app does not collect it.
@@ -23,9 +20,8 @@ which flashcards you review — leaves your device through anything Algora itsel
 
 ## Permissions
 
-| Permission | Why |
-|---|---|
-| `POST_NOTIFICATIONS` | Only for the optional daily study reminder, toggleable in Settings. Scheduled locally on-device; nothing about it is sent anywhere. |
+`POST_NOTIFICATIONS` — only for the optional daily study reminder, toggleable in Settings.
+Scheduled locally on-device; nothing about it is sent anywhere.
 
 ## Third-party services
 
@@ -33,11 +29,16 @@ Algora uses a small number of Google services to run rewarded ads, process the o
 in-app purchase, and show the native Play "rate this app" prompt. Each is Google's own SDK
 under Google's own terms — Algora adds no tracking of its own on top.
 
-| Service | Used for | What it can involve |
-|---|---|---|
-| Google AdMob | Optional rewarded video ads — watch one to unlock a locked topic for 24h. Only shown if you tap "watch an ad"; never automatic. | Google's ad SDK may collect device and advertising identifiers to serve and measure ads, per [Google's ad policy](https://policies.google.com/technologies/partner-sites). |
-| Google Play Billing | The one lifetime "remove ads / unlock everything" purchase. | Payment handled entirely by Google Play. Algora never sees or stores card details — only Play's confirmation the purchase was made. |
-| Google Play In-App Review | The native "rate Algora" prompt shown occasionally after positive usage signals. | Handled entirely by Play's review API; Algora doesn't see your rating or review text. |
+- **Google AdMob** — optional rewarded video ads; watch one to unlock a locked topic for 24h.
+  Only shown if you tap "watch an ad"; never automatic. Google's ad SDK may collect device and
+  advertising identifiers to serve and measure ads, per
+  [Google's ad policy](https://policies.google.com/technologies/partner-sites).
+- **Google Play Billing** — handles the one lifetime "remove ads / unlock everything" purchase.
+  Payment is processed entirely by Google Play. Algora never sees or stores card details —
+  only Play's confirmation the purchase was made.
+- **Google Play In-App Review** — the native "rate Algora" prompt shown occasionally after
+  positive usage signals. Handled entirely by Play's review API; Algora doesn't see your
+  rating or review text.
 
 ## What Algora does not do
 
