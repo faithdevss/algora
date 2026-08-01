@@ -32,6 +32,8 @@ private val detection = DeepLearningCategories.detection
 private val recurrent = DeepLearningCategories.rnn
 private val transformers = DeepLearningCategories.transformers
 private val generative = DeepLearningCategories.generative
+private val regularization = DeepLearningCategories.regularization
+private val specialized = DeepLearningCategories.specialized
 private val fundamentals = DeepLearningCategories.fundamentals
 
 // The doc's Neural Network Basics block, in full. Ordered as a reading path rather than by when
@@ -144,11 +146,40 @@ private val transformerTopics = listOf(
 
 private val fundamentalsTopics = listOf(
     topic("gradient_descent_variants", "Gradient Descent Variants", fundamentals, "SGD, Momentum, RMSProp, Adam and friends.", isPremium = true),
-    topic("batch_normalization", "Batch Normalization", fundamentals, "Re-centre and re-scale activations so deep stacks stay trainable.", isPremium = true),
-    topic("dropout", "Dropout", fundamentals, "Randomly silence neurons during training so none becomes indispensable.", isPremium = true),
     // D6 cross-lists this into `nlp_finetuning`, where it is that category's free entry because the
     // NLP doc carries no lock on it. One id cannot be gated two ways, so this row is free too.
     topic("transfer_learning", "Transfer Learning", fundamentals, "Reuse a pretrained network's features and retrain only the head.", difficulty = Difficulty.INTERMEDIATE),
+)
+
+// The doc's Regularization Techniques block in full, led by `regularization` and `dropout` moved
+// over from dl_fundamentals and `batch_normalization` moved over from the same place — dropout's
+// batch-mate since Phase 9's 2026-07-28 expansion, batch norm since the app's earliest content.
+// Ordered as a pipeline of restraints: penalize the weights directly, transform the data a model
+// sees, normalize what flows between layers (batch axis, then feature axis, then the axis in
+// between), then stop training before the gap between train and test opens up.
+private val regularizationTopics = listOf(
+    topic("regularization", "L1 / L2 Regularization", regularization, "Penalize large weights directly, in the loss.", isPremium = true),
+    topic("data_augmentation", "Data Augmentation", regularization, "One canonical pose taught centroid recognises little else — augmenting the poses fixes it, measured.", difficulty = Difficulty.BEGINNER),
+    topic("dropout", "Dropout", regularization, "Randomly silence neurons during training so none becomes indispensable.", isPremium = true),
+    topic("batch_normalization", "Batch Normalization", regularization, "Re-centre and re-scale activations so deep stacks stay trainable.", isPremium = true),
+    topic("layer_normalization", "Layer Normalization", regularization, "Normalize across features instead of across the batch — and batch size 1 stops being degenerate.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("group_normalization", "Group Normalization", regularization, "LayerNorm and InstanceNorm are its two endpoints — checked as an identity, not claimed.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("early_stopping", "Early Stopping", regularization, "Stop where validation loss says to, and true generalization error is measurably better for it.", difficulty = Difficulty.BEGINNER),
+)
+
+// The doc's Specialized & Graph Networks block in full — six architectures that are not a stack of
+// dense or convolutional layers. Ordered as a reading path: a metric-learning objective bolted onto
+// an ordinary network first, then the two graph architectures side by side (fixed structural
+// weights, then learned feature-dependent ones), then the two ideas that replace a layer's usual
+// contract outright — capsules replace a scalar activation with a vector, ODEs replace a finite
+// stack with a continuum — and KAN last, which replaces the learnable weight itself.
+private val specializedTopics = listOf(
+    topic("siamese_networks", "Siamese Networks", specialized, "One embedding, trained on pairs, that generalizes to a class it never saw.", difficulty = Difficulty.INTERMEDIATE),
+    topic("gcn", "Graph Convolutional Networks (GCN)", specialized, "Repeated neighbor averaging — fixed weights, oversmoothing measured to an exact limit.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("gat", "Graph Attention Networks (GAT)", specialized, "The same neighborhood, weighted by what the features say instead of by degree alone.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("capsule_networks", "Capsule Networks", specialized, "Routing-by-agreement: a vote that disagrees gets voted out, round by round.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("neural_odes", "Neural ODEs", specialized, "A ResNet's depth taken to the limit — a solver stands in for the layer stack.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("kan", "Kolmogorov-Arnold Networks (KAN)", specialized, "The learnable part moves from the weight to the activation function itself.", isPremium = true, difficulty = Difficulty.ADVANCED),
 )
 
 // The doc's Generative Deep Learning block in full, led by the three topics moved over from
@@ -174,7 +205,7 @@ private val generativeTopics = listOf(
 
 object DeepLearningTopics {
     val topics: List<Topic> = basicsTopics + activationTopics + cnnTopics + detectionTopics +
-        rnnTopics + transformerTopics + generativeTopics + fundamentalsTopics
+        rnnTopics + transformerTopics + generativeTopics + regularizationTopics + specializedTopics + fundamentalsTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }

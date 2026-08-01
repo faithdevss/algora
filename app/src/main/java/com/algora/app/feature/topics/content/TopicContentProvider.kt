@@ -139,6 +139,10 @@ object TopicContentProvider {
         "bias_variance" to biasVarianceContent,
         "regularization" to regularizationContent,
         "model_evaluation" to modelEvaluationContent,
+        // B10 · Neural Network Foundations + RL Fundamentals (ml_nn_foundations / ml_rl_fundamentals).
+        "restricted_boltzmann_machines" to restrictedBoltzmannMachinesContent,
+        "deep_belief_networks" to deepBeliefNetworksContent,
+        "multi_armed_bandit" to multiArmedBanditContent,
         // B9. ml_metrics, in the reading-path order MachineLearningTopics.kt lists them: confusion
         // matrix first (every classification metric below is a function of its four cells), then
         // its summaries, the two curves, the probability and agreement corrections, the regression
@@ -253,6 +257,17 @@ object TopicContentProvider {
         "stable_diffusion" to stableDiffusionContent,
         "neural_style_transfer" to neuralStyleTransferContent,
         "deepfakes" to deepFakesContent,
+        // C9 · Regularization (dl_regularization) and Specialized & Graph Networks (dl_specialized).
+        "data_augmentation" to dataAugmentationContent,
+        "early_stopping" to earlyStoppingContent,
+        "layer_normalization" to layerNormalizationContent,
+        "group_normalization" to groupNormalizationContent,
+        "siamese_networks" to siameseNetworksContent,
+        "gcn" to gcnContent,
+        "gat" to gatContent,
+        "capsule_networks" to capsuleNetworksContent,
+        "neural_odes" to neuralOdesContent,
+        "kan" to kanContent,
         "tokenization" to tokenizationContent,
         "text_cleaning" to textCleaningContent,
         "regex_nlp" to regexNlpContent,

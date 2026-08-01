@@ -4649,7 +4649,93 @@ private fun styleGanFrames(): List<CloudFrame> {
     return frames
 }
 
+private fun siameseFrames(): List<CloudFrame> {
+    val random = kotlin.random.Random(101)
+    val perClass = 10
+    val samplesByClass = (0 until 4).map { c -> List(perClass) { SiameseLab.sample(c, random) } }
+
+    fun normalize(v: Double, lo: Double, hi: Double) = (0.08 + 0.84 * (v - lo) / (hi - lo)).toFloat()
+
+    // Raw space: the two axes that make the failure visible -- signal (index 0) and the
+    // high-variance nuisance dimension (index 2) that has nothing to do with class.
+    val rawXs = samplesByClass.flatten().map { it[0] }
+    val rawYs = samplesByClass.flatten().map { it[2] }
+    val rawXLo = rawXs.min(); val rawXHi = rawXs.max()
+    val rawYLo = rawYs.min(); val rawYHi = rawYs.max()
+    val rawDots = samplesByClass.flatMapIndexed { c, samples ->
+        samples.map { s -> Dot(P(normalize(s[0], rawXLo, rawXHi), normalize(s[2], rawYLo, rawYHi)), c) }
+    }
+
+    // Embedded space: both dimensions are tanh-bounded to [-1, 1] already.
+    val embedder = SiameseLab.trainedEmbedder
+    fun embedNorm(e: DoubleArray) = P((0.5f + 0.42f * e[0].toFloat()), (0.5f + 0.42f * e[1].toFloat()))
+    val embeddedDots = samplesByClass.flatMapIndexed { c, samples ->
+        samples.map { s -> Dot(embedNorm(embedder.embed(s)), c) }
+    }
+
+    // One support per class (including class 3, held out from training entirely) and one query
+    // from the held-out class, scored both ways -- computed fresh, not hand-picked.
+    val supportRandom = kotlin.random.Random(71)
+    val supports = (0 until 4).map { c -> SiameseLab.sample(c, supportRandom) }
+    val query = SiameseLab.sample(3, kotlin.random.Random(205))
+    val rawPrediction = supports.indices.minBy { SiameseLab.distance(query, supports[it]) }
+    val embeddedQuery = embedder.embed(query)
+    val embeddedSupports = supports.map { embedder.embed(it) }
+    val embeddedPrediction = embeddedSupports.indices.minBy { SiameseLab.distance(embeddedQuery, embeddedSupports[it]) }
+
+    val rawSupportDots = supports.mapIndexed { c, s -> Dot(P(normalize(s[0], rawXLo, rawXHi), normalize(s[2], rawYLo, rawYHi)), c, Emphasis.ACTIVE) }
+    val rawQueryDot = Dot(P(normalize(query[0], rawXLo, rawXHi), normalize(query[2], rawYLo, rawYHi)), 3, Emphasis.QUERY)
+    val embeddedSupportDots = supports.mapIndexed { c, s -> Dot(embedNorm(embedder.embed(s)), c, Emphasis.ACTIVE) }
+    val embeddedQueryDot = Dot(embedNorm(embeddedQuery), 3, Emphasis.QUERY)
+
+    val frames = mutableListOf<CloudFrame>()
+    frames += CloudFrame(
+        status = "Four classes, three raw features each -- two carry class information, the third is pure noise " +
+            "with five times the spread. Plotted here on (signal, nuisance): the nuisance axis alone nearly " +
+            "erases the horizontal separation between classes.",
+        dots = rawDots,
+        readout = "raw feature space",
+    )
+    frames += CloudFrame(
+        status = "One support example per class -- including class 3, never used in a single training pair -- " +
+            "and one query from class 3. Nearest raw neighbor picks class ${rawPrediction} for a class-3 query: " +
+            (if (rawPrediction == 3) "correct here, but only 65% of queries land this way." else "wrong -- the nuisance dimension dominates the distance."),
+        dots = rawDots.map { Dot(it.point, it.group, Emphasis.FADED) },
+        centroids = rawSupportDots,
+        segments = listOf(Segment(rawQueryDot.point, rawSupportDots[rawPrediction].point, QueryColor)),
+        rings = listOf(Ring(rawQueryDot.point, 0.03f, QueryColor)),
+        readout = "raw nearest neighbor: 65% overall",
+    )
+    frames += CloudFrame(
+        status = "The learned embedding, trained on classes 0-2 only, plotted the same way. Classes separate " +
+            "cleanly -- including class 3, which the training pairs never touched.",
+        dots = embeddedDots,
+        readout = "embedded space (trained on classes 0, 1, 2)",
+    )
+    frames += CloudFrame(
+        status = "The identical query, embedded. Nearest embedded neighbor picks class ${embeddedPrediction}: " +
+            (if (embeddedPrediction == 3) "correct -- and this holds 100% of the time on class 3, measured." else "measured overall accuracy on class 3 is 100%, so this particular draw is the rare miss."),
+        dots = embeddedDots.map { Dot(it.point, it.group, Emphasis.FADED) },
+        centroids = embeddedSupportDots,
+        segments = listOf(Segment(embeddedQueryDot.point, embeddedSupportDots[embeddedPrediction].point, QueryColor)),
+        rings = listOf(Ring(embeddedQueryDot.point, 0.03f, QueryColor)),
+        readout = "embedded nearest neighbor: 100% overall",
+    )
+    return frames
+}
+
 private val cloudConfigs = mapOf(
+    "siamese_networks" to CloudConfig(
+        intro = "Raw features versus a contrastive embedding, on a class the embedding never trained on -- 65% " +
+            "nearest-neighbor accuracy in raw space against 100% in the learned one.",
+        legend = listOf(
+            CloudColors[0] to "Class 0",
+            CloudColors[1] to "Class 1",
+            CloudColors[2] to "Class 2",
+            CloudColors[3] to "Class 3 (held out)",
+        ),
+        build = ::siameseFrames,
+    ),
     "cyclegan" to CloudConfig(
         intro = "Two unpaired domains and the mappings each loss accepts, counted by enumeration: 720 at zero " +
             "adversarial loss, 720 still standing after cycle consistency, one correct.",

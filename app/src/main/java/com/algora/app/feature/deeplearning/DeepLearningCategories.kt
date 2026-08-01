@@ -29,7 +29,13 @@ object DeepLearningCategories {
     // unchanged by the swap. "Image" is the one glyph in the set that names what every topic in the
     // block produces, and `chip` retires with the category that owned it.
     val generative = Category("dl_generative", "Generative Deep Learning", Section.DL, 0xFF8B5CF6, "Image")
+    // C9. "lock" is restraint on the network, which is what every topic in the block trades for
+    // generalization; unused elsewhere in DL.
+    val regularization = Category("dl_regularization", "Regularization Techniques", Section.DL, 0xFF64748B, "lock")
+    // C9. "tree" for the block's structural odd-ones-out -- two graph networks, and three
+    // architectures that are not a stack of dense/conv layers at all; unused elsewhere in DL.
+    val specialized = Category("dl_specialized", "Specialized & Graph Networks", Section.DL, 0xFF14B8A6, "tree")
     val fundamentals = Category("dl_fundamentals", "Fundamentals", Section.DL, 0xFFEC4899, "network")
 
-    val all = listOf(basics, activations, cnn, detection, rnn, transformers, generative, fundamentals)
+    val all = listOf(basics, activations, cnn, detection, rnn, transformers, generative, regularization, specialized, fundamentals)
 }

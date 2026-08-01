@@ -126,8 +126,8 @@ class AiTaxonomyCoverageTest {
                 "Dropout & Regularization" to listOf("dropout", "regularization"),
                 "Batch Normalization" to listOf("batch_normalization"),
                 "Autoencoders" to listOf("autoencoders"),
-                "Restricted Boltzmann Machines" to emptyList(),         // B10
-                "Deep Belief Networks" to emptyList(),                  // B10
+                "Restricted Boltzmann Machines" to listOf("restricted_boltzmann_machines"),
+                "Deep Belief Networks" to listOf("deep_belief_networks"),
             ),
             "Association Rule Learning" to linkedMapOf(
                 "Apriori Algorithm" to listOf("apriori"),
@@ -175,7 +175,7 @@ class AiTaxonomyCoverageTest {
                 "Davies-Bouldin Index" to listOf("davies_bouldin"),
             ),
             "RL Fundamentals" to linkedMapOf(
-                "Multi-Armed Bandit" to emptyList(),                    // B10
+                "Multi-Armed Bandit" to listOf("multi_armed_bandit"),
                 "Markov Decision Process (MDP)" to listOf("mdp"),
                 "Q-Learning" to listOf("q_learning"),
                 "SARSA" to listOf("sarsa"),
@@ -294,19 +294,19 @@ class AiTaxonomyCoverageTest {
             "Regularization Techniques" to linkedMapOf(
                 "L1 / L2 Regularization" to listOf("regularization"),
                 "Dropout" to listOf("dropout"),
-                "Data Augmentation" to emptyList(),                     // C9
-                "Early Stopping" to emptyList(),                        // C9
+                "Data Augmentation" to listOf("data_augmentation"),
+                "Early Stopping" to listOf("early_stopping"),
                 "Batch Normalization" to listOf("batch_normalization"),
-                "Layer Normalization" to emptyList(),                   // C9
-                "Group Normalization" to emptyList(),                   // C9
+                "Layer Normalization" to listOf("layer_normalization"),
+                "Group Normalization" to listOf("group_normalization"),
             ),
             "Specialized & Graph Networks" to linkedMapOf(
-                "Siamese Networks (One-Shot Learning)" to emptyList(),  // C9
-                "Graph Convolutional Networks (GCN)" to emptyList(),    // C9
-                "Graph Attention Networks (GAT)" to emptyList(),        // C9
-                "Capsule Networks" to emptyList(),                      // C9
-                "Neural ODEs" to emptyList(),                           // C9
-                "Kolmogorov-Arnold Networks (KAN)" to emptyList(),      // C9
+                "Siamese Networks (One-Shot Learning)" to listOf("siamese_networks"),
+                "Graph Convolutional Networks (GCN)" to listOf("gcn"),
+                "Graph Attention Networks (GAT)" to listOf("gat"),
+                "Capsule Networks" to listOf("capsule_networks"),
+                "Neural ODEs" to listOf("neural_odes"),
+                "Kolmogorov-Arnold Networks (KAN)" to listOf("kan"),
             ),
         ),
         "NLP" to linkedMapOf(
@@ -362,7 +362,7 @@ class AiTaxonomyCoverageTest {
                 "Self-Attention" to listOf("self_cross_attention"),
                 "Multi-Head Attention" to listOf("multi_head_attention"),
                 "Positional Encodings" to listOf("positional_encodings"),
-                "Layer Normalization" to emptyList(),                   // C9
+                "Layer Normalization" to listOf("layer_normalization"),
                 "Feed-Forward Networks" to listOf("feed_forward"),
             ),
             // `llms` is the umbrella in front of this whole block; C6 and D4 author the models.
@@ -518,7 +518,7 @@ class AiTaxonomyCoverageTest {
 
     // The ratchet. Move it when a batch lands; a batch that does not move it did not close any doc
     // entry, which is worth noticing.
-    private val expectedCoveredCount = 333
+    private val expectedCoveredCount = 347
 
     // Doc entries the app answers from the DSA taxonomy rather than an AI section. Deliberate reuse
     // — the alternative is a duplicate page — but small and explicit, so it cannot grow by accident.

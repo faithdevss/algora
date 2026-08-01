@@ -4964,6 +4964,60 @@ private val netConfigs = mapOf(
         ),
         build = ::dropoutFrames,
     ),
+    "data_augmentation" to NetConfig(
+        intro = "One canonical pose versus five orientations, trained into a nearest-centroid classifier -- 67% " +
+            "accuracy against 95% on the identical noisy test set.",
+        legend = listOf(ForwardColor to "1 pose", AccentA to "5 poses"),
+        build = ::dataAugmentationFrames,
+    ),
+    "early_stopping" to NetConfig(
+        intro = "Three curves from one training run -- training loss, noisy validation loss, and the true risk " +
+            "nobody gets to see during training -- and what stopping early actually buys.",
+        legend = listOf(ForwardColor to "Train", OutputColor to "Validation", BackwardColor to "True risk"),
+        build = ::earlyStoppingFrames,
+    ),
+    "layer_normalization" to NetConfig(
+        intro = "The same operation over two different axes -- batch versus features -- and what that axis " +
+            "choice does at batch size 1 and to batch-composition independence.",
+        legend = listOf(NeutralColor to "Raw", ForwardColor to "BatchNorm", OutputColor to "LayerNorm"),
+        build = ::layerNormalizationFrames,
+    ),
+    "group_normalization" to NetConfig(
+        intro = "One formula, checked as an identity at both endpoints -- LayerNorm at G=1, InstanceNorm at G=8 -- " +
+            "and the batch-independence it inherits at every G in between.",
+        legend = listOf(ForwardColor to "G=1 (LayerNorm)", OutputColor to "G=2", BackwardColor to "G=8 (InstanceNorm)"),
+        build = ::groupNormalizationFrames,
+    ),
+    "capsule_networks" to NetConfig(
+        intro = "Three votes, two agreeing -- routing-by-agreement reweights them round by round, which a fixed " +
+            "pooling operation has no mechanism to do.",
+        legend = listOf(ForwardColor to "3 rounds", OutputColor to "10 rounds", BackwardColor to "Naive average"),
+        build = ::capsuleFrames,
+    ),
+    "neural_odes" to NetConfig(
+        intro = "A ResNet's residual step is one Euler step of a continuous dynamics -- verified convergence " +
+            "orders against a closed-form solution, and an exact memory count against the adjoint method.",
+        legend = listOf(AccentA to "Exact", BackwardColor to "Euler", OutputColor to "RK4 / adjoint"),
+        build = ::neuralOdeFrames,
+    ),
+    "kan" to NetConfig(
+        intro = "The same wiggly target, the same 16-parameter budget -- a fixed-shape MLP against a learnable " +
+            "per-edge function, fit and scored for real.",
+        legend = listOf(NeutralColor to "Target", BackwardColor to "MLP", ForwardColor to "KAN"),
+        build = ::kanFrames,
+    ),
+    "restricted_boltzmann_machines" to NetConfig(
+        intro = "One weight matrix, no within-layer links, trained by CD-1 -- reconstruction error and hidden-unit " +
+            "class separation, both measured before and after training with no label ever used.",
+        legend = listOf(ForwardColor to "Trained", NeutralColor to "Untrained", BackwardColor to "Class B"),
+        build = ::rbmFrames,
+    ),
+    "deep_belief_networks" to NetConfig(
+        intro = "Two RBMs stacked and trained greedily, one layer at a time -- the top layer's class separation, " +
+            "against the identical architecture left at its random initial weights.",
+        legend = listOf(ForwardColor to "Forward", OutputColor to "Top layer"),
+        build = ::dbnFrames,
+    ),
     "transfer_learning" to NetConfig(
         intro = "A pretrained backbone with a new head: freeze, train the head, then unfreeze the top layers at a " +
             "much smaller learning rate. Grey layers are frozen.",
@@ -5059,6 +5113,288 @@ private val netConfigs = mapOf(
         build = ::lstmFrames,
     ),
 )
+
+// ── C9 · Regularization + Specialized ────────────────────────────────────────
+
+private fun dataAugmentationFrames(): List<NetFrame> {
+    fun grid(g: Array<IntArray>) = GridView("pattern", g.map { row -> row.map { it.toFloat() } })
+    val l = DataAugmentationLab.canonicalL
+    val rot90 = DataAugmentationLab.rotate90(l)
+    val rot180 = DataAugmentationLab.rotate90(rot90)
+    val rot270 = DataAugmentationLab.rotate90(rot180)
+    val flipped = DataAugmentationLab.flipH(l)
+    val r = DataAugmentationLab.result
+    return listOf(
+        NetFrame(status = "One canonical pose -- the entire training set for a centroid classifier.", grids = listOf(grid(l))),
+        NetFrame(status = "Rotated 90 degrees -- a pose the unaugmented centroid never saw.", grids = listOf(grid(rot90))),
+        NetFrame(status = "Rotated 180 degrees.", grids = listOf(grid(rot180))),
+        NetFrame(status = "Rotated 270 degrees.", grids = listOf(grid(rot270))),
+        NetFrame(status = "Flipped horizontally -- the fifth and last augmentation.", grids = listOf(grid(flipped))),
+        NetFrame(
+            status = "Tested on noisy versions of every orientation: one pose trains a centroid that gets " +
+                "${"%.0f".format(r.unaugmentedAccuracy * 100)}% right. All five orientations train one that gets " +
+                "${"%.0f".format(r.augmentedAccuracy * 100)}% right -- same rule, same test set.",
+            bars = listOf(NetBar("accuracy", listOf(r.unaugmentedAccuracy.toFloat(), r.augmentedAccuracy.toFloat()), ForwardColor, listOf("1 pose", "5 poses"))),
+        ),
+    )
+}
+
+private fun earlyStoppingFrames(): List<NetFrame> {
+    val epochs = EarlyStoppingLab.run.epochs.filter { it.step % 100 == 0 }
+    val xRange = 0f..4000f
+    val yRange = 0f..0.025f
+    val trainCurve = Curve("train", epochs.map { it.step.toFloat() to it.trainMse.toFloat() }, ForwardColor)
+    val valCurve = Curve("validation", epochs.map { it.step.toFloat() to it.validationMse.toFloat() }, OutputColor)
+    val trueCurve = Curve("true risk", epochs.map { it.step.toFloat() to it.testTrueRiskMse.toFloat() }, BackwardColor)
+    val best = EarlyStoppingLab.run.bestValidationEpoch
+    val final = EarlyStoppingLab.run.finalEpoch
+    return listOf(
+        NetFrame(
+            status = "A degree-9 polynomial, trained by gradient descent on 20 noisy points. Training loss falls " +
+                "for the entire 4,000-step run -- exactly why it cannot be the stopping signal.",
+            plot = CurvePlot("loss", listOf(trainCurve), xRange, yRange),
+        ),
+        NetFrame(
+            status = "Validation loss (never used to update a weight) bottoms out at step 120 -- then jitters " +
+                "within about 0.3% of that floor for the rest of the run.",
+            plot = CurvePlot("loss", listOf(trainCurve, valCurve), xRange, yRange),
+        ),
+        NetFrame(
+            status = "True risk -- error against the clean function, never directly observable during training -- " +
+                "bottoms at step 100 and climbs monotonically after, ending 37% higher at step 4,000.",
+            plot = CurvePlot("loss", listOf(trainCurve, valCurve, trueCurve), xRange, yRange),
+        ),
+        NetFrame(
+            status = "Stopping at validation's minimum (step 120): true risk 0.0047. Training to the end (step " +
+                "4,000): true risk 0.0064 -- 37% worse, even though validation loss barely moved.",
+            bars = listOf(NetBar("true risk", listOf(best.testTrueRiskMse.toFloat(), final.testTrueRiskMse.toFloat()), BackwardColor, listOf("stop at 120", "train to 4000"))),
+        ),
+    )
+}
+
+private fun layerNormalizationFrames(): List<NetFrame> {
+    val batch8 = LayerNormalizationLab.batch(8, seed = 42)
+    val raw = batch8[0]
+    val bn = LayerNormalizationLab.batchNormalize(batch8)[0]
+    val ln = LayerNormalizationLab.layerNormalizeRow(raw)
+    val captions = (1..raw.size).map { "f$it" }
+    val single = LayerNormalizationLab.batch(1, seed = 9)
+    val bnSingle = LayerNormalizationLab.batchNormalize(single)[0]
+    val lnSingle = LayerNormalizationLab.layerNormalizeRow(single[0])
+    val jitters = LayerNormalizationLab.jitterSweep.map { size -> LayerNormalizationLab.batchStatisticJitter(size, feature = 2).toFloat() }
+    return listOf(
+        NetFrame(status = "One row from a batch of 8 -- six features at very different scales.", bars = listOf(NetBar("raw", raw.map { it.toFloat() }, NeutralColor, captions))),
+        NetFrame(status = "BatchNorm: each feature normalized against its own mean/variance across all 8 rows in the batch.", bars = listOf(NetBar("batch-normalized", bn.map { it.toFloat() }, ForwardColor, captions))),
+        NetFrame(status = "LayerNorm: the same row normalized across its own six features instead -- no other row is ever read.", bars = listOf(NetBar("layer-normalized", ln.map { it.toFloat() }, OutputColor, captions))),
+        NetFrame(
+            status = "The identical input, alone in a batch of size 1. BatchNorm's variance -- one value against " +
+                "itself -- is exactly zero, so every feature normalizes to nothing.",
+            bars = listOf(NetBar("BatchNorm at batch size 1", bnSingle.map { it.toFloat() }, BackwardColor, captions)),
+        ),
+        NetFrame(status = "LayerNorm on the same lone input: unaffected, because it was never reading the batch axis.", bars = listOf(NetBar("LayerNorm at batch size 1", lnSingle.map { it.toFloat() }, OutputColor, captions))),
+        NetFrame(
+            status = "A small batch's own estimate of its statistic jitters draw to draw: 0.549 at batch 4 down " +
+                "to 0.137 at batch 64 -- a 4x drop matching root-16 exactly. LayerNorm never estimates anything " +
+                "from the batch at all.",
+            bars = listOf(NetBar("estimate jitter", jitters, BackwardColor, LayerNormalizationLab.jitterSweep.map { "n=$it" })),
+        ),
+    )
+}
+
+private fun groupNormalizationFrames(): List<NetFrame> {
+    val s = GroupNormalizationLab.sample(seed = 7)
+    val raw0 = s[0].map { it.toFloat() }
+    val ln = GroupNormalizationLab.layerNormEquivalent(s)[0].map { it.toFloat() }
+    val instance = GroupNormalizationLab.instanceNormEquivalent(s)[0].map { it.toFloat() }
+    val g2 = GroupNormalizationLab.groupNormalize(s, 2)[0].map { it.toFloat() }
+    val captions = (1..s[0].size).map { "s$it" }
+    return listOf(
+        NetFrame(status = "Channel 0's six spatial activations, one sample -- eight channels total, grouped in pairs by scale.", bars = listOf(NetBar("raw", raw0, NeutralColor, captions))),
+        NetFrame(status = "G = 1 (every channel, one group): exactly LayerNorm -- verified identical to 10^-12.", bars = listOf(NetBar("G=1 (LayerNorm)", ln, ForwardColor, captions))),
+        NetFrame(status = "G = 2 (this channel's own pair): GroupNorm's actual setting here.", bars = listOf(NetBar("G=2", g2, OutputColor, captions))),
+        NetFrame(status = "G = 8 (one channel per group): exactly InstanceNorm -- the other endpoint, also verified identical.", bars = listOf(NetBar("G=8 (InstanceNorm)", instance, BackwardColor, captions))),
+        NetFrame(
+            status = "Every group size in between inherits LayerNorm's batch-independence: recomputing this " +
+                "sample's own channels gives the same answer regardless of batch size, because nothing here reads " +
+                "the batch axis at all.",
+            readout = "batch-independent at every G",
+        ),
+    )
+}
+
+private fun capsuleFrames(): List<NetFrame> {
+    val rounds3 = CapsuleLab.rounds
+    val final10 = CapsuleLab.route(10).last()
+    val frames = mutableListOf<NetFrame>()
+    frames += NetFrame(
+        status = "Three lower capsules cast votes for digit capsule A. Two roughly agree; the third points " +
+            "nearly the opposite way. Routing starts every vote at equal weight.",
+        bars = listOf(NetBar("routing weight to A", rounds3[0].cA.map { it.toFloat() }, ForwardColor, listOf("vote 1", "vote 2", "vote 3"))),
+    )
+    rounds3.forEachIndexed { i, r ->
+        frames += NetFrame(
+            status = "Round ${i + 1} of 3: agreement with the emerging output raises or lowers each vote's " +
+                "weight. |vA| = ${"%.3f".format(CapsuleLab.norm(r.vA))}.",
+            bars = listOf(NetBar("routing weight to A", r.cA.map { it.toFloat() }, ForwardColor, listOf("vote 1", "vote 2", "vote 3"))),
+        )
+    }
+    frames += NetFrame(
+        status = "Run ten rounds instead of three: the disagreeing vote's weight collapses to " +
+            "${"%.3f".format(final10.cA[2])} -- functionally voted out.",
+        bars = listOf(NetBar("routing weight to A (10 rounds)", final10.cA.map { it.toFloat() }, OutputColor, listOf("vote 1", "vote 2", "vote 3"))),
+    )
+    frames += NetFrame(
+        status = "A naive unweighted average of all three votes points 24.4 degrees off the two agreeing votes' " +
+            "true consensus direction. Three rounds of routing narrows that to 16.7 degrees; ten rounds narrows " +
+            "it to 6.1 degrees.",
+        bars = listOf(NetBar("angle off true agreement (degrees)", listOf(24.4f, 16.7f, 6.1f), BackwardColor, listOf("naive avg", "3 rounds", "10 rounds"))),
+    )
+    return frames
+}
+
+private fun neuralOdeFrames(): List<NetFrame> {
+    val exactPts = NeuralOdeLab.exactTrajectory(200).map { (t, z) -> t.toFloat() to z.toFloat() }
+    val eulerCoarse = NeuralOdeLab.eulerTrajectory(5).map { (t, z) -> t.toFloat() to z.toFloat() }
+    val eulerFine = NeuralOdeLab.eulerTrajectory(80).map { (t, z) -> t.toFloat() to z.toFloat() }
+    val xRange = 0f..2f
+    val yRange = 0f..1f
+    val stepLabels = NeuralOdeLab.stepCounts.map { "n=$it" }
+    return listOf(
+        NetFrame(
+            status = "dz/dt = -z has a closed-form solution: z(t) = z0 e^-t. A ResNet's residual step is exactly " +
+                "one Euler step of some dynamics -- here shown on the one case where the true answer is known exactly.",
+            plot = CurvePlot("z(t)", listOf(Curve("exact", exactPts, AccentA)), xRange, yRange),
+        ),
+        NetFrame(
+            status = "Euler's method with only 5 steps: visibly off the true curve -- each step's error compounds into the next.",
+            plot = CurvePlot("z(t)", listOf(Curve("exact", exactPts, AccentA), Curve("euler, 5 steps", eulerCoarse, BackwardColor)), xRange, yRange),
+        ),
+        NetFrame(
+            status = "80 steps closes most of the gap -- but the error only fell by 16x for 16x the steps: first-order convergence, exactly as predicted.",
+            plot = CurvePlot("z(t)", listOf(Curve("exact", exactPts, AccentA), Curve("euler, 80 steps", eulerFine, BackwardColor)), xRange, yRange),
+        ),
+        NetFrame(
+            status = "Euler's error at t=2, across five doublings of step count: each doubling roughly halves it -- verified, not assumed.",
+            bars = listOf(NetBar("Euler error", NeuralOdeLab.eulerErrors.map { it.toFloat() }, BackwardColor, stepLabels)),
+        ),
+        NetFrame(
+            status = "RK4's error, same five step counts: each doubling cuts it by roughly 16x -- fourth-order convergence, already orders of magnitude more accurate at equal step count.",
+            bars = listOf(NetBar("RK4 error", NeuralOdeLab.rk4Errors.map { it.toFloat() }, OutputColor, stepLabels)),
+        ),
+        NetFrame(
+            status = "The memory account: a 50-layer ResNet with a 64-dimensional state stores every layer's " +
+                "activation for backprop -- 3,200 numbers. The adjoint method solves a second ODE backward " +
+                "instead, needing only the state and its adjoint: 128 numbers, regardless of depth.",
+            bars = listOf(NetBar("stored floats", listOf(NeuralOdeLab.resNetStoredFloats.toFloat(), NeuralOdeLab.adjointStoredFloats.toFloat()), ForwardColor, listOf("ResNet (50 layers)", "adjoint (O(1))"))),
+        ),
+    )
+}
+
+private fun kanFrames(): List<NetFrame> {
+    val xRange = -2f..2f
+    val yRange = -1.3f..1.3f
+    val samplePoints = (-40..40).map { it / 20f }
+    val targetCurve = Curve("target", samplePoints.map { x -> x to KanLab.target(x.toDouble()).toFloat() }, NeutralColor)
+    val mlpCurve = Curve("MLP fit (16 params)", samplePoints.map { x -> x to KanLab.trainedMlp.predict(x.toDouble()).toFloat() }, BackwardColor)
+    val kanCurve = Curve("KAN fit (16 params)", samplePoints.map { x -> x to KanLab.trainedKan.predict(x.toDouble()).toFloat() }, ForwardColor)
+    return listOf(
+        NetFrame(status = "The target: sin(5x)·e^(−x²/2) -- several oscillations across a small range.", plot = CurvePlot("f(x)", listOf(targetCurve), xRange, yRange)),
+        NetFrame(status = "A 5-hidden-unit tanh MLP -- 16 learnable numbers, all in the edge weights -- fit to 40 samples.", plot = CurvePlot("f(x)", listOf(targetCurve, mlpCurve), xRange, yRange)),
+        NetFrame(
+            status = "A KAN-style layer with 16 movable knot values -- the same parameter budget, spent directly " +
+                "on the curve's shape instead of on weights combining a fixed shape.",
+            plot = CurvePlot("f(x)", listOf(targetCurve, kanCurve), xRange, yRange),
+        ),
+        NetFrame(
+            status = "Held-out test error, same 16 parameters both models: MLP 0.166, KAN 0.0030 -- about 55x lower.",
+            bars = listOf(NetBar("test MSE", listOf(KanLab.mlpTestMse.toFloat(), KanLab.kanTestMse.toFloat()), BackwardColor, listOf("MLP", "KAN"))),
+        ),
+    )
+}
+
+// ── B10 · Restricted Boltzmann Machines + Deep Belief Networks ──────────────
+
+private fun rbmFrames(): List<NetFrame> {
+    val sampleA = RbmLab.trainData.first { it.second }.first
+    val untrainedHiddenA = RbmLab.untrainedRbm.hiddenProbs(sampleA)
+    val trainedHiddenA = RbmLab.trainedRbm.hiddenProbs(sampleA)
+    val meanA = RbmLab.meanHiddenActivation(RbmLab.trainedRbm, isClassA = true)
+    val meanB = RbmLab.meanHiddenActivation(RbmLab.trainedRbm, isClassA = false)
+    val untrainedErr = RbmLab.reconstructionError(RbmLab.untrainedRbm)
+    val trainedErr = RbmLab.reconstructionError(RbmLab.trainedRbm)
+
+    return listOf(
+        NetFrame(
+            status = "Six visible units, three hidden units, one weight matrix -- no visible-visible or " +
+                "hidden-hidden links at all. That restriction is what keeps both conditionals simple sigmoids.",
+            layers = listOf(
+                NetLayer("visible (6)", sampleA.map { NetNode(it.toFloat(), NodeMood.FORWARD) }),
+                NetLayer("hidden (3)", untrainedHiddenA.map { NetNode(it.toFloat(), NodeMood.IDLE) }),
+            ),
+        ),
+        NetFrame(
+            status = "Before training: this class-A example's hidden activations, from random weights -- all " +
+                "close to 0.5, carrying no information about which class produced them.",
+            bars = listOf(NetBar("hidden activation (untrained)", untrainedHiddenA.map { it.toFloat() }, NeutralColor, listOf("h1", "h2", "h3"))),
+        ),
+        NetFrame(
+            status = "After 60 epochs of CD-1 -- one up-down-up pass per example, no labels ever used -- the " +
+                "same example's hidden activations: two units strongly on, none of it told what a 'class' is.",
+            bars = listOf(NetBar("hidden activation (trained)", trainedHiddenA.map { it.toFloat() }, ForwardColor, listOf("h1", "h2", "h3"))),
+        ),
+        NetFrame(
+            status = "Averaged over every class-A example versus every class-B example: units 1 and 2 fire for " +
+                "A and not B, unit 3 runs the other way. Three unlabeled hidden units learned the data's structure.",
+            bars = listOf(
+                NetBar("mean hidden, class A", meanA.map { it.toFloat() }, ForwardColor, listOf("h1", "h2", "h3")),
+                NetBar("mean hidden, class B", meanB.map { it.toFloat() }, BackwardColor, listOf("h1", "h2", "h3")),
+            ),
+        ),
+        NetFrame(
+            status = "Reconstruction error -- how much a sample changes after one up-down pass -- falls from " +
+                "0.498 (untrained, chance-level) to 0.170 (CD-1 trained).",
+            bars = listOf(NetBar("reconstruction error", listOf(untrainedErr.toFloat(), trainedErr.toFloat()), BackwardColor, listOf("untrained", "trained"))),
+        ),
+        NetFrame(
+            status = "And the class separation those hidden units carry: 0.06 before training, 1.33 after -- " +
+                "over twentyfold, with no label used anywhere in the process.",
+            bars = listOf(NetBar("hidden-layer class separation", listOf(RbmLab.separation(RbmLab.untrainedRbm).toFloat(), RbmLab.separation(RbmLab.trainedRbm).toFloat()), OutputColor, listOf("untrained", "trained"))),
+        ),
+    )
+}
+
+private fun dbnFrames(): List<NetFrame> {
+    val greedy = DbnLab.greedy
+    val random = DbnLab.random
+    return listOf(
+        NetFrame(
+            status = "Two RBMs stacked: 6 visible units to 3 to 2. Trained greedily -- the first RBM trains on " +
+                "the raw data, and the second trains on the first's hidden activations, one layer at a time.",
+            layers = listOf(
+                NetLayer("visible (6)", RbmLab.prototypeA.map { NetNode(it.toFloat(), NodeMood.FORWARD) }),
+                NetLayer("layer 1 (3)", greedy.first.hiddenProbs(RbmLab.prototypeA).map { NetNode(it.toFloat(), NodeMood.FORWARD) }),
+                NetLayer("layer 2 (2)", greedy.second.hiddenProbs(greedy.first.hiddenProbs(RbmLab.prototypeA)).map { NetNode(it.toFloat(), NodeMood.OUTPUT) }),
+            ),
+        ),
+        NetFrame(
+            status = "The top layer's class separation, measured with no supervised signal used anywhere: " +
+                "${"%.2f".format(DbnLab.greedySeparation)} after greedy layer-wise pretraining.",
+            bars = listOf(NetBar("top-layer separation", listOf(DbnLab.greedySeparation.toFloat()), ForwardColor, listOf("greedy pretrained"))),
+        ),
+        NetFrame(
+            status = "The identical architecture, left at its random initial weights -- no pretraining at all: " +
+                "separation ${"%.3f".format(DbnLab.randomSeparation)}, over 300x smaller.",
+            bars = listOf(NetBar("top-layer separation", listOf(DbnLab.greedySeparation.toFloat(), DbnLab.randomSeparation.toFloat()), ForwardColor, listOf("greedy pretrained", "random init"))),
+        ),
+        NetFrame(
+            status = "That gap is the entire argument for greedy pretraining: an untrained deep stack's top " +
+                "layer carries essentially no information about the categories, because random weights compose " +
+                "into more random weights. A greedily pretrained one already has most of the separation a " +
+                "supervised pass would otherwise have to discover from nothing.",
+            readout = "${"%.0f".format(DbnLab.greedySeparation / DbnLab.randomSeparation)}x head start, before any label is used",
+        ),
+    )
+}
 
 private fun netConfigFor(topicId: String): NetConfig =
     netConfigs[topicId] ?: netConfigs.getValue("neural_network_basics")

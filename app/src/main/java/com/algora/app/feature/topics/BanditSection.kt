@@ -157,6 +157,18 @@ private val banditConfigs = mapOf(
             }
         },
     ),
+    // The problem's own baseline: no learning at all, ever. This is the other bad extreme from
+    // `exploration_exploitation`'s pure greedy — that one stops exploring after one sample each and
+    // gets stuck; this one never stops exploring and so never commits to what it has already
+    // learned. Together the two bracket why the strategies in between (epsilon-greedy, UCB, Thompson
+    // sampling) exist at all.
+    "multi_armed_bandit" to BanditConfig(
+        intro = "The problem itself: four arms, hidden win rates, and a pull budget. This baseline picks uniformly " +
+            "at random every single time -- it never uses an estimate at all, which is what every strategy in the " +
+            "Exploration Strategies category improves on.",
+        extraLabel = "uniform random -- no estimate ever used",
+        choose = { _, _, _, random -> random.nextInt(TRUE_RATES.size) to "pure random pick" },
+    ),
     // Pure greedy — deliberately the broken strategy. Each arm is sampled once, then the agent
     // commits forever to whichever looked best. When a good arm's single sample happens to lose,
     // its estimate never gets another chance to be corrected, and the counts show the agent
@@ -186,6 +198,13 @@ private val banditConfigs = mapOf(
 
 private fun banditConfigFor(topicId: String): BanditConfig =
     banditConfigs[topicId] ?: banditConfigs.getValue("epsilon_greedy")
+
+/** Final optimal-arm pull rate for a config, over the fixed `PULLS`-pull run -- for tests and copy. */
+internal fun banditOptimalRate(topicId: String): Float {
+    val frames = runBandit(banditConfigFor(topicId))
+    val last = frames.last()
+    return last.optimalPulls.toFloat() / last.pull
+}
 
 @Composable
 fun BanditSection(topicId: String) {

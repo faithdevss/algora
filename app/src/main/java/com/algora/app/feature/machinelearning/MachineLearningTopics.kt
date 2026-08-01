@@ -37,7 +37,8 @@ private val association = MachineLearningCategories.association
 private val timeSeries = MachineLearningCategories.timeSeries
 private val preprocessing = MachineLearningCategories.preprocessing
 private val metrics = MachineLearningCategories.metrics
-private val supervised = MachineLearningCategories.supervised
+private val nnFoundations = MachineLearningCategories.nnFoundations
+private val rlFundamentals = MachineLearningCategories.rlFundamentals
 
 // Ordered as a reading path: the plain fit, then the two penalties, then the estimators that change
 // the loss or the assumptions.
@@ -148,14 +149,42 @@ private val metricsTopics = listOf(
     topic("davies_bouldin", "Davies-Bouldin Index", metrics, "Agrees with silhouette, including when both are wrong.", isPremium = true, difficulty = Difficulty.ADVANCED),
 )
 
-private val supervisedTopics = listOf(
+// The doc's Neural Network Foundations block, from the ML side. `perceptron`, `bias_variance` and
+// `regularization` are `ml_supervised`'s last three topics, moved in — `ml_supervised` is now gone.
+// Seven more (`mlp` through `autoencoders`) are cross-listed DL topics, browsable from ML mode with
+// no duplicate content file, same convention as `perceptron` already being cross-listed into
+// `dl_basics`. Only `restricted_boltzmann_machines` and `deep_belief_networks` are genuinely new.
+// Ordered as a reading path: the unit, the network, how it trains, what regularizes it, and the two
+// unsupervised architectures — RBM then the DBN stacked from it — last.
+private val nnFoundationsTopics = listOf(
     topic(
-        "perceptron", "The Perceptron", supervised,
+        "perceptron", "The Perceptron", nnFoundations,
         "The first artificial neuron",
         iconName = "robot", accentColor = 0xFF6366F1, difficulty = Difficulty.BEGINNER,
     ),
-    topic("bias_variance", "Bias-Variance Tradeoff", supervised, "Why underfitting and overfitting pull in opposite directions.", isPremium = true),
-    topic("regularization", "Regularization (L1 / L2)", supervised, "Penalize large weights so the model stops memorizing noise.", isPremium = true),
+    topic("mlp", "Multi-Layer Perceptron (MLP)", nnFoundations, "One hidden layer, and the problem a single unit provably cannot solve.", difficulty = Difficulty.BEGINNER),
+    topic("backpropagation", "Backpropagation Algorithm", nnFoundations, "The chain rule applied to train every weight in a network.", isPremium = true),
+    topic("gradient_descent_variants", "Gradient Descent Variants (SGD, Adam)", nnFoundations, "SGD, Momentum, RMSProp, Adam and friends.", isPremium = true),
+    topic("activation_functions", "Activation Functions", nnFoundations, "Non-linearities (ReLU, sigmoid, tanh) that give networks their power.", isPremium = true),
+    topic("bias_variance", "Bias-Variance Tradeoff", nnFoundations, "Why underfitting and overfitting pull in opposite directions.", isPremium = true),
+    topic("regularization", "Regularization (L1 / L2)", nnFoundations, "Penalize large weights so the model stops memorizing noise.", isPremium = true),
+    topic("dropout", "Dropout", nnFoundations, "Randomly silence neurons during training so none becomes indispensable.", isPremium = true),
+    topic("batch_normalization", "Batch Normalization", nnFoundations, "Re-centre and re-scale activations so deep stacks stay trainable.", isPremium = true),
+    topic("autoencoders", "Autoencoders", nnFoundations, "Encode-then-reconstruct networks for compression and denoising.", isPremium = true),
+    topic("restricted_boltzmann_machines", "Restricted Boltzmann Machines", nnFoundations, "No visible-visible or hidden-hidden links — just one weight matrix, trained by CD-1.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("deep_belief_networks", "Deep Belief Networks", nnFoundations, "Stack RBMs, train greedily, and the top layer separates classes before any label is used.", isPremium = true, difficulty = Difficulty.ADVANCED),
+)
+
+// The doc's RL Fundamentals block, from the ML side. Five cross-listed RL topics plus one new one —
+// `multi_armed_bandit`, the problem itself, framed against the strategies (its siblings here and in
+// RL mode) that solve it.
+private val rlFundamentalsTopics = listOf(
+    topic("multi_armed_bandit", "Multi-Armed Bandit", rlFundamentals, "Four arms, hidden win rates — and what pure random exploration alone gets you.", difficulty = Difficulty.BEGINNER),
+    topic("mdp", "Markov Decision Process (MDP)", rlFundamentals, "State, action, reward and a transition — the framework every RL algorithm assumes.", isPremium = true),
+    topic("q_learning", "Q-Learning (Off-Policy)", rlFundamentals, "Learn the value of every action without ever following the policy being learned.", isPremium = true),
+    topic("sarsa", "SARSA (On-Policy)", rlFundamentals, "The same update, following the policy actually being run — including its exploration.", isPremium = true),
+    topic("thompson_sampling", "Thompson Sampling", rlFundamentals, "Sample from a belief distribution per arm, rather than committing to one estimate.", isPremium = true),
+    topic("ucb", "Upper Confidence Bound (UCB)", rlFundamentals, "A confidence bonus that shrinks with evidence — no randomness needed at all.", isPremium = true),
 )
 
 // The doc's Clustering block in full. Ordered by family: centroid, hierarchical, density, then the
@@ -213,7 +242,7 @@ private val timeSeriesTopics = listOf(
 )
 
 object MachineLearningTopics {
-    val topics: List<Topic> = regressionTopics + classificationTopics + bayesianTopics + ensembleTopics + clusteringTopics + dimReductionTopics + associationTopics + timeSeriesTopics + preprocessingTopics + metricsTopics + supervisedTopics
+    val topics: List<Topic> = regressionTopics + classificationTopics + bayesianTopics + ensembleTopics + clusteringTopics + dimReductionTopics + associationTopics + timeSeriesTopics + preprocessingTopics + metricsTopics + nnFoundationsTopics + rlFundamentalsTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }

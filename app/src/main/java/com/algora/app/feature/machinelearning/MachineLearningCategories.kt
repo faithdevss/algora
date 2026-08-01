@@ -31,13 +31,23 @@ object MachineLearningCategories {
     // B9. "check" is the verdict every one of these seventeen topics produces, and it was unused in
     // this section.
     val metrics = Category("ml_metrics", "Evaluation Metrics", Section.ML, 0xFF0EA5E9, "check")
-    val supervised = Category("ml_supervised", "Supervised", Section.ML, 0xFF6366F1, "robot")
+    // B10. "robot" is free now that `ml_supervised` is retired, and it is the same glyph `dl_basics`
+    // uses for the identical subject matter — the two RBM/DBN topics are genuinely new; everything
+    // else in this category is a cross-listed DL topic browsable from ML mode too.
+    val nnFoundations = Category("ml_nn_foundations", "Neural Network Foundations", Section.ML, 0xFFA855F7, "robot")
+    // B10. "game" for the sequential-decision framing every topic in this category shares; unused
+    // elsewhere in ML.
+    val rlFundamentals = Category("ml_rl_fundamentals", "RL Fundamentals", Section.ML, 0xFFEF4444, "game")
 
     // `ml_unsupervised` is gone: B5 took its clustering topics and B6 took `pca`, its last one.
-    // `ml_supervised` is down to `perceptron`, `bias_variance` and `regularization` — B9 took
-    // `model_evaluation` into `ml_metrics` as its landing topic, and B10 takes the rest.
+    // `ml_supervised` is gone too: B10 split its three remaining topics (`perceptron`,
+    // `bias_variance`, `regularization`) into `ml_nn_foundations`, which also picked up two new
+    // topics (`restricted_boltzmann_machines`, `deep_belief_networks`) and seven DL topics
+    // cross-listed in so the doc's "Neural Network Foundations" heading is fully browsable from ML
+    // mode. `ml_rl_fundamentals` is new too, cross-listing five RL topics plus one new one
+    // (`multi_armed_bandit`).
     val all = listOf(
         regression, classification, bayesian, ensemble, clustering, dimReduction, association, timeSeries,
-        preprocessing, metrics, supervised,
+        preprocessing, metrics, nnFoundations, rlFundamentals,
     )
 }

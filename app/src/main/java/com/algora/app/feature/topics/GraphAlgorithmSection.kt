@@ -1683,6 +1683,98 @@ private fun unionFindFrames(): List<GraphAlgoFrame> {
     return frames
 }
 
+// ── GCN / GAT: two triangles bridged by one edge ────────────────────────────
+// Node ids match `SmallGraph`'s indices (0-5) so `GcnLab`/`GatLab`'s computed values key straight
+// onto badges without a translation table. Bridge nodes 2 and 3 (degree 4) sit in the middle;
+// 0/1/4/5 (degree 3) are each triangle's other two corners.
+private val smallBridgeGraph = GraphDef(
+    nodes = listOf(
+        GNode("0", 0.15f, 0.22f),
+        GNode("1", 0.15f, 0.78f),
+        GNode("2", 0.38f, 0.50f),
+        GNode("3", 0.62f, 0.50f),
+        GNode("4", 0.85f, 0.22f),
+        GNode("5", 0.85f, 0.78f),
+    ),
+    edges = listOf(
+        GEdge("0", "1"),
+        GEdge("1", "2"),
+        GEdge("0", "2"),
+        GEdge("3", "4"),
+        GEdge("4", "5"),
+        GEdge("3", "5"),
+        GEdge("2", "3"),
+    ),
+)
+
+private fun gcnFrames(): List<GraphAlgoFrame> {
+    val trace = GcnLab.layers(GcnLab.initialFeatures(), depth = 100)
+    val checkpoints = listOf(0, 1, 2, 5, 20, 100)
+    return checkpoints.map { depth ->
+        val features = trace[depth]
+        val badges = (0 until SmallGraph.NODES).associate { i -> i.toString() to "%.2f".format(features[i][0]) }
+        val groups = (0 until SmallGraph.NODES).associate { i -> i.toString() to if (i < 3) 0 else 1 }
+        val separation = GcnLab.separation(features)
+        val status = when (depth) {
+            0 -> "Two triangles, one bridge edge (2–3). Badges are each node's first feature value; colour is the " +
+                "true triangle. Cross-triangle distance is %.2fx the within-triangle distance.".format(separation)
+            1 -> "One layer of neighbor-averaging already blurs the split: the ratio drops to %.2f.".format(separation)
+            100 -> "By depth 100 the ratio has converged to %.3f -- exactly two-thirds, not one. Nodes 2 and 3 (the " +
+                "bridge, degree 4 on both sides) are now nearly identical despite sitting in different triangles."
+                .format(separation)
+            else -> "Depth $depth: ratio now %.2f. The bridge's weak connectivity slows this convergence down.".format(separation)
+        }
+        GraphAlgoFrame(status = status, badges = badges, groups = groups, undirected = true, hideWeights = true)
+    }
+}
+
+private fun gatFrames(): List<GraphAlgoFrame> {
+    // Node 2's neighbors are 0, 1 and 3 -- edge indices 2, 1 and 6 in `smallBridgeGraph.edges`.
+    val scoredEdges = setOf(1, 2, 6)
+    fun badgesFor(weights: Map<Int, Double>) = weights.mapKeys { it.key.toString() }.mapValues { "%.3f".format(it.value) }
+
+    return listOf(
+        GraphAlgoFrame(
+            status = "Node 2's neighborhood: 0, 1 and 3. GCN's weight is 1/√(deg·deg) -- fixed by the graph alone, " +
+                "computed once, and blind to whatever the features say.",
+            nodeMarks = mapOf("2" to NodeMark.ACTIVE),
+            badges = badgesFor(GatLab.baseGcn),
+            edgeMarks = scoredEdges.associateWith { EdgeMark.ACTIVE },
+            undirected = true,
+            hideWeights = true,
+        ),
+        GraphAlgoFrame(
+            status = "GAT's attention on the identical neighborhood, computed from the real feature values: nodes " +
+                "0 and 1 (feature-similar to node 2) take 92% of the mass between them; node 3 (very different " +
+                "features) gets 0.083.",
+            nodeMarks = mapOf("2" to NodeMark.ACTIVE),
+            badges = badgesFor(GatLab.baseAttention),
+            edgeMarks = scoredEdges.associateWith { EdgeMark.ACTIVE },
+            undirected = true,
+            hideWeights = true,
+        ),
+        GraphAlgoFrame(
+            status = "Move node 3's features to match node 2's exactly, and recompute both weightings. GAT's " +
+                "weight on that edge roughly quadruples (0.083 -> 0.331); GCN's weight on the same edge does not " +
+                "move at all -- it never read the features to begin with.",
+            nodeMarks = mapOf("2" to NodeMark.ACTIVE, "3" to NodeMark.UPDATED),
+            badges = badgesFor(GatLab.perturbedAttention),
+            edgeMarks = scoredEdges.associateWith { EdgeMark.ACTIVE },
+            undirected = true,
+            hideWeights = true,
+        ),
+        GraphAlgoFrame(
+            status = "GCN's weight on that same edge, recomputed after the identical perturbation: 0.250, unchanged " +
+                "to the last decimal. Degree-normalization has no feature input to react to.",
+            nodeMarks = mapOf("2" to NodeMark.ACTIVE, "3" to NodeMark.UPDATED),
+            badges = badgesFor(GatLab.gcnWeights()),
+            edgeMarks = scoredEdges.associateWith { EdgeMark.ACTIVE },
+            undirected = true,
+            hideWeights = true,
+        ),
+    )
+}
+
 private val graphAlgoConfigs = mapOf(
     "topological_sort_pattern" to GraphAlgoConfig(
         intro = "Course schedule, the interview phrasing of a topological sort: first a curriculum that works, then " +
@@ -1812,6 +1904,27 @@ private val graphAlgoConfigs = mapOf(
             EdgeMarkColors.getValue(EdgeMark.ACCEPTED) to "Edge used",
         ),
         build = ::eulerianFrames,
+    ),
+    "gcn" to GraphAlgoConfig(
+        intro = "Two triangles bridged by one edge, aggregated through the normalized adjacency matrix, depth " +
+            "after depth -- oversmoothing measured as an exact limit rather than asserted.",
+        def = smallBridgeGraph,
+        legend = listOf(
+            GroupColors[0] to "Triangle A",
+            GroupColors[1] to "Triangle B",
+        ),
+        build = ::gcnFrames,
+    ),
+    "gat" to GraphAlgoConfig(
+        intro = "The same neighborhood GCN reads by degree alone, reweighted by feature content instead -- and a " +
+            "direct perturbation showing which weighting reacts to it.",
+        def = smallBridgeGraph,
+        legend = listOf(
+            NodeMarkColors.getValue(NodeMark.ACTIVE) to "Center node",
+            NodeMarkColors.getValue(NodeMark.UPDATED) to "Perturbed neighbor",
+            EdgeMarkColors.getValue(EdgeMark.ACTIVE) to "Scored edge",
+        ),
+        build = ::gatFrames,
     ),
     "hamiltonian_path" to GraphAlgoConfig(
         intro = "The same question about vertices instead of edges, and no counting argument to settle it. Badges are " +
