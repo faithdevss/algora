@@ -33,7 +33,22 @@ object NlpCategories {
     // section — the doc lists this block under both Deep Learning and NLP.
     val rnn = Category("nlp_rnn", "Recurrent Models", Section.NLP, 0xFFF97316, "history")
 
+    // D6. "flame" for the training run itself — unused in this section.
+    val fineTuning = Category("nlp_finetuning", "Fine-Tuning & Optimization", Section.NLP, 0xFFEF4444, "flame")
+
+    // D6. "flask" for the architectures still being argued about, and unused in this section.
+    val beyondTransformers = Category("nlp_beyond", "Beyond Transformers", Section.NLP, 0xFF06B6D4, "flask")
+
+    // D6. Shares `ml_metrics`' sky blue because it is the same job read from the other section — the
+    // precedent is `nlp_rnn` taking `dl_rnn`'s colour in C5. The icon differs on purpose: ML's
+    // metrics check a prediction against a label, and these six score a string against a reference,
+    // which is what "target" reads as. Unused in this section either way.
+    val metrics = Category("nlp_metrics", "NLP Metrics", Section.NLP, 0xFF0EA5E9, "target")
+
     // `nlp_modeling` is gone. It was the mock's catch-all, and C5 took its last topic (`rnn_lstm`)
     // into the category above — the same hollowing-out that retired `ml_unsupervised` in B6.
-    val all = listOf(preprocessing, statistical, syntax, embeddings, rnn, transformer, pretrained, modernLlm)
+    val all = listOf(
+        preprocessing, statistical, syntax, embeddings, rnn, transformer, pretrained, modernLlm,
+        fineTuning, beyondTransformers, metrics,
+    )
 }

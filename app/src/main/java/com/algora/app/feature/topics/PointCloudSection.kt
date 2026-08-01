@@ -4468,7 +4468,208 @@ private fun daviesBouldinFrames(): List<CloudFrame> {
     return frames
 }
 
+// ── C7 · CycleGAN and StyleGAN ───────────────────────────────────────────────
+// The batch's two labs that are about geometry rather than about a network. Both draw their numbers
+// from `GenerativeMath.kt`, pinned by `GenerativeMathTest`.
+
+private fun cycleGanFrames(): List<CloudFrame> {
+    val n = 6
+    // Two domains as two columns. The vertical position is the item's identity, so a mapping is
+    // readable as a set of segments and a "correct" mapping is the flat one.
+    val leftX = 0.24f
+    val rightX = 0.76f
+    fun rowY(i: Int) = 0.12f + 0.76f * i / (n - 1f)
+    val domainA = List(n) { P(leftX, rowY(it), 0) }
+    val domainB = List(n) { P(rightX, rowY(it), 1) }
+    val dots = domainA.map { Dot(it, 0) } + domainB.map { Dot(it, 1) }
+
+    fun mappingSegments(perm: List<Int>, color: Color, dashed: Boolean = false) =
+        perm.mapIndexed { a, b -> Segment(domainA[a], domainB[b], color, dashed) }
+
+    val correct = (0 until n).toList()
+    val scrambled = listOf(3, 5, 0, 4, 1, 2)
+    val alsoWrong = listOf(1, 0, 3, 2, 5, 4)
+    val frames = mutableListOf<CloudFrame>()
+
+    frames += CloudFrame(
+        status = "Two domains, six items each, and no paired examples anywhere. CycleGAN's job is to find the " +
+            "mapping between them, and the difficulty is best seen by counting how many mappings its losses " +
+            "actually accept.",
+        dots = dots,
+        readout = "unpaired · $n items per domain",
+    )
+    frames += CloudFrame(
+        status = "This is the mapping we want. Every item goes to its counterpart, the output distribution matches " +
+            "domain B exactly, and the adversarial loss is zero.",
+        dots = dots,
+        segments = mappingSegments(correct, CloudColors[2]),
+        readout = "adversarial loss 0 · semantically correct",
+    )
+    frames += CloudFrame(
+        status = "So is this one. The adversarial loss only ever sees distributions — it is told what domain B looks " +
+            "like as a set and is never shown which input produced which output. Every item still lands somewhere " +
+            "distinct, so this scores exactly as well.",
+        dots = dots,
+        segments = mappingSegments(scrambled, CloudColors[3]),
+        readout = "adversarial loss 0 · semantically wrong",
+    )
+    frames += CloudFrame(
+        status = "And so is this one, and so are ${CycleGanLab.adversariallyOptimal(n) - 2} others. Every bijection " +
+            "from A to B produces the right output distribution, so all ${CycleGanLab.adversariallyOptimal(n)} of " +
+            "them drive the adversarial loss to zero. Exactly one is the translation anybody wanted.",
+        dots = dots,
+        segments = mappingSegments(alsoWrong, CloudColors[3]),
+        readout = "${CycleGanLab.adversariallyOptimal(n)} mappings at zero loss",
+    )
+    frames += CloudFrame(
+        status = "Cycle consistency is where every summary says the ambiguity gets resolved. Requiring F(G(a)) = a " +
+            "forces F to be the inverse of G — drawn here dashed, running back the other way.",
+        dots = dots,
+        segments = mappingSegments(scrambled, CloudColors[3]) +
+            scrambled.mapIndexed { a, b -> Segment(domainB[b], domainA[a], CloudColors[4], true) },
+        readout = "F = G⁻¹",
+    )
+    frames += CloudFrame(
+        status = "But every bijection has an inverse. Of the ${CycleGanLab.adversariallyOptimal(n)} mappings the " +
+            "adversarial loss accepted, the number that are also perfectly cycle-consistent is " +
+            "${CycleGanLab.cycleConsistent(n)} — all of them. The cycle term removed exactly zero candidates. What it " +
+            "rules out is many-to-one collapse, which the distribution match had already excluded.",
+        dots = dots,
+        segments = mappingSegments(scrambled, CloudColors[3], dashed = true),
+        readout = "${CycleGanLab.cycleConsistent(n)} of ${CycleGanLab.adversariallyOptimal(n)} survive · 1 is right",
+    )
+    frames += CloudFrame(
+        status = "What actually selects the mapping is not in the loss at all. A convolutional generator has a " +
+            "receptive field far smaller than the image, so it cannot express an arbitrary rearrangement — only " +
+            "roughly local, roughly consistent transformations. Priced as a budget of one position, that cuts " +
+            "${CycleGanLab.adversariallyOptimal(n)} candidates to ${CycleGanLab.withLocality(n, 1)}.",
+        dots = dots,
+        segments = mappingSegments(correct, CloudColors[2]),
+        readout = "budget 1 → ${CycleGanLab.withLocality(n, 1)} · budget 2 → ${CycleGanLab.withLocality(n, 2)}",
+    )
+    frames += CloudFrame(
+        status = "That also predicts the failures. CycleGAN is famous for not managing geometric changes — cat to " +
+            "dog, rather than horse to zebra — and those are exactly the cases that need the large structured " +
+            "rearrangement the architecture cannot represent. The inductive bias is doing the work, and it is doing " +
+            "the failing too.",
+        dots = dots,
+        segments = mappingSegments(correct, CloudColors[2]),
+        readout = "the architecture selects, and the architecture limits",
+    )
+    return frames
+}
+
+private fun styleGanFrames(): List<CloudFrame> {
+    val frames = mutableListOf<CloudFrame>()
+    val side = 9
+    val grid = buildList {
+        for (i in 0 until side) for (j in 0 until side) {
+            add((0.05f + 0.9f * i / (side - 1f)) to (0.05f + 0.9f * j / (side - 1f)))
+        }
+    }
+
+    frames += CloudFrame(
+        status = "The sampled latent space Z has a prior that cannot change shape — a uniform square here. This is a " +
+            "regular grid of samples from it, and every generator that starts from a fixed prior starts from " +
+            "something like this.",
+        dots = grid.map { Dot(P(it.first, it.second), 0) },
+        readout = "z ~ uniform on the square",
+    )
+    frames += CloudFrame(
+        status = "The data does not fill a square. Suppose the training set never contains both attributes at once, " +
+            "so the top-right quadrant is empty — the combination simply does not occur. The generator has to map " +
+            "the full square onto this L-shaped support, and it has to do it without changing the prior.",
+        dots = grid.map { Dot(P(it.first, it.second), 0, Emphasis.FADED) },
+        regions = listOf(Region(0.5f, 0.5f, 1f, 1f, UnassignedColor)),
+        readout = "the missing combination",
+    )
+    frames += CloudFrame(
+        status = "So it warps. This is the same grid pushed through an area-correct map onto the support: the left " +
+            "column takes two thirds of the square and the bottom-right block takes one third, matching their areas. " +
+            "Notice what happened to the spacing — the grid is no longer uniform, and there is a seam.",
+        dots = grid.map { (z1, z2) ->
+            val w = StyleGanLab.generate(z1.toDouble(), z2.toDouble())
+            Dot(P(w[0].toFloat(), w[1].toFloat()), 2)
+        },
+        regions = listOf(Region(0.5f, 0.5f, 1f, 1f, UnassignedColor)),
+        readout = "the prior is fixed, so the map bends",
+    )
+
+    // One interpolation, shown through the warp and then straight.
+    val a = 0.12 to 0.80
+    val b = 0.92 to 0.30
+    val steps = 24
+    val zPath = (0..steps).map { s ->
+        val t = s.toDouble() / steps
+        val w = StyleGanLab.generate(a.first + (b.first - a.first) * t, a.second + (b.second - a.second) * t)
+        P(w[0].toFloat(), w[1].toFloat())
+    }
+    frames += CloudFrame(
+        status = "Walk in a straight line between two points of Z and watch where the output goes. The path is not " +
+            "straight, and it is not even continuous — it jumps at the seam. That discontinuity is what " +
+            "\"entangled\" means operationally: one attribute cannot be changed without the other lurching.",
+        dots = zPath.map { Dot(it, 1) },
+        segments = zPath.zipWithNext().map { (p, q) -> Segment(p, q, CloudColors[1]) },
+        regions = listOf(Region(0.5f, 0.5f, 1f, 1f, UnassignedColor)),
+        readout = "linear in Z · path length ${"%.3f".format(StyleGanLab.pathLengths().latentZ)}",
+    )
+
+    val w0 = StyleGanLab.generate(a.first, a.second)
+    val w1 = StyleGanLab.generate(b.first, b.second)
+    val wPath = (0..steps).map { s ->
+        val t = s.toFloat() / steps
+        P(
+            (w0[0] + (w1[0] - w0[0]) * t).toFloat(),
+            (w0[1] + (w1[1] - w0[1]) * t).toFloat(),
+        )
+    }
+    val lengths = StyleGanLab.pathLengths()
+    frames += CloudFrame(
+        status = "An intermediate latent W is not required to be uniform, so the same two endpoints can be joined " +
+            "straight. Mean squared path length is ${"%.3f".format(lengths.latentW)} against " +
+            "${"%.3f".format(lengths.latentZ)} through the warp — a factor of ${"%.1f".format(lengths.ratio)}. That " +
+            "is what the eight-layer mapping network buys, and it is measured rather than asserted.",
+        dots = wPath.map { Dot(it, 2) },
+        segments = wPath.zipWithNext().map { (p, q) -> Segment(p, q, CloudColors[2]) },
+        regions = listOf(Region(0.5f, 0.5f, 1f, 1f, UnassignedColor)),
+        readout = "${"%.3f".format(lengths.latentW)} vs ${"%.3f".format(lengths.latentZ)} · ${"%.1f".format(lengths.ratio)}×",
+    )
+    frames += CloudFrame(
+        status = "The cost is real and worth stating. A straight line in W can cross the region no training example " +
+            "ever occupied — here for ${"%.1f".format(lengths.wLeavingSupport * 100)}% of the interpolation. " +
+            "Disentangling the latent space does not make every point in it a valid face, which is exactly why " +
+            "truncation exists.",
+        dots = wPath.map { p ->
+            Dot(p, if (StyleGanLab.inSupport(p.x.toDouble(), p.y.toDouble())) 2 else 1, Emphasis.ACTIVE)
+        },
+        segments = wPath.zipWithNext().map { (p, q) -> Segment(p, q, CloudColors[2]) },
+        regions = listOf(Region(0.5f, 0.5f, 1f, 1f, UnassignedColor)),
+        readout = "${"%.1f".format(lengths.wLeavingSupport * 100)}% outside the data",
+    )
+    return frames
+}
+
 private val cloudConfigs = mapOf(
+    "cyclegan" to CloudConfig(
+        intro = "Two unpaired domains and the mappings each loss accepts, counted by enumeration: 720 at zero " +
+            "adversarial loss, 720 still standing after cycle consistency, one correct.",
+        legend = listOf(
+            CloudColors[2] to "Correct mapping",
+            CloudColors[3] to "Also zero loss",
+            CloudColors[4] to "Inverse F",
+        ),
+        build = ::cycleGanFrames,
+    ),
+    "stylegan" to CloudConfig(
+        intro = "A uniform prior forced onto a distribution with a missing combination, the warp that results, and " +
+            "the path lengths of interpolating in each space.",
+        legend = listOf(
+            CloudColors[0] to "Latent Z",
+            CloudColors[1] to "Warped path",
+            CloudColors[2] to "Straight in W",
+        ),
+        build = ::styleGanFrames,
+    ),
     "confusion_matrix" to CloudConfig(
         intro = "1,000 cases, 88 positive, one fitted logistic boundary — and the four cells every other metric in this category is a function of.",
         legend = listOf(

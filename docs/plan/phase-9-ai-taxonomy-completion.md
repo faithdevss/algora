@@ -1,11 +1,12 @@
 # Phase 9 — AI Taxonomy Completion
 
-Status: In progress — Track A complete (RL at 100% of the doc), B1–B9, C1–C6 and D1–D5 done. 181 of
-226 topics authored. AI sections now: **ML 101**, DL 63, NLP 57, RL 74 — 295 AI topics, and 417
+Status: In progress — **Tracks A and D are both complete**; B1–B9 and C1–C7 done. 204 of
+226 topics authored. AI sections now: **ML 101**, DL 70, NLP 75, RL 74 — 320 AI topics, and 441
 browsable topics across the app *counted from the section lists themselves*. (The running "taxonomy at N"
 tallies in earlier revisions of this file drifted from those lists; the measured number is the one to
-trust, and `ContentCoverageTest` is what enforces it.)
-**Doc coverage is measured, not estimated: 310 of the doc's 357 entries (87%).**
+trust, and `ContentCoverageTest` is what enforces it. The "424" this line carried before D6 was
+itself one high against the lists, which is the fourth time a hand-maintained figure here has drifted.)
+**Doc coverage is measured, not estimated: 333 of the doc's 357 entries (93%).**
 Next: B10 — Restricted Boltzmann Machines, Deep Belief Networks and Multi-Armed Bandit, the last
 three topics standing between `ml_supervised` and empty.
 Track B was interrupted after B7 by a deliberate jump to Track C; B8 and B9 have now landed, **B10
@@ -59,29 +60,32 @@ foundational sub-sections, and Track A closed both.
 This table is the starting snapshot and is deliberately left unedited. Live status is the table
 below.
 
-## Where the phase stands (last updated after B9)
+## Where the phase stands (last updated after D6)
 
-**181 of 226 topics authored; 45 remain, in three open blocks.**
+**204 of 226 topics authored; 22 remain, in two open blocks.**
 
 | Open block | Topics | What it needs |
 |---|---|---|
 | B10 | 3 | Restricted Boltzmann Machines, Deep Belief Networks, Multi-Armed Bandit — cross-listed from existing DL/RL topics, no new content files. Track B is not finished until `ml_supervised` is empty — it still holds `perceptron`, `bias_variance`, `regularization` |
-| C7–C9 | 26 | Generative, optimizers/regularization, specialized. `dl_fundamentals` is still standing and should end empty; `dl_architectures` is down to three topics, all of which C7 takes |
-| D6 | 16 | Fine-tuning + beyond-transformers + metrics. The phase's other oversized thin-topic batch, and the last of Track D |
+| C8–C9 | 19 | Optimizers/losses and regularization/specialized. `dl_fundamentals` is still standing and should end empty — C8 takes `gradient_descent_variants`, C9 takes `batch_normalization` and `dropout`, and `transfer_learning` is already placed (D6 cross-listed it into `nlp_finetuning`) |
 
-Track A is closed (RL is 71/71 against the doc). Track D is 5 of 6. Every landed batch has updated
-`expectedCoveredCount` in the same change, so the coverage number below is a test result rather than
-a count: **310 of 357**.
+**Tracks A and D are both closed.** RL is 71/71 against the doc and NLP is 76/77 — its single
+remaining entry is `NLP :: The Transformer Architecture :: Layer Normalization`, which C9 covers from
+the Deep Learning side rather than needing a Track D batch. Track C is 7 of 9 and is now the only
+track with authoring left besides B10. Every landed batch has updated `expectedCoveredCount` in the
+same change, so the coverage number below is a test result rather than a count: **333 of 357**.
 
-**`nlp_modeling` is gone.** C5 took its last topic, which makes NLP the second section (after ML's
-`ml_unsupervised` in B6) to finish hollowing out one of the mock's two generic buckets.
+**`dl_architectures` is gone.** C7 took its last three topics (`autoencoders`, `gans`,
+`diffusion_models`) into `dl_generative`, which makes DL the third section — after ML's
+`ml_unsupervised` in B6 and NLP's `nlp_modeling` in C5 — to finish hollowing out one of the mock's
+generic buckets. One remains in the whole phase: `dl_fundamentals`, which C8 and C9 empty.
 
 Nothing is blocked. The one net-new widget the phase planned (`FeatureMapPlayer`) was built in C3,
-and every batch since has run on widgets that already existed — C4, D1–D5, C5, C6, B8 and B9, ten in
-a row, each adding only math files. B8 was the first of those to reuse three widgets at once; B9
-reuses three again (`PointCloudPlayer`, `NeuralNetPlayer`, `RegressionLab`), split across substrates
-rather than sim types. Before C3 the run was seven (B3–B7, C1, C2). The widget cost really is
-front-loaded per *family* rather than per batch, as the risks section predicted after B7.
+and every batch since has run on widgets that already existed — C4, D1–D5, C5, C6, B8, B9 and C7,
+eleven in a row, each adding only math files. C7 is the largest reuse yet by content volume: seven
+topics across two widgets (`NeuralNetPlayer` ×5, `PointCloudPlayer` ×2) with one new math file. Before
+C3 the run was seven (B3–B7, C1, C2). The widget cost really is front-loaded per *family* rather than
+per batch, as the risks section predicted after B7.
 
 ## Progress
 
@@ -106,23 +110,32 @@ front-loaded per *family* rather than per batch, as the risks section predicted 
 | C4 · Object Detection & Segmentation | 9 | **Done** | `FeatureMapPlayer` gained a box/mask scene; new `DetectionMath.kt` |
 | C5 · RNN Mechanics | 4 | **Done** | New `dl_rnn` + `nlp_rnn`, which retires `nlp_modeling`. No new widget; new `RnnMath.kt` trains every model on screen. `RnnMathTest` overturned the batch's planned headline |
 | C6 · Transformers & Pre-trained Models | 8 | **Done** | New `dl_transformers`; cross-listed into `nlp_transformer` and `nlp_pretrained`. No new widget; new `AttentionMath.kt` + `PretrainMath.kt`. The cross-attention model closes C5's open claim, and the multi-head rank story in the plan was wrong |
-| C7–C9 | 26 | Planned | |
+| C7 · Generative Deep Learning | 7 | **Done** | New `dl_generative`, which retires `dl_architectures` — the last of DL's two generic buckets. No new widget; two existing ones. New `GenerativeMath.kt` + `GenerativeMathTest` (24 tests). The DeepFake lab's planned claim came out inverted and was rebuilt as an angle sweep |
+| C8–C9 | 19 | Planned | |
 | D1 · Preprocessing + Statistical NLP | 8 | **Done** | New `nlp_statistical`; no new widget. TokenStrip frame guard + `D1MathTest`, which caught two live errors |
 | D2 · Syntactic & Semantic Analysis | 6 | **Done** | New `nlp_syntax`; no new widget. Taggers and parsers run and scored in `SyntaxMath.kt`; `D2MathTest` |
 | D3 · Word Embeddings | 5 | **Done** | New `nlp_embeddings`; no new widget. Models trained for real in `EmbeddingMath.kt`; `D3MathTest` |
 | D4 · Transformer Internals + Pre-trained LMs | 8 | **Done** | New `nlp_transformer` + `nlp_pretrained`; no new widget. `TransformerMath.kt`; `D4MathTest` |
 | D5 · Modern LLM Techniques | 7 | **Done** | New `nlp_modern_llm`; no new widget. `ModernLlmMath.kt` runs a real Game-of-24 search, a real index and a real retriever; `D5MathTest` overturned four planned claims |
-| D6 | 16 | Planned | |
-| **Total** | **226** | **164 done** | 400 browsable topics, counted from the section lists |
+| D6 · Fine-Tuning + Beyond Transformers + Metrics | 16 | **Done** | Three new categories — `nlp_finetuning`, `nlp_beyond`, `nlp_metrics`. No new widget; three existing ones (`NeuralNetPlayer`, `ArrayWalkPlayer`, `TokenStripPlayer`). `FineTuneMath.kt` + `NlpMetricsMath.kt`; `D6MathTest` (36) and `D6MetricsTest` (20). The metrics probe falsified three claims already written into the math file |
+| **Total** | **226** | **204 done** | 441 browsable topics, counted from the section lists |
 
 Sections against the doc, measured by `AiTaxonomyCoverageTest` rather than counted by hand:
-**RL 71/71**, **ML 93/113**, DL 69/96, NLP 60/77 — **293 of 357 overall**. ML is 84 topics of its
-eventual ~100; DL is at 63; NLP is at 57. Browsable topics across the app: **400**, which
-is what `DataStructuresTopics + AlgorithmsTopics + the four AI sections` actually sum to — the
-"taxonomy 200 → N of 426" running tally this table used to carry had drifted from the lists by two
-dozen, so it has been dropped in favour of the measured figure. (The per-section figures in earlier
-revisions of this paragraph had drifted too — NLP was recorded as 43/77 while the map already said
-50. These come from the map now, counted by script, and the total is what the test asserts.)
+**RL 71/71**, **NLP 76/77**, **ML 110/113**, DL 76/96 — **333 of 357 overall**. ML is 101 topics, DL 70,
+NLP 75, RL 74. Browsable topics across the app: **441**, which is what `DataStructuresTopics +
+AlgorithmsTopics + the four AI sections` actually sum to — the "taxonomy 200 → N of 426" running
+tally this table used to carry had drifted from the lists by two dozen, so it has been dropped in
+favour of the measured figure.
+
+This paragraph and the table above it have both been wrong before, in the same way and for the same
+reason: they were maintained by hand while `expectedCoveredCount` was maintained by a test. Before
+C7 the table's total read "164 done" against batch rows summing to 181; this paragraph read "293 of
+357" while the test asserted 310; and its per-section figures were staler still — ML was recorded as
+93/113 when the map said 110, DL as 69/96 when it said 76. (An earlier revision had NLP at 43/77
+while the map already said 50, so this is the third time.) **The test is the source of truth for the
+coverage figures and the section lists are the source of truth for the topic counts.** The per-section
+split is not asserted anywhere, which is why it drifts furthest and fastest; if it matters to a future
+batch, assert it rather than transcribing it.
 
 ## Decisions taken before planning
 
@@ -158,11 +171,14 @@ topics and B10 takes `perceptron`. It should be gone by the end of Track B, and 
 then, something was missed. `CategoryIntegrityTest` is what makes that safe to do incrementally.
 
 **Deep Learning — 11 categories.** Built so far: `dl_basics`, `dl_activations`, `dl_cnn`,
-`dl_detection`, `dl_rnn`, `dl_transformers`. The two
-generic buckets are being hollowed out the same way ML's were — `dl_architectures` lost `cnn` to
-`dl_cnn`, then `rnn` and `lstm_gru` to `dl_rnn`, then `transformers` to `dl_transformers`, and is
-down to `autoencoders`, `gans` and `diffusion_models`, which C7 takes. Full list (`dl_basics`, `dl_activations`,
-`dl_cnn`, `dl_detection`,
+`dl_detection`, `dl_rnn`, `dl_transformers`, `dl_generative`. The two generic buckets were hollowed
+out the same way ML's were — `dl_architectures` lost `cnn` to `dl_cnn`, then `rnn` and `lstm_gru` to
+`dl_rnn`, then `transformers` to `dl_transformers`, and C7 took its last three (`autoencoders`,
+`gans`, `diffusion_models`) into `dl_generative`. **`dl_architectures` is now gone**, and it
+bequeathed its violet to `dl_generative` so the section's palette did not shift. `dl_fundamentals`
+still holds `gradient_descent_variants` (C8), `batch_normalization` and `dropout` (C9), and
+`transfer_learning`, which has no C8/C9 home yet and is the one placement decision left in Track C.
+Full list (`dl_basics`, `dl_activations`, `dl_cnn`, `dl_detection`,
 `dl_rnn`, `dl_transformers`, `dl_generative`, `dl_deep_rl`, `dl_optimizers`, `dl_regularization`,
 `dl_specialized`)
 
@@ -1314,15 +1330,67 @@ central claim is false" — the non-separating confidence signal, the systematic
 the greedy Game-of-24 failure, and the disconnected k-NN graph — because each one is a frame that
 would read perfectly well in the wrong direction.
 
-**D6 · Fine-Tuning + Beyond Transformers + Metrics** — 16 topics
+**D6 · Fine-Tuning + Beyond Transformers + Metrics** — 16 topics — **Done**
 Fine-Tuning (Full) · DPO · PEFT · LoRA & QLoRA · Quantization · Flash Attention · SSMs · Mamba ·
 RWKV · Long Context Windows · Perplexity · WER · BLEU · ROUGE · METEOR · MMLU
-*Sims:* `NeuralNetPlayer` (frozen vs trainable parameter counts; a low-rank adapter beside the full
-weight matrix; weight histograms before/after quantization), `TokenStripPlayer` (n-gram overlap
-scoring for BLEU/ROUGE/METEOR; per-token surprisal for perplexity), `ArrayWalkPlayer` (attention
-tiling for Flash Attention; the recurrent state scan for SSM/Mamba/RWKV).
-*Note:* this batch is oversized on purpose — the metrics topics are short and share one frame
-builder. Split at the session boundary if it runs long.
+
+Three new categories: `nlp_finetuning` ("Fine-Tuning & Optimization", icon `flame`), `nlp_beyond`
+("Beyond Transformers", `flask`) and `nlp_metrics` ("NLP Metrics", `target`, sharing `ml_metrics`'
+sky blue because it is the same job read from the other section — the `nlp_rnn`/`dl_rnn` precedent
+from C5). `transfer_learning` and `rlhf` are **cross-listed** rather than duplicated, which makes
+`transfer_learning` this batch's one gating change: the NLP doc leaves it unlocked, so its Deep
+Learning row went free too, because one id cannot be gated two ways. Gating otherwise honours the
+doc's `🔒` markers verbatim — in the metrics half that leaves Perplexity and WER free and the other
+four premium.
+
+**The batch was split at the session boundary as the plan allowed**, and the split was clean: the
+ten fine-tuning and post-transformer topics landed first on `FineTuneMath.kt`, the six metrics
+second on `NlpMetricsMath.kt`. No new widget, the twelfth batch in a row — `NeuralNetPlayer` and
+`ArrayWalkPlayer` for the first half, `TokenStripPlayer` for five of the six metrics, and MMLU on
+`NeuralNetPlayer` because it is a sampling argument with error bars rather than a string comparison.
+
+**The metrics probe falsified three claims that had already been written into the math file's own
+doc comments**, which is the first time in the phase that the falsified copy was the *lab's*
+documentation rather than a plan paragraph:
+- **"One unseen bigram sends perplexity to infinity" had no unseen bigram.** Every bigram of the
+  test sentence was attested, so unsmoothed perplexity on it is a perfectly finite 2.358 — and the
+  add-k sweep runs monotonically the *wrong* way, 2.371 at k=0.001 up to 8.229 at k=1. A second
+  sentence now carries the infinity case (`cat swam`), and the honest frame is better than the
+  planned one: smoothing is a premium (3.47× here) paid on every token against one catastrophic
+  event, and whether it helps is a property of the test set rather than of the smoother. The
+  optimum k is at the floor of the sweep on attested text and interior (0.01) once a zero exists.
+- **The two WER hypotheses that were to score identically differ by 3×.** Dropping three function
+  words scores 0.333; deleting "not" and reversing the sentence scores 0.111. That misranking is a
+  sharper claim than the planned collision, so it was kept — and a third hypothesis (two substituted
+  articles plus the deleted "not") was added to supply the actual tie at 0.333, reached by a
+  different route. The topic now carries both.
+- **The whole-document ROUGE recall is 0.800, not the perfect score asserted**, because the
+  reference paraphrases two of its words. The do-nothing baseline claim survives at 0.800 against a
+  precision of 0.235, and the frame states the measured number.
+
+The batch's headline came out of the same run and was not planned at all: **perplexity and bits per
+character rank the same two models in opposite orders.** The character model reports the lower
+perplexity (5.916 against 8.229) and the higher bits per character (3.470 against 1.252) — read the
+per-token number and it wins, read the comparable number and it loses by 2.8×. That is a stronger
+statement of "perplexity is not comparable across tokenizers" than the assertion it replaced, and
+the lab also states the caveat bits-per-character carries: the word model's closed 19-word
+vocabulary never has to spell anything.
+
+Other measurements the copy is built on: WER 1.889 for a stuck decoder (so "accuracy = 1 − WER"
+reports −88.9%) and 0.556 → 0.000 from text normalization alone; BLEU's clipping taking a degenerate
+output's unigram precision from a perfect 8/8 to 2/8, and a correct paraphrase scoring exactly
+0.0000 with empty orders [3, 4]; ROUGE-1 scoring a clause-reordered summary 1.000, identical to the
+correct one, while ROUGE-L halves to 0.500, and a correct abstractive summary scoring 0.105 —
+*below* the do-nothing baseline, which is why optimising ROUGE trains models to extract; METEOR
+scoring that same paraphrase 0.4537, and a full shuffle hitting the fragmentation penalty's exact
+ceiling γ = 0.5 for a score of exactly 0.500; and MMLU's top two models sitting 1.46 standard errors
+apart at 14,042 questions and 0.12 at subject size, with 10 of 45 subject pairs inside 2 SE and the
+micro/macro averaging choice (0.6084 vs 0.6140) worth 70% of the gap the leaderboard ranks on.
+
+New guard `D6MetricsTest` (20 tests), joining `D6MathTest` (36). Seven of the twenty are written as
+"if this ever flips, the topic's central claim is false" — the tokenizer inversion, the WER
+misranking and its tie, BLEU's paraphrase zero, ROUGE-1's blindness to reordering, the abstractive
+summary ranking below the do-nothing baseline, and MMLU's top two staying inside 2 SE.
 
 ## Per-topic implementation checklist
 
@@ -1347,7 +1415,7 @@ monetization angle.
 
 ## Guards
 
-**Shipping and green (288 tests):**
+**Shipping and green (501 tests):**
 - `ContentCoverageTest` — every browsable topic has content, nothing resolves to `NotYetAvailable`,
   and every prerequisite and cross-link id resolves. It has caught real breakage every batch and is
   run (with `--rerun-tasks`) at the end of each one.
@@ -1366,7 +1434,7 @@ monetization angle.
   section membership, and the covered count. Its failure message prints the remaining backlog.
 - `DimReductionMathTest` (B6), `B7MathTest` (B7), `DeepNetMathTest` (C1), `ActivationMathTest` (C2),
   `CnnMathTest` (C3), `DetectionMathTest` (C4), `D1MathTest`, `D2MathTest`, `D3MathTest`,
-  `D4MathTest` and `D5MathTest` — pin the properties each
+  `D4MathTest`, `D5MathTest`, `GenerativeMathTest` (C7), `D6MathTest` and `D6MetricsTest` — pin the properties each
   batch's copy leans on, so a re-tune that makes a topic pointless fails instead of shipping. Worth
   continuing per batch; `B7MathTest` caught a wrong claim that had already been written, and
   `D1MathTest` caught one this plan document had asserted.
@@ -1429,6 +1497,22 @@ number closed no doc entry, which is worth noticing at the time rather than at t
   evaluator was the more expensive lever rather than the cheaper one, and that the k-NN graph its
   vector-search lab was built on is disconnected. All three read as perfectly good copy if written
   before looking, and all three now have a test whose failure message says the claim has inverted.
+  C7 added one of a slightly different shape, and it is the first where the *planned lab design* was
+  the thing at fault rather than a tuning constant. Its DeepFake topic was to show that a shared
+  encoder makes the swap work and independent encoders do not. Measured, the shared encoder scored
+  **worse** — 2.12 against 1.90 — because the shared basis spent a latent direction on the identity
+  difference and the receiving decoder had never seen that coordinate vary. The fix was not a
+  re-tune: the decoders had to supply identity as their own constant, which is what the real
+  architecture's two separate decoders are for, and the comparison had to gain a third arm — the
+  do-nothing baseline of always emitting the target's mean face. That baseline is what turned the
+  result into the batch's strongest finding: independent encoders score 0.480 against a baseline of
+  0.366, so they are worse than not attempting the swap at all, which is a much sharper claim than
+  the one originally planned. Rebuilding it also exposed that the honest version of "the shared
+  encoder is what makes swaps work" is *necessary but not sufficient*, since the swap degrades
+  continuously as the two identities' expression manifolds separate and diverges outright once they
+  are orthogonal. **A lab that will not produce the intended result is worth more than one that
+  does — but only if the response is to re-derive the mechanism rather than to adjust constants until
+  the number turns around.**
 - **Topic-id collisions.** `TopicRegistry` collapses cross-listed ids first-wins (`perceptron`,
   `transformers`). Tracks C and D cross-list far more (backprop, LSTM, attention, RLHF, all seven
   Deep RL entries). `AiTaxonomyCoverageTest` now makes these reviewable — a cross-listed entry
@@ -1437,15 +1521,26 @@ number closed no doc entry, which is worth noticing at the time rather than at t
 - **Browse-list length.** 426 topics changes the character of the category screens, and ML alone is
   heading for 12 categories. Per-category search exists (Phase 2); scroll performance and whether
   Home's Quick Access grid is still a sensible sole entry point are both unchecked.
-- **D6 (16)** remains the phase's other oversized thin-topic batch, and the most likely to read as
-  filler if authored mechanically. B9 (17 metrics) landed with each metric given its own "when this
-  one misleads you" angle, scored against real models rather than asserted — D6 needs the same
-  treatment.
+- ~~**D6 (16)** remains the phase's other oversized thin-topic batch, and the most likely to read as
+  filler if authored mechanically.~~ Landed with the B9 treatment applied: every one of the six
+  metrics carries its own scored "when this one misleads you" case — a perplexity that ranks two
+  tokenizers backwards, a WER above 100% and a WER tie between opposite meanings, a correct
+  translation scoring 0, a do-nothing summary at 0.800 recall, a shuffle that saturates METEOR's
+  penalty exactly, and a leaderboard gap of 1.46 standard errors. The split-at-the-session-boundary
+  escape hatch the plan wrote in was used, and cost nothing.
+- **The probe is now worth running against the lab's own doc comments, not just the plan.** D6's
+  metrics half is the first batch where the falsified claims were written in `NlpMetricsMath.kt`'s
+  KDoc — describing what the lab *would* show — rather than in this file or in topic copy. All three
+  were plausible, none survived measurement, and all three had been typed by the same hand that wrote
+  the code they described. A comment asserting a result is copy, and it needs the same evidence.
 
 ## Suggested order
 
 ~~A1 → A2~~ → ~~B1 → B2 → B3 → B4 → B5~~ → ~~guards~~ → ~~B6 → B7 → B8 → B9~~ → **B10** → ~~C1 → C2~~
-→ ~~**`FeatureMapPlayer`** → C3 → C4 → C5 → C6~~ → C7 → C8 → C9 → ~~D1~~ → ~~D2~~ → ~~D3~~ → ~~D4~~ → ~~D5~~ → D6.
+→ ~~**`FeatureMapPlayer`** → C3 → C4 → C5 → C6 → C7~~ → C8 → C9 → ~~D1~~ → ~~D2~~ → ~~D3~~ → ~~D4~~ → ~~D5~~ → ~~D6~~.
+
+**Only B10 and C8–C9 are left.** Track D closed with D6, and the run order inside it was the planned
+one throughout apart from the D3/D2 swap recorded below.
 
 Struck-through batches are done. The guards step landed with B6 rather than before it, in the same
 session. The order was then broken deliberately twice, both times at the user's direction and both
@@ -1458,7 +1553,7 @@ That D3-before-D2 swap did cost something small and worth recording: `word_embed
 an odd mix for one batch until D2 and D4 emptied it. Moving umbrella topics out of a generic bucket
 is cheap to do per batch but only reads coherently once the whole track lands.
 
-B8–B10 stay open, and Track B is not finished until `ml_supervised` is empty.
+B10 stays open, and Track B is not finished until `ml_supervised` is empty.
 
 ## Verification
 
@@ -1466,11 +1561,15 @@ Per batch: `./gradlew testDebugUnitTest` (coverage + taxonomy + category guards)
 `./gradlew assembleDebug` and a manual walk of the touched category screen — list renders, every row
 opens, sim plays, premium rows gate.
 
-**Outstanding:** the automated half has run green on every batch (288 unit tests at D5, plus
-`assembleDebug`), but the **manual emulator walk has not been done for D1–D5**. Those five batches
-added seven NLP categories, moved six topics between categories, and added thirty-four detail
-screens — all of it guarded against broken content, resolvable links, and frame builders that throw,
-none of it actually looked at on a device. This is now the phase's largest unverified surface and it
-grows every batch. Worth one session with the emulator before Track D finishes: open each new
-category, confirm the reading-path ordering reads correctly, and play at least one lab per widget
-(TokenStrip, TreeVisualizer, PointCloud, NeuralNet all gained configs).
+**Outstanding:** the automated half has run green on every batch (**501 unit tests at D6**, plus
+`assembleDebug`), but the **manual emulator walk has not been done for D1–D6, or for C7**. Those
+seven batches added ten NLP categories and one DL category, retired `dl_architectures`, moved nine
+topics between categories, and added fifty-seven detail screens — all of it guarded against broken
+content, unresolvable links, and frame builders that throw, none of it actually looked at on a
+device. **Track D is now finished and this walk never happened**, so the "before Track D finishes"
+deadline this paragraph used to carry has passed. It is the phase's largest unverified surface by a
+wide margin, and it no longer grows on its own — B10 and C8–C9 add to it, but the backlog is already
+banked. Worth one session with the emulator now rather than after C9: open each new category, confirm
+the reading-path ordering reads correctly, check `transfer_learning` renders free in both of its
+categories, and play at least one lab per widget (TokenStrip, TreeVisualizer, PointCloud, NeuralNet,
+ArrayWalk and FeatureMap all gained configs).

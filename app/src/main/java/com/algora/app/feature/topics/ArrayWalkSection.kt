@@ -2088,7 +2088,11 @@ private fun stringFrames(): List<WalkFrame> {
         status = "Comparing \"$s\" with \"$other\" stops at index $mismatch ('${s[mismatch]}' vs " +
             "'${other[mismatch]}'), after ${mismatch + 1} character comparisons rather than ${s.length}. " +
             "Equality is worst-case O(n) but usually leaves early; sorting strings is why that worst case matters.",
-        cells = charRow(s, active = mismatch, done = 0 until mismatch),
+        // Both rows are padded to the longer word. Without this the 6-cell row sits above a 7-cell
+        // row at a different width, so the character-by-character comparison the frame is *about*
+        // does not line up on screen — found by the frame guard, which D6 taught to check the arity.
+        cells = charRow(s, active = mismatch, done = 0 until mismatch) +
+            List(other.length - s.length) { CellView("·", CellMark.DIM) },
         aux = charRow(other, active = mismatch, done = 0 until mismatch),
         auxLabel = "the string being compared against",
         readout = "${mismatch + 1} comparisons, verdict: \"$s\" > \"$other\"",
@@ -3917,7 +3921,440 @@ private fun greedyIntervalsFrames(): List<WalkFrame> {
     return frames
 }
 
+// ── D6 · Flash Attention ─────────────────────────────────────────────────────
+// The tiled softmax drawn as what it is: a left-to-right scan over key blocks, carrying three
+// numbers. The cells are the blocks, the aux row is the running denominator, and the rescale that
+// happens when a block raises the running maximum is a visible change to cells already passed.
+// Numbers come from FlashLab, which runs both algorithms on the same 512 scores.
+
+private fun flashAttentionFrames(): List<WalkFrame> {
+    val frames = mutableListOf<WalkFrame>()
+    val blockSize = 64
+    val tiles = FlashLab.tileTrace(FlashLab.demoScores, blockSize)
+    val blocks = tiles.size
+
+    fun blockCells(upTo: Int, active: Int?) = (0 until blocks).map { i ->
+        CellView(
+            "b$i",
+            when {
+                i == active -> CellMark.ACTIVE
+                i < upTo -> CellMark.DONE
+                else -> CellMark.DIM
+            },
+        )
+    }
+
+    fun sumRow(upTo: Int) = (0 until blocks).map { i ->
+        if (i <= upTo) CellView("%.0f".format(tiles[i].runningSum), CellMark.WINDOW) else CellView("·", CellMark.DIM)
+    }
+
+    frames += WalkFrame(
+        status = "${FlashLab.demoScores.size} keys in $blocks blocks of $blockSize. The textbook softmax needs every " +
+            "score at once, because the denominator is a sum over all of them. This scan never holds more than one " +
+            "block — it carries a running maximum m, a running denominator ℓ, and a running output.",
+        cells = blockCells(0, null),
+        aux = sumRow(-1),
+        auxLabel = "ℓ (running denominator)",
+    )
+
+    tiles.forEach { tile ->
+        val raised = tile.rescale < 1.0
+        frames += WalkFrame(
+            status = if (raised) {
+                "Block ${tile.index} contains a score of ${"%.2f".format(tile.blockMax)}, above the running maximum. " +
+                    "Everything accumulated so far was scaled against the old maximum, so it is corrected by " +
+                    "×${"%.4f".format(tile.rescale)} before this block is added. m becomes ${"%.2f".format(tile.runningMax)}."
+            } else {
+                "Block ${tile.index} peaks at ${"%.2f".format(tile.blockMax)}, below the running maximum of " +
+                    "${"%.2f".format(tile.runningMax)}. Nothing is rescaled — the block is added and the scan moves on."
+            },
+            cells = blockCells(tile.index, tile.index),
+            pointers = mapOf(tile.index to "m=${"%.1f".format(tile.runningMax)}"),
+            aux = sumRow(tile.index),
+            auxLabel = "ℓ (running denominator)",
+            readout = if (raised) "rescale ×${"%.4f".format(tile.rescale)}" else null,
+        )
+    }
+
+    frames += WalkFrame(
+        status = "The scan's output against the textbook softmax on the same scores: they differ by " +
+            "${"%.1e".format(FlashLab.maxDifference(blockSize))}, which is floating-point noise. This is the part " +
+            "worth being clear about — Flash Attention is not an approximation. It computes the same function, and " +
+            "the block size changes nothing about the answer.",
+        cells = blockCells(blocks, null),
+        aux = sumRow(blocks - 1),
+        auxLabel = "ℓ (final denominator)",
+        readout = "max difference ${"%.1e".format(FlashLab.maxDifference(blockSize))}",
+    )
+
+    frames += WalkFrame(
+        status = "The running maximum is not an optimisation, it is what makes the sum finite. Without it every term " +
+            "is exp(score), which overflows a float64 above ${"%.1f".format(FlashLab.overflowScore)} — and attention " +
+            "logits routinely reach that in long-context models. A peak score of 500 survives; 710 returns NaN.",
+        cells = listOf(100.0, 300.0, 500.0, 700.0, 710.0, 800.0).map {
+            CellView("%.0f".format(it), if (FlashLab.overflows(it)) CellMark.ACTIVE else CellMark.DONE)
+        },
+        auxLabel = "peak score",
+        readout = "overflow above ${"%.2f".format(FlashLab.overflowScore)}",
+    )
+
+    val lengths = listOf(1_024L, 4_096L, 16_384L, 65_536L)
+    frames += WalkFrame(
+        status = "What it buys is memory. The N×N score matrix is never written: at N = 65,536 over 32 heads that " +
+            "matrix alone is ${bytesToGb(FlashLab.scoreMatrixBytes(65_536))} GB of activations, and the tiled kernel " +
+            "allocates none of it. This is the saving that scales — it is the whole reason 128k-token training fits.",
+        cells = lengths.map { CellView("${it / 1024}k", CellMark.WINDOW) },
+        aux = lengths.map { CellView("${bytesToGb(FlashLab.scoreMatrixBytes(it))}G", CellMark.RESULT) },
+        auxLabel = "score matrix, 32 heads",
+        readout = "never allocated",
+    )
+
+    val tileSizes = listOf(64L, 128L, 256L)
+    frames += WalkFrame(
+        status = "The traffic saving is smaller than the folklore, and it has no N in it. Standard attention moves " +
+            "about 4N² elements; the tiled kernel re-reads K and V once per query block, which is 2N²·d/Br. The ratio " +
+            "is exactly 2·Br/d — a property of the tile and the head dimension, not of the sequence. At Br = 128 and " +
+            "d = 64 that is ${"%.0f".format(FlashLab.asymptoticTrafficRatio())}×, and it is ${"%.2f".format(FlashLab.trafficRatio(65_536))}× " +
+            "measured at N = 65,536.",
+        cells = tileSizes.map { CellView("Br=$it", CellMark.WINDOW) },
+        aux = tileSizes.map { CellView("${"%.0f".format(FlashLab.asymptoticTrafficRatio(64, it))}×", CellMark.RESULT) },
+        auxLabel = "traffic ratio at d = 64",
+        readout = "exactly 2·Br/d",
+    )
+
+    frames += WalkFrame(
+        status = "And it costs arithmetic. The backward pass has no stored score matrix to read, so it recomputes " +
+            "QKᵀ — ${"%.1f".format((FlashLab.flopOverhead(4_096) - 1) * 100)}% more FLOPs across forward and backward. " +
+            "It is faster anyway, which is the lesson: on this hardware the arithmetic is nearly free and the memory " +
+            "traffic is not.",
+        cells = listOf(
+            CellView("fwd", CellMark.DONE),
+            CellView("bwd", CellMark.DONE),
+            CellView("+recompute", CellMark.ACTIVE),
+        ),
+        readout = "${"%.3f".format(FlashLab.flopOverhead(4_096))}× the FLOPs, and still faster",
+    )
+    return frames
+}
+
+// ── D6 · State Space Models ──────────────────────────────────────────────────
+// One diagonal LTI system, walked as the recurrence and then rebuilt as a convolution. The equality
+// between the two is the point, so the lab runs both on the same input and reports the gap.
+
+private fun ssmFrames(): List<WalkFrame> {
+    val frames = mutableListOf<WalkFrame>()
+    val steps = 8
+    val input = DoubleArray(steps) { SsmLab.demoInput[it] }
+    val trace = SsmLab.stateTrace(input)
+    val output = SsmLab.recurrent(input)
+
+    fun inputRow(active: Int?) = (0 until steps).map { i ->
+        CellView(
+            "%.1f".format(input[i]),
+            when {
+                i == active -> CellMark.ACTIVE
+                active != null && i < active -> CellMark.DONE
+                else -> CellMark.IDLE
+            },
+        )
+    }
+
+    frames += WalkFrame(
+        status = "A state space model is a linear recurrence: h ← Ā·h + B̄·x, y = C·h. Ā is diagonal here, so the " +
+            "state is ${SsmLab.stateDim} independent channels with decay rates " +
+            "${SsmLab.aBar.joinToString(", ") { "%.3f".format(it) }} — deliberately spread over decades, so one state " +
+            "carries several timescales at once.",
+        cells = inputRow(null),
+        aux = (0 until steps).map { CellView("·", CellMark.DIM) },
+        auxLabel = "y (output)",
+    )
+
+    for (t in 0 until steps) {
+        frames += WalkFrame(
+            status = "Step $t: every channel decays by its own Ā and takes in B̄·x. State is now " +
+                "(${trace[t].joinToString(", ") { "%.2f".format(it) }}); the read-out C·h gives " +
+                "y = ${"%.3f".format(output[t])}. One multiply-add per channel per token — the whole cost of decoding.",
+            cells = inputRow(t),
+            pointers = mapOf(t to "h"),
+            aux = (0 until steps).map { i ->
+                if (i <= t) CellView("%.2f".format(output[i]), CellMark.WINDOW) else CellView("·", CellMark.DIM)
+            },
+            auxLabel = "y (output)",
+        )
+    }
+
+    val kernel = SsmLab.kernel(steps)
+    frames += WalkFrame(
+        status = "Now the other form. Because the system is linear and time-invariant, its whole behaviour is one " +
+            "impulse response: K[t] = C·Āᵗ·B̄. Convolving the input with K has to produce the same outputs the " +
+            "recurrence just produced — not approximately, identically.",
+        cells = kernel.map { CellView("%.2f".format(it), CellMark.WINDOW) },
+        auxLabel = "K (convolution kernel)",
+        aux = (0 until steps).map { CellView("K$it", CellMark.DIM) },
+    )
+
+    val conv = SsmLab.convolutional(input)
+    frames += WalkFrame(
+        status = "Run over the full ${SsmLab.demoInput.size}-token input, the two forms differ by " +
+            "${"%.1e".format(SsmLab.formEquivalenceGap())}. That is the family's entire structural argument: train " +
+            "with the convolution, which is parallel over the sequence, then decode with the recurrence, which is " +
+            "O(1) memory per token. Attention has no second form to switch into.",
+        cells = (0 until steps).map { CellView("%.2f".format(output[it]), CellMark.DONE) },
+        aux = (0 until steps).map { CellView("%.2f".format(conv[it]), CellMark.RESULT) },
+        auxLabel = "convolution output",
+        readout = "gap ${"%.1e".format(SsmLab.formEquivalenceGap())}",
+    )
+
+    frames += WalkFrame(
+        status = "What the state remembers is set by the decay rates, and it is a half-life. Channel 0 keeps half of " +
+            "a token's contribution ${"%.0f".format(SsmLab.halfLife(0))} tokens later; channel 3 keeps half of it for " +
+            "${"%.1f".format(SsmLab.halfLife(3))}. Together the impulse response is still above 1% of its peak at " +
+            "token ${SsmLab.effectiveHorizon()} — a real memory, and a fixed one.",
+        cells = (0 until SsmLab.stateDim).map { CellView("ch$it", CellMark.WINDOW) },
+        aux = (0 until SsmLab.stateDim).map { CellView("%.0f".format(SsmLab.halfLife(it)), CellMark.RESULT) },
+        auxLabel = "half-life, in tokens",
+        readout = "effective horizon ${SsmLab.effectiveHorizon()} tokens",
+    )
+
+    val costs = SsmLab.costs()
+    frames += WalkFrame(
+        status = "And the cost is linear. At 1M tokens attention does " +
+            "${"%.0f".format(costs.last().attentionOps.toDouble() / costs.last().ssmRecurrentOps)}× the arithmetic " +
+            "this recurrence does. The scan is also associative — (a₂,b₂)∘(a₁,b₁) = (a₂a₁, a₂b₁+b₂) — so training " +
+            "parallelises to depth ${costs.last().ssmScanDepth} instead of 1,048,576 sequential steps.",
+        cells = costs.map { CellView("${it.length / 1024}k", CellMark.WINDOW) },
+        aux = costs.map { CellView("${"%.0f".format(it.attentionOps.toDouble() / it.ssmRecurrentOps)}×", CellMark.RESULT) },
+        auxLabel = "attention ops ÷ SSM ops",
+        readout = "scan depth ${costs.last().ssmScanDepth} at 1M tokens",
+    )
+    return frames
+}
+
+// ── D6 · Mamba ───────────────────────────────────────────────────────────────
+// The selective-copying task on three one-channel systems. The aux row is the state, which is where
+// the whole argument is visible: two of the three lose the signal, for opposite reasons.
+
+private fun mambaFrames(): List<WalkFrame> {
+    val frames = mutableListOf<WalkFrame>()
+    val fillers = 7
+    val seq = MambaLab.sequence(fillers)
+
+    fun tokenRow(active: Int?) = seq.indices.map { i ->
+        CellView(
+            if (i == 0) "SIG" else "·",
+            when {
+                i == active -> CellMark.ACTIVE
+                i == 0 -> CellMark.RESULT
+                else -> CellMark.IDLE
+            },
+        )
+    }
+
+    frames += WalkFrame(
+        status = "The selective-copying task. One token worth remembering (SIG, value ${MambaLab.signalValue}) arrives " +
+            "first, then $fillers filler tokens carrying ${MambaLab.fillerValue} each. At the end the model is asked " +
+            "for the signal. A one-channel recurrence h ← a·h + b·x has to hold it through the fillers.",
+        cells = tokenRow(0),
+        aux = seq.map { CellView("%.2f".format(it), CellMark.DIM) },
+        auxLabel = "token value",
+    )
+
+    MambaLab.arms.forEach { arm ->
+        val trace = arm.trace(seq)
+        frames += WalkFrame(
+            status = when (arm.short) {
+                "decaying" -> "Arm one: a fixed decay of 0.90. It can forget the fillers, which is what you want — but " +
+                    "it forgets on a timer, so it forgets the signal at the same rate. After $fillers fillers the state " +
+                    "is ${"%.3f".format(trace.last())}, and only ${"%.1e".format(MambaLab.signalContribution(arm, fillers))} " +
+                    "of that came from SIG."
+                "lossless" -> "Arm two: no decay at all, a = 1.00. Now nothing is forgotten — including every filler. " +
+                    "The state reaches ${"%.1f".format(trace.last())}, of which the signal is a fixed " +
+                    "${"%.1f".format(MambaLab.signalContribution(arm, fillers))} and the rest is noise it had no way " +
+                    "to refuse."
+                else -> "Arm three: Δ depends on the token. SIG gets Δ = 4, so a = e⁻⁴ and b = 1 − a — the state is " +
+                    "overwritten with it. Filler gets Δ = 0, so a = 1 and b = 0 — the state is held exactly and " +
+                    "nothing is written. The state stays at ${"%.4f".format(trace.last())} for as long as you like."
+            },
+            cells = tokenRow(null),
+            aux = trace.map { CellView("%.2f".format(it), if (arm.short == "selective") CellMark.RESULT else CellMark.WINDOW) },
+            auxLabel = "h (state) — ${arm.name}",
+            readout = "signal contribution ${"%.3f".format(MambaLab.signalContribution(arm, fillers))}",
+        )
+    }
+
+    frames += WalkFrame(
+        status = "Stretched out, the two time-invariant arms fail in opposite directions and the gap is not close. " +
+            "The decaying system's signal contribution falls from ${"%.3f".format(MambaLab.signalContribution(MambaLab.arms[0], 0))} " +
+            "to ${"%.1e".format(MambaLab.signalContribution(MambaLab.arms[0], 100))} over 100 fillers — a factor of " +
+            "${"%.0f".format(MambaLab.signalContribution(MambaLab.arms[0], 0) / MambaLab.signalContribution(MambaLab.arms[0], 100))}. " +
+            "The selective system holds ${"%.4f".format(MambaLab.signalContribution(MambaLab.arms[2], 100))} at every " +
+            "distance, because holding costs it nothing.",
+        cells = MambaLab.fillerCounts.map { CellView("$it", CellMark.WINDOW) },
+        aux = MambaLab.fillerCounts.map {
+            CellView("%.0e".format(MambaLab.signalContribution(MambaLab.arms[0], it)), CellMark.ACTIVE)
+        },
+        auxLabel = "decaying arm: signal contribution by filler count",
+        readout = "selective holds ${"%.4f".format(MambaLab.signalContribution(MambaLab.arms[2], 100))} throughout",
+    )
+
+    frames += WalkFrame(
+        status = "Selectivity is not free: it costs the convolution. An LTI system is one fixed kernel, which is why " +
+            "SSMs can train in parallel. A selective one has a different kernel at every position — the best single " +
+            "fixed kernel fitted to this system's own outputs still leaves a residual of " +
+            "${"%.3f".format(MambaLab.bestFixedKernelResidual())}. That is why Mamba needs a hardware-aware parallel " +
+            "scan instead: the scan survives input-dependence, the FFT convolution does not.",
+        cells = listOf(
+            CellView("LTI", CellMark.DONE),
+            CellView("conv ✓", CellMark.DONE),
+            CellView("selective", CellMark.ACTIVE),
+            CellView("conv ✗", CellMark.ACTIVE),
+            CellView("scan ✓", CellMark.RESULT),
+        ),
+        readout = "fixed-kernel residual ${"%.3f".format(MambaLab.bestFixedKernelResidual())}",
+    )
+
+    frames += WalkFrame(
+        status = "What it buys at inference is a state that does not grow. Mamba carries " +
+            "${MambaLab.mambaStateBytes() / 1024} KB per layer whatever the sequence length; one transformer layer's " +
+            "KV cache at 1M tokens is ${MambaLab.transformerCacheBytes(1_048_576) / (1024 * 1024)} MB and climbing " +
+            "linearly. That ratio — ${"%.0f".format(MambaLab.transformerCacheBytes(1_048_576).toDouble() / MambaLab.mambaStateBytes())}× " +
+            "— is the argument for the whole family.",
+        cells = listOf(1_024L, 32_768L, 1_048_576L).map { CellView("${it / 1024}k", CellMark.WINDOW) },
+        aux = listOf(1_024L, 32_768L, 1_048_576L).map {
+            CellView("${"%.0f".format(MambaLab.transformerCacheBytes(it).toDouble() / MambaLab.mambaStateBytes())}×", CellMark.RESULT)
+        },
+        auxLabel = "KV cache ÷ Mamba state, one layer",
+        readout = "Mamba's state is constant in the sequence length",
+    )
+    return frames
+}
+
+// ── D6 · RWKV ────────────────────────────────────────────────────────────────
+// The WKV operator as a decaying weighted average, then the retrieval experiment that prices what
+// "linear attention" gives up. The needle numbers come from RwkvLab, which scores the same needle
+// under WKV and under a softmax attention whose query is aimed straight at it.
+
+private fun rwkvFrames(): List<WalkFrame> {
+    val frames = mutableListOf<WalkFrame>()
+    val span = 8
+    val keys = DoubleArray(span) { RwkvLab.demoKeys[it] }
+    val values = DoubleArray(span) { RwkvLab.demoValues[it] }
+
+    fun keyRow(active: Int?) = (0 until span).map { i ->
+        CellView(
+            "%.1f".format(keys[i]),
+            when {
+                i == active -> CellMark.ACTIVE
+                active != null && i < active -> CellMark.DONE
+                else -> CellMark.IDLE
+            },
+        )
+    }
+
+    frames += WalkFrame(
+        status = "RWKV replaces attention with a weighted average that has no query in it. A token's weight is " +
+            "exp(k) — how much it asked to be remembered — times exp(−w·distance), a decay the model learns once per " +
+            "channel. There is no per-read choice anywhere: the weights are fixed before the reader exists.",
+        cells = keyRow(null),
+        aux = (0 until span).map { CellView("%.1f".format(values[it]), CellMark.DIM) },
+        auxLabel = "v (values)",
+    )
+
+    for (t in 1 until span) {
+        frames += WalkFrame(
+            status = "At position $t the operator is a ratio of two running sums — numerator Σ e^{k−w·d}·v and " +
+                "denominator Σ e^{k−w·d} — plus a bonus u = ${"%.1f".format(RwkvLab.bonus)} on the current token, " +
+                "so the present is not drowned by the past. The read-out is ${"%.3f".format(RwkvLab.wkvStable(keys, values, t))}.",
+            cells = keyRow(t),
+            pointers = mapOf(t to "t"),
+            aux = (0 until span).map { i ->
+                if (i <= t) CellView("%.2f".format(RwkvLab.wkvStable(keys, values, i)), CellMark.WINDOW)
+                else CellView("·", CellMark.DIM)
+            },
+            auxLabel = "wkv output",
+        )
+    }
+
+    frames += WalkFrame(
+        status = "Both sums are carried in one state and rescaled by a running maximum, exactly the trick Flash " +
+            "Attention uses. Written the textbook way it agrees to ${"%.0e".format(RwkvLab.stabilityGap())} — and it " +
+            "returns NaN outright once a key reaches 720, because e^720 does not fit in a float64. The decay also has " +
+            "to be applied before the new token is folded in, not after; the two orders differ by 5e-02.",
+        cells = listOf(10.0, 100.0, 500.0, 700.0, 720.0, 800.0).map {
+            CellView("%.0f".format(it), if (RwkvLab.naiveOverflowsAt(it)) CellMark.ACTIVE else CellMark.DONE)
+        },
+        auxLabel = "key magnitude",
+        readout = "stable form agrees to ${"%.0e".format(RwkvLab.stabilityGap())}",
+    )
+
+    frames += WalkFrame(
+        status = "What it gives up is retrieval at distance. Plant a needle with a strong key and ask how much of the " +
+            "read-out it accounts for. Softmax attention can aim its query at that key and holds " +
+            "${"%.0f".format(RwkvLab.needle(100).attentionShare * 100)}% of the weight even 100 tokens back. RWKV's " +
+            "weight was decided when the needle was written, so it falls with distance whatever the reader wants: " +
+            "${"%.0f".format(RwkvLab.needle(5).rwkvShare * 100)}% at 5 tokens, " +
+            "${"%.1f".format(RwkvLab.needle(50).rwkvShare * 100)}% at 50, " +
+            "${"%.2f".format(RwkvLab.needle(100).rwkvShare * 100)}% at 100.",
+        cells = RwkvLab.needleDistances.map { CellView("$it", CellMark.WINDOW) },
+        aux = RwkvLab.needleDistances.map { CellView("%.0e".format(RwkvLab.needle(it).rwkvShare), CellMark.ACTIVE) },
+        auxLabel = "needle's share of the RWKV read-out",
+        readout = "attention holds ${"%.0f".format(RwkvLab.needle(500).attentionShare * 100)}% at 500 tokens",
+    )
+
+    frames += WalkFrame(
+        status = "And what it buys is the other side of that trade. RWKV's state is (a, b, p) per channel — " +
+            "${RwkvLab.stateBytes() / 1024} KB, fixed — while a transformer's KV cache at 1M tokens is " +
+            "${bytesToGb(RwkvLab.cacheBytes(1_048_576))} GB. Constant memory per token and no quadratic prefill, " +
+            "bought by giving up the query. Which side of that trade is right is a question about the workload.",
+        cells = listOf(1_024L, 32_768L, 1_048_576L).map { CellView("${it / 1024}k", CellMark.WINDOW) },
+        aux = listOf(1_024L, 32_768L, 1_048_576L).map { CellView("${bytesToGb(RwkvLab.cacheBytes(it))}G", CellMark.RESULT) },
+        auxLabel = "transformer KV cache (RWKV: ${RwkvLab.stateBytes() / 1024} KB at every length)",
+        readout = "${"%.0f".format(RwkvLab.cacheBytes(1_048_576).toDouble() / RwkvLab.stateBytes())}× at 1M tokens",
+    )
+    return frames
+}
+
 private val walkConfigs = mapOf(
+    "flash_attention" to WalkConfig(
+        intro = "The tiled softmax as a scan over key blocks, carrying a running maximum and denominator. It computes " +
+            "the same function as the textbook version — the last frames price what that buys and what it costs.",
+        legend = listOf(
+            ActiveFill to "Current block",
+            DoneFill to "Folded in",
+            ResultFill to "Result",
+        ),
+        build = ::flashAttentionFrames,
+    ),
+    "ssm" to WalkConfig(
+        intro = "One diagonal linear recurrence, walked token by token and then rebuilt as a convolution kernel. The " +
+            "two forms are the same function, and the lab reports the gap rather than asserting it.",
+        legend = listOf(
+            ActiveFill to "Current token",
+            WindowFill to "Computed",
+            ResultFill to "Convolution",
+        ),
+        build = ::ssmFrames,
+    ),
+    "mamba" to WalkConfig(
+        intro = "The selective-copying task on three one-channel systems. The aux row is the state, which is where " +
+            "the argument lives: a fixed decay forgets the signal, no decay cannot ignore the filler.",
+        legend = listOf(
+            ActiveFill to "Failing arm",
+            WindowFill to "State",
+            ResultFill to "Selective",
+        ),
+        build = ::mambaFrames,
+    ),
+    "rwkv" to WalkConfig(
+        intro = "A weighted average with no query in it — a learned decay and a per-token key. The closing frames " +
+            "price both sides of that trade: a fixed-size state, and a needle it cannot reach for.",
+        legend = listOf(
+            ActiveFill to "Current token",
+            WindowFill to "Read-out",
+            ResultFill to "Cost",
+        ),
+        build = ::rwkvFrames,
+    ),
     "label_encoding" to WalkConfig(
         intro = "A colour column encoded two ways, then scored: 40x the error in a linear model, and exactly nothing in a tree.",
         legend = listOf(
@@ -4348,7 +4785,39 @@ private fun walkConfigFor(topicId: String): WalkConfig =
 // on the JVM. Without this a builder that throws only surfaces by opening the topic in the app.
 internal val arrayWalkTopicIds: Set<String> get() = walkConfigs.keys
 
-internal fun arrayWalkFrameCount(topicId: String): Int = walkConfigFor(topicId).build().size
+/**
+ * Extended with D6, the first batch to put AI labs on this widget. Beyond "the builder runs", it
+ * checks what the renderer swallows in silence: pointers and loop-back edges are drawn by index, so
+ * a stale one lands under a cell that is not there.
+ *
+ * The aux row is checked only for being *longer* than the cell row. Both rows are drawn
+ * `fillMaxWidth` with equal-weight cells, so a shorter aux is a legitimate and common choice — it is
+ * a separate structure (a heap, a merge buffer, a pattern being slid) rather than a per-index
+ * annotation, and eleven existing labs use it that way. A *longer* aux has no reading at all: it
+ * makes the aux cells narrower than the cells above them, so nothing lines up with anything.
+ */
+internal fun arrayWalkFrameCount(topicId: String): Int {
+    val frames = walkConfigFor(topicId).build()
+    frames.forEachIndexed { index, frame ->
+        require(frame.cells.isNotEmpty()) { "$topicId frame $index draws no cells" }
+        require(frame.status.isNotBlank()) { "$topicId frame $index has no status line" }
+        frame.aux?.let {
+            require(it.size <= frame.cells.size) {
+                "$topicId frame $index has ${it.size} aux cells under only ${frame.cells.size} cells — the two rows " +
+                    "are drawn at different widths and nothing lines up"
+            }
+        }
+        frame.pointers.keys.forEach {
+            require(it in frame.cells.indices) { "$topicId frame $index points at cell $it of ${frame.cells.size}" }
+        }
+        frame.loopBack?.let { (from, to) ->
+            require(from in frame.cells.indices && to in frame.cells.indices) {
+                "$topicId frame $index draws a loop-back edge $from -> $to outside its ${frame.cells.size} cells"
+            }
+        }
+    }
+    return frames.size
+}
 
 // ── UI ───────────────────────────────────────────────────────────────────────
 

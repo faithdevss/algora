@@ -25,8 +25,11 @@ object DeepLearningCategories {
     // C6. "share" is the all-to-all graph attention actually is; `chip` already belongs to
     // Architectures and would render the same glyph twice while that category still exists.
     val transformers = Category("dl_transformers", "Transformers & LLMs", Section.DL, 0xFF6366F1, "share")
+    // C7. Inherits Architectures' violet and takes its last three topics, so the section's palette is
+    // unchanged by the swap. "Image" is the one glyph in the set that names what every topic in the
+    // block produces, and `chip` retires with the category that owned it.
+    val generative = Category("dl_generative", "Generative Deep Learning", Section.DL, 0xFF8B5CF6, "Image")
     val fundamentals = Category("dl_fundamentals", "Fundamentals", Section.DL, 0xFFEC4899, "network")
-    val architectures = Category("dl_architectures", "Architectures", Section.DL, 0xFF8B5CF6, "chip")
 
-    val all = listOf(basics, activations, cnn, detection, rnn, transformers, fundamentals, architectures)
+    val all = listOf(basics, activations, cnn, detection, rnn, transformers, generative, fundamentals)
 }

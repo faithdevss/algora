@@ -256,16 +256,17 @@ class AiTaxonomyCoverageTest {
                 "Hugging Face Tokenizers" to listOf("hf_tokenizers"),
                 "RLHF (Reinforcement Learning from Human Feedback)" to listOf("rlhf"),
             ),
+            // Closed by C7, which also retired `dl_architectures` by taking its last three topics.
             "Generative Deep Learning" to linkedMapOf(
-                "Variational Autoencoders (VAE)" to emptyList(),        // C7
+                "Variational Autoencoders (VAE)" to listOf("vae"),
                 "GANs (Generative Adversarial Networks)" to listOf("gans"),
-                "DCGAN (Deep Convolutional GAN)" to emptyList(),        // C7
-                "CycleGAN (Image-to-Image)" to emptyList(),             // C7
-                "StyleGAN" to emptyList(),                              // C7
+                "DCGAN (Deep Convolutional GAN)" to listOf("dcgan"),
+                "CycleGAN (Image-to-Image)" to listOf("cyclegan"),
+                "StyleGAN" to listOf("stylegan"),
                 "Diffusion Models (DDPM)" to listOf("diffusion_models"),
-                "Stable Diffusion Architecture" to emptyList(),         // C7
-                "Neural Style Transfer" to emptyList(),                 // C7
-                "DeepFakes (Concept)" to emptyList(),                   // C7
+                "Stable Diffusion Architecture" to listOf("stable_diffusion"),
+                "Neural Style Transfer" to listOf("neural_style_transfer"),
+                "DeepFakes (Concept)" to listOf("deepfakes"),
             ),
             // Served entirely by the Reinforcement Learning section — cross-section reuse, not a gap.
             "Deep Reinforcement Learning" to linkedMapOf(
@@ -389,27 +390,28 @@ class AiTaxonomyCoverageTest {
             ),
             "Fine-Tuning & Optimization" to linkedMapOf(
                 "Transfer Learning" to listOf("transfer_learning"),
-                "Fine-Tuning (Full)" to emptyList(),                    // D6
+                "Fine-Tuning (Full)" to listOf("fine_tuning_full"),
                 "RLHF (RL with Human Feedback)" to listOf("rlhf"),
-                "DPO (Direct Preference Optimization)" to emptyList(),  // D6
-                "PEFT (Parameter-Efficient Fine-Tuning)" to emptyList(), // D6
-                "LoRA & QLoRA" to emptyList(),                          // D6
-                "Quantization (4-bit / 8-bit)" to emptyList(),          // D6
-                "Flash Attention" to emptyList(),                       // D6
+                "DPO (Direct Preference Optimization)" to listOf("dpo"),
+                "PEFT (Parameter-Efficient Fine-Tuning)" to listOf("peft"),
+                "LoRA & QLoRA" to listOf("lora_qlora"),
+                "Quantization (4-bit / 8-bit)" to listOf("quantization"),
+                "Flash Attention" to listOf("flash_attention"),
             ),
             "Beyond Transformers" to linkedMapOf(
-                "State Space Models (SSMs)" to emptyList(),             // D6
-                "Mamba Architecture" to emptyList(),                    // D6
-                "RWKV (RNN with Transformer perf)" to emptyList(),      // D6
-                "Long Context Windows (1M+ tokens)" to emptyList(),     // D6
+                "State Space Models (SSMs)" to listOf("ssm"),
+                "Mamba Architecture" to listOf("mamba"),
+                "RWKV (RNN with Transformer perf)" to listOf("rwkv"),
+                "Long Context Windows (1M+ tokens)" to listOf("long_context"),
             ),
+            // Closed by D6, which finishes Track D and the NLP section against the doc.
             "NLP Metrics" to linkedMapOf(
-                "Perplexity" to emptyList(),                            // D6
-                "WER (Word Error Rate)" to emptyList(),                 // D6
-                "BLEU Score (Translation)" to emptyList(),              // D6
-                "ROUGE Score (Summarization)" to emptyList(),           // D6
-                "METEOR" to emptyList(),                                // D6
-                "MMLU (Massive Multitask Benchmark)" to emptyList(),    // D6
+                "Perplexity" to listOf("perplexity"),
+                "WER (Word Error Rate)" to listOf("wer"),
+                "BLEU Score (Translation)" to listOf("bleu"),
+                "ROUGE Score (Summarization)" to listOf("rouge"),
+                "METEOR" to listOf("meteor"),
+                "MMLU (Massive Multitask Benchmark)" to listOf("mmlu"),
             ),
         ),
         // Complete since Track A. The app also ships VDN, QMIX and MADDPG, which the doc never lists.
@@ -516,7 +518,7 @@ class AiTaxonomyCoverageTest {
 
     // The ratchet. Move it when a batch lands; a batch that does not move it did not close any doc
     // entry, which is worth noticing.
-    private val expectedCoveredCount = 310
+    private val expectedCoveredCount = 333
 
     // Doc entries the app answers from the DSA taxonomy rather than an AI section. Deliberate reuse
     // — the alternative is a duplicate page — but small and explicit, so it cannot grow by accident.

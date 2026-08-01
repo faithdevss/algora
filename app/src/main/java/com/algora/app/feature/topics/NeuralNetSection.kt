@@ -3351,7 +3351,1445 @@ private fun hingeLossFrames(): List<NetFrame> {
     return frames
 }
 
+// ── C7 · Generative deep learning ────────────────────────────────────────────
+// Five of the batch's labs. Every number below comes from `GenerativeMath.kt`, which is pinned by
+// `GenerativeMathTest` — nothing here is a literal typed twice.
+
+private fun vaeFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+    val variance = VaeLab.gradientVarianceAtEight
+
+    frames += NetFrame(
+        status = "A VAE's encoder stops emitting a point and starts emitting a distribution: a mean and a " +
+            "variance for each latent dimension. Six inputs, four latent dimensions, six outputs — but the " +
+            "middle layer now carries two numbers per unit, not one.",
+        layers = listOf(
+            NetLayer("input", List(VaeLab.DATA_DIM) { NetNode(0f, NodeMood.FORWARD) }),
+            NetLayer("μ, log σ²", List(VaeLab.LATENT_DIM) { NetNode(0f, NodeMood.IDLE) }),
+            NetLayer("output", List(VaeLab.DATA_DIM) { NetNode(0f, NodeMood.IDLE) }),
+        ),
+    )
+    frames += NetFrame(
+        status = "Sampling z from that distribution is not differentiable, so the randomness is moved into an " +
+            "input instead: z = μ + σ⊙ε with ε ~ N(0, I). The usual explanation stops here, and it is " +
+            "incomplete — the alternative is not impossible, it is just unusable.",
+        bars = listOf(
+            NetBar("ε ~ N(0, I)", listOf(0.4f, -1.1f, 0.7f, -0.3f), AccentB, listOf("ε1", "ε2", "ε3", "ε4")),
+        ),
+        readout = "z = μ + σ⊙ε",
+    )
+    frames += NetFrame(
+        status = "The score-function estimator differentiates through a sample perfectly well and is unbiased: " +
+            "on this objective it recovers ${"%.2f".format(variance.scoreFunctionMean)} against a true gradient of " +
+            "${"%.1f".format(variance.trueGradient)}, and the reparameterized one recovers " +
+            "${"%.2f".format(variance.reparameterizedMean)}. Both are correct on average. Only one is usable.",
+        bars = listOf(
+            NetBar(
+                "estimator mean (true = 2.0)",
+                listOf(variance.reparameterizedMean.toFloat(), variance.scoreFunctionMean.toFloat()),
+                ForwardColor,
+                listOf("reparam", "score"),
+            ),
+        ),
+        readout = "both unbiased",
+    )
+    frames += NetFrame(
+        status = "The variances are ${"%.2f".format(variance.reparameterizedVariance)} and " +
+            "${"%.1f".format(variance.scoreFunctionVariance)} — a factor of ${"%.0f".format(variance.ratio)} at eight " +
+            "dimensions. And the gap is not a constant: the reparameterized variance is flat in dimension and the " +
+            "other grows without bound, which is the whole reason one of them scales to a real latent space.",
+        plot = autoPlot(
+            "gradient variance against latent dimension",
+            listOf(
+                Curve(
+                    "reparameterized",
+                    VaeLab.varianceDims.map { it.toFloat() to VaeLab.REPARAMETERIZED_VARIANCE_CLOSED_FORM.toFloat() },
+                    ForwardColor,
+                ),
+                Curve(
+                    "score-function",
+                    VaeLab.varianceDims.map { it.toFloat() to VaeLab.scoreFunctionVarianceClosedForm(it).toFloat() },
+                    BackwardColor,
+                ),
+            ),
+            1f..16f,
+        ),
+        readout = "×7.5 at d=1 · ×95 at d=8 · ×316 at d=16",
+    )
+
+    val atOne = VaeLab.trained.getValue(1.0)
+    frames += NetFrame(
+        status = "The KL term does not merely smooth the latent space — it switches dimensions off. Trained on data " +
+            "with exactly two underlying factors but given four latent dimensions, a plain VAE at β = 1 keeps " +
+            "${atOne.activeUnits}. The other two collapse onto the prior and the decoder ignores them entirely.",
+        bars = listOf(
+            NetBar(
+                "KL per dimension, β = 1",
+                atOne.perDimensionKl.map { it.toFloat() },
+                OutputColor,
+                List(VaeLab.LATENT_DIM) { "z${it + 1}" },
+            ),
+        ),
+        readout = "${atOne.activeUnits} of ${VaeLab.LATENT_DIM} active · threshold ${VaeLab.ACTIVE_THRESHOLD} nats",
+    )
+
+    val low = VaeLab.trained.getValue(0.001)
+    val high = VaeLab.trained.getValue(4.0)
+    frames += NetFrame(
+        status = "β is the dial, and it is coarser than it looks. At β = 0.001 all ${low.activeUnits} dimensions stay " +
+            "alive; at β = 4 only ${high.activeUnits} does, and reconstruction error has gone from " +
+            "${"%.3f".format(low.reconstructionRmse)} to ${"%.3f".format(high.reconstructionRmse)} — it is eating a " +
+            "real factor by then.",
+        bars = listOf(
+            NetBar("β = 0.001", low.perDimensionKl.map { it.toFloat() }, AccentA, List(VaeLab.LATENT_DIM) { "z${it + 1}" }),
+            NetBar("β = 4", high.perDimensionKl.map { it.toFloat() }, AccentB, List(VaeLab.LATENT_DIM) { "z${it + 1}" }),
+        ),
+    )
+    frames += NetFrame(
+        status = "Across the whole sweep the active count sits at two — the data's true factor count — from β = 0.05 " +
+            "all the way to β = 2.0, a fortyfold range. What β buys smoothly is not dimensionality but " +
+            "reconstruction error, which climbs monotonically the entire way.",
+        plot = autoPlot(
+            "reconstruction error against β",
+            listOf(
+                Curve(
+                    "RMSE",
+                    VaeLab.betaSweep.map { b -> b.toFloat() to VaeLab.trained.getValue(b).reconstructionRmse.toFloat() },
+                    OutputColor,
+                ),
+            ),
+            0f..4f,
+        ),
+        readout = "active units 4 · 3 · 2 · 2 · 2 · 2 · 2 · 1",
+    )
+    return frames
+}
+
+private fun dcganFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+
+    frames += NetFrame(
+        status = "A transposed convolution builds a bigger output by writing each input value into a kernel-sized " +
+            "window of it. How many times a given output position gets written is decided by two integers, and it " +
+            "can be counted before any image, any weight or any training exists.",
+        readout = "O = (I − 1)·s + k − 2p",
+    )
+
+    fun coverageFrame(kernel: Int, stride: Int, note: String): NetFrame {
+        val counts = DcganLab.interiorCoverage(kernel, stride, 16).take(16)
+        return NetFrame(
+            status = note,
+            bars = listOf(
+                NetBar(
+                    "writes per output position · k=$kernel s=$stride",
+                    counts.map { it.toFloat() },
+                    if (DcganLab.isUniform(kernel, stride)) AccentA else AccentB,
+                ),
+            ),
+            readout = "distinct counts ${DcganLab.interiorCoverage(kernel, stride, 16).toSet().sorted()} · " +
+                "k mod s = ${kernel % stride}",
+        )
+    }
+
+    frames += coverageFrame(
+        4, 2,
+        "DCGAN's choice: kernel 4, stride 2. Every interior position is written exactly twice. The coverage is flat, " +
+            "so no position is systematically brighter than its neighbour.",
+    )
+    frames += coverageFrame(
+        3, 2,
+        "Kernel 3, stride 2 — one number different. The counts now alternate 1, 2, 1, 2 forever. Every other output " +
+            "position receives half the contributions of its neighbour, and that is the checkerboard artefact.",
+    )
+    frames += coverageFrame(
+        5, 2,
+        "Kernel 5, stride 2 alternates 2, 3. The ratio is gentler than 1:2 but the periodicity is identical, which is " +
+            "why the artefact shows up as a faint weave rather than a hard grid.",
+    )
+    frames += coverageFrame(
+        4, 3,
+        "Kernel 4, stride 3 runs 1, 1, 2 — period three instead of two. The failure is the same kind, and the " +
+            "condition covering all of these cases is simply whether the stride divides the kernel.",
+    )
+    frames += NetFrame(
+        status = "No amount of training removes any of this. The weights can scale a contribution but cannot change " +
+            "how many contributions arrive, so a badly chosen pair of integers is a permanent property of the layer. " +
+            "Kernel 6 with stride 2 is uniform at 3, and kernel 6 with stride 3 is uniform at 2 — divisibility is the " +
+            "whole rule.",
+        bars = listOf(
+            NetBar("k=6 s=2", DcganLab.interiorCoverage(6, 2, 16).take(12).map { it.toFloat() }, AccentA),
+            NetBar("k=6 s=3", DcganLab.interiorCoverage(6, 3, 16).take(12).map { it.toFloat() }, AccentA),
+        ),
+        readout = "uniform ⟺ k mod s = 0",
+    )
+
+    val layers = DcganLab.generator
+    frames += NetFrame(
+        status = "The parameter table is lopsided in a way the architecture diagram hides. The generator is " +
+            "${DcganLab.generatorParameters} parameters taking a 100-dimensional z to 64×64×3, and the single " +
+            "transposed convolution from 1024 to 512 channels at 8×8 is 66% of it. The layer that actually emits the " +
+            "pixels is ${layers.last().parameters} parameters — under 0.05%.",
+        bars = listOf(
+            NetBar(
+                "share of the generator",
+                layers.map { (it.parameters.toDouble() / DcganLab.generatorParameters).toFloat() },
+                OutputColor,
+                listOf("dense", "1024→512", "512→256", "256→128", "128→3"),
+            ),
+        ),
+        readout = "capacity follows channels, not pixels",
+    )
+    return frames
+}
+
+private fun stableDiffusionFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+
+    fun lg(v: Double) = log10(v).toFloat()
+
+    frames += NetFrame(
+        status = "Stable Diffusion runs the entire noising and denoising process on a compressed latent rather than " +
+            "on pixels. A 512×512×3 image is ${LatentDiffusionLab.pixelElements} elements; the 64×64×4 latent is " +
+            "${LatentDiffusionLab.latentElements}. That is the whole idea, and it is a factor of " +
+            "${"%.0f".format(LatentDiffusionLab.elementRatio)}.",
+        bars = listOf(
+            NetBar(
+                "log₁₀ elements",
+                listOf(lg(LatentDiffusionLab.pixelElements.toDouble()), lg(LatentDiffusionLab.latentElements.toDouble())),
+                ForwardColor,
+                listOf("512×512×3", "64×64×4"),
+            ),
+        ),
+        readout = "${"%.0f".format(LatentDiffusionLab.elementRatio)}× fewer elements",
+    )
+    frames += NetFrame(
+        status = "The saving in the attention layers is far larger, because attention is quadratic in token count and " +
+            "the token count is exactly what shrank: ${LatentDiffusionLab.pixelTokens} spatial tokens become " +
+            "${LatentDiffusionLab.latentTokens}. Self-attention compares every token with every other, so the pair " +
+            "count falls by ${"%.0f".format(LatentDiffusionLab.attentionRatio)}× — the square of the 64× in tokens.",
+        bars = listOf(
+            NetBar(
+                "log₁₀ self-attention pairs",
+                listOf(
+                    lg(LatentDiffusionLab.pixelAttentionPairs.toDouble()),
+                    lg(LatentDiffusionLab.latentAttentionPairs.toDouble()),
+                ),
+                BackwardColor,
+                listOf("pixel", "latent"),
+            ),
+        ),
+        readout = "${LatentDiffusionLab.pixelAttentionPairs} → ${LatentDiffusionLab.latentAttentionPairs}",
+    )
+    frames += NetFrame(
+        status = "Cross-attention behaves completely differently and the two are easy to conflate. It compares image " +
+            "tokens against ${LatentDiffusionLab.TEXT_TOKENS} text tokens, so it is linear in image tokens and the " +
+            "same compression buys only ${"%.0f".format(LatentDiffusionLab.crossAttentionRatio)}×. The headline " +
+            "number belongs to self-attention alone.",
+        bars = listOf(
+            NetBar(
+                "log₁₀ saving",
+                listOf(lg(LatentDiffusionLab.attentionRatio), lg(LatentDiffusionLab.crossAttentionRatio)),
+                AccentB,
+                listOf("self", "cross"),
+            ),
+        ),
+        readout = "${"%.0f".format(LatentDiffusionLab.attentionRatio)}× against ${"%.0f".format(LatentDiffusionLab.crossAttentionRatio)}×",
+    )
+    frames += NetFrame(
+        status = "Add a ${LatentDiffusionLab.DDIM_STEPS}-step DDIM schedule in place of DDPM's " +
+            "${LatentDiffusionLab.DDPM_STEPS} and the self-attention work over a full sampling run falls by " +
+            "${"%.0f".format(LatentDiffusionLab.samplingRatio)}×. That is the number that moved image generation off " +
+            "a cluster and onto a consumer graphics card.",
+        bars = listOf(
+            NetBar(
+                "log₁₀ pairs per sampling run",
+                listOf(lg(LatentDiffusionLab.pixelSamplingPairs), lg(LatentDiffusionLab.latentSamplingPairs)),
+                OutputColor,
+                listOf("pixel · 1000 steps", "latent · 50 steps"),
+            ),
+        ),
+        readout = "${"%.0f".format(LatentDiffusionLab.samplingRatio)}× over a full run",
+    )
+    frames += NetFrame(
+        status = "A checkpoint is three networks and only one of them is denoised. The VAE and the text encoder run " +
+            "once each, at the start and the end; the UNet — ${"%.0f".format(LatentDiffusionLab.unetShare * 100)}% of " +
+            "the ${LatentDiffusionLab.totalParametersMillions}M parameters — runs once per step, fifty times, and " +
+            "twice that with guidance.",
+        bars = listOf(
+            NetBar(
+                "parameters (M)",
+                LatentDiffusionLab.components.map { it.second.toFloat() },
+                ForwardColor,
+                listOf("VAE", "CLIP", "UNet"),
+            ),
+        ),
+        readout = "runs once · once · ${LatentDiffusionLab.DDIM_STEPS} times",
+    )
+    frames += NetFrame(
+        status = "The characteristic failure is set before the loop starts. Whatever the autoencoder could not fit " +
+            "into 4 channels at one-eighth resolution — small faces, hands, text — is already gone from the latent " +
+            "the UNet is handed, and no number of sampling steps recovers information that was discarded at encode " +
+            "time.",
+        readout = "f = ${LatentDiffusionLab.DOWNSAMPLE} · ${LatentDiffusionLab.LATENT_CHANNELS} channels",
+    )
+    return frames
+}
+
+private fun styleTransferFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+    val features = StyleTransferLab.featureMap(channels = 6, positions = 10)
+    val shuffled = StyleTransferLab.shuffleColumns(features)
+    val gramA = StyleTransferLab.gram(features)
+    val gramB = StyleTransferLab.gram(shuffled)
+
+    fun grid(label: String, m: Array<DoubleArray>) =
+        GridView(label, m.map { row -> row.map { it.toFloat() } })
+
+    frames += NetFrame(
+        status = "Style transfer trains nothing. VGG is frozen and the image itself is the optimized variable — the " +
+            "pixels are the parameters. Everything rests on how the two losses read a feature map, so start with " +
+            "one: six channels across ten spatial positions.",
+        grids = listOf(grid("feature map F · channels × positions", features)),
+    )
+    frames += NetFrame(
+        status = "Now shuffle the spatial positions into a completely different arrangement. Every value is still " +
+            "present and every value has moved. To any human, and to the content loss, this is a different picture.",
+        grids = listOf(grid("F with its columns permuted", shuffled)),
+    )
+    frames += NetFrame(
+        status = "The Gram matrix is G = F Fᵀ, and entry (i, j) is channel i times channel j summed over every " +
+            "spatial position. It measures which features co-occur. Because the sum runs over positions, it records " +
+            "nothing at all about where they occurred.",
+        grids = listOf(grid("Gram of F", gramA)),
+    )
+    frames += NetFrame(
+        status = "This is the Gram matrix of the shuffled map. It is not similar to the one before it — it is the " +
+            "same matrix. A permutation reorders the terms of a sum and a sum does not care, so this is an identity " +
+            "rather than an approximation that happens to hold on this input.",
+        grids = listOf(grid("Gram of the permuted F", gramB)),
+        readout = "style loss ${"%.1e".format(StyleTransferLab.styleLoss(features, shuffled))}",
+    )
+    frames += NetFrame(
+        status = "Scored: the style loss between the original and its shuffle is floating-point zero, and the content " +
+            "loss between the same two is ${"%.3f".format(StyleTransferLab.contentLoss(features, shuffled))}. That " +
+            "gap is the entire division of labour — the content term is the only thing in the objective that knows " +
+            "where anything is.",
+        bars = listOf(
+            NetBar(
+                "loss under a spatial permutation",
+                listOf(
+                    StyleTransferLab.styleLoss(features, shuffled).toFloat(),
+                    StyleTransferLab.contentLoss(features, shuffled).toFloat(),
+                ),
+                AccentB,
+                listOf("style", "content"),
+            ),
+        ),
+    )
+    frames += NetFrame(
+        status = "This is what the algorithm means by \"style\": co-occurrence statistics with the geometry deleted. " +
+            "It transfers brushwork and palette faithfully because those really are position-independent, and it " +
+            "cannot transfer composition at all. At VGG-19's conv4_1 the Gram is only a " +
+            "${"%.2f".format(StyleTransferLab.compression)}× reduction in size — the useful property was never " +
+            "compression, it was invariance.",
+        readout = "${StyleTransferLab.featureValues} values → ${StyleTransferLab.gramUniqueEntries} entries",
+    )
+    return frames
+}
+
+private fun deepFakeFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+    val sweep = DeepFakeLab.sweepResults
+    val aligned = sweep.first()
+
+    frames += NetFrame(
+        status = "One shared encoder and two identity-specific decoders. Both identities' faces go through the same " +
+            "trunk; each decoder is trained only on its own person. The swap is what happens when you break that " +
+            "pairing at inference and send A's code to B's decoder.",
+        layers = listOf(
+            NetLayer("face A", List(4) { NetNode(0f, NodeMood.FORWARD) }),
+            NetLayer("shared encoder", List(DeepFakeLab.LATENT) { NetNode(0f, NodeMood.FORWARD) }),
+            NetLayer("decoder B", List(4) { NetNode(0f, NodeMood.OUTPUT) }),
+        ),
+        readout = "D_B(E(x_A))",
+    )
+    frames += NetFrame(
+        status = "Nothing in the loss says the code should carry expression and not identity. That separation is a " +
+            "hoped-for consequence of the encoder being shared and the decoders not being, so the first thing to " +
+            "establish is a bar the swap has to clear: always emitting B's average face, which ignores the input " +
+            "entirely and scores ${"%.3f".format(aligned.meanFaceBaselineRmse)}.",
+        readout = "baseline ${"%.3f".format(aligned.meanFaceBaselineRmse)}",
+    )
+    frames += NetFrame(
+        status = "Give each identity its own encoder and the swap scores " +
+            "${"%.3f".format(aligned.independentEncoderRmse)} — worse than the baseline. Each encoder orders and " +
+            "scales its directions by its own identity's variance, so the same expression lands on different numbers " +
+            "and the far decoder reads a different expression. Sharing the encoder scores " +
+            "${"%.3f".format(aligned.sharedEncoderRmse)}.",
+        bars = listOf(
+            NetBar(
+                "swap error",
+                listOf(
+                    aligned.sharedEncoderRmse.toFloat(),
+                    aligned.independentEncoderRmse.toFloat(),
+                    aligned.meanFaceBaselineRmse.toFloat(),
+                ),
+                OutputColor,
+                listOf("shared", "independent", "mean face"),
+            ),
+        ),
+        readout = "independent encoders lose to doing nothing",
+    )
+    frames += NetFrame(
+        status = "And this is not a reconstruction problem. Both arrangements rebuild their own identity's faces " +
+            "essentially exactly — own-domain error is ${"%.3f".format(DeepFakeLab.ownDomainRmse())}. A model that " +
+            "reconstructs perfectly can still swap worse than a constant, so reconstruction quality tells you nothing " +
+            "about whether the swap will work.",
+        readout = "own-domain rebuild ≈ 0 either way",
+    )
+    val plotted = sweep.filter { it.degrees <= 60.0 }
+    frames += NetFrame(
+        status = "Sharing is necessary and not sufficient. A shared code only means the same thing to both decoders " +
+            "if the two identities' expression manifolds sit similarly in face space. Rotate them apart and the swap " +
+            "degrades continuously: ${plotted.joinToString(" · ") { "${it.degrees.toInt()}° ${"%.3f".format(it.sharedEncoderRmse)}" }}.",
+        plot = autoPlot(
+            "swap error against manifold angle",
+            listOf(
+                Curve("shared encoder", plotted.map { it.degrees.toFloat() to it.sharedEncoderRmse.toFloat() }, ForwardColor),
+                Curve("mean-face baseline", plotted.map { it.degrees.toFloat() to it.meanFaceBaselineRmse.toFloat() }, NeutralColor),
+            ),
+            0f..60f,
+        ),
+        readout = "crosses the baseline past 60°",
+    )
+    frames += NetFrame(
+        status = "At 90°, where the manifolds are orthogonal, the decoder's implied inverse becomes singular and the " +
+            "output diverges outright. There is no training fix anywhere on that curve — the information the far " +
+            "decoder needs is simply not in the code. This is the measurable form of a thing every practitioner " +
+            "reports: swaps work between people who already look and move alike.",
+        readout = "90° · singular · no schedule repairs it",
+    )
+    return frames
+}
+
+// ── D6 · Fine-tuning, PEFT, LoRA, quantization, DPO, long context ────────────
+// Six labs on numbers computed in FineTuneMath.kt. Three of them are accounting arguments and read
+// as bar charts; three are experiments and read as curves over a swept parameter.
+
+private fun fineTuningFullFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+    val counts = FineTuneLab.exampleCounts
+    val small = FineTuneLab.regimes(8)
+    val large = FineTuneLab.regimes(256)
+
+    frames += NetFrame(
+        status = "Three ways to use a downstream dataset, trained for real on the same examples. Pretraining here is " +
+            "multi-task — one body, ${FineTuneLab.upstreamTasks} heads — because that is what forces the body to keep " +
+            "a representation worth reusing. Feature extraction trains ${FineTuneLab.headParams} weights; full " +
+            "fine-tuning trains ${FineTuneLab.fullParams}.",
+        layers = listOf(
+            NetLayer("input", List(4) { NetNode(0f, NodeMood.FORWARD) }),
+            NetLayer("pretrained body", List(FineTuneLab.hidden) { NetNode(0f, NodeMood.IDLE) }),
+            NetLayer("new head", List(1) { NetNode(0f, NodeMood.OUTPUT) }),
+        ),
+        readout = "${FineTuneLab.headParams} trainable vs ${FineTuneLab.fullParams}",
+    )
+
+    frames += NetFrame(
+        status = "At 8 examples the frozen body wins and it is not close: ${"%.3f".format(small[1].downstreamLoss)} " +
+            "against ${"%.3f".format(small[2].downstreamLoss)} for full fine-tuning, with training from scratch a " +
+            "distant ${"%.3f".format(small[0].downstreamLoss)}. ${FineTuneLab.fullParams} parameters and 8 examples " +
+            "is not a fit, it is memorisation — and the pretrained body is the only thing standing between the model " +
+            "and that.",
+        bars = listOf(
+            NetBar(
+                "test loss at 8 examples",
+                small.map { it.downstreamLoss.toFloat() },
+                BackwardColor,
+                listOf("scratch", "head only", "full"),
+            ),
+        ),
+        readout = "frozen features win by ${"%.1f".format(small[2].downstreamLoss / small[1].downstreamLoss)}×",
+    )
+
+    frames += NetFrame(
+        status = "The crossover is at ${FineTuneLab.crossoverExamples()} examples, and it is a real crossing rather " +
+            "than a slow convergence: past it, full fine-tuning pulls away and the frozen body flattens out. At 256 " +
+            "examples full fine-tuning reaches ${"%.4f".format(large[2].downstreamLoss)} while the frozen body is " +
+            "stuck at ${"%.4f".format(large[1].downstreamLoss)} — ${"%.0f".format(large[1].downstreamLoss / large[2].downstreamLoss)}× " +
+            "worse, and no amount of extra data moves it.",
+        plot = autoPlot(
+            "test loss against downstream examples",
+            listOf(
+                Curve("head only", counts.map { it.toFloat() to FineTuneLab.regimes(it)[1].downstreamLoss.toFloat() }, ForwardColor),
+                Curve("full fine-tune", counts.map { it.toFloat() to FineTuneLab.regimes(it)[2].downstreamLoss.toFloat() }, BackwardColor),
+                Curve("from scratch", counts.map { it.toFloat() to FineTuneLab.regimes(it)[0].downstreamLoss.toFloat() }, NeutralColor),
+            ),
+            4f..256f,
+        ),
+        readout = "crossover at ${FineTuneLab.crossoverExamples()} examples",
+    )
+
+    frames += NetFrame(
+        status = "The flat line is the point. A frozen body has a ceiling, and it is set by whether the downstream " +
+            "answer is a linear read-out of features chosen for other tasks. Training from scratch reaches that same " +
+            "ceiling at 256 examples (${"%.4f".format(large[0].downstreamLoss)} against " +
+            "${"%.4f".format(large[1].downstreamLoss)}) — which is a useful way to know when to unfreeze: when " +
+            "scratch catches your frozen model, the features were the constraint.",
+        bars = listOf(
+            NetBar(
+                "test loss at 256 examples",
+                large.map { it.downstreamLoss.toFloat() },
+                OutputColor,
+                listOf("scratch", "head only", "full"),
+            ),
+        ),
+        readout = "scratch has caught the frozen model",
+    )
+
+    frames += NetFrame(
+        status = "And full fine-tuning charges for it in a currency the downstream metric never shows. Score the " +
+            "original ${FineTuneLab.upstreamTasks} pretraining tasks with their own heads after the body has moved: " +
+            "loss goes from ${"%.4f".format(FineTuneLab.pretrainedUpstreamLoss)} to " +
+            "${"%.4f".format(FineTuneLab.regimes(256)[2].upstreamLoss!!)} — " +
+            "${"%.0f".format(FineTuneLab.forgettingRatio(256))}× worse. Nothing about the downstream numbers hints " +
+            "at this, which is why catastrophic forgetting keeps being discovered in production.",
+        plot = autoPlot(
+            "upstream loss after fine-tuning, ÷ pretrained",
+            listOf(
+                Curve("full fine-tune", counts.map { it.toFloat() to FineTuneLab.forgettingRatio(it).toFloat() }, BackwardColor),
+                Curve("head only", counts.map { it.toFloat() to 1f }, ForwardColor),
+            ),
+            4f..256f,
+        ),
+        readout = "${"%.0f".format(FineTuneLab.forgettingRatio(256))}× worse upstream, invisible downstream",
+    )
+
+    frames += NetFrame(
+        status = "The other bill is memory, and it is not the weights. Mixed-precision Adam holds " +
+            "${FineTuneLab.trainableBytesPerParam} bytes per *trainable* parameter — fp16 weight and gradient, an " +
+            "fp32 master copy, and two moment buffers — against ${FineTuneLab.frozenBytesPerParam} for a frozen one. " +
+            "A 7B model fully fine-tuned needs ${bytesToGb(FineTuneLab.trainingBytes(7_000_000_000, 7_000_000_000))} GB " +
+            "of state; with 20M trainable it needs ${bytesToGb(FineTuneLab.trainingBytes(7_000_000_000, 20_000_000))} GB. " +
+            "That gap is the whole reason PEFT exists.",
+        bars = listOf(
+            NetBar(
+                "training state, GB (7B model)",
+                listOf(
+                    bytesToGb(FineTuneLab.trainingBytes(7_000_000_000, 7_000_000_000)).toFloat(),
+                    bytesToGb(FineTuneLab.trainingBytes(7_000_000_000, 20_000_000)).toFloat(),
+                ),
+                OutputColor,
+                listOf("all trainable", "20M trainable"),
+            ),
+        ),
+        readout = "${FineTuneLab.trainableBytesPerParam} bytes per trainable parameter",
+    )
+    return frames
+}
+
+private fun dpoFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+    val betas = listOf(0.1, 0.2, 0.5, 1.0, 2.0, 5.0)
+    val trajectory = DpoLab.dpoTrajectory(0.1)
+    val cycle = DpoLab.preferenceCycles().first()
+
+    frames += NetFrame(
+        status = "One prompt, ${DpoLab.responses.size} candidate responses, and a reference policy whose mode is " +
+            "\"${DpoLab.responses[DpoLab.reference.indices.maxBy { DpoLab.reference[it] }]}\" at " +
+            "${"%.0f".format(DpoLab.reference.max() * 100)}% — the base model's failure mode, and the reason there is " +
+            "anything to align. Its expected quality is ${"%.3f".format(DpoLab.expectedQuality(DpoLab.reference))} " +
+            "against a best possible ${"%.1f".format(DpoLab.bestPossibleQuality)}.",
+        bars = listOf(
+            NetBar("π_ref", DpoLab.reference.map { it.toFloat() }, NeutralColor, DpoLab.responses.map { it.take(9) }),
+            NetBar("true quality", DpoLab.quality.map { it.toFloat() }, AccentA, DpoLab.responses.map { it.take(9) }),
+        ),
+        readout = "reference quality ${"%.3f".format(DpoLab.expectedQuality(DpoLab.reference))}",
+    )
+
+    frames += NetFrame(
+        status = "${DpoLab.pairs.size} pairs, ${DpoLab.annotatorsPerPair} annotators each, majority vote. " +
+            "${DpoLab.mislabelledPairs().size} of the ${DpoLab.pairs.size} come back contradicting the ground truth — " +
+            "not a lot, and enough. Those two flips create a preference cycle: " +
+            "${DpoLab.responses[cycle.first]} > ${DpoLab.responses[cycle.second]} > ${DpoLab.responses[cycle.third]} > " +
+            "${DpoLab.responses[cycle.first]}.",
+        bars = listOf(
+            NetBar(
+                "fitted reward",
+                DpoLab.rewardModel.map { it.toFloat() },
+                BackwardColor,
+                DpoLab.responses.map { it.take(9) },
+            ),
+        ),
+        readout = "${DpoLab.mislabelledPairs().size} flipped labels · 1 cycle",
+    )
+
+    frames += NetFrame(
+        status = "A Bradley-Terry reward assigns one number per response, so no setting of its parameters can " +
+            "represent a cycle — it is forced to give all three the same reward " +
+            "(${"%.3f".format(DpoLab.rewardModel[cycle.first])}), and it caps out at " +
+            "${"%.0f".format(DpoLab.rewardAccuracy() * 100)}% accuracy on its own training preferences. More data does " +
+            "not help. More parameters do not help. The cycle is in the labels.",
+        bars = listOf(
+            NetBar(
+                "fitted reward",
+                DpoLab.rewardModel.map { it.toFloat() },
+                BackwardColor,
+                DpoLab.responses.map { it.take(9) },
+            ),
+            NetBar("true quality", DpoLab.quality.map { it.toFloat() }, AccentA, DpoLab.responses.map { it.take(9) }),
+        ),
+        readout = "reward accuracy caps at ${"%.0f".format(DpoLab.rewardAccuracy() * 100)}%",
+    )
+
+    frames += NetFrame(
+        status = "RLHF's second stage maximises E[r̂] − β·KL(π‖π_ref), which on a tabular policy has the closed form " +
+            "π ∝ π_ref·exp(r̂/β). β is the whole dial: at β = 5 the policy barely moves (KL " +
+            "${"%.3f".format(DpoLab.kl(DpoLab.rlhfPolicy(5.0)))}), at β = 0.1 it is pinned to the reward's argmax " +
+            "(KL ${"%.3f".format(DpoLab.kl(DpoLab.rlhfPolicy(0.1)))}).",
+        plot = autoPlot(
+            "quality and divergence against β",
+            listOf(
+                Curve("expected quality", betas.map { it.toFloat() to DpoLab.expectedQuality(DpoLab.rlhfPolicy(it)).toFloat() }, AccentA),
+                Curve("KL from reference", betas.map { it.toFloat() to DpoLab.kl(DpoLab.rlhfPolicy(it)).toFloat() }, BackwardColor),
+            ),
+            0.1f..5f,
+        ),
+        readout = "β trades divergence against reward",
+    )
+
+    frames += NetFrame(
+        status = "DPO throws the reward model away and descends the pairwise logistic loss on the policy itself, " +
+            "using β·log(π/π_ref) as an implicit reward. Over ${trajectory.last().step} steps the loss falls from " +
+            "${"%.4f".format(trajectory.first().loss)} to ${"%.4f".format(trajectory.last().loss)} while the policy " +
+            "moves KL ${"%.3f".format(trajectory.last().kl)} from the reference.",
+        plot = autoPlot(
+            "DPO trajectory",
+            listOf(
+                Curve("expected quality", trajectory.map { it.step.toFloat() to it.quality.toFloat() }, AccentA),
+                Curve("KL from reference", trajectory.map { it.step.toFloat() to it.kl.toFloat() }, BackwardColor),
+                Curve("DPO loss", trajectory.map { it.step.toFloat() to it.loss.toFloat() }, ForwardColor),
+            ),
+            0f..trajectory.last().step.toFloat(),
+        ),
+        readout = "one stage instead of two",
+    )
+
+    val (matchedBeta, gap) = DpoLab.matchedPolicyGap(0.1, trajectory.last().step)
+    frames += NetFrame(
+        status = "And it lands in the same place. Find the β whose closed-form RLHF policy sits at the DPO run's own " +
+            "divergence — β = ${"%.3f".format(matchedBeta)} — and the two policies agree to " +
+            "${"%.0e".format(gap.coerceAtLeast(1e-16))} on every response. That is the DPO theorem, and it is why the " +
+            "reward model was never load-bearing: it was a parameterisation of the policy all along.",
+        bars = listOf(
+            NetBar("DPO policy", trajectory.last().policy.map { it.toFloat() }, ForwardColor, DpoLab.responses.map { it.take(9) }),
+            NetBar("RLHF closed form", DpoLab.rlhfPolicy(matchedBeta).map { it.toFloat() }, BackwardColor, DpoLab.responses.map { it.take(9) }),
+        ),
+        readout = "identical at matched KL",
+    )
+
+    frames += NetFrame(
+        status = "Which makes the interesting number the one neither method changes. Both converge to quality " +
+            "${"%.3f".format(DpoLab.alignmentCeiling())} while the best response is worth " +
+            "${"%.1f".format(DpoLab.bestPossibleQuality)} — " +
+            "${"%.0f".format((1 - DpoLab.alignmentCeiling() / DpoLab.bestPossibleQuality) * 100)}% of the available " +
+            "quality left on the table by two mislabelled pairs out of ${DpoLab.pairs.size}. No β, no optimizer and " +
+            "no choice between RLHF and DPO recovers it. The ceiling is the annotation, not the algorithm.",
+        bars = listOf(
+            NetBar(
+                "expected quality",
+                listOf(
+                    DpoLab.expectedQuality(DpoLab.reference).toFloat(),
+                    DpoLab.alignmentCeiling().toFloat(),
+                    DpoLab.bestPossibleQuality.toFloat(),
+                ),
+                OutputColor,
+                listOf("reference", "aligned", "best possible"),
+            ),
+        ),
+        readout = "${"%.0f".format((1 - DpoLab.alignmentCeiling() / DpoLab.bestPossibleQuality) * 100)}% lost to the labels",
+    )
+    return frames
+}
+
+private fun peftFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+    val methods = PeftLab.methods
+    val full = methods.first()
+    val lora = methods.first { it.name.startsWith("LoRA") }
+
+    frames += NetFrame(
+        status = "One concrete model — BERT-base's config, ${PeftLab.layers} layers of width ${PeftLab.dModel}, " +
+            "${"%.1f".format(PeftLab.totalParams / 1_000_000.0)}M parameters — and six ways to tune it. Every count " +
+            "below is arithmetic over that config rather than a figure copied from a paper.",
+        layers = listOf(
+            NetLayer("frozen", List(6) { NetNode(0f, NodeMood.IDLE) }),
+            NetLayer("adapter", List(2) { NetNode(0f, NodeMood.BACKWARD) }),
+            NetLayer("frozen", List(6) { NetNode(0f, NodeMood.IDLE) }),
+        ),
+        readout = "${"%.1f".format(PeftLab.totalParams / 1_000_000.0)}M parameters",
+    )
+
+    frames += NetFrame(
+        status = "The trainable-parameter headline, which is what every PEFT paper leads with. IA³ trains " +
+            "${"%.3f".format(methods.last().sharePercent(PeftLab.totalParams))}% of the model; LoRA at rank " +
+            "${PeftLab.loraRank} on the query and value projections trains " +
+            "${"%.3f".format(lora.sharePercent(PeftLab.totalParams))}%; adapters at bottleneck " +
+            "${PeftLab.adapterBottleneck} train ${"%.2f".format(methods[3].sharePercent(PeftLab.totalParams))}%.",
+        bars = listOf(
+            NetBar(
+                "trainable share, % (log₁₀)",
+                methods.map { log10(it.sharePercent(PeftLab.totalParams).toFloat()) },
+                ForwardColor,
+                listOf("full", "BitFit", "LoRA", "adapter", "prefix", "IA³"),
+            ),
+        ),
+        readout = "LoRA: ${"%.3f".format(lora.sharePercent(PeftLab.totalParams))}% trainable",
+    )
+
+    frames += NetFrame(
+        status = "Optimizer state follows that headline exactly, because it is charged per trainable parameter: " +
+            "${bytesToGb(PeftLab.stateBytes(full))} GB for full fine-tuning against " +
+            "${bytesToGb(PeftLab.stateBytes(lora))} GB for LoRA. If parameter state were the whole bill, the headline " +
+            "would be the answer.",
+        bars = listOf(
+            NetBar(
+                "weights + gradients + Adam, GB",
+                methods.map { bytesToGb(PeftLab.stateBytes(it)).toFloat() },
+                BackwardColor,
+                listOf("full", "BitFit", "LoRA", "adapter", "prefix", "IA³"),
+            ),
+        ),
+        readout = "${bytesToGb(PeftLab.stateBytes(full))} GB → ${bytesToGb(PeftLab.stateBytes(lora))} GB",
+    )
+
+    frames += NetFrame(
+        status = "It is not the whole bill. Activations — everything the backward pass has to keep from the forward " +
+            "pass — are ${bytesToGb(PeftLab.activationBytes)} GB at batch ${PeftLab.batch} and sequence " +
+            "${PeftLab.seqLen}, and freezing a weight does not remove them: the gradient still has to flow *through* " +
+            "the frozen layers to reach the adapter beneath them. Add that term and LoRA's total goes from " +
+            "${bytesToGb(PeftLab.totalTrainingBytes(full))} GB to ${bytesToGb(PeftLab.totalTrainingBytes(lora))} GB — " +
+            "a ${"%.1f".format(PeftLab.totalTrainingBytes(full).toDouble() / PeftLab.totalTrainingBytes(lora))}× saving, " +
+            "not a ${"%.0f".format(full.trainable.toDouble() / lora.trainable)}× one.",
+        bars = listOf(
+            NetBar(
+                "total training memory, GB",
+                methods.map { bytesToGb(PeftLab.totalTrainingBytes(it)).toFloat() },
+                OutputColor,
+                listOf("full", "BitFit", "LoRA", "adapter", "prefix", "IA³"),
+            ),
+        ),
+        readout = "${"%.1f".format(PeftLab.totalTrainingBytes(full).toDouble() / PeftLab.totalTrainingBytes(lora))}× less memory",
+    )
+
+    frames += NetFrame(
+        status = "Priced as a ratio of ratios, the headline overstates the memory saving by " +
+            "${"%.0f".format(PeftLab.headlineOverstatement(lora))}× for LoRA and " +
+            "${"%.0f".format(PeftLab.headlineOverstatement(methods.last()))}× for IA³ — and the more extreme the " +
+            "method, the worse the overstatement, because every method is converging on the same activation floor. " +
+            "That floor is why gradient checkpointing and a smaller batch are still the levers that matter.",
+        bars = listOf(
+            NetBar(
+                "headline ÷ actual saving",
+                methods.map { PeftLab.headlineOverstatement(it).toFloat() },
+                BackwardColor,
+                listOf("full", "BitFit", "LoRA", "adapter", "prefix", "IA³"),
+            ),
+        ),
+        readout = "the activation floor is ${bytesToGb(PeftLab.activationBytes)} GB",
+    )
+
+    frames += NetFrame(
+        status = "What PEFT does buy unambiguously is the artefact. A fully fine-tuned BERT is " +
+            "${"%.0f".format(PeftLab.totalParams * 2 / 1_048_576.0)} MB per task; a LoRA adapter is " +
+            "${"%.1f".format(lora.trainable * 2 / 1_048_576.0)} MB, and it merges back into the base at inference so " +
+            "it costs no extra latency. Fifty tasks is fifty adapters and one copy of the weights.",
+        bars = listOf(
+            NetBar(
+                "shipped artefact, MB",
+                listOf((PeftLab.totalParams * 2 / 1_048_576.0).toFloat(), (lora.trainable * 2 / 1_048_576.0).toFloat()),
+                AccentA,
+                listOf("full copy", "LoRA adapter"),
+            ),
+        ),
+        readout = "${"%.0f".format(full.trainable.toDouble() / lora.trainable)}× smaller to store and serve",
+    )
+    return frames
+}
+
+private fun loraFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+    val sweep = LoraLab.rankSweep
+    val spectrum = LoraLab.updateSpectrum
+
+    frames += NetFrame(
+        status = "LoRA's claim is that the *update* is low-rank, not the model. So: fine-tune a ${LoraLab.dim}×" +
+            "${LoraLab.dim} map for real, take ΔW = W − W₀, and look at it. Its singular values fall off a cliff " +
+            "after three (${spectrum.take(5).joinToString(", ") { "%.2f".format(it) }}), giving an effective rank of " +
+            "${"%.1f".format(LoraLab.effectiveRank(spectrum))} — against " +
+            "${"%.1f".format(LoraLab.effectiveRank(LoraLab.baseSpectrum))} for the pretrained weights themselves.",
+        bars = listOf(
+            NetBar("ΔW singular values", spectrum.take(10).map { it.toFloat() }, BackwardColor),
+            NetBar("W₀ singular values", LoraLab.baseSpectrum.take(10).map { it.toFloat() }, NeutralColor),
+        ),
+        readout = "effective rank ${"%.1f".format(LoraLab.effectiveRank(spectrum))} vs ${"%.1f".format(LoraLab.effectiveRank(LoraLab.baseSpectrum))}",
+    )
+
+    frames += NetFrame(
+        status = "Three directions carry ${"%.1f".format(LoraLab.energyAtRank(3) * 100)}% of the update's energy. " +
+            "That is the whole hypothesis, and it is a statement about the fine-tuning *task* — a narrow adaptation " +
+            "moves the weights along few directions — rather than about transformers.",
+        plot = autoPlot(
+            "energy captured by rank",
+            listOf(Curve("cumulative energy", (1..12).map { it.toFloat() to LoraLab.energyAtRank(it).toFloat() }, ForwardColor)),
+            1f..12f,
+        ),
+        readout = "${"%.1f".format(LoraLab.energyAtRank(3) * 100)}% in 3 of ${LoraLab.dim} directions",
+    )
+
+    frames += NetFrame(
+        status = "Now train the adapters rather than reading the spectrum: W₀ + (α/r)·BA with B starting at zero, so " +
+            "the adapter is a no-op at step 0. Rank ${sweep[2].rank} closes " +
+            "${"%.0f".format(LoraLab.gapClosed(sweep[2]) * 100)}% of the gap to full fine-tuning with " +
+            "${sweep[2].trainable} of ${LoraLab.dim * LoraLab.dim} parameters; rank ${sweep[3].rank} closes " +
+            "${"%.0f".format(LoraLab.gapClosed(sweep[3]) * 100)}%.",
+        bars = listOf(
+            NetBar(
+                "gap to full fine-tuning closed",
+                sweep.map { LoraLab.gapClosed(it).toFloat() },
+                AccentA,
+                sweep.map { "r=${it.rank}" },
+            ),
+        ),
+        readout = "rank ${sweep[2].rank}: ${"%.0f".format(LoraLab.gapClosed(sweep[2]) * 100)}% for ${"%.0f".format(100.0 * sweep[2].trainable / (LoraLab.dim * LoraLab.dim))}% of the weights",
+    )
+
+    frames += NetFrame(
+        status = "And the trained losses sit just above what the spectrum says they must. Eckart-Young puts a floor " +
+            "under any rank-r adapter — the tail singular values it cannot represent — and the sweep tracks that floor " +
+            "from above at every rank (${sweep.take(4).joinToString(", ") { "${"%.3f".format(it.loss)} vs ${"%.3f".format(LoraLab.predictedLossAtRank(it.rank))}" }}). " +
+            "The low-rank story is not a heuristic; it is a theorem with a learning rate attached.",
+        plot = autoPlot(
+            "trained loss against the Eckart-Young floor",
+            listOf(
+                Curve("trained LoRA", sweep.map { it.rank.toFloat() to it.loss.toFloat() }, ForwardColor),
+                Curve("spectrum floor", sweep.map { it.rank.toFloat() to LoraLab.predictedLossAtRank(it.rank).toFloat() }, NeutralColor),
+            ),
+            1f..LoraLab.dim.toFloat(),
+        ),
+        readout = "trained ≥ floor at every rank",
+    )
+
+    frames += NetFrame(
+        status = "α is not cosmetic. The update passes through the α/r scale going in and coming back, so the " +
+            "effective step size on BA grows as (α/r)² — at r = 1 that is 256× the step at r = 16. Left at a single " +
+            "learning rate, every rank below 16 in this sweep diverged to NaN. This is the concrete content of the " +
+            "paper's remark that tuning α is roughly like tuning the learning rate.",
+        bars = listOf(
+            NetBar(
+                "diverges at a fixed learning rate",
+                LoraLab.ranks.map { if (LoraLab.divergesAtFixedRate(it)) 1f else 0f },
+                BackwardColor,
+                LoraLab.ranks.map { "r=$it" },
+            ),
+        ),
+        readout = "effective step scales as (α/r)²",
+    )
+
+    frames += NetFrame(
+        status = "QLoRA adds the other half: freeze the base in 4-bit and keep the adapters in full precision. " +
+            "Quantizing W₀ alone costs ${"%.4f".format(LoraLab.quantizedBaseLoss - LoraLab.baseLoss)} of loss. Train " +
+            "rank-${LoraLab.ranks[2]} adapters on top of the quantized base and the result is " +
+            "${"%.4f".format(LoraLab.qloraFit(LoraLab.ranks[2]).loss)} against " +
+            "${"%.4f".format(sweep[2].loss)} for adapters on the full-precision base — " +
+            "${"%.0f".format((1 - (LoraLab.qloraFit(LoraLab.ranks[2]).loss - sweep[2].loss) / (LoraLab.quantizedBaseLoss - LoraLab.baseLoss)) * 100)}% " +
+            "of the quantization damage absorbed by the adapters.",
+        bars = listOf(
+            NetBar(
+                "test loss",
+                listOf(
+                    LoraLab.baseLoss.toFloat(),
+                    LoraLab.quantizedBaseLoss.toFloat(),
+                    LoraLab.qloraFit(LoraLab.ranks[2]).loss.toFloat(),
+                    sweep[2].loss.toFloat(),
+                ),
+                OutputColor,
+                listOf("W₀", "NF4 W₀", "QLoRA", "LoRA"),
+            ),
+        ),
+        readout = "the adapters absorb the quantization error",
+    )
+    return frames
+}
+
+private fun quantizationFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+    val errors = QuantLab.errors()
+
+    fun histogram(values: DoubleArray, bins: Int = 24): List<Float> {
+        val lo = -4.0
+        val hi = 4.0
+        val counts = IntArray(bins)
+        values.forEach { v ->
+            val b = (((v - lo) / (hi - lo)) * bins).toInt().coerceIn(0, bins - 1)
+            counts[b]++
+        }
+        return counts.map { it.toFloat() / values.size }
+    }
+
+    frames += NetFrame(
+        status = "${QuantLab.weightCount} weights, normally distributed, which is what trained weights actually look " +
+            "like. Quantizing means replacing each one with the nearest of a small set of levels and storing the " +
+            "index instead of the number. Everything below is measured against this tensor.",
+        bars = listOf(NetBar("weight histogram", histogram(QuantLab.weights), NeutralColor)),
+        readout = "${QuantLab.weightCount} weights, fp32",
+    )
+
+    frames += NetFrame(
+        status = "int8 with a single absmax scale is nearly lossless — MSE ${"%.6f".format(errors[0].second)}, " +
+            "${"%.1f".format(QuantLab.snrDb(QuantLab.weights, QuantLab.schemes[0].quantize(QuantLab.weights)))} dB. " +
+            "int4 with the same scheme is not: ${"%.4f".format(errors[1].second)}, which is " +
+            "${"%.0f".format(errors[1].second / errors[0].second)}× worse. Sixteen levels over the whole range is " +
+            "simply not many, and most of them land where almost no weights are.",
+        bars = listOf(
+            NetBar(
+                "quantization MSE (log₁₀)",
+                errors.map { log10(it.second.toFloat()) },
+                BackwardColor,
+                listOf("int8", "int4", "NF4", "int4/64", "NF4/64"),
+            ),
+        ),
+        readout = "int4 per-tensor: ${"%.0f".format(errors[1].second / errors[0].second)}× the int8 error",
+    )
+
+    frames += NetFrame(
+        status = "NF4 spends the same 4 bits differently: its 16 levels are the quantiles of a normal distribution, " +
+            "so they crowd where the weights are. On the same tensor that is MSE ${"%.4f".format(errors[2].second)} " +
+            "against int4's ${"%.4f".format(errors[1].second)} — " +
+            "${"%.0f".format((1 - errors[2].second / errors[1].second) * 100)}% less error for free, because the " +
+            "levels are a constant table rather than anything learned.",
+        bars = listOf(
+            NetBar("NF4 levels", QuantLab.nf4Levels.map { it.toFloat() }, AccentA),
+            NetBar("uniform int4 levels", QuantLab.int4Levels.map { it.toFloat() }, NeutralColor),
+        ),
+        readout = "${"%.0f".format((1 - errors[2].second / errors[1].second) * 100)}% less error at the same width",
+    )
+
+    frames += NetFrame(
+        status = "Then one weight goes to 20σ. A single absmax scale is set by the largest magnitude in the tensor, " +
+            "so that one outlier stretches the whole grid and every other weight is quantized more coarsely — the " +
+            "error on the ${QuantLab.weightCount - 1} innocent weights rises " +
+            "${"%.0f".format(QuantLab.outlierPenalty(QuantLab.schemes[0]))}× for int8 and " +
+            "${"%.0f".format(QuantLab.outlierPenalty(QuantLab.schemes[1]))}× for int4. This is why LLM.int8() exists, " +
+            "and it is an activation problem before it is a weight problem.",
+        bars = listOf(
+            NetBar(
+                "error on the other weights, ÷ clean",
+                QuantLab.schemes.map { QuantLab.outlierPenalty(it).toFloat() },
+                BackwardColor,
+                listOf("int8", "int4", "NF4", "int4/64", "NF4/64"),
+            ),
+        ),
+        readout = "one weight in ${QuantLab.weightCount} costs ${"%.0f".format(QuantLab.outlierPenalty(QuantLab.schemes[0]))}×",
+    )
+
+    frames += NetFrame(
+        status = "Blockwise scaling fixes it structurally rather than by tuning. One absmax per 64 weights confines " +
+            "an outlier to its own block: the penalty falls from " +
+            "${"%.0f".format(QuantLab.outlierPenalty(QuantLab.schemes[1]))}× to " +
+            "${"%.1f".format(QuantLab.outlierPenalty(QuantLab.schemes[3]))}×, and the clean-tensor error improves too " +
+            "(${"%.4f".format(errors[3].second)} against ${"%.4f".format(errors[1].second)}). The cost is one extra " +
+            "scale per block — ${"%.2f".format(2.0 * 8 / 64)} bits per weight.",
+        bars = listOf(
+            NetBar(
+                "outlier penalty, per-tensor vs blockwise",
+                listOf(
+                    QuantLab.outlierPenalty(QuantLab.schemes[1]).toFloat(),
+                    QuantLab.outlierPenalty(QuantLab.schemes[3]).toFloat(),
+                    QuantLab.outlierPenalty(QuantLab.schemes[2]).toFloat(),
+                    QuantLab.outlierPenalty(QuantLab.schemes[4]).toFloat(),
+                ),
+                OutputColor,
+                listOf("int4", "int4/64", "NF4", "NF4/64"),
+            ),
+        ),
+        readout = "blockwise: ${"%.1f".format(QuantLab.outlierPenalty(QuantLab.schemes[4]))}× instead of ${"%.0f".format(QuantLab.outlierPenalty(QuantLab.schemes[2]))}×",
+    )
+
+    frames += NetFrame(
+        status = "Weight error is a proxy; what matters is what the layer *outputs*. On a real trained matrix, " +
+            "quantizing to int8 moves the outputs by ${"%.6f".format(QuantLab.outputDrift(QuantLab.int8Levels, null))} " +
+            "and to 4-bit by ${"%.4f".format(QuantLab.outputDrift(QuantLab.int4Levels, 16))}. Worth measuring rather " +
+            "than inferring: an earlier version of this lab scored quantization by task loss and found NF4 \"better " +
+            "than fp16\", because it was watching an under-fitted model being nudged at random.",
+        bars = listOf(
+            NetBar(
+                "output drift (log₁₀)",
+                listOf(
+                    log10(QuantLab.outputDrift(QuantLab.int8Levels, null).toFloat()),
+                    log10(QuantLab.outputDrift(QuantLab.int4Levels, null).toFloat()),
+                    log10(QuantLab.outputDrift(QuantLab.int4Levels, 16).toFloat()),
+                ),
+                ForwardColor,
+                listOf("int8", "int4", "int4/16"),
+            ),
+        ),
+        readout = "measure the outputs, not the weights",
+    )
+
+    frames += NetFrame(
+        status = "The reason anyone accepts any of this: a 7B model is " +
+            "${bytesToGb(QuantLab.bytesForParams(7_000_000_000, 16))} GB in fp16, " +
+            "${bytesToGb(QuantLab.bytesForParams(7_000_000_000, 8))} GB in int8 and " +
+            "${bytesToGb(QuantLab.bytesForParams(7_000_000_000, 4))} GB in NF4 — the difference between needing a " +
+            "data-centre card and fitting on a laptop.",
+        bars = listOf(
+            NetBar(
+                "7B weights, GB",
+                listOf(16, 8, 4).map { bytesToGb(QuantLab.bytesForParams(7_000_000_000, it)).toFloat() },
+                AccentA,
+                listOf("fp16", "int8", "NF4"),
+            ),
+        ),
+        readout = "${bytesToGb(QuantLab.bytesForParams(7_000_000_000, 16))} GB → ${bytesToGb(QuantLab.bytesForParams(7_000_000_000, 4))} GB",
+    )
+    return frames
+}
+
+private fun longContextFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+    val lengths = LongContextLab.lengths
+    val windows = LongContextLab.advertisedVersusEffective(1_048_576)
+
+    frames += NetFrame(
+        status = "A context window has three prices and the advertised number mentions none of them. Config here is " +
+            "LLaMA-2-7B's — ${LongContextLab.layers} layers, ${LongContextLab.heads} heads, head dimension " +
+            "${LongContextLab.headDim} — so every figure is checkable against a real model.",
+        layers = listOf(
+            NetLayer("tokens", List(8) { NetNode(0f, NodeMood.FORWARD) }),
+            NetLayer("KV cache", List(8) { NetNode(0f, NodeMood.BACKWARD) }),
+            NetLayer("output", List(1) { NetNode(0f, NodeMood.OUTPUT) }),
+        ),
+        readout = "7B parameters, ${bytesToGb(LongContextLab.params * 2)} GB of weights",
+    )
+
+    frames += NetFrame(
+        status = "Price one is the KV cache, and it is linear in the length and paid at every decode step. At 4k " +
+            "tokens it is ${bytesToGb(LongContextLab.kvCacheBytes(4_096))} GB — already a sixth of the weights. At 1M " +
+            "it is ${bytesToGb(LongContextLab.kvCacheBytes(1_048_576))} GB, which is " +
+            "${"%.0f".format(LongContextLab.kvCacheBytes(1_048_576).toDouble() / (LongContextLab.params * 2))}× the " +
+            "model itself.",
+        plot = autoPlot(
+            "KV cache, GB (log₁₀ tokens)",
+            listOf(
+                Curve("multi-head", lengths.map { log10(it.toFloat()) to bytesToGb(LongContextLab.kvCacheBytes(it)).toFloat() }, BackwardColor),
+            ),
+            log10(4_096f)..log10(1_048_576f),
+        ),
+        readout = "${bytesToGb(LongContextLab.kvCacheBytes(1_048_576))} GB of cache at 1M tokens",
+    )
+
+    frames += NetFrame(
+        status = "Which is what grouped-query attention is for, and it is the cheapest win in the stack: share one " +
+            "K/V head across a group of query heads and the cache divides by the group size. " +
+            "${LongContextLab.attentionVariants[1].first} takes 1M tokens from " +
+            "${bytesToGb(LongContextLab.kvCacheBytes(1_048_576))} GB to " +
+            "${bytesToGb(LongContextLab.kvCacheBytes(1_048_576, 8))} GB; multi-query takes it to " +
+            "${bytesToGb(LongContextLab.kvCacheBytes(1_048_576, 1))} GB.",
+        bars = listOf(
+            NetBar(
+                "KV cache at 1M tokens, GB",
+                LongContextLab.attentionVariants.map { bytesToGb(LongContextLab.kvCacheBytes(1_048_576, it.second)).toFloat() },
+                OutputColor,
+                listOf("MHA", "GQA-8", "MQA"),
+            ),
+        ),
+        readout = "${"%.0f".format(LongContextLab.kvCacheBytes(1_048_576, LongContextLab.heads).toDouble() / LongContextLab.kvCacheBytes(1_048_576, 1))}× from the same trick",
+    )
+
+    frames += NetFrame(
+        status = "Price two is prefill arithmetic, and this is where the \"attention is quadratic\" warning finally " +
+            "bites. At 4k tokens attention is only " +
+            "${"%.0f".format(LongContextLab.attentionShare(4_096) * 100)}% of the FLOPs — the FFN dominates, which is " +
+            "why quadratic attention was ignorable for years. The crossover is at " +
+            "${LongContextLab.flopCrossover()} tokens, essentially exactly 6·d for this model, and by 1M attention is " +
+            "${"%.0f".format(LongContextLab.attentionShare(1_048_576) * 100)}% of the bill.",
+        plot = autoPlot(
+            "attention's share of prefill FLOPs",
+            listOf(
+                Curve(
+                    "attention share",
+                    (10..20).map { log2 -> log2.toFloat() to LongContextLab.attentionShare(1L shl log2).toFloat() },
+                    BackwardColor,
+                ),
+                Curve("half", (10..20).map { it.toFloat() to 0.5f }, NeutralColor),
+            ),
+            10f..20f,
+        ),
+        readout = "crossover at ${LongContextLab.flopCrossover()} tokens ≈ 6·d",
+    )
+
+    frames += NetFrame(
+        status = "Price three is the one that decides architecture. Stuffing 1M tokens into the window costs " +
+            "${"%.0f".format(LongContextLab.stuffingOverhead(1_048_576))}× the prefill of retrieving " +
+            "${LongContextLab.retrievedPassages} passages of ${LongContextLab.passageTokens} tokens and reading only " +
+            "those. Long context and retrieval are not competitors on capability — they are the same capability at " +
+            "four orders of magnitude difference in price, and the reason to stuff the window is that retrieval " +
+            "missed, not that stuffing is better.",
+        plot = autoPlot(
+            "prefill cost ÷ retrieving 5 passages (log₁₀)",
+            listOf(
+                Curve("stuffing overhead", lengths.map { log10(it.toFloat()) to log10(LongContextLab.stuffingOverhead(it).toFloat()) }, BackwardColor),
+            ),
+            log10(4_096f)..log10(1_048_576f),
+        ),
+        readout = "${"%.0f".format(LongContextLab.stuffingOverhead(1_048_576))}× at 1M tokens",
+    )
+
+    frames += NetFrame(
+        status = "And the window a model advertises is not the window its heads use. Under ALiBi's standard slope " +
+            "schedule the position bias alone drives a head's weight below 1% of the nearest token's at " +
+            "${windows.first().second} tokens for the steepest head and ${windows.last().second} for the shallowest. " +
+            "Half the heads in this schedule cannot see past ${windows[3].second} tokens no matter how long the " +
+            "window is — which is why \"effective context\" is measured, not declared.",
+        bars = listOf(
+            NetBar(
+                "effective window per head (log₁₀ tokens)",
+                windows.map { log10(it.second.toFloat()) },
+                ForwardColor,
+                windows.indices.map { "h$it" },
+            ),
+        ),
+        readout = "advertised 1M, ${windows.first().second}–${windows.last().second} per head",
+    )
+    return frames
+}
+
+// ── D6 · MMLU ────────────────────────────────────────────────────────────────
+// The one D6 metric that is not a scoring function but a benchmark, so it belongs on the widget that
+// draws curves rather than the one that draws tokens. Every figure comes from `MmluLab`; the
+// standard errors are binomial, computed at the benchmark's real size and at one subject's.
+
+private fun mmluFrames(): List<NetFrame> {
+    val frames = mutableListOf<NetFrame>()
+    val top = MmluLab.models[0]
+    val second = MmluLab.models[1]
+    val third = MmluLab.models[2]
+    val weak = MmluLab.models[3]
+
+    frames += NetFrame(
+        status = "MMLU is ${MmluLab.totalQuestions} four-way multiple-choice questions across 57 subjects, and " +
+            "it is quoted as a single accuracy. The first thing that number needs is its floor: with " +
+            "${MmluLab.options} options, a model that has learned nothing scores " +
+            "${"%.2f".format(MmluLab.chance)}. Reported ${"%.3f".format(weak.reported)} therefore is not " +
+            "\"${"%.0f".format(weak.reported * 100)}% of the way there\" — it is " +
+            "${"%.3f".format(MmluLab.chanceCorrected(weak.reported))} of the way from guessing to perfect.",
+        bars = listOf(
+            NetBar(
+                "reported accuracy",
+                MmluLab.models.map { it.reported.toFloat() },
+                ForwardColor,
+                MmluLab.models.map { it.name.removePrefix("Model ") },
+            ),
+            NetBar(
+                "chance-corrected",
+                MmluLab.models.map { MmluLab.chanceCorrected(it.reported).toFloat() },
+                AccentA,
+                MmluLab.models.map { it.name.removePrefix("Model ") },
+            ),
+        ),
+        readout = "chance floor ${"%.2f".format(MmluLab.chance)}, not 0",
+    )
+
+    val seFull = MmluLab.standardError(top.reported, MmluLab.totalQuestions)
+    val sepFull = MmluLab.separation(top.reported, second.reported, MmluLab.totalQuestions)
+    frames += NetFrame(
+        status = "The second thing it needs is its error bar. ${MmluLab.totalQuestions} questions at " +
+            "${"%.3f".format(top.reported)} accuracy carry a binomial standard error of " +
+            "${"%.4f".format(seFull)} — about ${"%.1f".format(seFull * 100)} of a percentage point. So the gap " +
+            "between ${top.name}'s ${"%.3f".format(top.reported)} and ${second.name}'s " +
+            "${"%.3f".format(second.reported)} is **${"%.2f".format(sepFull)} standard errors**: not a " +
+            "difference, a coin flip. ${third.name}'s ${"%.3f".format(third.reported)} is " +
+            "${"%.1f".format(MmluLab.separation(top.reported, third.reported, MmluLab.totalQuestions))} SE back, " +
+            "which is real.",
+        plot = autoPlot(
+            "accuracy ± 2 SE at ${MmluLab.totalQuestions} questions",
+            listOf(
+                Curve(
+                    "reported",
+                    MmluLab.models.mapIndexed { i, m -> i.toFloat() to m.reported.toFloat() },
+                    ForwardColor,
+                ),
+                Curve(
+                    "+2 SE",
+                    MmluLab.models.mapIndexed { i, m ->
+                        i.toFloat() to (m.reported + 2 * MmluLab.standardError(m.reported, MmluLab.totalQuestions)).toFloat()
+                    },
+                    NeutralColor,
+                ),
+                Curve(
+                    "−2 SE",
+                    MmluLab.models.mapIndexed { i, m ->
+                        i.toFloat() to (m.reported - 2 * MmluLab.standardError(m.reported, MmluLab.totalQuestions)).toFloat()
+                    },
+                    NeutralColor,
+                ),
+            ),
+            0f..(MmluLab.models.size - 1).toFloat(),
+        ),
+        readout = "A vs B: ${"%.2f".format(sepFull)} SE — inside the noise",
+    )
+
+    val seSubject = MmluLab.standardError(top.reported, MmluLab.subjectQuestions)
+    val sepSubject = MmluLab.separation(top.reported, second.reported, MmluLab.subjectQuestions)
+    frames += NetFrame(
+        status = "Subject-level claims are far worse, because the error bar scales with 1/√n and the subjects " +
+            "are small. A ${MmluLab.subjectQuestions}-question subject has standard error " +
+            "${"%.4f".format(seSubject)} — ${"%.0f".format(seSubject / seFull)}× the full benchmark's. The same " +
+            "${"%.3f".format(top.reported)} against ${"%.3f".format(second.reported)} comparison is now " +
+            "${"%.2f".format(sepSubject)} SE apart. \"Model A is better at abstract algebra\" needs a gap of " +
+            "about ${"%.2f".format(2 * seSubject * 1.41)} to mean anything, and almost none are that large.",
+        bars = listOf(
+            NetBar(
+                "standard error",
+                listOf(seFull.toFloat(), seSubject.toFloat()),
+                BackwardColor,
+                listOf("full (${MmluLab.totalQuestions})", "subject (${MmluLab.subjectQuestions})"),
+            ),
+            NetBar(
+                "A vs B separation, SE",
+                listOf(sepFull.toFloat(), sepSubject.toFloat()),
+                AccentB,
+                listOf("full", "subject"),
+            ),
+        ),
+        readout = "${"%.2f".format(sepSubject)} SE at subject level",
+    )
+
+    val pairs = MmluLab.indistinguishableSubjectPairs()
+    val totalPairs = MmluLab.subjects.size * (MmluLab.subjects.size - 1) / 2
+    frames += NetFrame(
+        status = "Run that over a real subject table and the ranking mostly evaporates. Across " +
+            "${MmluLab.subjects.size} subjects at their actual sizes, **${pairs.size} of $totalPairs pairs** are " +
+            "within two standard errors of each other — including " +
+            "${pairs.first().first.name} at ${"%.3f".format(pairs.first().first.accuracy)} against " +
+            "${pairs.first().second.name} at ${"%.3f".format(pairs.first().second.accuracy)}, whose ordering " +
+            "reverses on resampling. A per-subject bar chart draws ${MmluLab.subjects.size} bars of which many " +
+            "differences are decoration.",
+        bars = listOf(
+            NetBar(
+                "subject accuracy",
+                MmluLab.subjects.map { it.accuracy.toFloat() },
+                ForwardColor,
+                MmluLab.subjects.map { "${it.questions}" },
+            ),
+            NetBar(
+                "2 SE for that subject",
+                MmluLab.subjects.map { (2 * MmluLab.standardError(it.accuracy, it.questions)).toFloat() },
+                NeutralColor,
+                MmluLab.subjects.map { "${it.questions}" },
+            ),
+        ),
+        readout = "${pairs.size} of $totalPairs subject pairs are not distinguishable",
+    )
+
+    val micro = MmluLab.microAverage()
+    val macro = MmluLab.macroAverage()
+    frames += NetFrame(
+        status = "Then there is the averaging, which nobody states. Subject sizes range from " +
+            "${MmluLab.subjects.minOf { it.questions }} to ${MmluLab.subjects.maxOf { it.questions }} questions " +
+            "here, so weighting every *question* equally and weighting every *subject* equally are different " +
+            "numbers: micro ${"%.4f".format(micro)}, macro ${"%.4f".format(macro)}. That " +
+            "${"%.2f".format(abs(macro - micro) * 100)}-point " +
+            "spread is ${"%.0f".format(abs(macro - micro) / abs(top.reported - second.reported) * 100)}% of the " +
+            "gap the leaderboard uses to rank its top two models — a reporting choice worth most of the " +
+            "difference being reported.",
+        bars = listOf(
+            NetBar(
+                "averaging choice",
+                listOf(micro.toFloat(), macro.toFloat()),
+                OutputColor,
+                listOf("micro (per question)", "macro (per subject)"),
+            ),
+            NetBar(
+                "for scale: the A–B gap",
+                listOf((top.reported - second.reported).toFloat(), abs(macro - micro).toFloat()),
+                AccentB,
+                listOf("A − B", "macro − micro"),
+            ),
+        ),
+        readout = "${"%.4f".format(micro)} or ${"%.4f".format(macro)}, same predictions",
+    )
+
+    val contamination = listOf(0.0, 0.05, 0.10, 0.20)
+    frames += NetFrame(
+        status = "And the failure no error bar catches: contamination. If a fraction of the test set appeared " +
+            "in pretraining, those questions are answered from memory. A model whose real ability is " +
+            "0.550 reports ${"%.3f".format(MmluLab.contaminatedScore(0.55, 0.10))} at 10% contamination and " +
+            "${"%.3f".format(MmluLab.contaminatedScore(0.55, 0.20))} at 20% — read the other way, a reported " +
+            "0.700 implies a true ${"%.3f".format(MmluLab.trueAbility(0.70, 0.20))} if a fifth of the benchmark " +
+            "leaked. Contamination moves the score by more than every honest gap on the leaderboard, and it is " +
+            "invisible from the score alone.",
+        plot = autoPlot(
+            "reported score against contamination",
+            listOf(
+                Curve(
+                    "true ability 0.55",
+                    contamination.map { it.toFloat() to MmluLab.contaminatedScore(0.55, it).toFloat() },
+                    BackwardColor,
+                ),
+                Curve(
+                    "true ability 0.70",
+                    contamination.map { it.toFloat() to MmluLab.contaminatedScore(0.70, it).toFloat() },
+                    ForwardColor,
+                ),
+            ),
+            0f..0.2f,
+        ),
+        readout = "0.550 reports ${"%.3f".format(MmluLab.contaminatedScore(0.55, 0.20))} at 20% leaked",
+    )
+
+    frames += NetFrame(
+        status = "None of this makes MMLU useless — it makes it a measurement with a resolution. It separates " +
+            "capability *tiers* cleanly: ${top.name} against ${weak.name} is " +
+            "${"%.0f".format(MmluLab.separation(top.reported, weak.reported, MmluLab.totalQuestions))} standard " +
+            "errors, which no reporting choice can manufacture. It does not separate neighbours, it does not " +
+            "support subject-level claims at these sample sizes, and it cannot see contamination at all. Quote " +
+            "it with its interval, its averaging method and its date, or quote it as a tier.",
+        bars = listOf(
+            NetBar(
+                "separation from A, in SE",
+                MmluLab.models.drop(1).map { MmluLab.separation(top.reported, it.reported, MmluLab.totalQuestions).toFloat() },
+                ForwardColor,
+                MmluLab.models.drop(1).map { it.name.removePrefix("Model ") },
+            ),
+        ),
+        readout = "tiers yes, ranks no",
+    )
+    return frames
+}
+
 private val netConfigs = mapOf(
+    "mmlu" to NetConfig(
+        intro = "The benchmark as a measurement: its chance floor, its binomial error bar at full and subject " +
+            "size, the averaging choice nobody states, and what contamination does to all of it.",
+        legend = listOf(
+            ForwardColor to "Reported",
+            NeutralColor to "±2 SE",
+            AccentB to "Choice, not capability",
+        ),
+        build = ::mmluFrames,
+    ),
+    "fine_tuning_full" to NetConfig(
+        intro = "Three regimes trained on the same downstream data at six dataset sizes, plus the upstream tasks " +
+            "scored again afterwards — which is where full fine-tuning's real bill shows up.",
+        legend = listOf(
+            ForwardColor to "Head only",
+            BackwardColor to "Full fine-tune",
+            NeutralColor to "From scratch",
+        ),
+        build = ::fineTuningFullFrames,
+    ),
+    "dpo" to NetConfig(
+        intro = "Both alignment pipelines run end to end on the same preferences — a fitted reward model plus its " +
+            "closed-form optimum, and DPO's direct descent — then the ceiling that neither of them clears.",
+        legend = listOf(
+            AccentA to "True quality",
+            BackwardColor to "Fitted reward",
+            ForwardColor to "Policy",
+        ),
+        build = ::dpoFrames,
+    ),
+    "peft" to NetConfig(
+        intro = "Exact parameter and memory accounting for six tuning methods over BERT-base's config. The headline " +
+            "and the number that decides what fits are not the same number.",
+        legend = listOf(
+            ForwardColor to "Trainable share",
+            BackwardColor to "Memory",
+            AccentA to "Artefact size",
+        ),
+        build = ::peftFrames,
+    ),
+    "lora_qlora" to NetConfig(
+        intro = "A real fine-tuning update decomposed, then adapters trained at six ranks and scored against the " +
+            "floor its spectrum puts under them.",
+        legend = listOf(
+            BackwardColor to "Update spectrum",
+            ForwardColor to "Trained LoRA",
+            AccentA to "Gap closed",
+        ),
+        build = ::loraFrames,
+    ),
+    "quantization" to NetConfig(
+        intro = "Five schemes on ${QuantLab.weightCount} real-shaped weights, scored by error, by what one outlier " +
+            "does to them, and by how far the layer's outputs actually move.",
+        legend = listOf(
+            NeutralColor to "Original",
+            BackwardColor to "Error",
+            AccentA to "Levels",
+        ),
+        build = ::quantizationFrames,
+    ),
+    "long_context" to NetConfig(
+        intro = "The three bills a context window runs up — cache bytes, prefill arithmetic, and the retrieval it is " +
+            "being used instead of — on LLaMA-2-7B's configuration.",
+        legend = listOf(
+            BackwardColor to "Cost",
+            OutputColor to "Cache",
+            ForwardColor to "Effective window",
+        ),
+        build = ::longContextFrames,
+    ),
+    "vae" to NetConfig(
+        intro = "Both gradient estimators run on the same objective — one is unusable — and then a real VAE trained " +
+            "at eight values of β, counting the latent dimensions each one leaves alive.",
+        legend = listOf(
+            ForwardColor to "Reparameterized",
+            BackwardColor to "Score-function",
+            OutputColor to "KL per dimension",
+        ),
+        build = ::vaeFrames,
+    ),
+    "dcgan" to NetConfig(
+        intro = "Transposed-convolution coverage counted for five kernel/stride pairs. The checkerboard artefact is " +
+            "visible as arithmetic before any image exists.",
+        legend = listOf(
+            AccentA to "Uniform coverage",
+            AccentB to "Uneven — checkerboard",
+            OutputColor to "Parameter share",
+        ),
+        build = ::dcganFrames,
+    ),
+    "stable_diffusion" to NetConfig(
+        intro = "The whole argument for latent diffusion is a division, done here rather than described — including " +
+            "the part where self- and cross-attention save wildly different amounts.",
+        legend = listOf(
+            ForwardColor to "Elements",
+            BackwardColor to "Attention pairs",
+            OutputColor to "Parameters",
+        ),
+        build = ::stableDiffusionFrames,
+    ),
+    "neural_style_transfer" to NetConfig(
+        intro = "A feature map, the same map with its positions shuffled, and the two Gram matrices — which are not " +
+            "similar but identical.",
+        legend = listOf(
+            ForwardColor to "Feature map",
+            AccentB to "Permuted",
+            OutputColor to "Gram",
+        ),
+        build = ::styleTransferFrames,
+    ),
+    "deepfakes" to NetConfig(
+        intro = "The swap scored against the bar it has to clear, and then swept across the angle between the two " +
+            "identities' expression manifolds.",
+        legend = listOf(
+            ForwardColor to "Shared encoder",
+            AccentB to "Independent",
+            NeutralColor to "Mean-face baseline",
+        ),
+        build = ::deepFakeFrames,
+    ),
     "roc_curve" to NetConfig(
         intro = "One point per threshold, then the precision-recall curve of the same model — which does not agree with it on a 9% base rate.",
         legend = listOf(

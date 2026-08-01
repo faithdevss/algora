@@ -31,8 +31,8 @@ private val convolutional = DeepLearningCategories.cnn
 private val detection = DeepLearningCategories.detection
 private val recurrent = DeepLearningCategories.rnn
 private val transformers = DeepLearningCategories.transformers
+private val generative = DeepLearningCategories.generative
 private val fundamentals = DeepLearningCategories.fundamentals
-private val architectures = DeepLearningCategories.architectures
 
 // The doc's Neural Network Basics block, in full. Ordered as a reading path rather than by when
 // each topic was written: what a neuron is, what one artificial unit can do, what a layer of them
@@ -146,18 +146,35 @@ private val fundamentalsTopics = listOf(
     topic("gradient_descent_variants", "Gradient Descent Variants", fundamentals, "SGD, Momentum, RMSProp, Adam and friends.", isPremium = true),
     topic("batch_normalization", "Batch Normalization", fundamentals, "Re-centre and re-scale activations so deep stacks stay trainable.", isPremium = true),
     topic("dropout", "Dropout", fundamentals, "Randomly silence neurons during training so none becomes indispensable.", isPremium = true),
-    topic("transfer_learning", "Transfer Learning", fundamentals, "Reuse a pretrained network's features and retrain only the head.", isPremium = true),
+    // D6 cross-lists this into `nlp_finetuning`, where it is that category's free entry because the
+    // NLP doc carries no lock on it. One id cannot be gated two ways, so this row is free too.
+    topic("transfer_learning", "Transfer Learning", fundamentals, "Reuse a pretrained network's features and retrain only the head.", difficulty = Difficulty.INTERMEDIATE),
 )
 
-private val architecturesTopics = listOf(
-    topic("autoencoders", "Autoencoders", architectures, "Encode-then-reconstruct networks for compression and denoising.", isPremium = true),
-    topic("gans", "GANs", architectures, "A generator and discriminator locked in an adversarial game.", isPremium = true),
-    topic("diffusion_models", "Diffusion Models", architectures, "Learn to reverse a noising process and sample images from noise.", isPremium = true),
+// The doc's Generative Deep Learning block in full, led by the three topics moved over from
+// dl_architectures — which retires that category, the last of the mock's two generic DL buckets to
+// go. Ordered so each topic answers the previous one's limit: the deterministic bottleneck, the one
+// change that makes it generative, the adversarial alternative, that alternative made convolutional,
+// then unpaired translation and controllable synthesis. Diffusion arrives as the third paradigm and
+// Stable Diffusion is what made it affordable. Style transfer sits late on purpose — it predates all
+// of them and is still the clearest statement of what "style" is being taken to mean, which is what
+// DeepFakes then needs in order to be about something other than the software.
+private val generativeTopics = listOf(
+    topic("autoencoders", "Autoencoders", generative, "Encode-then-reconstruct networks for compression and denoising.", isPremium = true),
+    topic("vae", "Variational Autoencoders (VAE)", generative, "Two changes to a bottleneck, and the units the KL term switches off.", difficulty = Difficulty.INTERMEDIATE),
+    topic("gans", "GANs", generative, "A generator and discriminator locked in an adversarial game.", isPremium = true),
+    topic("dcgan", "DCGAN (Deep Convolutional GAN)", generative, "The rule that is arithmetic rather than folklore: kernel divisible by stride.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("cyclegan", "CycleGAN (Image-to-Image)", generative, "720 mappings satisfy the loss and one is right — cycle consistency removes none of them.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("stylegan", "StyleGAN", generative, "AdaIN exactly replaces the statistics, and the mapping network is measured rather than argued.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("diffusion_models", "Diffusion Models", generative, "Learn to reverse a noising process and sample images from noise.", isPremium = true),
+    topic("stable_diffusion", "Stable Diffusion Architecture", generative, "48× fewer elements, 4096× fewer attention pairs — the whole argument is a division.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("neural_style_transfer", "Neural Style Transfer", generative, "The Gram matrix is exactly blind to position, and that is provable rather than approximate.", difficulty = Difficulty.BEGINNER),
+    topic("deepfakes", "DeepFakes (Concept)", generative, "One shared encoder, two decoders — necessary, and measurably not sufficient.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
 )
 
 object DeepLearningTopics {
     val topics: List<Topic> = basicsTopics + activationTopics + cnnTopics + detectionTopics +
-        rnnTopics + transformerTopics + fundamentalsTopics + architecturesTopics
+        rnnTopics + transformerTopics + generativeTopics + fundamentalsTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }

@@ -4819,12 +4819,751 @@ private fun oneHotFrames(): List<TokenFrame> {
     return frames
 }
 
+// ── D6 · Perplexity ──────────────────────────────────────────────────────────
+// Every number below comes out of `PerplexityLab`, which trains both bigram models on the same
+// eight-sentence corpus. Two of the frames exist because the probe contradicted the plan: the
+// smoothing sweep runs the wrong way on a fully-attested sentence, and the tokenizer comparison
+// inverts depending on which of the two numbers you read.
+
+private fun perplexityFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val scores = PerplexityLab.scoreSentence(PerplexityLab.testSentence)
+    val ppl = PerplexityLab.perplexity(PerplexityLab.testSentence)
+
+    frames += TokenFrame(
+        status = "Perplexity is the one metric on this list that needs no reference answer — only the text and " +
+            "the model. Score each token by how surprised the model was to see it, average the surprisal, and " +
+            "exponentiate. The result reads as a branching factor: a model with perplexity ${"%.1f".format(ppl)} " +
+            "is as uncertain as one choosing uniformly between ${"%.1f".format(ppl)} words at every step.",
+        chips = scores.map { Chip(it.token, sub = "%.3f".format(it.probability)) },
+        chipsLabel = "P(token | previous), bigram model with add-1 smoothing",
+        bars = listOf(
+            BarRow(
+                "surprisal, bits",
+                scores.map { it.surprisal.toFloat() },
+                BarPositive,
+                scores.map { it.token },
+            ),
+        ),
+        readout = "perplexity ${"%.3f".format(ppl)}",
+    )
+
+    frames += TokenFrame(
+        status = "The upper bound is worth knowing because it makes the number interpretable. A model that has " +
+            "learned nothing and spreads its probability evenly over the ${PerplexityLab.vocabulary.size}-word " +
+            "vocabulary has perplexity exactly ${"%.0f".format(PerplexityLab.uniformPerplexity())} — the " +
+            "vocabulary size. This model's ${"%.3f".format(ppl)} means the corpus statistics cut the effective " +
+            "choice by ${"%.1f".format(PerplexityLab.uniformPerplexity() / ppl)}×. Perplexity below the " +
+            "vocabulary size is the entire claim; how far below is the quality.",
+        bars = listOf(
+            BarRow(
+                "perplexity",
+                listOf(PerplexityLab.uniformPerplexity().toFloat(), ppl.toFloat()),
+                BarPositive,
+                listOf("uniform", "bigram"),
+            ),
+        ),
+        rows = listOf(
+            "vocabulary" to "${PerplexityLab.vocabulary.size} tokens",
+            "uniform model" to "%.1f".format(PerplexityLab.uniformPerplexity()),
+            "trained model" to "%.3f".format(ppl),
+        ),
+        readout = "${"%.1f".format(PerplexityLab.uniformPerplexity() / ppl)}× better than guessing",
+    )
+
+    val sweep = PerplexityLab.smoothingSweep.map { it to PerplexityLab.perplexity(PerplexityLab.testSentence, it) }
+    val unseenSweep = PerplexityLab.smoothingSweep.map { it to PerplexityLab.perplexity(PerplexityLab.unseenSentence, it) }
+    frames += TokenFrame(
+        status = "Smoothing is usually introduced as free insurance, and on this sentence it is not free at all. " +
+            "Every bigram in \"${PerplexityLab.testSentence}\" was seen in training, so add-k only takes " +
+            "probability mass away from events that actually happened: the sweep is monotone the wrong way, " +
+            "${"%.3f".format(sweep.first().second)} at k=${sweep.first().first} rising to " +
+            "${"%.3f".format(sweep.last().second)} at k=${sweep.last().first}. Add-1 costs " +
+            "${"%.2f".format(PerplexityLab.smoothingPremium())}× on this sentence.",
+        bars = listOf(
+            BarRow(
+                "perplexity against k",
+                sweep.map { it.second.toFloat() },
+                BarNegative,
+                sweep.map { "k=${it.first}" },
+            ),
+        ),
+        readout = "best k here is ${PerplexityLab.bestSmoothing()} — the floor of the sweep",
+    )
+
+    val unseen = PerplexityLab.unseenBigrams(PerplexityLab.unseenSentence)
+    frames += TokenFrame(
+        status = "Here is what the premium buys. \"${PerplexityLab.unseenSentence}\" uses only words the corpus " +
+            "contains, but one of its bigrams — ${unseen.joinToString { "\"${it.first} ${it.second}\"" }} — never " +
+            "occurred. Unsmoothed, that single zero multiplies through and perplexity is **infinite**: the model " +
+            "does not merely score the sentence badly, it declares the sentence impossible. Now the sweep has an " +
+            "interior optimum at k=${PerplexityLab.bestSmoothing(PerplexityLab.unseenSentence)} rather than a " +
+            "floor. Whether smoothing helps is a property of the *test set*, not of the smoother.",
+        chips = PerplexityLab.scoreSentence(PerplexityLab.unseenSentence).map {
+            Chip(
+                it.token,
+                sub = "%.3f".format(it.probability),
+                mark = if (unseen.any { u -> u.second == it.token }) ChipMark.ACTIVE else ChipMark.IDLE,
+            )
+        },
+        chipsLabel = "one unattested bigram, highlighted",
+        bars = listOf(
+            BarRow(
+                "perplexity against k, unseen bigram present",
+                unseenSweep.map { it.second.toFloat() },
+                BarPositive,
+                unseenSweep.map { "k=${it.first}" },
+            ),
+        ),
+        readout = "unsmoothed: ∞",
+    )
+
+    val wordPpl = ppl
+    val charPpl = PerplexityLab.characterPerplexity(PerplexityLab.testSentence)
+    val wordBpc = PerplexityLab.bitsPerCharacter(PerplexityLab.testSentence)
+    val charBpc = PerplexityLab.characterBitsPerCharacter(PerplexityLab.testSentence)
+    frames += TokenFrame(
+        status = "And the trap that makes published perplexities unusable. Perplexity is *per token*, so it is a " +
+            "property of the tokenizer as much as of the model. The same corpus, the same model shape, scored " +
+            "over characters instead of words: the character model reports perplexity " +
+            "${"%.3f".format(charPpl)} against the word model's ${"%.3f".format(wordPpl)} — apparently better. " +
+            "Convert both to bits per character, which is comparable, and the ranking **inverts**: " +
+            "${"%.3f".format(wordBpc)} against ${"%.3f".format(charBpc)}, the word model ahead by " +
+            "${"%.1f".format(charBpc / wordBpc)}×.",
+        bars = listOf(
+            BarRow(
+                "perplexity — not comparable",
+                listOf(wordPpl.toFloat(), charPpl.toFloat()),
+                BarNegative,
+                listOf("word", "character"),
+            ),
+            BarRow(
+                "bits per character — comparable",
+                listOf(wordBpc.toFloat(), charBpc.toFloat()),
+                BarPositive,
+                listOf("word", "character"),
+            ),
+        ),
+        readout = "opposite orderings from the same two models",
+    )
+
+    frames += TokenFrame(
+        status = "Bits per character is the fix, and it comes with its own caveat this lab can show rather than " +
+            "assert. The word model looks strong partly because a closed ${PerplexityLab.vocabulary.size}-word " +
+            "vocabulary never has to spell anything — it cannot even represent a word it has not seen, while the " +
+            "${PerplexityLab.charVocabulary.size}-symbol character model can write any string at all. Compare " +
+            "perplexities only within one tokenizer; compare bits per character only when both models can " +
+            "actually encode the same text.",
+        rows = listOf(
+            "same tokenizer" to "perplexity is comparable",
+            "different tokenizers" to "bits per character, and check coverage",
+            "word vocabulary" to "${PerplexityLab.vocabulary.size} — cannot spell anything new",
+            "character vocabulary" to "${PerplexityLab.charVocabulary.size} — can write any string",
+            "never" to "compare perplexities across papers",
+        ),
+        readout = "a per-token number needs its token defined",
+    )
+    return frames
+}
+
+// ── D6 · WER ─────────────────────────────────────────────────────────────────
+
+private fun werFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val reference = words(WerLab.reference)
+
+    frames += TokenFrame(
+        status = "Word error rate is the edit distance between a transcript and the reference, divided by the " +
+            "reference length: (S + D + I) / N. It is the standard score for speech recognition, and every one of " +
+            "its problems follows from those two decisions — that all three error types cost 1, and that the " +
+            "denominator counts the reference only.",
+        chips = reference.map { Chip(it) },
+        chipsLabel = "reference, ${reference.size} words",
+        rows = listOf("WER" to "(S + D + I) / N", "N" to "${reference.size} reference words"),
+    )
+
+    WerLab.cases.drop(1).forEach { case ->
+        val a = WerLab.alignmentFor(case)
+        frames += TokenFrame(
+            status = "**${case.name}** — ${case.note}. The alignment scores ${a.substitutions} substitutions, " +
+                "${a.deletions} deletions and ${a.insertions} insertions against ${a.referenceLength} reference " +
+                "words: WER ${"%.3f".format(a.wer)}.",
+            chips = words(case.hypothesis).map { Chip(it) },
+            chipsLabel = "hypothesis, ${words(case.hypothesis).size} words",
+            bars = listOf(
+                BarRow(
+                    "errors",
+                    listOf(a.substitutions.toFloat(), a.deletions.toFloat(), a.insertions.toFloat()),
+                    BarNegative,
+                    listOf("sub", "del", "ins"),
+                ),
+            ),
+            readout = "WER ${"%.3f".format(a.wer)}",
+        )
+    }
+
+    val runaway = WerLab.alignmentFor(WerLab.cases.last())
+    frames += TokenFrame(
+        status = "The last one is the first surprise: **WER has no upper bound**. A decoder that gets stuck " +
+            "emits ${runaway.insertions} insertions, and insertions are counted against a denominator that does " +
+            "not include them — so the rate is ${"%.1f".format(runaway.wer * 100)}%, not 100%. A tool reporting " +
+            "\"accuracy = 1 − WER\" reports ${"%.1f".format((1 - runaway.wer) * 100)}% accuracy here, which is " +
+            "not a quantity. WER is an error *rate*, and rates above 1 are ordinary.",
+        bars = listOf(
+            BarRow(
+                "WER by case",
+                WerLab.cases.map { WerLab.alignmentFor(it).wer.toFloat() },
+                BarNegative,
+                listOf("clean", "dropped", "flipped", "flipped+", "runaway"),
+            ),
+        ),
+        rows = listOf(
+            "insertions" to "${runaway.insertions}",
+            "reference length" to "${runaway.referenceLength}",
+            "WER" to "%.3f".format(runaway.wer),
+            "1 − WER" to "%.3f".format(1 - runaway.wer),
+        ),
+        readout = "WER ${"%.3f".format(runaway.wer)} — above 1 by construction",
+    )
+
+    val (harmless, reversed) = WerLab.misrankedCases()
+    val harmlessWer = WerLab.alignmentFor(harmless).wer
+    val reversedWer = WerLab.alignmentFor(reversed).wer
+    frames += TokenFrame(
+        status = "The second surprise is worse, because it is silent. Every word costs the same, so the metric " +
+            "ranks these two backwards: dropping three function words leaves the meaning intact and scores " +
+            "${"%.3f".format(harmlessWer)}, while deleting the single word \"not\" reverses the sentence and " +
+            "scores ${"%.3f".format(reversedWer)} — **${"%.0f".format(harmlessWer / reversedWer)}× better**. " +
+            "A system tuned to minimise WER is being told to prefer the second failure.",
+        chips = listOf(
+            Chip(harmless.hypothesis.take(34) + "…", sub = "%.3f".format(harmlessWer), mark = ChipMark.IDLE),
+            Chip(reversed.hypothesis.take(34) + "…", sub = "%.3f".format(reversedWer), mark = ChipMark.ACTIVE),
+        ),
+        chipsLabel = "same reference, opposite quality",
+        bars = listOf(
+            BarRow(
+                "WER — lower is \"better\"",
+                listOf(harmlessWer.toFloat(), reversedWer.toFloat()),
+                BarNegative,
+                listOf("meaning intact", "meaning reversed"),
+            ),
+        ),
+        readout = "the reversed sentence scores ${"%.0f".format(harmlessWer / reversedWer)}× lower",
+    )
+
+    val (tieA, tieB) = WerLab.collidingCases()
+    val tieAlignA = WerLab.alignmentFor(tieA)
+    val tieAlignB = WerLab.alignmentFor(tieB)
+    frames += TokenFrame(
+        status = "And the metric can be made blind outright. Add two substituted articles to the reversed " +
+            "hypothesis and it now carries ${tieAlignB.substitutions} substitutions plus " +
+            "${tieAlignB.deletions} deletion — the same ${tieAlignB.errors} errors as the harmless one's " +
+            "${tieAlignA.deletions} deletions. Identical WER, ${"%.3f".format(tieAlignA.wer)} both, and one of " +
+            "them says the opposite of what was said. WER cannot express that difference, so it is not a " +
+            "shortcoming to be tuned away — it is what the definition measures.",
+        rows = listOf(
+            "\"${tieA.hypothesis}\"" to "S${tieAlignA.substitutions} D${tieAlignA.deletions} I${tieAlignA.insertions} → ${"%.3f".format(tieAlignA.wer)}",
+            "\"${tieB.hypothesis}\"" to "S${tieAlignB.substitutions} D${tieAlignB.deletions} I${tieAlignB.insertions} → ${"%.3f".format(tieAlignB.wer)}",
+        ),
+        bars = listOf(
+            BarRow(
+                "identical scores",
+                listOf(tieAlignA.wer.toFloat(), tieAlignB.wer.toFloat()),
+                BarPositive,
+                listOf("meaning intact", "meaning reversed"),
+            ),
+        ),
+        readout = "a tie the metric cannot break",
+    )
+
+    frames += TokenFrame(
+        status = "One practical note that matters more than any of the above in a real evaluation: **most " +
+            "reported WER differences are normalization differences**. Score \"${WerLab.rawHypothesis}\" against " +
+            "\"${WerLab.rawReference}\" by splitting on whitespace and it is " +
+            "${"%.3f".format(WerLab.unnormalizedWer())} — casing, a comma and \"2nd\" against \"second\". " +
+            "Lowercase, strip punctuation and expand the numeral, and the same pair scores " +
+            "${"%.3f".format(WerLab.normalizedWer())}. Publish the normalizer with the number or the number " +
+            "means nothing.",
+        bars = listOf(
+            BarRow(
+                "same transcript pair",
+                listOf(WerLab.unnormalizedWer().toFloat(), WerLab.normalizedWer().toFloat()),
+                BarPositive,
+                listOf("raw", "normalized"),
+            ),
+        ),
+        readout = "${"%.1f".format(WerLab.unnormalizedWer() * 100)}% → ${"%.1f".format(WerLab.normalizedWer() * 100)}%, no model change",
+    )
+    return frames
+}
+
+// ── D6 · BLEU ────────────────────────────────────────────────────────────────
+
+private fun bleuFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val close = BleuLab.candidates[0]
+    val paraphrase = BleuLab.candidates[2]
+    val degenerate = BleuLab.candidates[3]
+    val short = BleuLab.candidates[4]
+
+    frames += TokenFrame(
+        status = "BLEU scores a translation by n-gram overlap with a reference: what fraction of the " +
+            "candidate's unigrams, bigrams, trigrams and 4-grams appear in the reference, combined as a " +
+            "geometric mean and multiplied by a length penalty. It is a precision metric — it asks what fraction " +
+            "of what you produced was warranted, never whether you produced enough.",
+        chips = words(BleuLab.reference).map { Chip(it) },
+        chipsLabel = "reference",
+        rows = (1..4).map { n ->
+            val (clipped, total) = BleuLab.modifiedPrecision(close.text, n)
+            "order $n" to "$clipped / $total"
+        },
+        readout = "BLEU ${"%.4f".format(BleuLab.bleu(close.text))} for an identical candidate",
+    )
+
+    val degClipped = (1..4).map { BleuLab.modifiedPrecision(degenerate.text, it) }
+    val degUnclipped = (1..4).map { BleuLab.unclippedPrecision(degenerate.text, it) }
+    frames += TokenFrame(
+        status = "Clipping is not a detail, it is the whole defence. \"${degenerate.text}\" is a stuck decoder " +
+            "emitting one frequent word. Count matches without clipping and its unigram precision is " +
+            "${degUnclipped[0].first}/${degUnclipped[0].second} — **perfect**, because \"the\" really is in the " +
+            "reference. Cap each n-gram by how many times the reference contains it and the same count falls to " +
+            "${degClipped[0].first}/${degClipped[0].second}. Without that cap, BLEU rewards repetition.",
+        chips = words(degenerate.text).mapIndexed { i, w -> Chip(w, mark = if (i < 2) ChipMark.RESULT else ChipMark.DIM) },
+        chipsLabel = "only ${degClipped[0].first} of these can be credited",
+        bars = listOf(
+            BarRow(
+                "unigram precision",
+                listOf(
+                    degUnclipped[0].first.toFloat() / degUnclipped[0].second,
+                    degClipped[0].first.toFloat() / degClipped[0].second,
+                ),
+                BarPositive,
+                listOf("unclipped", "clipped"),
+            ),
+        ),
+        readout = "${"%.3f".format(degUnclipped[0].first.toDouble() / degUnclipped[0].second)} → ${"%.3f".format(degClipped[0].first.toDouble() / degClipped[0].second)}",
+    )
+
+    frames += TokenFrame(
+        status = "The brevity penalty handles the opposite exploit. \"${short.text}\" is three words that are " +
+            "all correct — precision ${BleuLab.modifiedPrecision(short.text, 1).first}/" +
+            "${BleuLab.modifiedPrecision(short.text, 1).second} at unigrams and " +
+            "${BleuLab.modifiedPrecision(short.text, 2).first}/${BleuLab.modifiedPrecision(short.text, 2).second} " +
+            "at bigrams — and a useless translation. BP = exp(1 − r/c) multiplies it by " +
+            "${"%.3f".format(BleuLab.brevityPenalty(short.text))}. Recall is never measured; the penalty is the " +
+            "stand-in for it, and it is a blunt one.",
+        chips = words(short.text).map { Chip(it, mark = ChipMark.RESULT) },
+        chipsLabel = "3 words against a ${words(BleuLab.reference).size}-word reference",
+        rows = listOf(
+            "candidate length c" to "${words(short.text).size}",
+            "reference length r" to "${words(BleuLab.reference).size}",
+            "BP = exp(1 − r/c)" to "%.3f".format(BleuLab.brevityPenalty(short.text)),
+            "order 4" to "no 4-grams exist in 3 words",
+        ),
+        readout = "BLEU ${"%.4f".format(BleuLab.bleu(short.text))}",
+    )
+
+    val paraPrecisions = (1..4).map { BleuLab.modifiedPrecision(paraphrase.text, it) }
+    frames += TokenFrame(
+        status = "Now the case BLEU is famous for getting wrong. \"${paraphrase.text}\" is a correct " +
+            "translation of the reference in different words. Its unigram precision is " +
+            "${paraPrecisions[0].first}/${paraPrecisions[0].second} and it has " +
+            "${paraPrecisions[1].first} matching bigram — but **zero** trigrams and 4-grams. The combination is " +
+            "a geometric mean, so one empty order sends the product to zero: BLEU " +
+            "${"%.4f".format(BleuLab.bleu(paraphrase.text))}, the same score as the stuck decoder.",
+        chips = words(paraphrase.text).map {
+            Chip(it, mark = if (it in words(BleuLab.reference)) ChipMark.RESULT else ChipMark.DIM)
+        },
+        chipsLabel = "matched unigrams highlighted",
+        bars = listOf(
+            BarRow(
+                "modified precision by order",
+                paraPrecisions.map { if (it.second == 0) 0f else it.first.toFloat() / it.second },
+                BarPositive,
+                listOf("1-gram", "2-gram", "3-gram", "4-gram"),
+            ),
+        ),
+        readout = "empty orders ${BleuLab.emptyOrders(paraphrase.text)} → BLEU 0",
+    )
+
+    frames += TokenFrame(
+        status = "That zero is why sentence-level BLEU is not usable and corpus-level BLEU is. Over a full test " +
+            "set the counts are pooled before the mean is taken, so one sentence with no 4-gram match cannot " +
+            "zero the corpus. Where a per-sentence number is genuinely needed, smoothing adds a pseudo-count to " +
+            "the empty orders — the paraphrase goes from ${"%.4f".format(BleuLab.bleu(paraphrase.text))} to " +
+            "${"%.4f".format(BleuLab.bleu(paraphrase.text, smoothing = true))}, which at least orders it above " +
+            "nothing. It still scores the stuck decoder at " +
+            "${"%.4f".format(BleuLab.bleu(degenerate.text, smoothing = true))}, essentially the same.",
+        bars = listOf(
+            BarRow(
+                "unsmoothed",
+                BleuLab.candidates.map { BleuLab.bleu(it.text).toFloat() },
+                BarNegative,
+                listOf("exact", "1 off", "paraphrase", "degenerate", "short"),
+            ),
+            BarRow(
+                "smoothed",
+                BleuLab.candidates.map { BleuLab.bleu(it.text, smoothing = true).toFloat() },
+                BarPositive,
+                listOf("exact", "1 off", "paraphrase", "degenerate", "short"),
+            ),
+        ),
+        readout = "smoothing orders them; it does not separate them",
+    )
+
+    frames += TokenFrame(
+        status = "So what BLEU is actually for: comparing two systems on the *same* test set with the *same* " +
+            "references and tokenizer, where a 1–2 point move over thousands of sentences is a real signal. " +
+            "What it is not for: judging a single translation, comparing across test sets, or comparing numbers " +
+            "from two papers — the reference count, the tokenizer and the smoothing all move it by more than " +
+            "the differences usually claimed. Report it with sacreBLEU's signature or it is not reproducible.",
+        rows = listOf(
+            "valid" to "system A vs B, one test set, one tokenizer",
+            "invalid" to "one sentence; across test sets; across papers",
+            "moves the number" to "reference count, tokenizer, smoothing, casing",
+            "the paraphrase problem" to "a correct translation can score 0",
+        ),
+        readout = "a corpus statistic wearing a per-sentence name",
+    )
+    return frames
+}
+
+// ── D6 · ROUGE ───────────────────────────────────────────────────────────────
+
+private fun rougeFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val focused = RougeLab.candidates[0]
+    val whole = RougeLab.candidates[1]
+    val reordered = RougeLab.candidates[2]
+    val abstractive = RougeLab.candidates[3]
+
+    frames += TokenFrame(
+        status = "ROUGE is BLEU's mirror image. Summarisation's failure mode is leaving things out, not making " +
+            "things up, so ROUGE reports **recall**: what fraction of the reference summary's n-grams the " +
+            "candidate managed to include. ROUGE-1 counts unigrams, ROUGE-2 bigrams, ROUGE-L the longest common " +
+            "subsequence — which needs no fixed n and rewards keeping things in order.",
+        chips = words(RougeLab.referenceSummary).map { Chip(it) },
+        chipsLabel = "reference summary, ${words(RougeLab.referenceSummary).size} words",
+        rows = listOf(
+            "ROUGE-1 recall" to "%.3f".format(RougeLab.rougeN(focused.text, 1).recall),
+            "ROUGE-2 recall" to "%.3f".format(RougeLab.rougeN(focused.text, 2).recall),
+            "ROUGE-L recall" to "%.3f".format(RougeLab.rougeL(focused.text).recall),
+        ),
+        readout = "a good summary scores 1.000 on all three",
+    )
+
+    val wholeR1 = RougeLab.rougeN(whole.text, 1)
+    frames += TokenFrame(
+        status = "Recall-first has an obvious exploit and the field spent years walking into it. Submit the " +
+            "**entire document** — ${words(whole.text).size} words, no summarisation performed at all — and " +
+            "ROUGE-1 recall is ${"%.3f".format(wholeR1.recall)}. Nothing was selected, compressed or decided; " +
+            "the words are simply all still there. Any system reporting recall alone is being scored against a " +
+            "baseline of doing nothing, and losing to it is hard.",
+        chips = listOf(
+            Chip("focused (${words(focused.text).size}w)", sub = "%.3f".format(RougeLab.rougeN(focused.text, 1).recall), mark = ChipMark.RESULT),
+            Chip("whole doc (${words(whole.text).size}w)", sub = "%.3f".format(wholeR1.recall), mark = ChipMark.ACTIVE),
+        ),
+        chipsLabel = "ROUGE-1 recall",
+        bars = listOf(
+            BarRow(
+                "recall — the exploitable half",
+                listOf(RougeLab.rougeN(focused.text, 1).recall.toFloat(), wholeR1.recall.toFloat()),
+                BarNegative,
+                listOf("summary", "whole document"),
+            ),
+        ),
+        readout = "recall ${"%.3f".format(wholeR1.recall)} for summarising nothing",
+    )
+
+    frames += TokenFrame(
+        status = "Precision is what closes it, and it closes it decisively: the whole document's ROUGE-1 " +
+            "precision is ${"%.3f".format(wholeR1.precision)}, because ${words(whole.text).size} words were " +
+            "emitted to cover ${words(RougeLab.referenceSummary).size}. F1 lands at " +
+            "${"%.3f".format(wholeR1.f1)} against the focused summary's " +
+            "${"%.3f".format(RougeLab.rougeN(focused.text, 1).f1)}. **Always report F1**, or report recall with " +
+            "a length constraint — which is exactly what the original DUC evaluations did, and why they were " +
+            "harder to game than the numbers that followed.",
+        bars = listOf(
+            BarRow(
+                "whole document",
+                listOf(wholeR1.precision.toFloat(), wholeR1.recall.toFloat(), wholeR1.f1.toFloat()),
+                BarNegative,
+                listOf("precision", "recall", "F1"),
+            ),
+            BarRow(
+                "focused summary",
+                listOf(
+                    RougeLab.rougeN(focused.text, 1).precision.toFloat(),
+                    RougeLab.rougeN(focused.text, 1).recall.toFloat(),
+                    RougeLab.rougeN(focused.text, 1).f1.toFloat(),
+                ),
+                BarPositive,
+                listOf("precision", "recall", "F1"),
+            ),
+        ),
+        readout = "F1 ${"%.3f".format(wholeR1.f1)} vs ${"%.3f".format(RougeLab.rougeN(focused.text, 1).f1)}",
+    )
+
+    val reR1 = RougeLab.rougeN(reordered.text, 1)
+    val reR2 = RougeLab.rougeN(reordered.text, 2)
+    val reRL = RougeLab.rougeL(reordered.text)
+    frames += TokenFrame(
+        status = "Order is the second blind spot, and it is the reason to quote more than one variant. " +
+            "\"${reordered.text}\" contains exactly the reference's words with the two clauses swapped — a " +
+            "summary that says the board's review followed the announcement rather than preceded it. ROUGE-1 " +
+            "scores it **${"%.3f".format(reR1.f1)}, identical to the correct summary**, because a bag of words " +
+            "has no order to lose. ROUGE-2 falls to ${"%.3f".format(reR2.f1)} and ROUGE-L to " +
+            "${"%.3f".format(reRL.f1)}.",
+        chips = words(reordered.text).map { Chip(it, mark = ChipMark.IDLE) },
+        chipsLabel = "same words, different claim",
+        bars = listOf(
+            BarRow(
+                "reordered summary, F1",
+                listOf(reR1.f1.toFloat(), reR2.f1.toFloat(), reRL.f1.toFloat()),
+                BarPositive,
+                listOf("ROUGE-1", "ROUGE-2", "ROUGE-L"),
+            ),
+        ),
+        readout = "ROUGE-1 cannot see it; ROUGE-L halves",
+    )
+
+    val absR1 = RougeLab.rougeN(abstractive.text, 1)
+    frames += TokenFrame(
+        status = "And the failure that is hardest to design around. \"${abstractive.text}\" is a correct, " +
+            "well-written abstractive summary that happens to share almost no vocabulary with the reference: " +
+            "ROUGE-1 F1 ${"%.3f".format(absR1.f1)}, ROUGE-2 " +
+            "${"%.3f".format(RougeLab.rougeN(abstractive.text, 2).f1)}. Optimising ROUGE therefore teaches a " +
+            "model to *extract* — copy the reference's phrasing — which is precisely the behaviour abstractive " +
+            "summarisation was built to escape. The metric selects against the capability it is used to measure.",
+        chips = words(abstractive.text).map {
+            Chip(it, mark = if (it in words(RougeLab.referenceSummary)) ChipMark.RESULT else ChipMark.DIM)
+        },
+        chipsLabel = "one word in common",
+        bars = listOf(
+            BarRow(
+                "ROUGE-1 F1 by candidate",
+                RougeLab.candidates.map { RougeLab.rougeN(it.text, 1).f1.toFloat() },
+                BarPositive,
+                listOf("focused", "whole doc", "reordered", "abstractive"),
+            ),
+        ),
+        readout = "correct and unrewarded: ${"%.3f".format(absR1.f1)}",
+    )
+
+    frames += TokenFrame(
+        status = "Use it the way it survives: ROUGE-1/2/L reported together as F1, on one test set, to compare " +
+            "systems rather than to certify one. The three disagree in informative ways — a gap between ROUGE-1 " +
+            "and ROUGE-L is a word-order problem, a gap between recall and precision is a length problem — and " +
+            "the multi-reference version is what makes the abstractive case survivable, because a single " +
+            "reference makes one phrasing arbitrarily correct.",
+        rows = listOf(
+            "ROUGE-1 high, ROUGE-L low" to "right words, wrong order",
+            "recall high, precision low" to "too long — the do-nothing baseline",
+            "all three low" to "abstractive, or actually bad — ROUGE cannot say which",
+            "the mitigation" to "multiple references, F1, and a length budget",
+        ),
+        readout = "a family, quoted as a family",
+    )
+    return frames
+}
+
+// ── D6 · METEOR ──────────────────────────────────────────────────────────────
+
+private fun meteorFrames(): List<TokenFrame> {
+    val frames = mutableListOf<TokenFrame>()
+    val paraphrase = BleuLab.candidates[2]
+
+    frames += TokenFrame(
+        status = "METEOR exists because of BLEU's paraphrase zero. It builds an explicit word-to-word alignment " +
+            "instead of counting n-grams, and it matches in stages: exact words first, then stems, then (in the " +
+            "full metric) WordNet synonyms. On \"${paraphrase.text}\" that alignment finds " +
+            "${MeteorLab.alignment(paraphrase.text).size} matched words where BLEU found no trigram at all.",
+        chips = words(paraphrase.text).mapIndexed { i, w ->
+            val m = MeteorLab.alignment(paraphrase.text).firstOrNull { it.candidateIndex == i }
+            Chip(w, sub = m?.let { if (it.exact) "exact" else "stem" }, mark = if (m == null) ChipMark.DIM else ChipMark.RESULT)
+        },
+        chipsLabel = "alignment against \"${MeteorLab.reference}\"",
+        rows = listOf(
+            "matched" to "${MeteorLab.alignment(paraphrase.text).size} of ${words(paraphrase.text).size}",
+            "BLEU" to "%.4f".format(BleuLab.bleu(paraphrase.text)),
+            "METEOR" to "%.4f".format(MeteorLab.score(paraphrase.text)),
+        ),
+        readout = "0 → ${"%.4f".format(MeteorLab.score(paraphrase.text))} on the same pair",
+    )
+
+    frames += TokenFrame(
+        status = "The alignment is scored as a harmonic mean weighted **9:1 towards recall** — α = " +
+            "${MeteorLab.alpha}, so F = P·R / (αP + (1−α)R). That single constant is a claim about the task: " +
+            "for translation, missing content is worse than adding it. Precision here is " +
+            "${"%.3f".format(MeteorLab.precision(paraphrase.text))}, recall " +
+            "${"%.3f".format(MeteorLab.recall(paraphrase.text))}, and the weighted mean " +
+            "${"%.3f".format(MeteorLab.fMean(paraphrase.text))} — pulled towards the recall figure, not halfway.",
+        bars = listOf(
+            BarRow(
+                "components",
+                listOf(
+                    MeteorLab.precision(paraphrase.text).toFloat(),
+                    MeteorLab.recall(paraphrase.text).toFloat(),
+                    MeteorLab.fMean(paraphrase.text).toFloat(),
+                ),
+                BarPositive,
+                listOf("precision", "recall", "F (α=${MeteorLab.alpha})"),
+            ),
+        ),
+        readout = "recall-weighted by design",
+    )
+
+    frames += TokenFrame(
+        status = "Then the fragmentation penalty, which is how an alignment-based metric recovers the word order " +
+            "a bag of matches threw away. Group the alignment into runs that are contiguous in *both* sentences " +
+            "and count them: the paraphrase breaks into ${MeteorLab.chunks(paraphrase.text)} chunks over " +
+            "${MeteorLab.alignment(paraphrase.text).size} matched words, giving penalty γ·(chunks/matches)^β = " +
+            "${"%.3f".format(MeteorLab.penalty(paraphrase.text))}. Final score: F × (1 − penalty) = " +
+            "${"%.4f".format(MeteorLab.score(paraphrase.text))}.",
+        bars = listOf(
+            BarRow(
+                "the paraphrase, step by step",
+                listOf(
+                    MeteorLab.fMean(paraphrase.text).toFloat(),
+                    MeteorLab.penalty(paraphrase.text).toFloat(),
+                    MeteorLab.score(paraphrase.text).toFloat(),
+                ),
+                BarPositive,
+                listOf("F", "penalty", "score"),
+            ),
+        ),
+        rows = listOf(
+            "chunks" to "${MeteorLab.chunks(paraphrase.text)}",
+            "matches" to "${MeteorLab.alignment(paraphrase.text).size}",
+            "γ, β" to "${MeteorLab.gamma}, ${MeteorLab.beta}",
+        ),
+        readout = "penalty ${"%.3f".format(MeteorLab.penalty(paraphrase.text))}",
+    )
+
+    frames += TokenFrame(
+        status = "The penalty's ceiling is exact and worth seeing hit. Shuffle the reference's own words — " +
+            "\"${MeteorLab.shuffled}\" — and every word still matches, so F is " +
+            "${"%.3f".format(MeteorLab.fMean(MeteorLab.shuffled))}, a perfect unordered score. But each match " +
+            "is now its own chunk, ${MeteorLab.chunks(MeteorLab.shuffled)} of them for " +
+            "${MeteorLab.chunks(MeteorLab.shuffled)} matches, so (chunks/matches)^β = 1 and the penalty is " +
+            "exactly γ = ${MeteorLab.gamma}. Score ${"%.3f".format(MeteorLab.score(MeteorLab.shuffled))} — " +
+            "**half**, never zero. Word order can cost at most γ of the score, by construction.",
+        chips = words(MeteorLab.shuffled).map { Chip(it, mark = ChipMark.ACTIVE) },
+        chipsLabel = "every word matched, every match its own chunk",
+        bars = listOf(
+            BarRow(
+                "full shuffle",
+                listOf(
+                    MeteorLab.fMean(MeteorLab.shuffled).toFloat(),
+                    MeteorLab.penalty(MeteorLab.shuffled).toFloat(),
+                    MeteorLab.score(MeteorLab.shuffled).toFloat(),
+                ),
+                BarNegative,
+                listOf("F", "penalty", "score"),
+            ),
+        ),
+        readout = "the penalty saturates at γ = ${MeteorLab.gamma}",
+    )
+
+    frames += TokenFrame(
+        status = "Across the whole candidate set METEOR and BLEU agree on the two easy cases and disagree " +
+            "exactly where it matters. The paraphrase: BLEU " +
+            "${"%.4f".format(BleuLab.bleu(paraphrase.text))}, METEOR " +
+            "${"%.4f".format(MeteorLab.score(paraphrase.text))}. The stuck decoder: BLEU " +
+            "${"%.4f".format(BleuLab.bleu(BleuLab.candidates[3].text))}, METEOR " +
+            "${"%.4f".format(MeteorLab.score(BleuLab.candidates[3].text))}. Both zero the degenerate output; " +
+            "only METEOR separates it from a correct translation.",
+        bars = listOf(
+            BarRow(
+                "BLEU",
+                BleuLab.candidates.map { BleuLab.bleu(it.text).toFloat() },
+                BarNegative,
+                listOf("exact", "1 off", "paraphrase", "degenerate", "short"),
+            ),
+            BarRow(
+                "METEOR",
+                BleuLab.candidates.map { MeteorLab.score(it.text).toFloat() },
+                BarPositive,
+                listOf("exact", "1 off", "paraphrase", "degenerate", "short"),
+            ),
+        ),
+        readout = "the ranking differs only on the paraphrase — which is the point",
+    )
+
+    frames += TokenFrame(
+        status = "The cost is that METEOR is not portable. Exact matching is universal; stemming needs a " +
+            "stemmer for the language, synonym matching needs a WordNet, and α, β and γ were tuned on human " +
+            "judgements per language. That is why BLEU won on adoption despite scoring worse against human " +
+            "ratings — it needs nothing but a tokenizer. Modern practice has largely moved past both to learned " +
+            "metrics like BERTScore and COMET, which are METEOR's argument taken to its conclusion: match " +
+            "meanings, not strings.",
+        rows = listOf(
+            "BLEU needs" to "a tokenizer",
+            "METEOR needs" to "a stemmer, a WordNet, and tuned constants",
+            "correlation with humans" to "METEOR higher, BLEU more used",
+            "the successor" to "BERTScore / COMET — embeddings instead of stems",
+        ),
+        readout = "better metric, worse tooling",
+    )
+    return frames
+}
+
 private val nbLegend = listOf(
     ChipActive to "Current",
     ChipResult to "Scored",
 )
 
 private val tokenConfigs = mapOf(
+    "perplexity" to TokenConfig(
+        intro = "Two bigram models trained on the same eight sentences and scored on the same test sentence — " +
+            "which they rank in opposite orders depending on which number you read.",
+        legend = listOf(
+            BarPositive to "Comparable",
+            BarNegative to "Not comparable",
+            ChipActive to "Unseen bigram",
+        ),
+        build = ::perplexityFrames,
+    ),
+    "wer" to TokenConfig(
+        intro = "One reference and five transcripts, aligned for real — including the pair that ties at 0.333 " +
+            "with opposite meanings, and the one that scores 188.9%.",
+        legend = listOf(
+            BarNegative to "Errors",
+            BarPositive to "After normalization",
+            ChipActive to "Meaning reversed",
+        ),
+        build = ::werFrames,
+    ),
+    "bleu" to TokenConfig(
+        intro = "Modified precision, clipping and the brevity penalty computed over five candidates — one of " +
+            "which is a correct translation scoring exactly 0.",
+        legend = listOf(
+            ChipResult to "Matched",
+            BarPositive to "Clipped / smoothed",
+            BarNegative to "Raw",
+        ),
+        build = ::bleuFrames,
+    ),
+    "rouge" to TokenConfig(
+        intro = "ROUGE-1, ROUGE-2 and ROUGE-L over a four-sentence document, scored against the do-nothing " +
+            "baseline of submitting the whole thing.",
+        legend = listOf(
+            ChipResult to "In the reference",
+            BarPositive to "Summary",
+            BarNegative to "Whole document",
+        ),
+        build = ::rougeFrames,
+    ),
+    "meteor" to TokenConfig(
+        intro = "The alignment, the recall-weighted mean and the fragmentation penalty, on the paraphrase BLEU " +
+            "scores zero — and on a full shuffle that hits the penalty's ceiling exactly.",
+        legend = listOf(
+            ChipResult to "Matched",
+            ChipActive to "Shuffled",
+            BarPositive to "METEOR",
+        ),
+        build = ::meteorFrames,
+    ),
     "prompt_engineering" to TokenConfig(
         intro = "A prompt written as the induction problem it is: five rules fit the instruction, and each " +
             "demonstration kills the ones it contradicts — including the two-shot prompt that answers " +

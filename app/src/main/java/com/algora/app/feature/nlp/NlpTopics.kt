@@ -33,6 +33,9 @@ private val transformer = NlpCategories.transformer
 private val pretrained = NlpCategories.pretrained
 private val modernLlm = NlpCategories.modernLlm
 private val recurrent = NlpCategories.rnn
+private val fineTuning = NlpCategories.fineTuning
+private val beyondTransformers = NlpCategories.beyondTransformers
+private val metrics = NlpCategories.metrics
 
 // Ordered as a reading path — clean, split, filter, normalise, then the two vocabulary-building
 // steps — rather than alphabetically.
@@ -136,9 +139,52 @@ private val recurrentTopics = listOf(
     topic("seq2seq", "Sequence-to-Sequence (Seq2Seq)", recurrent, "Greedy, beam and the two kinds of error only one of them fixes.", isPremium = true, difficulty = Difficulty.ADVANCED),
 )
 
+// D6. `transfer_learning` (from Deep Learning) and `rlhf` (from Reinforcement Learning) are
+// cross-listed here rather than duplicated — the doc lists both under this heading, and a reader who
+// arrives at "how do I adapt a pretrained model" from NLP should not be sent to another section for
+// the first two answers. Ordered as the decision is actually made: reuse the features, then retrain
+// everything, then align it, then find out what all of that costs and buy it back.
+//
+// Gating follows the doc's markers verbatim, which makes `transfer_learning` this category's free
+// entry — the one topic in the block the doc leaves unlocked. Its Deep Learning row was premium and
+// is now free too, because one topic id cannot be gated two ways.
+private val fineTuningTopics = listOf(
+    topic("transfer_learning", "Transfer Learning", fineTuning, "Reuse a pretrained network's features and retrain only the head.", difficulty = Difficulty.INTERMEDIATE),
+    topic("fine_tuning_full", "Fine-Tuning (Full)", fineTuning, "Unfreeze everything — and measure what the model forgets doing it.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("rlhf", "RLHF", fineTuning, "Reinforcement learning from human feedback aligns LLMs.", isPremium = true),
+    topic("dpo", "DPO (Direct Preference Optimization)", fineTuning, "The same optimum without a reward model — and the ceiling neither of them clears.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("peft", "PEFT (Parameter-Efficient Fine-Tuning)", fineTuning, "0.27% trainable, 1.8× less memory — and why those are not the same number.", isPremium = true),
+    topic("lora_qlora", "LoRA & QLoRA", fineTuning, "Rank as a dial, measured against the theorem that says where it stops paying.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("quantization", "Quantization (4-bit / 8-bit)", fineTuning, "Fewer bits per weight, and the one outlier that decides which scheme survives.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("flash_attention", "Flash Attention", fineTuning, "Same answer, same arithmetic, different memory — and the saving is exactly 2·Br/d.", isPremium = true, difficulty = Difficulty.ADVANCED),
+)
+
+// D6. Ordered as the argument develops: the linear system, the thing it cannot do, the fix, the
+// other fix, and the cost that motivates all of it.
+private val beyondTransformerTopics = listOf(
+    topic("ssm", "State Space Models (SSMs)", beyondTransformers, "One system, two forms — a scan to decode with, a convolution to train with.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("mamba", "Mamba Architecture", beyondTransformers, "Make Δ depend on the token, and the copying task a fixed system cannot do falls out.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("rwkv", "RWKV", beyondTransformers, "Attention-shaped training, RNN-shaped inference, and the retrieval it gives up.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("long_context", "Long Context Windows", beyondTransformers, "512 GB of cache at 1M tokens, and the crossover at exactly 6·d.", isPremium = true, difficulty = Difficulty.ADVANCED),
+)
+
+// D6. Ordered by what each metric scores rather than by name: one that needs no reference at all,
+// one that needs an exact transcript, three that need a reference and disagree about how literally
+// to read it, and one that is not a metric but a benchmark — which is the distinction the last topic
+// is about. Gating is the doc's, verbatim: Perplexity and WER carry no lock, the other four do.
+private val metricTopics = listOf(
+    topic("perplexity", "Perplexity", metrics, "The only one needing no reference — and it ranks two tokenizers backwards.", difficulty = Difficulty.INTERMEDIATE),
+    topic("wer", "WER (Word Error Rate)", metrics, "Unbounded above, and it scores a reversed sentence a third of a harmless one.", difficulty = Difficulty.BEGINNER),
+    topic("bleu", "BLEU Score (Translation)", metrics, "Clipping, the brevity penalty, and the good paraphrase that scores exactly 0.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("rouge", "ROUGE Score (Summarization)", metrics, "Copy the whole document and recall 0.800 — the baseline recall-only reporting rewards.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("meteor", "METEOR", metrics, "Stems, recall weighting and a fragmentation penalty that a full shuffle drives to its ceiling.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("mmlu", "MMLU (Massive Multitask Benchmark)", metrics, "0.702 against 0.694 is 1.46 standard errors — the leaderboard is reporting noise.", isPremium = true, difficulty = Difficulty.ADVANCED),
+)
+
 object NlpTopics {
     val topics: List<Topic> = preprocessingTopics + statisticalTopics + syntaxTopics + embeddingTopics +
-        recurrentTopics + transformerTopics + pretrainedTopics + modernLlmTopics
+        recurrentTopics + transformerTopics + pretrainedTopics + modernLlmTopics +
+        fineTuningTopics + beyondTransformerTopics + metricTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }

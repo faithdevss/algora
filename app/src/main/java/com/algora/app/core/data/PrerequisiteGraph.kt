@@ -288,6 +288,27 @@ object PrerequisiteGraph {
         "smote" to listOf("knn", "model_evaluation"),
         "chi_square_selection" to listOf("model_evaluation"),
         "rfe" to listOf("chi_square_selection", "regularization"),
+        // D6. Fine-tuning reads as a path — reuse the features, retrain them, align them, then buy
+        // the cost back — and the Beyond Transformers block hangs off the linear recurrence.
+        "fine_tuning_full" to listOf("transfer_learning"),
+        "dpo" to listOf("rlhf"),
+        "peft" to listOf("fine_tuning_full"),
+        "lora_qlora" to listOf("peft", "svd"),
+        "quantization" to listOf("peft"),
+        "flash_attention" to listOf("self_cross_attention"),
+        "ssm" to listOf("rnn", "transformers"),
+        "mamba" to listOf("ssm"),
+        "rwkv" to listOf("ssm", "attention"),
+        "long_context" to listOf("transformers", "flash_attention"),
+        // D6 metrics. Perplexity needs the count model it is computed from; the three overlap metrics
+        // need n-grams; METEOR is read against BLEU rather than in isolation; and MMLU is a sampling
+        // argument before it is a benchmark, so it hangs off the metric that introduces the idea.
+        "perplexity" to listOf("n_grams", "llms"),
+        "wer" to listOf("edit_distance"),
+        "bleu" to listOf("n_grams"),
+        "rouge" to listOf("n_grams", "bleu"),
+        "meteor" to listOf("bleu", "stemming"),
+        "mmlu" to listOf("model_evaluation"),
     )
 
     fun prereqsOf(topicId: String): List<String> = prerequisites[topicId].orEmpty()
