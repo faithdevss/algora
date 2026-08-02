@@ -62,6 +62,22 @@ private val patternTopics = listOf(
     topic("graph_coloring_pattern", "Two-Colouring & Cycle Detection", patterns, "Bipartite checks and the directed/undirected cycle rules.", isPremium = true),
     topic("composite_design_pattern", "Design with Paired Structures", patterns, "O(1) everything by combining two containers.", isPremium = true),
     topic("expression_stack_pattern", "Parsing with a Stack", patterns, "Nesting means a stack — fold each context on close.", isPremium = true),
+    topic("meet_in_middle_pattern", "Meet in the Middle", patterns, "Halve the exponent when n sits between 30 and 40.", isPremium = true),
+    topic("randomized_pattern", "Randomised Sampling & Shuffling", patterns, "Reservoirs, unbiased shuffles and adversary-proof pivots.", isPremium = true),
+    topic("prefix_function_pattern", "Prefix Function & Borders", patterns, "Periodicity and search from prefix-suffix overlaps.", isPremium = true),
+    topic("interval_dp_pattern", "Interval DP", patterns, "State a range, choose what happens last inside it.", isPremium = true),
+    topic("tree_dp_pattern", "Tree DP (Subtree Aggregation)", patterns, "Post-order: return to the parent, combine locally.", isPremium = true),
+    topic("binary_lifting_pattern", "Binary Lifting & LCA", patterns, "Power-of-two jumps answer ancestor queries in O(log n).", isPremium = true),
+    topic("dutch_flag_pattern", "In-place Partitioning", patterns, "Two or three pointers that sort into regions.", isPremium = true),
+    topic("greedy_exchange_pattern", "Greedy & the Exchange Argument", patterns, "Prove the greedy choice, or find why it fails.", isPremium = true),
+    topic("palindrome_expansion_pattern", "Expand Around Centre", patterns, "Enumerate 2n-1 centres, not every substring.", isPremium = true),
+    topic("bst_inorder_pattern", "BST In-order Traversal", patterns, "Sorted order, iteratively, with early exit.", isPremium = true),
+    topic("lis_patience_pattern", "Longest Increasing Subsequence", patterns, "Tails array plus binary search — O(n log n).", isPremium = true),
+    topic("bit_trie_pattern", "Bit Trie (Maximum XOR)", patterns, "Walk the opposite bit, most significant first.", isPremium = true),
+    topic("dag_dp_pattern", "DAG DP (Longest Path)", patterns, "Topological order is the iteration order.", isPremium = true),
+    topic("game_theory_dp_pattern", "Game Theory DP", patterns, "Negate across the turn — the opponent plays optimally.", isPremium = true),
+    topic("heap_scheduling_pattern", "Heap Scheduling", patterns, "Sort by arrival, let a heap pick what runs next.", isPremium = true),
+    topic("prefix_2d_pattern", "2D Prefix Sums", patterns, "Any submatrix sum in four lookups.", isPremium = true),
 )
 
 private val companySetTopics = listOf(

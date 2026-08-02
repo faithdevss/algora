@@ -507,6 +507,22 @@ object TopicContentProvider {
         "graph_coloring_pattern" to graphColoringPatternContent,
         "composite_design_pattern" to compositeDesignPatternContent,
         "expression_stack_pattern" to expressionStackPatternContent,
+        "meet_in_middle_pattern" to meetInMiddlePatternContent,
+        "randomized_pattern" to randomizedPatternContent,
+        "prefix_function_pattern" to prefixFunctionPatternContent,
+        "interval_dp_pattern" to intervalDpPatternContent,
+        "tree_dp_pattern" to treeDpPatternContent,
+        "binary_lifting_pattern" to binaryLiftingPatternContent,
+        "dutch_flag_pattern" to dutchFlagPatternContent,
+        "greedy_exchange_pattern" to greedyExchangePatternContent,
+        "palindrome_expansion_pattern" to palindromeExpansionPatternContent,
+        "bst_inorder_pattern" to bstInorderPatternContent,
+        "lis_patience_pattern" to lisPatiencePatternContent,
+        "bit_trie_pattern" to bitTriePatternContent,
+        "dag_dp_pattern" to dagDpPatternContent,
+        "game_theory_dp_pattern" to gameTheoryDpPatternContent,
+        "heap_scheduling_pattern" to heapSchedulingPatternContent,
+        "prefix_2d_pattern" to prefix2dPatternContent,
     )
 
     fun get(topicId: String): TopicContent? = byId[topicId]
