@@ -35,7 +35,13 @@ object DeepLearningCategories {
     // C9. "tree" for the block's structural odd-ones-out -- two graph networks, and three
     // architectures that are not a stack of dense/conv layers at all; unused elsewhere in DL.
     val specialized = Category("dl_specialized", "Specialized & Graph Networks", Section.DL, 0xFF14B8A6, "tree")
-    val fundamentals = Category("dl_fundamentals", "Fundamentals", Section.DL, 0xFFEC4899, "network")
+    // C8. The phase's last category, and the last of the mock's original two generic DL buckets to
+    // go -- `dl_fundamentals` had exactly two topics left (`gradient_descent_variants`,
+    // `transfer_learning`), and neither is a fundamentals-only concept: the former belongs beside
+    // the nine other optimizers and losses the doc groups with it, and the latter reads as a CNN
+    // technique wherever it is actually taught. "chart" is the one glyph in the set that reads as a
+    // training curve rather than an architecture; unused elsewhere in DL.
+    val optimizers = Category("dl_optimizers", "Optimizers & Training", Section.DL, 0xFF0EA5E9, "chart")
 
-    val all = listOf(basics, activations, cnn, detection, rnn, transformers, generative, regularization, specialized, fundamentals)
+    val all = listOf(basics, activations, cnn, detection, rnn, transformers, generative, regularization, specialized, optimizers)
 }

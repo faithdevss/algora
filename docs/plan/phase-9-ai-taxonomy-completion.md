@@ -1,14 +1,42 @@
 # Phase 9 — AI Taxonomy Completion
 
-Status: In progress — **Tracks A, B and D are all complete**; C1–C9 done, only C8 left in the
-whole phase. 217 of 226 topics authored. AI sections now: **ML 116**, DL 81, NLP 75, RL 74 topic
-rows (cross-listing counted where it occurs — see below), and 468 browsable topics across the app
-*counted from the section lists themselves*. (The running "taxonomy at N" tallies in earlier
-revisions of this file drifted from those lists; the measured number is the one to trust, and
-`ContentCoverageTest` is what enforces it.) **Doc coverage is measured, not estimated: 347 of the
-doc's 357 entries (97%) — and three of the four AI sections (ML, NLP, RL) are now at 100%.**
-Next and last: **C8** — Momentum, AdaGrad, RMSprop, Adam, AdamW, LR Schedulers, Cross-Entropy, BCE,
-Hinge and KL, into a new `dl_optimizers`, which empties `dl_fundamentals` and closes the phase.
+Status: **Done — all four tracks complete, 226 of 226 topics authored.** AI sections now: **ML
+116**, DL 91, NLP 75, RL 74 topic rows (cross-listing counted where it occurs — see below), and 477
+browsable topics across the app *counted from the section lists themselves*. (The running
+"taxonomy at N" tallies in earlier revisions of this file drifted from those lists — including the
+"468" this line itself reported before C8; recount rather than increment. The measured number is
+the one to trust, and `ContentCoverageTest` is what enforces it.) **Doc coverage is measured, not
+estimated: 357 of the doc's 357 entries — 100%, all four AI sections complete.**
+
+**C8 — Momentum, AdaGrad, RMSprop, Adam, AdamW, LR Schedulers, Cross-Entropy Loss, Binary
+Cross-Entropy, Hinge Loss and KL Divergence — closed the phase.** Eight genuinely new topics land in
+a new `dl_optimizers` category; Binary Cross-Entropy and Hinge Loss are satisfied by cross-listing
+the existing `log_loss` and `hinge_loss` ids from `ml_metrics` rather than duplicating content that
+already covers the identical formula (`log_loss`'s own first application card already names it "the
+loss neural nets ... actually minimize"), the same reuse the doc's own "Cross-listed with ML" note
+already establishes for `perceptron` and `gradient_descent_variants`. `gradient_descent_variants`
+moves in from the retired `dl_fundamentals`; its other tenant, `transfer_learning`, moves to `dl_cnn`
+instead — the prerequisite graph already pointed it at `cnn`, so the edge existed before the category
+did. `dl_fundamentals` is now gone outright, the last of the mock's two original generic DL buckets
+to retire (after `ml_supervised`/`ml_unsupervised` in Track B and `dl_architectures`/`nlp_modeling` in
+Track C). No new widget — `NeuralNetPlayer` runs all ten, the thirteenth batch straight to reuse an
+existing one. New `OptimizerMath.kt` + `OptimizerMathTest.kt` (18 tests): momentum's β sweep found a
+clean order-of-magnitude winner at β=0.9 (loss 0.0070) with β=0.99 overshooting past it (0.2416);
+AdaGrad/RMSprop share one dense/sparse gradient stream and land on a real trade-off — RMSprop fixes
+AdaGrad's stall (rate flat at 0.500 through t=2,000 against AdaGrad's 0.0112) but keeps less of its
+rare-feature boost (1.28× against AdaGrad's 1.58×); Adam's bias correction turned out to be an exact
+identity on a constant gradient (corrected ratio 1.000 at every step, not just asymptotically) against
+an uncorrected ratio that swings to 6.569 before settling; AdamW's decoupled decay is exactly equal
+across two parameters with 100× different gradient histories where L2-in-Adam decays them 10× apart;
+learning-rate schedulers turned out to be a two-sided story neither half of which was in the plan —
+decay actually loses to a constant rate on a clean, noise-free bowl, and only wins (6.1×, close to the
+predicted lr²-scaling of 6.25×) once a persistent disturbance gives it a noise floor to shrink;
+softmax+cross-entropy's p−y gradient checked out exact against its own Jacobian; and KL divergence's
+forward/reverse fits landed exactly on the textbook mode-covering/mode-seeking split, with the reverse
+fit's own reverse-KL cost (0.6906) higher than the forward fit's own forward-KL cost (0.4685) despite
+looking like the tighter fit. `AiTaxonomyCoverageTest`'s `expectedCoveredCount` moves 347 → **357 —
+full doc coverage.**
+
 **Track B is done.** B10 landed Restricted Boltzmann Machines and Deep Belief Networks (new,
 `ml_nn_foundations`) and Multi-Armed Bandit (new, `ml_rl_fundamentals`) — the last three topics
 standing between `ml_supervised` and empty. `ml_supervised` is now retired outright: its three
@@ -67,31 +95,26 @@ foundational sub-sections, and Track A closed both.
 This table is the starting snapshot and is deliberately left unedited. Live status is the table
 below.
 
-## Where the phase stands (last updated after B10)
+## Where the phase stands (last updated after C8 — the phase's close)
 
-**217 of 226 topics authored; only C8 remains, the phase's last open batch.**
+**226 of 226 topics authored. All four tracks closed.**
 
-| Open block | Topics | What it needs |
-|---|---|---|
-| C8 | 10 | Optimizers & Losses — Momentum, AdaGrad, RMSprop, Adam, AdamW, LR Schedulers, Cross-Entropy, BCE, Hinge, KL, into a new `dl_optimizers`. `dl_fundamentals` still holds `gradient_descent_variants` and `transfer_learning`; C8 takes the former, emptying the category, and the latter has no C8 home (already cross-listed into `nlp_finetuning`) |
+**Tracks A, B, C and D are all closed.** RL is 71/71 against the doc, NLP is **77/77**, ML is
+**113/113**, and C8 closed **DL to 96/96** — every AI section now complete. Every landed batch
+updated `expectedCoveredCount` in the same change, so the coverage number is a test result rather
+than a count: **357 of 357 (100%)**.
 
-**Tracks A, B and D are all closed.** RL is 71/71 against the doc, NLP is **77/77 — complete**, and
-B10 closed **ML to 113/113 — also complete**. Its three remaining doc entries — Restricted Boltzmann
-Machines, Deep Belief Networks, Multi-Armed Bandit — are exactly the three topics B10 authored. Track
-C is 9 of 9... except C8, which is the one batch standing between this phase and its own finish line.
-Every landed batch has updated `expectedCoveredCount` in the same change, so the coverage number below
-is a test result rather than a count: **347 of 357 (97%)** — DL, at 86/96, is now the only section
-still short, and every one of its ten remaining doc entries is C8's.
-
-**`dl_architectures` is gone, and now so is one of `dl_fundamentals`'s two remaining topics.** C7 took
+**`dl_fundamentals` is gone — the last of the mock's original generic buckets to retire.** C7 took
 `dl_architectures`'s last three topics (`autoencoders`, `gans`, `diffusion_models`) into
 `dl_generative`, which made DL the third section — after ML's `ml_unsupervised` in B6 and NLP's
 `nlp_modeling` in C5 — to finish hollowing out one of the mock's generic buckets. C9 then moved
-`batch_normalization` and `dropout` out of `dl_fundamentals` into a new `dl_regularization`, alongside
-five new topics; `dl_fundamentals` now holds only `gradient_descent_variants` (C8's) and
-`transfer_learning` (already placed). C9 also stood up `dl_specialized` for the six graph/exotic
-architectures the doc groups together. Both new categories launched fully populated in the same
-change — `CategoryIntegrityTest` forbids landing an empty one.
+`batch_normalization` and `dropout` out of `dl_fundamentals` into a new `dl_regularization`, leaving
+it only `gradient_descent_variants` and `transfer_learning`. C8 finished the job: `gradient_descent_variants`
+moved into the new `dl_optimizers` alongside eight new topics and two cross-listed from `ml_metrics`
+(`log_loss` as Binary Cross-Entropy, `hinge_loss` as Hinge Loss); `transfer_learning` moved to `dl_cnn`,
+where the prerequisite graph already pointed it. `dl_fundamentals` itself is deleted from
+`DeepLearningCategories.kt` rather than left empty — `CategoryIntegrityTest` forbids landing an empty
+category, and that rule applies to a category losing its last topic just as much as to a new one.
 
 Nothing is blocked. The one net-new widget the phase planned (`FeatureMapPlayer`) was built in C3,
 and every batch since has run on widgets that already existed — C4, D1–D5, C5, C6, B8, B9, C7 and C9,
@@ -138,20 +161,20 @@ actually converged on the two agreeing votes' true consensus (6.1° against thre
 | C6 · Transformers & Pre-trained Models | 8 | **Done** | New `dl_transformers`; cross-listed into `nlp_transformer` and `nlp_pretrained`. No new widget; new `AttentionMath.kt` + `PretrainMath.kt`. The cross-attention model closes C5's open claim, and the multi-head rank story in the plan was wrong |
 | C7 · Generative Deep Learning | 7 | **Done** | New `dl_generative`, which retires `dl_architectures` — the last of DL's two generic buckets. No new widget; two existing ones. New `GenerativeMath.kt` + `GenerativeMathTest` (24 tests). The DeepFake lab's planned claim came out inverted and was rebuilt as an angle sweep |
 | C9 · Regularization + Specialized/Graph Networks | 10 | **Done** | New `dl_regularization` (took `batch_normalization`/`dropout` off `dl_fundamentals`, plus 5 new) and `dl_specialized` (6 new). Three widgets, no new one — `NeuralNetPlayer` ×7, `GraphAlgorithmPlayer` ×2, `PointCloudPlayer` ×1. New `RegularizationMath.kt` + `SpecializedMath.kt`, `RegularizationMathTest` (15) + `SpecializedMathTest` (16). Closes NLP's doc coverage to 77/77. GCN's oversmoothing limit came out as exactly 2/3, not 1; capsule routing needed 10 iterations, not 3, to actually converge |
-| C8 | 10 | Planned | |
+| C8 · Optimizers & Training | 10 | **Done** | New `dl_optimizers`, which retires `dl_fundamentals` — the last of DL's two original generic buckets. `gradient_descent_variants` moved in, `transfer_learning` moved to `dl_cnn`. 8 new topics + 2 cross-listed from `ml_metrics` (`log_loss`, `hinge_loss`). No new widget — `NeuralNetPlayer`, the thirteenth batch straight to reuse an existing one. New `OptimizerMath.kt` + `OptimizerMathTest.kt` (18 tests). Closes DL's doc coverage to 96/96 — **the phase's last open block** |
 | D1 · Preprocessing + Statistical NLP | 8 | **Done** | New `nlp_statistical`; no new widget. TokenStrip frame guard + `D1MathTest`, which caught two live errors |
 | D2 · Syntactic & Semantic Analysis | 6 | **Done** | New `nlp_syntax`; no new widget. Taggers and parsers run and scored in `SyntaxMath.kt`; `D2MathTest` |
 | D3 · Word Embeddings | 5 | **Done** | New `nlp_embeddings`; no new widget. Models trained for real in `EmbeddingMath.kt`; `D3MathTest` |
 | D4 · Transformer Internals + Pre-trained LMs | 8 | **Done** | New `nlp_transformer` + `nlp_pretrained`; no new widget. `TransformerMath.kt`; `D4MathTest` |
 | D5 · Modern LLM Techniques | 7 | **Done** | New `nlp_modern_llm`; no new widget. `ModernLlmMath.kt` runs a real Game-of-24 search, a real index and a real retriever; `D5MathTest` overturned four planned claims |
 | D6 · Fine-Tuning + Beyond Transformers + Metrics | 16 | **Done** | Three new categories — `nlp_finetuning`, `nlp_beyond`, `nlp_metrics`. No new widget; three existing ones (`NeuralNetPlayer`, `ArrayWalkPlayer`, `TokenStripPlayer`). `FineTuneMath.kt` + `NlpMetricsMath.kt`; `D6MathTest` (36) and `D6MetricsTest` (20). The metrics probe falsified three claims already written into the math file |
-| **Total** | **226** | **217 done** | 468 browsable topics, counted from the section lists |
+| **Total** | **226** | **226 done** | 477 browsable topics, counted from the section lists |
 
 Sections against the doc, measured by `AiTaxonomyCoverageTest` rather than counted by hand:
-**RL 71/71**, **NLP 77/77**, **ML 113/113 — complete**, DL 86/96 — **347 of 357 overall**. ML is 116
+**RL 71/71**, **NLP 77/77**, **ML 113/113**, **DL 96/96 — 357 of 357, 100%, phase closed**. ML is 116
 topic rows (cross-listing inflates this beyond the doc's 113 distinct entries — `perceptron`,
 `mlp`, `backpropagation` and five more are each counted once here and once again wherever their
-owning section also lists them), DL 81, NLP 75, RL 74. Browsable topics across the app: **468**,
+owning section also lists them), DL 91, NLP 75, RL 74. Browsable topics across the app: **477**,
 which is what `DataStructuresTopics + AlgorithmsTopics + the four AI sections` actually sum to — the
 "taxonomy 200 → N of 426" running tally this table used to carry had drifted from the lists by two
 dozen, so it has been dropped in favour of the measured figure.
@@ -1164,10 +1187,56 @@ VAE · DCGAN · CycleGAN · StyleGAN · Stable Diffusion Architecture · Neural 
 ring→noise→ring frame builder extends to the latent/conditioning story), `NeuralNetPlayer`
 (generator/discriminator alternation, cycle-consistency loop).
 
-**C8 · Optimizers & Losses** — 10 topics
-Momentum · AdaGrad · RMSprop · Adam · AdamW · LR Schedulers · Cross-Entropy · BCE · Hinge · KL
-*Sims:* `RegressionExplorer` (optimizer paths racing across the same loss surface — the single most
-legible comparison in the set), plus loss-curve plots per loss function.
+**C8 · Optimizers & Training** — 10 topics into a new `dl_optimizers` — **Done**
+Momentum · AdaGrad · RMSprop · Adam · AdamW · Learning Rate Schedulers · Cross-Entropy Loss ·
+Binary Cross-Entropy · Hinge Loss · Kullback-Leibler (KL) Divergence
+
+The plan's own sim suggestion (`RegressionExplorer`, an interactive slider-driven widget) turned out
+to be the wrong fit once the batch was actually built — the point isn't a slider a reader drags, it's
+a specific, real trajectory or identity computed once and narrated frame by frame, which is exactly
+what `NeuralNetPlayer` already does for every other optimizer-adjacent topic in DL (`gradient_descent_variants`,
+`log_loss`, `hinge_loss`). No new widget — the thirteenth batch in a row to land on one that already
+existed. New `OptimizerMath.kt` + `OptimizerMathTest.kt` (18 tests).
+
+`gradient_descent_variants` moves in from the retired `dl_fundamentals`. `transfer_learning`, that
+category's other tenant, does not move to `dl_optimizers` — it isn't an optimizer or a loss — and
+goes to `dl_cnn` instead, where the prerequisite graph already pointed it (`"transfer_learning" to
+listOf("cnn")`, written back in the Track C batches and never touched since). `dl_fundamentals` is
+then deleted outright from `DeepLearningCategories.kt`, not merely left with zero topics —
+`CategoryIntegrityTest`'s "no category is empty" rule applies exactly as much to a category losing
+its last topic as to a new one arriving without any.
+
+Binary Cross-Entropy and Hinge Loss are cross-listed from `ml_metrics`'s existing `log_loss` and
+`hinge_loss` rather than given new ids: the DL doc's "Binary Cross-Entropy" entry is, formula for
+formula, exactly what `log_loss` already computes (`-1/n Σ [y ln p + (1-y) ln(1-p)]`, and its own
+first application card already reads "the loss neural nets ... actually minimize"), and the same is
+true of `hinge_loss`'s max-margin formula for the DL "Hinge Loss" entry. This is the same move the
+doc's own "Cross-listed with ML" notes describe for `perceptron`, `attention` and `gradient_descent_variants`
+— duplicating the content under a second id would be two copies of one formula, not two topics.
+
+Every other lab is genuinely new math, and three of the six turned out to hold real trade-offs or
+identities rather than the intuitive version the plan implied. Momentum's beta sweep on the same
+ill-conditioned bowl `gradient_descent_variants` runs picked a clean winner (beta=0.9, loss 0.0070)
+with beta=0.99 overshooting past even beta=0.5's result (0.2416) — more momentum is not more
+optimizer. AdaGrad and RMSprop share one dense/sparse gradient stream: RMSprop fixes AdaGrad's
+monotonic stall (rate flat at 0.500 through 2,000 steps against AdaGrad's 0.0112, a straight
+lr/√t identity) but keeps less of AdaGrad's own rare-feature boost (1.28x against 1.58x) because an
+EMA forgets between firings where a running sum never does. Adam's bias correction is an *exact*
+identity on a constant gradient — corrected ratio 1.000 at every single step, not just
+asymptotically — against an uncorrected ratio that swings to 6.569 before settling near the same
+place. AdamW's decoupled decay is exactly equal (ratio 1.000) across two parameters with
+gradient histories 100x apart in accumulated variance, where folding decay into the gradient
+(L2-in-Adam) decays them 10x apart from the identical λ. Learning-rate schedulers turned into a
+two-sided finding neither half of which the plan anticipated: on a clean, noise-free bowl, constant
+and step-decay actually *beat* cosine and warmup+cosine (0.0453/0.0398 against 0.0553/0.0574) —
+decay only pays off once a persistent per-step disturbance gives it a noise floor to shrink, where it
+wins 6.1x, close to the (lr ratio)² = 6.25 the floor's own scaling law predicts. Cross-Entropy Loss's
+p−y gradient checked out exact against softmax's own Jacobian (max difference 0.0), and KL
+Divergence's forward/reverse Gaussian fits landed on the textbook mode-covering/mode-seeking split —
+with the reverse fit's own reverse-KL cost (0.6906) higher than the forward fit's own forward-KL cost
+(0.4685), even though the reverse fit looks like the tighter match.
+
+Closes DL's doc coverage to **96/96 — complete**, which closes the whole phase: **357 of 357 (100%)**.
 
 **C9 · Regularization + Specialized/Graph Networks** — 10 topics — **Done**
 Data Augmentation · Early Stopping · Layer Normalization · Group Normalization · Siamese Networks ·
@@ -1635,13 +1704,14 @@ number closed no doc entry, which is worth noticing at the time rather than at t
 ## Suggested order
 
 ~~A1 → A2~~ → ~~B1 → B2 → B3 → B4 → B5~~ → ~~guards~~ → ~~B6 → B7 → B8 → B9~~ → ~~B10~~ → ~~C1 → C2~~
-→ ~~**`FeatureMapPlayer`** → C3 → C4 → C5 → C6 → C7~~ → C8 → ~~C9~~ → ~~D1~~ → ~~D2~~ → ~~D3~~ → ~~D4~~ → ~~D5~~ → ~~D6~~.
+→ ~~**`FeatureMapPlayer`** → C3 → C4 → C5 → C6 → C7~~ → ~~C8~~ → ~~C9~~ → ~~D1~~ → ~~D2~~ → ~~D3~~ → ~~D4~~ → ~~D5~~ → ~~D6~~.
 
-**Only C8 is left — the phase's last batch.** Tracks A, B and D are fully closed. C9 landed before
-C8 — the second deliberate intra-track reordering this phase, after C1 before B8–B10 — since the two
-batches have no dependency on each other (optimizers versus regularization/specialized) and C9 was
-the one the user asked for. B10 then landed after C9, closing Track B, again at the user's direction
-and again harmlessly — B10 and C8 have no dependency on each other either.
+**All 28 batches are done — the phase is closed.** C9 landed before C8 — the second deliberate
+intra-track reordering this phase, after C1 before B8–B10 — since the two batches have no dependency
+on each other (regularization/specialized versus optimizers) and C9 was the one the user asked for
+first. B10 then landed after C9, closing Track B, again at the user's direction and again harmlessly
+— B10 and C8 had no dependency on each other either. C8 landed last, exactly where the order always
+put it.
 
 Struck-through batches are done. The guards step landed with B6 rather than before it, in the same
 session. The order was then broken deliberately four times, all at the user's direction and all
@@ -1661,16 +1731,16 @@ Per batch: `./gradlew testDebugUnitTest` (coverage + taxonomy + category guards)
 `./gradlew assembleDebug` and a manual walk of the touched category screen — list renders, every row
 opens, sim plays, premium rows gate.
 
-**Outstanding:** the automated half has run green on every batch (**537 unit tests at B10**, plus
-`assembleDebug`), but the **manual emulator walk has not been done for D1–D6, C7, C9, or B10**. Those
-nine batches added ten NLP categories, three DL categories and two ML categories, retired
-`dl_architectures` and `ml_supervised`, moved fourteen topics between categories, and added
-seventy detail screens — all of it guarded against broken content, unresolvable links, and frame
-builders that throw, none of it actually looked at on a device. **Track D is now finished and this
-walk never happened**, so the "before Track D finishes" deadline this paragraph used to carry has
-passed. It is the phase's largest unverified surface by a wide margin, and it no longer grows by
-much — only C8 adds to it now, and the phase ends there. Worth one session with the emulator before
-or right after C8: open each new category, confirm the reading-path ordering reads correctly, check
-`transfer_learning` renders free in both of its categories, and play at least one lab per widget
-(TokenStrip, TreeVisualizer, PointCloud, NeuralNet, ArrayWalk, GraphAlgorithm, BanditExplorer and
-FeatureMap all gained configs).
+**Outstanding:** the automated half has run green on every batch (**555 unit tests at C8**, plus
+`assembleDebug`), but the **manual emulator walk has not been done for D1–D6, C7, C9, B10, or C8**.
+Those ten batches added ten NLP categories, three DL categories, two ML categories and one more DL
+category (`dl_optimizers`), retired `dl_architectures`, `ml_supervised` and `dl_fundamentals`, moved
+sixteen topics between categories, and added eighty detail screens — all of it guarded against broken
+content, unresolvable links, and frame builders that throw, none of it actually looked at on a
+device. This is now the phase's single largest piece of unfinished work, and it does not close itself
+just because the topic count does: worth one session with the emulator covering every category this
+phase touched — open each one, confirm the reading-path ordering reads correctly, check
+`transfer_learning` renders free in both `dl_cnn` and `nlp_finetuning`, check `log_loss` and
+`hinge_loss` render correctly under their DL-side names (Binary Cross-Entropy, Hinge Loss) in
+`dl_optimizers`, and play at least one lab per widget (TokenStrip, TreeVisualizer, PointCloud,
+NeuralNet, ArrayWalk, GraphAlgorithm, BanditExplorer and FeatureMap all gained configs).

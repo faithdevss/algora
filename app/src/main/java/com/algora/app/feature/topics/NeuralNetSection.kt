@@ -5112,6 +5112,81 @@ private val netConfigs = mapOf(
         ),
         build = ::lstmFrames,
     ),
+    // ── C8 · Optimizers & Training ────────────────────────────────────────────
+    "momentum" to NetConfig(
+        intro = "The same ill-conditioned bowl gradient_descent_variants runs, swept over beta at one fixed rate " +
+            "— where accumulating a velocity wins, and where it starts overshooting instead.",
+        legend = listOf(
+            NeutralColor to "beta = 0.5",
+            ForwardColor to "beta = 0.9",
+            BackwardColor to "beta = 0.99",
+        ),
+        build = ::momentumFrames,
+    ),
+    "adagrad" to NetConfig(
+        intro = "A dense feature and a sparse one, run 2,000 steps: the per-parameter rate that keeps the rare " +
+            "feature's boost — and never resets, so it keeps shrinking long after it should stop mattering.",
+        legend = listOf(
+            ForwardColor to "Dense feature",
+            AccentB to "Sparse feature",
+        ),
+        build = ::adaGradFrames,
+    ),
+    "rmsprop" to NetConfig(
+        intro = "The identical dense/sparse stream, with a moving average instead of a running sum — AdaGrad's " +
+            "stall is gone, and so is most of its memory for the rare feature.",
+        legend = listOf(
+            ForwardColor to "RMSprop",
+            NeutralColor to "AdaGrad",
+        ),
+        build = ::rmsPropFrames,
+    ),
+    "adam" to NetConfig(
+        intro = "One constant gradient, corrected and not: the bias-corrected step ratio is exactly right at " +
+            "every step, and the uncorrected one wanders before settling to the same place.",
+        legend = listOf(
+            ForwardColor to "Corrected",
+            BackwardColor to "Uncorrected",
+        ),
+        build = ::adamFrames,
+    ),
+    "adamw" to NetConfig(
+        intro = "Two parameters with different gradient histories, one weight-decay-only step each: L2-in-Adam " +
+            "decays them unequally, AdamW decays them by exactly the same fraction.",
+        legend = listOf(
+            BackwardColor to "L2-in-Adam",
+            ForwardColor to "AdamW",
+        ),
+        build = ::adamWFrames,
+    ),
+    "lr_schedulers" to NetConfig(
+        intro = "Decay is not free on a clean bowl — and it is exactly what a persistent disturbance needs, " +
+            "shrinking the steady-state loss floor the way lr-squared predicts.",
+        legend = listOf(
+            NeutralColor to "Constant",
+            ForwardColor to "Decayed",
+        ),
+        build = ::lrSchedulerFrames,
+    ),
+    "cross_entropy_loss" to NetConfig(
+        intro = "Softmax and cross-entropy together: the gradient by the clean formula and the same gradient the " +
+            "long way through softmax's own Jacobian, matched to the digit.",
+        legend = listOf(
+            ForwardColor to "p − y (direct)",
+            AccentB to "Via Jacobian",
+        ),
+        build = ::crossEntropyLossFrames,
+    ),
+    "kl_divergence" to NetConfig(
+        intro = "One P, one Q, both directions of the divergence — then the direction that decides whether a " +
+            "single Gaussian fit to a bimodal target covers both modes or commits to one.",
+        legend = listOf(
+            ForwardColor to "P (target)",
+            AccentB to "Forward-KL fit",
+            BackwardColor to "Reverse-KL fit",
+        ),
+        build = ::klDivergenceFrames,
+    ),
 )
 
 // ── C9 · Regularization + Specialized ────────────────────────────────────────
@@ -5392,6 +5467,339 @@ private fun dbnFrames(): List<NetFrame> {
                 "into more random weights. A greedily pretrained one already has most of the separation a " +
                 "supervised pass would otherwise have to discover from nothing.",
             readout = "${"%.0f".format(DbnLab.greedySeparation / DbnLab.randomSeparation)}x head start, before any label is used",
+        ),
+    )
+}
+
+// ── C8 · Optimizers & Training ────────────────────────────────────────────────
+
+private fun momentumFrames(): List<NetFrame> {
+    val runs = MomentumLab.runs
+    fun trajectory(beta: Double, color: Color) =
+        Curve("β=$beta", runs.getValue(beta).path.map { it[0].toFloat() to it[1].toFloat() }, color)
+
+    val shown = listOf(0.5, 0.9, 0.99)
+    val allPoints = shown.flatMap { runs.getValue(it).path }
+    val pad = 0.15f
+    val xLo = allPoints.minOf { it[0] }.toFloat() - pad
+    val xHi = allPoints.maxOf { it[0] }.toFloat() + pad
+    val yLo = allPoints.minOf { it[1] }.toFloat() - pad
+    val yHi = allPoints.maxOf { it[1] }.toFloat() + pad
+    val r5 = runs.getValue(0.5)
+    val r9 = runs.getValue(0.9)
+    val r99 = runs.getValue(0.99)
+
+    return listOf(
+        NetFrame(
+            status = "The same ill-conditioned bowl gradient_descent_variants runs, one fixed rate, beta swept. " +
+                "beta=0.5: a little accumulated velocity -- final loss ${"%.4f".format(r5.finalLoss)}.",
+            plot = CurvePlot("w1 vs w2", listOf(trajectory(0.5, NeutralColor)), xLo..xHi, yLo..yHi),
+        ),
+        NetFrame(
+            status = "beta=0.9: the consistent downhill push on the flat axis compounds instead of being paid " +
+                "one small step at a time. Final loss ${"%.5f".format(r9.finalLoss)} -- ${"%.0f".format(r5.finalLoss / r9.finalLoss)}x below beta=0.5.",
+            plot = CurvePlot("w1 vs w2", listOf(trajectory(0.5, NeutralColor), trajectory(0.9, ForwardColor)), xLo..xHi, yLo..yHi),
+        ),
+        NetFrame(
+            status = "beta=0.99, same rate: it no longer damps in 60 steps. Its first overshoot back past zero " +
+                "reaches ${"%.3f".format(r99.maxAbsW1AfterStep5)} of the starting distance -- beta=0.9's overshoot only " +
+                "reaches ${"%.3f".format(r9.maxAbsW1AfterStep5)}. Final loss ${"%.3f".format(r99.finalLoss)}, ${"%.0f".format(r99.finalLoss / r9.finalLoss)}x worse than beta=0.9.",
+            plot = CurvePlot(
+                "w1 vs w2",
+                listOf(trajectory(0.5, NeutralColor), trajectory(0.9, ForwardColor), trajectory(0.99, BackwardColor)),
+                xLo..xHi, yLo..yHi,
+            ),
+        ),
+        NetFrame(
+            status = "Final loss after 60 steps, same rate throughout every run: beta=0.9 wins by more than an " +
+                "order of magnitude over both neighbors -- beta=0.5 under-accelerates, beta=0.99 overshoots.",
+            bars = listOf(
+                NetBar(
+                    "final loss",
+                    MomentumLab.BETAS.map { runs.getValue(it).finalLoss.toFloat() },
+                    ForwardColor,
+                    MomentumLab.BETAS.map { "β=$it" },
+                ),
+            ),
+        ),
+    )
+}
+
+private fun adaGradFrames(): List<NetFrame> {
+    val history = AdaGradLab.history
+    val denseCurvePoints = history.filterIndexed { i, _ -> i % 20 == 0 }.map { it.t.toFloat() to it.effRateDense.toFloat() }
+    val at200 = AdaGradLab.at(200)
+    val at2000 = AdaGradLab.at(2000)
+
+    return listOf(
+        NetFrame(
+            status = "A dense feature (gradient magnitude 1, every step) beside a sparse one (magnitude 2, one " +
+                "step in ten). AdaGrad divides the rate by the square root of every squared gradient seen so far " +
+                "-- it never resets.",
+            plot = CurvePlot(
+                "effective rate, dense feature",
+                listOf(Curve("dense", denseCurvePoints, ForwardColor)),
+                0f..AdaGradLab.TOTAL_STEPS.toFloat(), 0f..(AdaGradLab.LR.toFloat() + 0.02f),
+            ),
+        ),
+        NetFrame(
+            status = "By step 200: the dense feature has accumulated G=${"%.0f".format(at200.gAccumDense)} (200 " +
+                "steps of magnitude-1²), the sparse one G=${"%.0f".format(at200.gAccumSparse)} (20 firings of " +
+                "magnitude-2²) -- fewer, bigger gradients still sum to less here.",
+            bars = listOf(NetBar("accumulated G", listOf(at200.gAccumDense.toFloat(), at200.gAccumSparse.toFloat()), NeutralColor, listOf("dense", "sparse"))),
+        ),
+        NetFrame(
+            status = "Which flips into the effective rate: dense settles to ${"%.4f".format(at200.effRateDense)}, " +
+                "sparse keeps ${"%.4f".format(at200.effRateSparse)} -- ${"%.2f".format(at200.effRateSparse / at200.effRateDense)}x the " +
+                "dense rate, right where AdaGrad is supposed to help a rare feature.",
+            bars = listOf(NetBar("effective rate at t=200", listOf(at200.effRateDense.toFloat(), at200.effRateSparse.toFloat()), ForwardColor, listOf("dense", "sparse"))),
+        ),
+        NetFrame(
+            status = "But the accumulator only grows. By step 2,000 the dense rate has shrunk further, to " +
+                "${"%.4f".format(at2000.effRateDense)} -- exactly lr/sqrt(t), because a constant unit gradient makes " +
+                "G=t. The rate keeps falling even after the loss it is meant to drive has flattened out.",
+            bars = listOf(NetBar("dense effective rate", listOf(at200.effRateDense.toFloat(), at2000.effRateDense.toFloat()), BackwardColor, listOf("t=200", "t=2,000"))),
+        ),
+    )
+}
+
+private fun rmsPropFrames(): List<NetFrame> {
+    val rms200 = RmsPropLab.at(200)
+    val rms2000 = RmsPropLab.at(2000)
+    val ada200 = AdaGradLab.at(200)
+    val ada2000 = AdaGradLab.at(2000)
+    val rmsCurve = RmsPropLab.history.filterIndexed { i, _ -> i % 20 == 0 }.map { it.t.toFloat() to it.effRateDense.toFloat() }
+    val adaCurve = AdaGradLab.history.filterIndexed { i, _ -> i % 20 == 0 }.map { it.t.toFloat() to it.effRateDense.toFloat() }
+
+    return listOf(
+        NetFrame(
+            status = "The identical dense/sparse stream, but the accumulator is now an exponential moving " +
+                "average (gamma=0.9) instead of a running sum -- it can go back down as well as up.",
+            plot = CurvePlot(
+                "dense effective rate: RMSprop vs AdaGrad",
+                listOf(Curve("RMSprop", rmsCurve, ForwardColor), Curve("AdaGrad", adaCurve, NeutralColor)),
+                0f..RmsPropLab.TOTAL_STEPS.toFloat(), 0f..1.6f,
+            ),
+        ),
+        NetFrame(
+            status = "By step 2,000 RMSprop's dense rate has settled at ${"%.4f".format(rms2000.effRateDense)} -- " +
+                "essentially lr itself -- and stays there. AdaGrad's has shrunk to ${"%.4f".format(ada2000.effRateDense)}, " +
+                "${"%.1f".format(rms2000.effRateDense / ada2000.effRateDense)}x smaller for the identical gradient stream.",
+            bars = listOf(NetBar("dense rate at t=2,000", listOf(rms2000.effRateDense.toFloat(), ada2000.effRateDense.toFloat()), ForwardColor, listOf("RMSprop", "AdaGrad"))),
+        ),
+        NetFrame(
+            status = "The cost: right after a sparse firing at t=200, RMSprop keeps only " +
+                "${"%.2f".format(rms200.effRateSparse / rms200.effRateDense)}x the dense rate for the sparse feature -- AdaGrad " +
+                "keeps ${"%.2f".format(ada200.effRateSparse / ada200.effRateDense)}x. The EMA forgets the sparse feature's " +
+                "boost between firings instead of accumulating it forever.",
+            bars = listOf(
+                NetBar(
+                    "sparse/dense rate ratio at t=200",
+                    listOf((rms200.effRateSparse / rms200.effRateDense).toFloat(), (ada200.effRateSparse / ada200.effRateDense).toFloat()),
+                    BackwardColor,
+                    listOf("RMSprop", "AdaGrad"),
+                ),
+            ),
+        ),
+    )
+}
+
+private fun adamFrames(): List<NetFrame> {
+    val h = AdamLab.history
+    val uncorrectedPoints = h.map { it.t.toFloat() to it.uncorrectedRatio.toFloat() }
+    val correctedPoints = h.map { it.t.toFloat() to it.correctedRatio.toFloat() }
+    val peak = h.maxBy { it.uncorrectedRatio }
+    val at1 = AdamLab.at(1)
+    val at100 = AdamLab.at(100)
+
+    return listOf(
+        NetFrame(
+            status = "A single constant gradient (g=2.0), run through Adam's two moving averages. The bias-" +
+                "corrected step ratio m̂/√v̂ is exactly ${"%.3f".format(at1.correctedRatio)} at step 1 and every step " +
+                "after -- an identity, not an approximation, because the correction exactly recovers a constant " +
+                "input at any t.",
+            plot = CurvePlot(
+                "step ratio: corrected vs uncorrected",
+                listOf(Curve("corrected", correctedPoints, ForwardColor), Curve("uncorrected", uncorrectedPoints, BackwardColor)),
+                0f..AdamLab.TOTAL_STEPS.toFloat(), 0f..(peak.uncorrectedRatio.toFloat() + 0.5f),
+            ),
+        ),
+        NetFrame(
+            status = "Without correction, the same ratio starts at ${"%.3f".format(at1.uncorrectedRatio)}, peaks at " +
+                "${"%.3f".format(peak.uncorrectedRatio)} around step ${peak.t}, and is still ${"%.3f".format(at100.uncorrectedRatio)} " +
+                "by step 100 -- it got to roughly the right place only after first swinging more than 3x past it.",
+            readout = "uncorrected peak ${"%.2f".format(peak.uncorrectedRatio)} at t=${peak.t} vs the true ratio of 1.000",
+        ),
+    )
+}
+
+private fun adamWFrames(): List<NetFrame> {
+    val large = AdamWLab.resultLargeV
+    val small = AdamWLab.resultSmallV
+    val vRatio = AdamWLab.vLargeHistory / AdamWLab.vSmallHistory
+
+    return listOf(
+        NetFrame(
+            status = "Two parameters, warmed up 300 steps with gradient magnitude 5 (large history) and 0.5 " +
+                "(small history) -- their second-moment accumulators land ${"%.0f".format(vRatio)}x apart. Now one " +
+                "weight-decay-only step, both methods.",
+            bars = listOf(NetBar("accumulated v", listOf(AdamWLab.vLargeHistory.toFloat(), AdamWLab.vSmallHistory.toFloat()), NeutralColor, listOf("large-v param", "small-v param"))),
+        ),
+        NetFrame(
+            status = "L2-in-Adam: the decay term is folded into the gradient, so it gets divided by √v same as " +
+                "any gradient would. The small-v parameter decays ${"%.1f".format(small.stepL2 / large.stepL2)}x faster " +
+                "than the large-v one -- identical weight decay, unequal effect.",
+            bars = listOf(NetBar("L2-in-Adam decay step", listOf(large.stepL2.toFloat(), small.stepL2.toFloat()), BackwardColor, listOf("large-v param", "small-v param"))),
+        ),
+        NetFrame(
+            status = "AdamW: the decay term never goes through v at all. Both parameters shrink by exactly " +
+                "lr·wd = ${"%.3f".format(large.stepDecoupled)} -- a ratio of ${"%.3f".format(small.stepDecoupled / large.stepDecoupled)}, " +
+                "not ${"%.1f".format(small.stepL2 / large.stepL2)}.",
+            bars = listOf(NetBar("AdamW decay step", listOf(large.stepDecoupled.toFloat(), small.stepDecoupled.toFloat()), ForwardColor, listOf("large-v param", "small-v param"))),
+        ),
+    )
+}
+
+private fun lrSchedulerFrames(): List<NetFrame> {
+    val constant = LrSchedulerLab.constantPath
+    val stepD = LrSchedulerLab.stepDecayPath
+    val cosine = LrSchedulerLab.cosinePath
+    val warm = LrSchedulerLab.warmupCosinePath
+    fun lossAt(step: Int, path: List<DoubleArray>) = LrSchedulerLab.loss(path[step])
+    fun tailCurve(path: List<DoubleArray>, label: String, color: Color) =
+        Curve(label, (10..LrSchedulerLab.STEPS).map { it.toFloat() to lossAt(it, path).toFloat() }, color)
+
+    val frames = mutableListOf<NetFrame>()
+    frames += NetFrame(
+        status = "The decaying schedules below start hot -- lr=0.09, close to the steep axis's own stability " +
+            "limit of 0.1 -- which is safe only because they immediately decay away from it. Step 1 loss: " +
+            "constant (lr=0.05, conservative throughout) ${"%.3f".format(lossAt(1, constant))}; the three that " +
+            "start at 0.09 overshoot to ${"%.2f".format(lossAt(1, stepD))}–${"%.2f".format(lossAt(1, warm))} before recovering.",
+        bars = listOf(
+            NetBar(
+                "loss after step 1",
+                listOf(lossAt(1, constant).toFloat(), lossAt(1, stepD).toFloat(), lossAt(1, cosine).toFloat(), lossAt(1, warm).toFloat()),
+                BackwardColor,
+                listOf("constant", "step decay", "cosine", "warmup+cosine"),
+            ),
+        ),
+    )
+    frames += NetFrame(
+        status = "From step 10 on, all four have recovered from that transient. Step decay (halve every 20 " +
+            "steps) actually finishes lowest here: ${"%.4f".format(lossAt(LrSchedulerLab.STEPS, stepD))} against " +
+            "constant's ${"%.4f".format(lossAt(LrSchedulerLab.STEPS, constant))}.",
+        plot = CurvePlot(
+            "loss per step, steps 10-60",
+            listOf(tailCurve(constant, "constant", NeutralColor), tailCurve(stepD, "step decay", ForwardColor)),
+            10f..LrSchedulerLab.STEPS.toFloat(), 0f..0.4f,
+        ),
+    )
+    frames += NetFrame(
+        status = "Cosine (to 0) and warmup+cosine both finish worse than constant here -- " +
+            "${"%.4f".format(lossAt(LrSchedulerLab.STEPS, cosine))} and ${"%.4f".format(lossAt(LrSchedulerLab.STEPS, warm))} -- because " +
+            "they shrink the rate before the flat axis has finished using it. Decay is not free on a landscape " +
+            "with no noise to justify it.",
+        plot = CurvePlot(
+            "loss per step, steps 10-60",
+            listOf(
+                tailCurve(constant, "constant", NeutralColor),
+                tailCurve(cosine, "cosine", BackwardColor),
+                tailCurve(warm, "warmup+cosine", AccentB),
+            ),
+            10f..LrSchedulerLab.STEPS.toFloat(), 0f..0.4f,
+        ),
+    )
+    val constAvg = LrSchedulerLab.constantTailAvg
+    val cosAvg = LrSchedulerLab.cosineTailAvg
+    val lrRatioSquared = (LrSchedulerLab.PERTURBED_LR_HIGH / LrSchedulerLab.PERTURBED_LR_LOW) *
+        (LrSchedulerLab.PERTURBED_LR_HIGH / LrSchedulerLab.PERTURBED_LR_LOW)
+    frames += NetFrame(
+        status = "Add a fixed disturbance every step instead -- standing in for gradient noise -- and the story " +
+            "flips: a rate decayed from ${"%.2f".format(LrSchedulerLab.PERTURBED_LR_HIGH)} to " +
+            "${"%.2f".format(LrSchedulerLab.PERTURBED_LR_LOW)} shrinks the steady-state loss floor to " +
+            "${"%.6f".format(cosAvg)}, against a constant rate's ${"%.6f".format(constAvg)} -- a " +
+            "${"%.1f".format(constAvg / cosAvg)}x reduction, close to the (lr ratio)² = ${"%.1f".format(lrRatioSquared)} the " +
+            "floor's own scaling law predicts.",
+        readout = "noise floor: constant ${"%.6f".format(constAvg)} vs decayed ${"%.6f".format(cosAvg)}",
+    )
+    return frames
+}
+
+private fun crossEntropyLossFrames(): List<NetFrame> {
+    val correct = CrossEntropyLab.confidentCorrect
+    val wrong = CrossEntropyLab.misclassified
+
+    return listOf(
+        NetFrame(
+            status = "Logits (2.0, 1.0, 0.1); softmax turns them into p = (${"%.3f".format(correct.p[0])}, " +
+                "${"%.3f".format(correct.p[1])}, ${"%.3f".format(correct.p[2])}). True class 0, the model's own " +
+                "favorite: loss ${"%.4f".format(correct.loss)}.",
+            bars = listOf(NetBar("softmax probabilities", correct.p.map { it.toFloat() }, ForwardColor, listOf("class 0", "class 1", "class 2"))),
+        ),
+        NetFrame(
+            status = "The gradient dL/dz by the clean formula p−y, against the same gradient computed the long " +
+                "way through softmax's own Jacobian: max difference ${"%.2e".format(correct.maxGradDiff)} -- the " +
+                "identity, not an approximation, which is why the combination is used everywhere instead of " +
+                "computing that Jacobian at every step.",
+            bars = listOf(
+                NetBar("p − y (direct)", correct.gradDirect.map { it.toFloat() }, ForwardColor, listOf("z0", "z1", "z2")),
+                NetBar("via Jacobian", correct.gradViaJacobian.map { it.toFloat() }, AccentB, listOf("z0", "z1", "z2")),
+            ),
+        ),
+        NetFrame(
+            status = "Same logits, true class 2 instead -- the one the model likes least. Loss jumps to " +
+                "${"%.4f".format(wrong.loss)}, ${"%.2f".format(wrong.loss / correct.loss)}x higher, for an identical " +
+                "prediction that just happened to be pointed the wrong way.",
+            bars = listOf(NetBar("loss", listOf(correct.loss.toFloat(), wrong.loss.toFloat()), BackwardColor, listOf("true class 0", "true class 2"))),
+        ),
+    )
+}
+
+private fun klNormalPdf(x: Float, mu: Float, sigma: Float): Float {
+    val z = (x - mu) / sigma
+    return (1f / (sigma * sqrt(2f * Math.PI.toFloat()))) * exp(-0.5f * z * z)
+}
+
+private fun klBimodalPdf(x: Float): Float = 0.5f * klNormalPdf(x, -2.5f, 0.8f) + 0.5f * klNormalPdf(x, 2.5f, 0.8f)
+
+private fun klDivergenceFrames(): List<NetFrame> {
+    val targetCurve = Curve("P (target)", sample(-6f..6f, 80) { klBimodalPdf(it) }, ForwardColor)
+    val forward = KlDivergenceLab.forwardFit
+    val reverse = KlDivergenceLab.reverseFit
+    val yHi = 0.6f
+
+    return listOf(
+        NetFrame(
+            status = "P=(0.5, 0.3, 0.15, 0.05), Q=uniform. KL(P‖Q)=${"%.4f".format(KlDivergenceLab.klPQ)}, " +
+                "KL(Q‖P)=${"%.4f".format(KlDivergenceLab.klQP)} -- same two distributions, order swapped, different " +
+                "number. Not a distance.",
+            bars = listOf(NetBar("KL divergence", listOf(KlDivergenceLab.klPQ.toFloat(), KlDivergenceLab.klQP.toFloat()), ForwardColor, listOf("P‖Q", "Q‖P"))),
+        ),
+        NetFrame(
+            status = "And the identity cross-entropy(P,Q) = entropy(P) + KL(P‖Q): ${"%.4f".format(KlDivergenceLab.entropyP)} " +
+                "+ ${"%.4f".format(KlDivergenceLab.klPQ)} = ${"%.4f".format(KlDivergenceLab.entropyP + KlDivergenceLab.klPQ)}, matching " +
+                "cross-entropy computed directly: ${"%.4f".format(KlDivergenceLab.crossEntropyPQ)}.",
+            readout = "H(P) + KL(P‖Q) = ${"%.4f".format(KlDivergenceLab.entropyP + KlDivergenceLab.klPQ)} — matches CE(P,Q) exactly",
+        ),
+        NetFrame(
+            status = "A bimodal target, fit by a single Gaussian, grid-searched in each direction. Forward " +
+                "KL(P‖Q) is minimized by μ=${"%.1f".format(forward.mu)}, σ=${"%.1f".format(forward.sigma)} -- wide, covering " +
+                "both modes at once instead of committing to either.",
+            plot = CurvePlot(
+                "target vs forward-KL fit",
+                listOf(targetCurve, Curve("forward-KL fit", sample(-6f..6f, 80) { klNormalPdf(it, forward.mu.toFloat(), forward.sigma.toFloat()) }, AccentB)),
+                -6f..6f, 0f..yHi,
+            ),
+        ),
+        NetFrame(
+            status = "Reverse KL(Q‖P) is minimized by μ=${"%.1f".format(reverse.mu)}, σ=${"%.1f".format(reverse.sigma)} instead " +
+                "-- narrow, locked onto a single mode exactly -- and it costs more reverse-KL (${"%.4f".format(reverse.divergence)}) " +
+                "than the forward fit costs forward-KL (${"%.4f".format(forward.divergence)}), even though it looks like the tighter fit.",
+            plot = CurvePlot(
+                "target vs reverse-KL fit",
+                listOf(targetCurve, Curve("reverse-KL fit", sample(-6f..6f, 80) { klNormalPdf(it, reverse.mu.toFloat(), reverse.sigma.toFloat()) }, BackwardColor)),
+                -6f..6f, 0f..yHi,
+            ),
         ),
     )
 }

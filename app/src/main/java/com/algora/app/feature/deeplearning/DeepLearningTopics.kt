@@ -34,7 +34,7 @@ private val transformers = DeepLearningCategories.transformers
 private val generative = DeepLearningCategories.generative
 private val regularization = DeepLearningCategories.regularization
 private val specialized = DeepLearningCategories.specialized
-private val fundamentals = DeepLearningCategories.fundamentals
+private val optimizers = DeepLearningCategories.optimizers
 
 // The doc's Neural Network Basics block, in full. Ordered as a reading path rather than by when
 // each topic was written: what a neuron is, what one artificial unit can do, what a layer of them
@@ -93,6 +93,10 @@ private val cnnTopics = listOf(
     topic("mobilenet", "MobileNet (Lightweight)", convolutional, "Split filtering from mixing and the layer gets 8× cheaper.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
     topic("efficientnet", "EfficientNet", convolutional, "Depth, width and resolution scaled together by one exponent.", isPremium = true, difficulty = Difficulty.ADVANCED),
     topic("vit", "Vision Transformers (ViT)", convolutional, "An image as 196 tokens, and no convolution anywhere.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    // C8. Moved from the now-retired `dl_fundamentals` — the prerequisite graph already pointed
+    // `transfer_learning` at `cnn` (pretrained ImageNet backbones are where this is actually taught),
+    // so the edge existed before the category did.
+    topic("transfer_learning", "Transfer Learning", convolutional, "Reuse a pretrained network's features and retrain only the head.", difficulty = Difficulty.INTERMEDIATE),
 )
 
 // The doc's Object Detection & Vision Tasks block in full. Ordered as the history went, because
@@ -144,11 +148,29 @@ private val transformerTopics = listOf(
     topic("hf_tokenizers", "Hugging Face Tokenizers", transformers, "BPE, WordPiece and Unigram trained side by side on one corpus.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
 )
 
-private val fundamentalsTopics = listOf(
-    topic("gradient_descent_variants", "Gradient Descent Variants", fundamentals, "SGD, Momentum, RMSProp, Adam and friends.", isPremium = true),
-    // D6 cross-lists this into `nlp_finetuning`, where it is that category's free entry because the
-    // NLP doc carries no lock on it. One id cannot be gated two ways, so this row is free too.
-    topic("transfer_learning", "Transfer Learning", fundamentals, "Reuse a pretrained network's features and retrain only the head.", difficulty = Difficulty.INTERMEDIATE),
+// C8 · the doc's Optimizers & Training block in full, and the phase's last batch. `gradient_descent_variants`
+// moves in from the retired `dl_fundamentals`; `log_loss` and `hinge_loss` cross-list from ML's
+// `ml_metrics` for the same reason `attention` cross-lists from NLP — the DL doc's "Binary
+// Cross-Entropy" and "Hinge Loss" entries are the same loss functions ml_metrics already covers in
+// full (log_loss's own first application card already names it "the loss neural nets ... actually
+// minimize"), and duplicating that content under a new id would just be two copies of one formula.
+// Ordered as training is actually built up: plain gradient descent, then the three ways to adapt the
+// step (accumulate a velocity, accumulate then forget squared gradients, combine both with bias
+// correction), then Adam's own follow-up fix, then the schedule laid on top of whichever optimizer is
+// chosen, then the four losses that optimizer is minimizing in the first place.
+private val optimizerTopics = listOf(
+    topic("gradient_descent_variants", "Gradient Descent Variants", optimizers, "SGD, Momentum, RMSProp, Adam and friends.", isPremium = true),
+    topic("momentum", "Momentum", optimizers, "Accumulate a velocity instead of following the instantaneous gradient alone.", difficulty = Difficulty.BEGINNER),
+    topic("adagrad", "AdaGrad", optimizers, "A per-parameter rate that shrinks with every gradient it has ever seen.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("rmsprop", "RMSprop", optimizers, "AdaGrad's accumulator replaced by a moving average, so the rate stops decaying to zero.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("adam", "Adam (Adaptive Moment Estimation)", optimizers, "Momentum and RMSprop combined, with a correction that matters most in the first few steps.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("adamw", "AdamW (Decoupled Weight Decay)", optimizers, "Weight decay pulled out of the gradient entirely, so it stops scaling with a parameter's own history.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("lr_schedulers", "Learning Rate Schedulers", optimizers, "The rate as a function of step — and the noise floor it exists to shrink.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("cross_entropy_loss", "Cross-Entropy Loss", optimizers, "Softmax's partner: a gradient with respect to the logits that is exactly prediction minus label.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    // Cross-listed from `ml_metrics` — same id, same content, second Topic instance for this section.
+    topic("log_loss", "Binary Cross-Entropy", optimizers, "The two-class loss a sigmoid output layer actually minimizes.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("hinge_loss", "Hinge Loss", optimizers, "Zero past the margin — the loss that stops asking an already-correct output to move further.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("kl_divergence", "Kullback-Leibler (KL) Divergence", optimizers, "Not a distance — asymmetric, and the direction minimized decides whether a fit covers every mode or commits to one.", isPremium = true, difficulty = Difficulty.ADVANCED),
 )
 
 // The doc's Regularization Techniques block in full, led by `regularization` and `dropout` moved
@@ -205,7 +227,7 @@ private val generativeTopics = listOf(
 
 object DeepLearningTopics {
     val topics: List<Topic> = basicsTopics + activationTopics + cnnTopics + detectionTopics +
-        rnnTopics + transformerTopics + generativeTopics + regularizationTopics + specializedTopics + fundamentalsTopics
+        rnnTopics + transformerTopics + generativeTopics + regularizationTopics + specializedTopics + optimizerTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }

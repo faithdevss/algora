@@ -11,11 +11,10 @@ import org.junit.Test
 /**
  * Makes `docs/topics.ai.md` executable, the way [AlgoTaxonomyCoverageTest] does for the DSA doc.
  *
- * The difference is that the AI doc is *not yet* covered. Phase 9 is authoring its way through 226
- * missing topics, so this map is deliberately partial: an entry with no topic behind it maps to an
- * empty list, and `covered doc entries` is a number this test pins. Every batch that lands has to
- * move that number, which turns the phase's headline question — "how much of the doc do we ship?" —
- * from a hand recount in a markdown table into a test result.
+ * Phase 9 authored its way through 226 missing topics across 28 batches (A1 through D6, C8 last),
+ * so every one of the doc's 357 entries now maps to a topic id — `covered doc entries` is a number
+ * this test still pins, at its final value, so a future edit that silently drops coverage is caught
+ * the same way an in-progress batch that forgot to move the ratchet would have been.
  *
  * Keys are the doc's own `#` sections, `**bold**` headings and entry names, verbatim, so this file
  * can be diffed against the doc by eye. Section nesting is not decoration: the doc reuses the
@@ -280,16 +279,16 @@ class AiTaxonomyCoverageTest {
             ),
             "Optimizers & Training" to linkedMapOf(
                 "Gradient Descent (Batch/Mini/Stochastic)" to listOf("gradient_descent_variants"),
-                "Momentum" to emptyList(),                              // C8
-                "AdaGrad" to emptyList(),                               // C8
-                "RMSprop" to emptyList(),                               // C8
-                "Adam (Adaptive Moment Est.)" to emptyList(),           // C8
-                "AdamW (Weight Decay)" to emptyList(),                  // C8
-                "Learning Rate Schedulers" to emptyList(),              // C8
-                "Cross-Entropy Loss" to emptyList(),                    // C8
-                "Binary Cross-Entropy" to emptyList(),                  // C8
-                "Hinge Loss" to emptyList(),                            // C8
-                "Kullback-Leibler (KL) Divergence" to emptyList(),      // C8
+                "Momentum" to listOf("momentum"),
+                "AdaGrad" to listOf("adagrad"),
+                "RMSprop" to listOf("rmsprop"),
+                "Adam (Adaptive Moment Est.)" to listOf("adam"),
+                "AdamW (Weight Decay)" to listOf("adamw"),
+                "Learning Rate Schedulers" to listOf("lr_schedulers"),
+                "Cross-Entropy Loss" to listOf("cross_entropy_loss"),
+                "Binary Cross-Entropy" to listOf("log_loss"),
+                "Hinge Loss" to listOf("hinge_loss"),
+                "Kullback-Leibler (KL) Divergence" to listOf("kl_divergence"),
             ),
             "Regularization Techniques" to linkedMapOf(
                 "L1 / L2 Regularization" to listOf("regularization"),
@@ -517,8 +516,8 @@ class AiTaxonomyCoverageTest {
     private val expectedEntryCount = 357
 
     // The ratchet. Move it when a batch lands; a batch that does not move it did not close any doc
-    // entry, which is worth noticing.
-    private val expectedCoveredCount = 347
+    // entry, which is worth noticing. C8 was the phase's last open batch — 357 of 357 is full coverage.
+    private val expectedCoveredCount = 357
 
     // Doc entries the app answers from the DSA taxonomy rather than an AI section. Deliberate reuse
     // — the alternative is a duplicate page — but small and explicit, so it cannot grow by accident.

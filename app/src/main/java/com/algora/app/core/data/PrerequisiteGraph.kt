@@ -210,6 +210,18 @@ object PrerequisiteGraph {
         "dropout" to listOf("neural_network_basics", "regularization"),
         "transfer_learning" to listOf("cnn"),
         "diffusion_models" to listOf("neural_network_basics"),
+        // DL optimizers: momentum first, then the two adaptive-rate ideas run in parallel before
+        // Adam combines them, then Adam's own follow-up fix, then the schedule laid on top.
+        "momentum" to listOf("gradient_descent_variants"),
+        "adagrad" to listOf("gradient_descent_variants"),
+        "rmsprop" to listOf("adagrad"),
+        "adam" to listOf("momentum", "rmsprop"),
+        "adamw" to listOf("adam", "regularization"),
+        "lr_schedulers" to listOf("gradient_descent_variants"),
+        // DL losses: cross-entropy presupposes the output layer it's paired with; KL presupposes
+        // the entropy/cross-entropy vocabulary it's defined against.
+        "cross_entropy_loss" to listOf("softmax"),
+        "kl_divergence" to listOf("cross_entropy_loss"),
         // RL: the vocabulary comes before the quantities defined over it, which come before control
         "state_action_reward" to listOf("agent_environment"),
         "policy" to listOf("state_action_reward"),
