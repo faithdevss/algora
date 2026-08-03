@@ -65,7 +65,9 @@ internal val expressionStackPatternContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.StackVisualizer,
+    // StackVisualizer is the generic push/pop lab with no per-topic configuration, so it cannot show
+    // an input being consumed. ArrayWalkPlayer walks the tokens with the context stack as its aux row.
+    simulation = SimulationType.ArrayWalkPlayer,
     applications = listOf(
         ApplicationCard("code", 0xFF3B82F6, "Expression Evaluation", "Calculators, shunting-yard conversion and postfix evaluation."),
         ApplicationCard("browser", 0xFF10B981, "Markup & Paths", "HTML/JSON tag matching and simplifying Unix paths with .. segments."),

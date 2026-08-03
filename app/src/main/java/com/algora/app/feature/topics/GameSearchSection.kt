@@ -949,7 +949,92 @@ private val searchLegend = listOf(
     BadTone to "Cost / error",
 )
 
+// ── Interview-prep pattern guide ─────────────────────────────────────────────
+// Stone game: dp[i][j] is the score *difference* the mover can force on piles i..j. Dropping the turn
+// flag in favour of a difference is what collapses two recurrences into one.
+private val stonePiles = listOf(3, 9, 1, 2)
+
+private fun gameTheoryDpFrames(): List<GsFrame> {
+    val n = stonePiles.size
+    val dp = Array(n) { IntArray(n) }
+    val frames = mutableListOf<GsFrame>()
+
+    frames += GsFrame(
+        status = "Piles ${stonePiles.joinToString(", ")}, players alternate taking from either end, both play " +
+            "optimally. Modelling the opponent as adversarial rather than passive is the entire difference from " +
+            "ordinary DP — and dp[i][j] holds the score *difference* the mover can force, not their score.",
+        bars = listOf(
+            GsBar("piles", stonePiles.map { it.toFloat() }, PlainTone, stonePiles.map { it.toString() }),
+        ),
+        readout = "total on the table = ${stonePiles.sum()}",
+    )
+
+    for (i in 0 until n) dp[i][i] = stonePiles[i]
+    frames += GsFrame(
+        status = "Single piles are the base case: with one pile left the mover takes it, so the difference is the " +
+            "pile itself. Every longer range will be built from shorter ones, so ranges are filled by length.",
+        bars = listOf(
+            GsBar("length 1", (0 until n).map { dp[it][it].toFloat() }, MainTone, (0 until n).map { "$it..$it" }),
+        ),
+        readout = "base case filled",
+    )
+
+    for (len in 2..n) {
+        val ranges = (0..n - len).map { it to it + len - 1 }
+        ranges.forEach { (i, j) ->
+            val takeLeft = stonePiles[i] - dp[i + 1][j]
+            val takeRight = stonePiles[j] - dp[i][j - 1]
+            dp[i][j] = maxOf(takeLeft, takeRight)
+        }
+        val detail = ranges.joinToString("; ") { (i, j) ->
+            "[$i..$j]: take ${stonePiles[i]} → ${stonePiles[i]} − ${dp[i + 1][j]} = ${stonePiles[i] - dp[i + 1][j]}, " +
+                "take ${stonePiles[j]} → ${stonePiles[j]} − ${dp[i][j - 1]} = ${stonePiles[j] - dp[i][j - 1]}"
+        }
+        frames += GsFrame(
+            status = "Length $len. Each entry is max over the two ends of (gain − best(rest)) — the subtraction *is* " +
+                "the opponent: whatever they can force on the remainder is a loss to the mover. $detail.",
+            bars = listOf(
+                GsBar(
+                    "length $len",
+                    ranges.map { (i, j) -> dp[i][j].toFloat() },
+                    MainTone,
+                    ranges.map { (i, j) -> "$i..$j" },
+                ),
+            ),
+            readout = ranges.joinToString(" · ") { (i, j) -> "dp[$i][$j] = ${dp[i][j]}" },
+        )
+    }
+
+    val answer = dp[0][n - 1]
+    frames += GsFrame(
+        status = "dp[0][${n - 1}] = $answer > 0, so the first player wins by $answer. Note the trap: taking the " +
+            "larger visible end first (${stonePiles.first()} vs ${stonePiles.last()} — here the greedy grab is the " +
+            "3) loses, because it hands over the 9. O(n²) states, O(1) per state, and no turn flag anywhere.",
+        bars = listOf(
+            GsBar("piles", stonePiles.map { it.toFloat() }, PlainTone, stonePiles.map { it.toString() }),
+            GsBar(
+                "first-player margin",
+                listOf(answer.toFloat()),
+                if (answer > 0) GoodTone else BadTone,
+                listOf("dp[0][${n - 1}]"),
+            ),
+        ),
+        readout = "first player wins by $answer",
+    )
+    return frames
+}
+
 private val gsConfigs = mapOf(
+    "game_theory_dp_pattern" to GsConfig(
+        intro = "The stone game filled by range length. Bars are dp[i][j] — the score difference the mover can " +
+            "force — so a negative bar is a range you do not want to be handed.",
+        legend = listOf(
+            MainTone to "dp[i][j]",
+            GoodTone to "Mover ahead",
+            BadTone to "Mover behind",
+        ),
+        build = ::gameTheoryDpFrames,
+    ),
     "minimax" to GsConfig(
         intro = "A real tic-tac-toe position searched three ways — plain minimax, alpha-beta, and alpha-beta with " +
             "move ordering — with the node counts measured, not quoted.",
@@ -1011,6 +1096,28 @@ private fun gsConfigFor(topicId: String): GsConfig = gsConfigs[topicId] ?: gsCon
 // Exposed so PatternCoverageTest can tell a topic that configured this widget from one that only
 // inherits the fallback above.
 internal val gameSearchTopicIds: Set<String> get() = gsConfigs.keys
+
+/** Boards are 9 squares, bar captions have to line up with their bars, and plots have to stay in range. */
+internal fun gameSearchFrameCount(topicId: String): Int {
+    val frames = gsConfigFor(topicId).build()
+    frames.forEachIndexed { index, frame ->
+        require(frame.status.isNotBlank()) { "$topicId frame $index has no status line" }
+        frame.board?.let { require(it.size == 9) { "$topicId frame $index has a ${it.size}-square board" } }
+        frame.boardMarks.keys.forEach {
+            require(it in 0..8) { "$topicId frame $index marks square $it" }
+        }
+        frame.bars.forEach { bar ->
+            require(bar.values.isNotEmpty()) { "$topicId frame $index has an empty bar row \"${bar.label}\"" }
+            require(bar.captions.isEmpty() || bar.captions.size == bar.values.size) {
+                "$topicId frame $index bar \"${bar.label}\" has ${bar.captions.size} captions for ${bar.values.size} bars"
+            }
+        }
+        frame.plot?.curves?.forEach { curve ->
+            require(curve.values.isNotEmpty()) { "$topicId frame $index plots an empty curve \"${curve.label}\"" }
+        }
+    }
+    return frames.size
+}
 
 // ── UI ───────────────────────────────────────────────────────────────────────
 

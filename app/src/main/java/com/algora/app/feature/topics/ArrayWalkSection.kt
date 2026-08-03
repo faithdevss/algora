@@ -3921,6 +3921,89 @@ private fun greedyIntervalsFrames(): List<WalkFrame> {
     return frames
 }
 
+// Decoding "3[a2[bc]]" — the nesting problem in miniature. Each '[' pushes the context that must be
+// restored, each ']' pops one and folds the finished piece into its parent.
+private fun expressionStackFrames(): List<WalkFrame> {
+    val source = "3[a2[bc]]"
+    val frames = mutableListOf<WalkFrame>()
+    val countStack = ArrayDeque<Int>()
+    val textStack = ArrayDeque<String>()
+    var current = ""
+    var number = 0
+
+    fun stackRow() = countStack.indices.map { i ->
+        CellView("${countStack.elementAt(i)}×\"${textStack.elementAt(i)}\"", CellMark.WINDOW)
+    }.ifEmpty { listOf(CellView("empty", CellMark.DIM)) }
+
+    fun cells(at: Int) = source.mapIndexed { i, c ->
+        CellView(
+            c.toString(),
+            when {
+                i == at -> CellMark.ACTIVE
+                i < at -> CellMark.DONE
+                else -> CellMark.IDLE
+            },
+        )
+    }
+
+    frames += WalkFrame(
+        status = "Decode \"$source\". Nesting is the signal: a stack holds exactly what a recursive parser would " +
+            "keep in its call frames — the repeat count and the text built so far — without the depth limit.",
+        cells = source.map { CellView(it.toString()) },
+        aux = stackRow(),
+        auxLabel = "stack: pending count × text",
+    )
+
+    source.forEachIndexed { i, c ->
+        val status: String
+        when {
+            c.isDigit() -> {
+                number = number * 10 + (c - '0')
+                status = "'$c' is a digit — accumulate it into the repeat count ($number). Multi-digit counts are " +
+                    "why this is accumulated rather than read once."
+            }
+            c == '[' -> {
+                countStack.addLast(number)
+                textStack.addLast(current)
+                number = 0
+                current = ""
+                status = "'[' opens a context: push the count ${countStack.last()} and the text built so far " +
+                    "(\"${textStack.last()}\"), then start fresh. Pushing *before* resetting is the whole trick."
+            }
+            c == ']' -> {
+                val repeat = countStack.removeLast()
+                val parent = textStack.removeLast()
+                current = parent + current.repeat(repeat)
+                status = "']' closes it: pop the count $repeat and the parent text, repeat the finished piece, and " +
+                    "fold it back into the parent. current = \"$current\"."
+            }
+            else -> {
+                current += c
+                status = "'$c' is literal — append it to the piece being built at this depth: \"$current\"."
+            }
+        }
+        frames += WalkFrame(
+            status = status,
+            cells = cells(i),
+            pointers = mapOf(i to "i"),
+            aux = stackRow(),
+            auxLabel = "stack: pending count × text",
+            readout = "current = \"$current\"" + if (number > 0) " · count $number" else "",
+        )
+    }
+
+    frames += WalkFrame(
+        status = "\"$current\" — ${current.length} characters, one pass, and the stack never held more than the " +
+            "nesting depth. Balanced brackets, directory paths and arithmetic with parentheses are the same loop " +
+            "with a different thing pushed.",
+        cells = current.map { CellView(it.toString(), CellMark.RESULT) },
+        aux = stackRow(),
+        auxLabel = "stack: pending count × text",
+        readout = "decoded = \"$current\"",
+    )
+    return frames
+}
+
 private fun heapSchedulingFrames(): List<WalkFrame> {
     val meetings = listOf(0 to 30, 5 to 10, 6 to 12, 15 to 20, 25 to 35)
     val sorted = meetings.sortedBy { it.first }
@@ -5417,6 +5500,16 @@ private val walkConfigs = mapOf(
             ResultFill to "Final set",
         ),
         build = ::greedyIntervalsFrames,
+    ),
+    "expression_stack_pattern" to WalkConfig(
+        intro = "Decoding \"3[a2[bc]]\". The aux row is the stack of suspended contexts — each '[' pushes one, each " +
+            "']' pops one and folds the finished piece into its parent.",
+        legend = listOf(
+            ActiveFill to "Current token",
+            WindowFill to "Suspended context",
+            ResultFill to "Decoded output",
+        ),
+        build = ::expressionStackFrames,
     ),
     "heap_scheduling_pattern" to WalkConfig(
         intro = "Meeting rooms: sorted by start, with a min-heap of end times underneath. The heap's size is the " +

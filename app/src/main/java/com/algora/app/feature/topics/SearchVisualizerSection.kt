@@ -206,7 +206,94 @@ private fun exponentialSearchFrames(): List<SearchFrame> {
     return frames
 }
 
+// ── Interview-prep pattern guide ─────────────────────────────────────────────
+// Rotated sorted array: the array is not sorted, but one half of every window always is, and that is
+// enough to keep discarding half.
+private val rotatedInput = listOf(27, 34, 42, 50, 61, 73, 88, 3, 8, 15)
+private const val ROTATED_TARGET = 8
+
+private fun rotatedSearchFrames(): List<SearchFrame> {
+    val frames = mutableListOf<SearchFrame>()
+    var lo = 0
+    var hi = rotatedInput.lastIndex
+    var probes = 0
+    val eliminated = mutableSetOf<Int>()
+
+    frames.add(
+        SearchFrame(
+            null, (lo..hi).toSet(), emptySet(), null,
+            "The array is sorted, then rotated — so `values[mid] > target` no longer tells you which way to go. " +
+                "What survives the rotation: at least one side of any window is still sorted.",
+        ),
+    )
+
+    while (lo <= hi) {
+        val mid = (lo + hi) / 2
+        val value = rotatedInput[mid]
+        probes++
+        if (value == ROTATED_TARGET) {
+            frames.add(
+                SearchFrame(
+                    mid, emptySet(), eliminated.toSet(), mid,
+                    "values[$mid] = $value — found after $probes probes. Same O(log n) as an unrotated search; only " +
+                        "the branch condition changed.",
+                ),
+            )
+            return frames
+        }
+
+        val leftSorted = rotatedInput[lo] <= value
+        val inLeft = leftSorted && ROTATED_TARGET >= rotatedInput[lo] && ROTATED_TARGET < value
+        val inRight = !leftSorted && ROTATED_TARGET > value && ROTATED_TARGET <= rotatedInput[hi]
+        frames.add(
+            SearchFrame(
+                mid, (lo..hi).toSet(), eliminated.toSet(), null,
+                "lo=$lo hi=$hi, probe $mid = $value. " +
+                    if (leftSorted) {
+                        "values[$lo]=${rotatedInput[lo]} ≤ $value, so the left side is the sorted one — and " +
+                            "$ROTATED_TARGET " + (if (inLeft) "lies inside [${rotatedInput[lo]}, $value), so keep it."
+                        else "is outside [${rotatedInput[lo]}, $value), so the answer can only be on the right.")
+                    } else {
+                        "values[$lo]=${rotatedInput[lo]} > $value, so the *right* side is the sorted one — and " +
+                            "$ROTATED_TARGET " + (if (inRight) "lies inside ($value, ${rotatedInput[hi]}], so keep it."
+                        else "is outside ($value, ${rotatedInput[hi]}], so search left.")
+                    },
+            ),
+        )
+
+        if (inLeft || inRight) {
+            if (inLeft) {
+                (mid..hi).forEach { eliminated.add(it) }
+                hi = mid - 1
+            } else {
+                (lo..mid).forEach { eliminated.add(it) }
+                lo = mid + 1
+            }
+        } else if (leftSorted) {
+            (lo..mid).forEach { eliminated.add(it) }
+            lo = mid + 1
+        } else {
+            (mid..hi).forEach { eliminated.add(it) }
+            hi = mid - 1
+        }
+    }
+
+    frames.add(
+        SearchFrame(null, emptySet(), eliminated.toSet(), null, "$ROTATED_TARGET is not present — the window closed."),
+    )
+    return frames
+}
+
 private val searchConfigs = mapOf(
+    "modified_binary_search_pattern" to SearchConfig(
+        values = rotatedInput,
+        target = ROTATED_TARGET,
+        intro = "Binary search on a rotated array. Every probe first asks which half is sorted, then whether the " +
+            "target lies in that half — the same discard-half loop with one extra question. The other members of " +
+            "this family (first/last occurrence, search on the answer space) change only the same two lines.",
+        windowLabel = "Live range",
+        build = ::rotatedSearchFrames,
+    ),
     "linear_search" to SearchConfig(
         values = unsortedInput,
         target = UNSORTED_TARGET,
@@ -250,6 +337,21 @@ private fun searchConfigFor(topicId: String): SearchConfig =
 // Exposed so PatternCoverageTest can tell a topic that configured this widget from one that only
 // inherits the fallback above.
 internal val searchVisualizerTopicIds: Set<String> get() = searchConfigs.keys
+
+/** Probes, windows and hits are all indices into the config's own array; an off-array one is invisible. */
+internal fun searchFrameCount(topicId: String): Int {
+    val config = searchConfigFor(topicId)
+    val frames = config.build()
+    frames.forEachIndexed { index, frame ->
+        require(frame.status.isNotBlank()) { "$topicId frame $index has no status line" }
+        (frame.window + frame.eliminated + listOfNotNull(frame.probe, frame.found)).forEach { cell ->
+            require(cell in config.values.indices) {
+                "$topicId frame $index touches cell $cell of ${config.values.size}"
+            }
+        }
+    }
+    return frames.size
+}
 
 @Composable
 fun SearchVisualizerSection(topicId: String) {

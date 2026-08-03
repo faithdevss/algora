@@ -472,7 +472,95 @@ private fun dequeFrames(): List<LinkFrame> {
     return frames
 }
 
+// ── Interview-prep pattern guide ─────────────────────────────────────────────
+// An LRU cache is the canonical two-structure answer: the row is the doubly linked list ordered by
+// recency, and the map (not drawn, because it holds no order) supplies the O(1) handle into it.
+private fun lruCompositeFrames(): List<LinkFrame> {
+    val capacity = 3
+    val order = mutableListOf<String>()      // most-recent first
+    val frames = mutableListOf<LinkFrame>()
+
+    fun row(marks: Map<String, LinkMark> = emptyMap(), extra: List<LinkNode> = emptyList()) =
+        order.map { LinkNode(it, marks[it] ?: LinkMark.IDLE) } + extra
+
+    frames += LinkFrame(
+        nodes = listOf(LinkNode("head", LinkMark.GHOST), LinkNode("tail", LinkMark.GHOST)),
+        status = "\"get and put in O(1), evict the least recently used\" — a map alone cannot do it, because a map " +
+            "has no order. Pair it with a doubly linked list: the row below is that list, most recent on the left.",
+        backward = true,
+        readout = "capacity $capacity · size 0",
+    )
+
+    fun put(key: String) {
+        val evicted = if (key !in order && order.size == capacity) order.removeAt(order.lastIndex) else null
+        order.remove(key)
+        order.add(0, key)
+        frames += LinkFrame(
+            nodes = row(mapOf(key to LinkMark.ACTIVE)) +
+                (evicted?.let { listOf(LinkNode(it, LinkMark.GHOST)) } ?: emptyList()),
+            status = "put($key): splice the node in at the head. " +
+                if (evicted != null) {
+                    "The cache was full, so the *tail* — $evicted, least recently used by construction — is evicted. " +
+                        "The list already knows which one that is; nothing had to be searched."
+                } else {
+                    "The map now stores a reference to this node, not the value, which is what makes every later " +
+                        "touch O(1)."
+                },
+            backward = true,
+            readout = "size ${order.size} of $capacity" + (evicted?.let { " · evicted $it" } ?: ""),
+        )
+    }
+
+    fun get(key: String) {
+        val hit = key in order
+        if (hit) {
+            order.remove(key)
+            order.add(0, key)
+        }
+        frames += LinkFrame(
+            nodes = row(if (hit) mapOf(key to LinkMark.RESULT) else emptyMap()),
+            status = if (hit) {
+                "get($key) hits. The map finds the node in O(1), and because the node carries both pointers it can " +
+                    "unlink itself and move to the head in O(1) too — a singly linked list would have to walk to " +
+                    "find its predecessor, which is the whole reason the list is doubly linked."
+            } else {
+                "get($key) misses — $key was evicted earlier. The miss costs one map lookup and touches the list " +
+                    "not at all."
+            },
+            backward = true,
+            readout = if (hit) "$key moved to head" else "$key not cached",
+        )
+    }
+
+    put("A")
+    put("B")
+    put("C")
+    get("A")
+    put("D")
+    get("B")
+
+    frames += LinkFrame(
+        nodes = row(),
+        status = "Every operation touched both structures and both stayed O(1). The recipe generalises: swap the " +
+            "list for a dynamic array and you get insert / delete / getRandom in O(1) (swap-and-pop into the hole); " +
+            "swap it for a parallel stack of running minima and you get a min-stack.",
+        backward = true,
+        readout = "order: ${order.joinToString(" → ")} (most → least recent)",
+    )
+    return frames
+}
+
 private val linkConfigs = mapOf(
+    "composite_design_pattern" to LinkConfig(
+        intro = "An LRU cache as the two-structure recipe: a hash map for O(1) location, a doubly linked list for " +
+            "the recency order the map cannot hold. The list is drawn; the map is what makes reaching into it free.",
+        legend = listOf(
+            LinkActive to "Just written",
+            LinkResult to "Cache hit, moved to head",
+            LinkGhost to "Evicted / sentinel",
+        ),
+        build = ::lruCompositeFrames,
+    ),
     "deque" to LinkConfig(
         intro = "Four O(1) end operations first, then the reason the structure earns its keep: a monotonic deque " +
             "answering sliding-window maximum in one pass.",
@@ -512,6 +600,24 @@ private fun linkConfigFor(topicId: String): LinkConfig =
 // Exposed so PatternCoverageTest can tell a topic that configured this widget from one that only
 // inherits the fallback above.
 internal val linkedStructureTopicIds: Set<String> get() = linkConfigs.keys
+
+/** Express lanes are drawn per node, so a presence row shorter than the node row silently loses lanes. */
+internal fun linkedStructureFrameCount(topicId: String): Int {
+    val frames = linkConfigFor(topicId).build()
+    frames.forEachIndexed { index, frame ->
+        require(frame.nodes.isNotEmpty()) { "$topicId frame $index draws no nodes" }
+        require(frame.status.isNotBlank()) { "$topicId frame $index has no status line" }
+        frame.presence.forEachIndexed { level, row ->
+            require(row.size == frame.nodes.size) {
+                "$topicId frame $index level $level marks ${row.size} nodes but the row has ${frame.nodes.size}"
+            }
+        }
+        frame.levelFocus?.let {
+            require(it in frame.presence.indices) { "$topicId frame $index focuses level $it, which does not exist" }
+        }
+    }
+    return frames.size
+}
 
 // ── UI ───────────────────────────────────────────────────────────────────────
 

@@ -301,7 +301,82 @@ private fun mapAdtFrames(): List<HashFrame> {
     return frames
 }
 
+// ── Interview-prep pattern guide ─────────────────────────────────────────────
+// Subarrays summing to k, via a map of prefix sums. The map is not counting the input — it is
+// counting *prefixes*, which is the step that removes the inner loop.
+private val prefixCountInput = listOf(3, 4, 7, 2, -3, 1, 4, 2)
+private const val PREFIX_TARGET = 7
+
+private fun prefixCountFrames(): List<HashFrame> {
+    val buckets = 7
+    val slots = MutableList(buckets) { mutableListOf<String>() }
+    val counts = HashMap<Int, Int>()
+    val frames = mutableListOf<HashFrame>()
+
+    fun snapshot(status: String, probed: Set<Int> = emptySet(), hit: Set<Int> = emptySet(), miss: Set<Int> = emptySet()) {
+        frames.add(HashFrame(slots.map { it.toList() }, probed, hit, miss, status))
+    }
+
+    fun store(prefix: Int) {
+        val n = (counts[prefix] ?: 0) + 1
+        counts[prefix] = n
+        val index = hashOf(prefix.toString(), buckets)
+        val existing = slots[index].indexOfFirst { it.startsWith("$prefix×") }
+        if (existing >= 0) slots[index][existing] = "$prefix×$n" else slots[index].add("$prefix×$n")
+    }
+
+    store(0)
+    snapshot(
+        "Count the subarrays of ${prefixCountInput.joinToString(", ")} summing to $PREFIX_TARGET. The map holds " +
+            "*prefix sums* and how often each has occurred — seeded with 0×1, which is the empty prefix and the " +
+            "reason a subarray starting at index 0 is counted at all.",
+        hit = setOf(hashOf("0", buckets)),
+    )
+
+    var prefix = 0
+    var total = 0
+    prefixCountInput.forEachIndexed { i, value ->
+        prefix += value
+        val wanted = prefix - PREFIX_TARGET
+        val wantedIndex = hashOf(wanted.toString(), buckets)
+        val found = counts[wanted] ?: 0
+        total += found
+        snapshot(
+            "i=$i, running prefix = $prefix. A subarray ending here sums to $PREFIX_TARGET exactly when some earlier " +
+                "prefix equals $prefix − $PREFIX_TARGET = $wanted. " +
+                if (found > 0) "The map holds $wanted $found time(s) — that is $found subarray(s), found without " +
+                    "looking at a single element. Running total $total."
+                else "$wanted has never occurred, so nothing ends here.",
+            probed = setOf(wantedIndex),
+            hit = if (found > 0) setOf(wantedIndex) else emptySet(),
+            miss = if (found > 0) emptySet() else setOf(wantedIndex),
+        )
+        store(prefix)
+        snapshot(
+            "Record prefix $prefix so later indices can ask about it. Order matters: looking up before storing is " +
+                "what stops a zero-length subarray counting itself.",
+            hit = setOf(hashOf(prefix.toString(), buckets)),
+        )
+    }
+
+    snapshot(
+        "$total subarrays sum to $PREFIX_TARGET, in one pass and ${prefixCountInput.size} lookups — the O(n²) " +
+            "version recomputes every window. Swap the map's key for a character count, a remainder, or a parity " +
+            "and the same skeleton answers anagrams, divisibility and even-odd questions.",
+        hit = slots.indices.filter { slots[it].isNotEmpty() }.toSet(),
+    )
+    return frames
+}
+
 private val hashConfigs = mapOf(
+    "hash_counting_pattern" to HashConfig(
+        intro = "Subarrays summing to $PREFIX_TARGET, counted with a map of prefix sums. Each step asks the map one " +
+            "question — has this complement been seen? — which is the inner loop the pattern deletes.",
+        slotLabel = { "bucket $it" },
+        hitLabel = "Stored / matched",
+        probeLabel = "Complement looked up",
+        build = ::prefixCountFrames,
+    ),
     "hash_table" to HashConfig(
         intro = "Inserting five words into seven buckets with separate chaining, then one hit and one miss. The bucket index comes straight from the hash — no scanning.",
         slotLabel = { it.toString() },
@@ -348,6 +423,21 @@ private fun hashConfigFor(topicId: String): HashConfig =
 // Exposed so PatternCoverageTest can tell a topic that configured this widget from one that only
 // inherits the fallback above.
 internal val hashingVisualizerTopicIds: Set<String> get() = hashConfigs.keys
+
+/** Highlights are slot indices, and the slot count is whatever the frame itself declares. */
+internal fun hashingFrameCount(topicId: String): Int {
+    val frames = hashConfigFor(topicId).build()
+    frames.forEachIndexed { index, frame ->
+        require(frame.slots.isNotEmpty()) { "$topicId frame $index has no slots" }
+        require(frame.status.isNotBlank()) { "$topicId frame $index has no status line" }
+        (frame.probed + frame.hit + frame.miss).forEach { slot ->
+            require(slot in frame.slots.indices) {
+                "$topicId frame $index highlights slot $slot of ${frame.slots.size}"
+            }
+        }
+    }
+    return frames.size
+}
 
 @Composable
 fun HashingVisualizerSection(topicId: String) {

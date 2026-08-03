@@ -62,15 +62,9 @@ class PatternCoverageTest {
         SimulationType.TreeVisualizer to treeVisualizerTopicIds,
     )
 
-    // Guides still waiting for their own config, authored batch by batch. The list only shrinks —
-    // `no pending entry already has a config` fails the moment one is written and left here.
-    private val pendingConfigs = setOf(
-        "composite_design_pattern",
-        "expression_stack_pattern",
-        "game_theory_dp_pattern",
-        "hash_counting_pattern",
-        "modified_binary_search_pattern",
-    )
+    // Every pattern guide now has its own config; the set stays as the seam the batches were tracked
+    // through, and `no pending entry already has a config` keeps it honest if it is ever repopulated.
+    private val pendingConfigs = emptySet<String>()
 
     private fun hasOwnConfig(topicId: String): Boolean {
         val simulation = TopicContentProvider.get(topicId)?.simulation ?: return false

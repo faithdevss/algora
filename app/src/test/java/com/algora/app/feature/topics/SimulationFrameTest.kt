@@ -91,4 +91,20 @@ class SimulationFrameTest {
     @Test
     fun `every sorting config builds frames whose highlights are real bars`() =
         check("Sorting", sortingVisualizerTopicIds, ::sortingFrameCount)
+
+    @Test
+    fun `every search config probes inside its own array`() =
+        check("Search", searchVisualizerTopicIds, ::searchFrameCount)
+
+    @Test
+    fun `every hashing config highlights slots that exist`() =
+        check("Hashing", hashingVisualizerTopicIds, ::hashingFrameCount)
+
+    @Test
+    fun `every linked-structure config marks a lane per node`() =
+        check("LinkedStructure", linkedStructureTopicIds, ::linkedStructureFrameCount)
+
+    @Test
+    fun `every game-search config builds legal boards and labelled bars`() =
+        check("GameSearch", gameSearchTopicIds, ::gameSearchFrameCount)
 }
