@@ -70,7 +70,9 @@ internal val matrixTransformPatternContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.PathfindingGrid,
+    // PathfindingGrid has no per-cell labels, so a rotation would be invisible on it. DpGridVisualizer
+    // shows the values moving under the same coordinates.
+    simulation = SimulationType.DpGridVisualizer,
     applications = listOf(
         ApplicationCard("Image", 0xFF3B82F6, "Image Transforms", "Rotation, mirroring and transposition on a pixel buffer without a copy."),
         ApplicationCard("game", 0xFF10B981, "Board Games", "Rotating tetromino pieces or normalising board orientations."),

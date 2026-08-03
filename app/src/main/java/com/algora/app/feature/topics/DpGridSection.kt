@@ -841,7 +841,141 @@ private fun stateMachineDpPatternFrames(): List<DpFrame> {
     return bld.frames
 }
 
+private val prefix2dMatrix = listOf(
+    listOf(3, 0, 1, 4),
+    listOf(5, 6, 3, 2),
+    listOf(1, 2, 0, 1),
+)
+
+// The table is one row and column bigger than the matrix: the zero border removes every bounds check
+// from the inclusion-exclusion, which is most of what makes the query one line.
+private fun prefix2dPatternFrames(): List<DpFrame> {
+    val rows = prefix2dMatrix.size + 1
+    val cols = prefix2dMatrix[0].size + 1
+    val bld = DpBuilder(rows, cols)
+    val p = Array(rows) { IntArray(cols) }
+
+    for (i in 0 until rows) {
+        for (j in 0 until cols) {
+            if (i == 0 || j == 0) {
+                bld.fill(i, j, "0", "The border stays 0. It is not part of the matrix — it exists so the recurrence " +
+                    "below never has to test whether a neighbour is off the edge.")
+                continue
+            }
+            val v = prefix2dMatrix[i - 1][j - 1]
+            p[i][j] = v + p[i - 1][j] + p[i][j - 1] - p[i - 1][j - 1]
+            bld.fill(
+                i, j, p[i][j].toString(),
+                "P[$i][$j] = the whole rectangle from the origin to here: cell $v + above ${p[i - 1][j]} + left " +
+                    "${p[i][j - 1]} − corner ${p[i - 1][j - 1]} = ${p[i][j]}. The corner is subtracted because the " +
+                    "strip above and the strip to the left both already contain it.",
+            )
+        }
+    }
+
+    // Query: rows 1..2, cols 1..3 of the original matrix (1-based in the padded table: 2..3, 2..4).
+    val r1 = 2
+    val c1 = 2
+    val r2 = 3
+    val c2 = 4
+    val total = p[r2][c2] - p[r1 - 1][c2] - p[r2][c1 - 1] + p[r1 - 1][c1 - 1]
+    bld.trace(
+        listOf(bld.key(r2, c2), bld.key(r1 - 1, c2), bld.key(r2, c1 - 1), bld.key(r1 - 1, c1 - 1)),
+    ) { cell ->
+        when (cell) {
+            bld.key(r2, c2) -> "Query the submatrix rows 1–2, cols 1–3. Start with the big rectangle P[$r2][$c2] = ${p[r2][c2]}."
+            bld.key(r1 - 1, c2) -> "Subtract the strip above it, P[${r1 - 1}][$c2] = ${p[r1 - 1][c2]}."
+            bld.key(r2, c1 - 1) -> "Subtract the strip to its left, P[$r2][${c1 - 1}] = ${p[r2][c1 - 1]}."
+            else -> "Add back the corner P[${r1 - 1}][${c1 - 1}] = ${p[r1 - 1][c1 - 1]}, subtracted twice. Sum = $total " +
+                "— four lookups, and the size of the rectangle never entered the cost."
+        }
+    }
+    return bld.frames
+}
+
+private val rotateMatrix = listOf(
+    listOf(1, 2, 3, 4),
+    listOf(5, 6, 7, 8),
+    listOf(9, 10, 11, 12),
+    listOf(13, 14, 15, 16),
+)
+
+// Rotate 90° clockwise = transpose, then reverse each row. Both halves are pure index arithmetic, and
+// writing them as two named steps is the habit that makes the coordinate mapping checkable.
+private fun matrixTransformPatternFrames(): List<DpFrame> {
+    val n = rotateMatrix.size
+    val bld = DpBuilder(n, n)
+    val m = Array(n) { r -> IntArray(n) { c -> rotateMatrix[r][c] } }
+
+    for (r in 0 until n) {
+        for (c in 0 until n) {
+            bld.values[bld.key(r, c)] = m[r][c].toString()
+        }
+    }
+    bld.fill(0, 0, m[0][0].toString(), "Rotate this ${n}×${n} matrix 90° clockwise in place. Element (r, c) must end " +
+        "up at (c, ${n - 1}−r) — one mapping, applied as two simpler ones rather than juggled at once.")
+
+    for (r in 0 until n) {
+        for (c in r + 1 until n) {
+            val a = m[r][c]
+            val b = m[c][r]
+            m[r][c] = b
+            m[c][r] = a
+            bld.values[bld.key(r, c)] = b.toString()
+            bld.fill(
+                c, r, a.toString(),
+                "Transpose step: swap ($r, $c) with ($c, $r) — $a and $b trade places. Only the upper triangle is " +
+                    "iterated; running over the whole matrix swaps every pair twice and leaves it unchanged.",
+            )
+        }
+    }
+
+    for (r in 0 until n) {
+        var lo = 0
+        var hi = n - 1
+        while (lo < hi) {
+            val a = m[r][lo]
+            val b = m[r][hi]
+            m[r][lo] = b
+            m[r][hi] = a
+            bld.values[bld.key(r, lo)] = b.toString()
+            bld.fill(
+                r, hi, a.toString(),
+                "Reverse row $r: swap columns $lo and $hi. After the transpose, the columns are in the right order " +
+                    "but backwards — reversing each row finishes the rotation.",
+            )
+            lo++
+            hi--
+        }
+    }
+
+    bld.trace((0 until n).map { bld.key(0, it) }) {
+        "Top row is now ${(0 until n).joinToString(", ") { m[0][it].toString() }} — the old first *column*, bottom to " +
+            "top. Transpose then reverse, O(n²) reads and writes, no second matrix. Anti-clockwise is the same two " +
+            "steps with the reversal applied to columns instead."
+    }
+    return bld.frames
+}
+
 private val dpConfigs = mapOf(
+    "prefix_2d_pattern" to DpConfig(
+        rows = prefix2dMatrix.size + 1, cols = prefix2dMatrix[0].size + 1,
+        rowHeader = { if (it == 0) "0" else "r${it - 1}" },
+        colHeader = { if (it == 0) "0" else "c${it - 1}" },
+        corner = "P",
+        intro = "A 2D prefix table over a ${prefix2dMatrix.size}×${prefix2dMatrix[0].size} matrix, then one submatrix " +
+            "query answered by the four highlighted lookups — big rectangle, two strips, and the corner added back.",
+        build = ::prefix2dPatternFrames,
+    ),
+    "matrix_transform_pattern" to DpConfig(
+        rows = rotateMatrix.size, cols = rotateMatrix.size,
+        rowHeader = { "r$it" },
+        colHeader = { "c$it" },
+        corner = "",
+        intro = "Rotating a 4×4 matrix 90° clockwise in place, as transpose-then-reverse. The cells change under the " +
+            "same coordinates, which is what \"in place\" costs you in readability.",
+        build = ::matrixTransformPatternFrames,
+    ),
     "knapsack_dp_pattern" to DpConfig(
         rows = knapsackItems.size + 1, cols = KNAPSACK_CAPACITY + 1,
         rowHeader = { if (it == 0) "ε" else "w${knapsackItems[it - 1].first}·v${knapsackItems[it - 1].second}" },

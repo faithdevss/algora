@@ -369,7 +369,212 @@ private fun bucketSortFrames(): List<SortFrame> {
     return b.frames
 }
 
+// ── Interview-prep pattern guides ────────────────────────────────────────────
+
+// Merge sort, but the merge is counting: every element taken from the right half while the left half
+// still holds values proves that many inversions at once.
+private val inversionInput = listOf(5, 3, 8, 1, 9, 2)
+
+private fun divideConquerPatternFrames(): List<SortFrame> {
+    val b = SortBuilder(inversionInput)
+    var inversions = 0
+
+    b.frame(
+        "Count the pairs that are out of order in ${inversionInput.joinToString(", ")}. Comparing every pair is " +
+            "O(n²); the answers that span a split fall out of a merge sort that has to happen anyway.",
+    )
+
+    fun sort(lo: Int, hi: Int) {
+        if (hi - lo < 2) return
+        val mid = (lo + hi) / 2
+        b.frame(
+            "Split [$lo, ${hi - 1}] at $mid. Inversions inside each half are counted recursively; only the pairs " +
+                "that straddle the split are left for the combine step.",
+            range = (lo until hi).toSet(),
+            compared = setOf(mid),
+        )
+        sort(lo, mid)
+        sort(mid, hi)
+
+        val merged = mutableListOf<Int>()
+        var i = lo
+        var j = mid
+        while (i < mid || j < hi) {
+            val takeLeft = j >= hi || (i < mid && b.values[i] <= b.values[j])
+            if (takeLeft) {
+                merged += b.values[i]
+                i++
+            } else {
+                val crossing = mid - i
+                inversions += crossing
+                b.frame(
+                    "${b.values[j]} moves ahead of ${if (crossing == 0) "nothing" else "${crossing} still-unmerged left-half value(s)"}" +
+                        if (crossing == 0) " — no inversion here." else ": that is $crossing inversion(s) at once, " +
+                            "found without comparing them individually. Running total $inversions.",
+                    compared = setOf(j),
+                    moved = (i until mid).toSet(),
+                    range = (lo until hi).toSet(),
+                )
+                merged += b.values[j]
+                j++
+            }
+        }
+        merged.forEachIndexed { offset, v -> b.values[lo + offset] = v }
+        b.frame(
+            "[$lo, ${hi - 1}] merged: ${merged.joinToString(", ")}. Linear combine work per level, log n levels — " +
+                "T(n) = 2T(n/2) + O(n) = O(n log n).",
+            range = (lo until hi).toSet(),
+            sorted = (lo until hi).toSet(),
+        )
+    }
+
+    sort(0, b.values.size)
+    b.done("Sorted, and $inversions inversions counted along the way. The sort was a side effect — the combine step was the algorithm.")
+    return b.frames
+}
+
+// Three-way partition. Values 1 / 2 / 3 stand in for the flag's three colours.
+private val dutchFlagInput = listOf(3, 1, 3, 2, 2, 1, 3, 1, 2)
+
+private fun dutchFlagPatternFrames(): List<SortFrame> {
+    val b = SortBuilder(dutchFlagInput)
+    val pivot = 2
+    var low = 0
+    var mid = 0
+    var high = b.values.lastIndex
+
+    fun classified() = (0 until low).toSet() + ((high + 1)..b.values.lastIndex).toSet()
+
+    b.frame(
+        "Three categories — below $pivot, equal to $pivot, above $pivot — sorted in one pass with no extra array. " +
+            "low and high mark the settled regions; mid scans the unclassified middle.",
+        range = (mid..high).toSet(),
+    )
+
+    while (mid <= high) {
+        val v = b.values[mid]
+        when {
+            v < pivot -> {
+                b.values[mid] = b.values[low]
+                b.values[low] = v
+                b.frame(
+                    "${v} < $pivot: swap it down to index $low. The value it displaced was already scanned and known " +
+                        "to equal $pivot, so mid can advance too.",
+                    moved = setOf(low, mid),
+                    sorted = classified(),
+                    range = (mid + 1..high).toSet(),
+                )
+                low++
+                mid++
+            }
+            v == pivot -> {
+                b.frame(
+                    "$v == $pivot: it already belongs in the middle region, so only mid advances.",
+                    compared = setOf(mid),
+                    sorted = classified(),
+                    range = (mid..high).toSet(),
+                )
+                mid++
+            }
+            else -> {
+                b.values[mid] = b.values[high]
+                b.values[high] = v
+                b.frame(
+                    "$v > $pivot: swap it up to index $high. mid does *not* advance — the value swapped in has never " +
+                        "been looked at, and advancing here is the classic bug.",
+                    moved = setOf(mid, high),
+                    sorted = classified(),
+                    range = (mid..high - 1).toSet(),
+                )
+                high--
+            }
+        }
+    }
+
+    b.done(
+        "One pass, ${b.values.size} elements, O(1) extra space. Two pointers that partition rather than converge — " +
+            "the same engine quicksort uses, and the reason it handles duplicate keys without quadratic blowup.",
+    )
+    return b.frames
+}
+
+// Shortest-job-first, proved by the exchange itself: swap any adjacent out-of-order pair and watch
+// the objective fall.
+private val greedyJobs = listOf(4, 1, 7, 2)
+
+private fun greedyExchangePatternFrames(): List<SortFrame> {
+    val b = SortBuilder(greedyJobs)
+
+    fun cost() = b.values.mapIndexed { i, d -> (b.values.size - i) * d }.sum()
+
+    fun costBreakdown() = b.values
+        .runningFold(0) { acc, d -> acc + d }
+        .drop(1)
+        .joinToString(" + ")
+
+    b.frame(
+        "Four jobs on one machine; minimise the total time customers wait. Order ${b.values.joinToString(", ")} " +
+            "gives completion times ${costBreakdown()} = ${cost()}. A job's duration is paid by everyone still queued " +
+            "behind it, which is the hint.",
+        range = b.values.indices.toSet(),
+    )
+
+    var swapped = true
+    var exchanges = 0
+    while (swapped) {
+        swapped = false
+        for (i in 0 until b.values.lastIndex) {
+            if (b.values[i] > b.values[i + 1]) {
+                val before = cost()
+                val longer = b.values[i]
+                val shorter = b.values[i + 1]
+                b.values[i] = shorter
+                b.values[i + 1] = longer
+                exchanges++
+                swapped = true
+                b.frame(
+                    "Adjacent pair $longer before $shorter is out of greedy order. Exchange them: everything outside " +
+                        "the pair is unaffected, and the total drops from $before to ${cost()} — a difference of " +
+                        "${before - cost()}, exactly $longer − $shorter. Never worse, so no optimal solution is lost.",
+                    moved = setOf(i, i + 1),
+                    range = b.values.indices.toSet(),
+                )
+            }
+        }
+    }
+
+    b.frame(
+        "No out-of-order adjacent pair remains, so the order is sorted by duration and the cost is ${cost()} after " +
+            "$exchanges exchange(s). That is the whole argument: any optimal schedule can be rewritten into this one " +
+            "one swap at a time without getting worse, so this one is optimal too.",
+        sorted = b.values.indices.toSet(),
+    )
+    b.done(
+        "Shortest-job-first, justified rather than guessed. When the same exchange *can* make things worse — items " +
+            "with weights and a capacity, say — the argument fails and the answer is DP instead.",
+    )
+    return b.frames
+}
+
 private val sortConfigs = mapOf(
+    "divide_conquer_pattern" to SortConfig(
+        intro = "Merge sort counting inversions. The interesting frames are the merges: taking one right-half value " +
+            "settles several pairs at once, which is the cross-boundary work the pattern is really about.",
+        rangeLabel = "Current range",
+        build = ::divideConquerPatternFrames,
+    ),
+    "dutch_flag_pattern" to SortConfig(
+        intro = "Three-way partition around 2, values 1/2/3 standing in for the flag's colours. Watch mid stall " +
+            "after a swap with high — the incoming value has not been classified yet.",
+        rangeLabel = "Unclassified",
+        build = ::dutchFlagPatternFrames,
+    ),
+    "greedy_exchange_pattern" to SortConfig(
+        intro = "The exchange argument run as an experiment: four jobs, and every adjacent swap that puts the " +
+            "shorter one first lowers the total wait. The proof is the algorithm.",
+        rangeLabel = "Schedule",
+        build = ::greedyExchangePatternFrames,
+    ),
     "bubble_sort" to SortConfig(
         intro = "Bubble sort on 8 values. Each pass walks the array swapping out-of-order neighbours, so the largest remaining value bubbles to the end — that tail is locked in green.",
         rangeLabel = null,

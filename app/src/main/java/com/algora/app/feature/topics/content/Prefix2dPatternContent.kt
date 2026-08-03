@@ -56,7 +56,9 @@ internal val prefix2dPatternContent = TopicContent(
             """.trimIndent(),
         ),
     ),
-    simulation = SimulationType.PathfindingGrid,
+    // PathfindingGrid paints cells but never labels them, and this pattern is entirely about the
+    // numbers in the cells. DpGridVisualizer draws a headed, valued table.
+    simulation = SimulationType.DpGridVisualizer,
     applications = listOf(
         ApplicationCard("Image", 0xFF3B82F6, "Integral Images", "Box filters and Haar features evaluate any window in constant time."),
         ApplicationCard("chart", 0xFF10B981, "Heatmap Queries", "Totals over map tiles, sales regions or pixel blocks."),

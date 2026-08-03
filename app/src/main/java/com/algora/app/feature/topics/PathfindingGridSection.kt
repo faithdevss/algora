@@ -358,6 +358,58 @@ private fun idaStarFrames(): List<PathFrame> {
     return frames
 }
 
+// ── Interview-prep pattern: one wave from many sources ───────────────────────
+// The seeds are START and GOAL, so the renderer's S and G markers land on the two sources instead of
+// implying a search between them. Walls are the empty cells no wave can cross.
+private val rotSources = setOf(START, GOAL)
+private val rotWalls = setOf(key(0, 3), key(1, 3), key(3, 5), key(4, 5), key(5, 5))
+
+private fun multiSourceBfsFrames(): List<PathFrame> {
+    val frames = mutableListOf<PathFrame>()
+    val dist = HashMap<Int, Int>()
+    var frontier = rotSources.toSet()
+    frontier.forEach { dist[it] = 0 }
+    val visited = frontier.toMutableSet()
+
+    frames += PathFrame(
+        emptySet(), frontier, null, emptySet(), rotWalls,
+        "Both sources are seeded into the queue at distance 0 *before* the loop starts. That initialisation is the " +
+            "entire pattern — the loop below is ordinary BFS and never learns there was more than one source.",
+    )
+
+    var round = 0
+    while (frontier.isNotEmpty()) {
+        round++
+        val next = mutableSetOf<Int>()
+        frontier.forEach { cell ->
+            neighbours(cell, rotWalls).forEach { n ->
+                if (visited.add(n)) {
+                    dist[n] = round
+                    next += n
+                }
+            }
+        }
+        if (next.isEmpty()) break
+        frames += PathFrame(
+            visited - next, next, null, emptySet(), rotWalls,
+            "Minute $round: the whole frontier advances one step together, claiming ${next.size} cell(s). A cell is " +
+                "marked the moment it is queued, so the wave that got there first keeps it — no comparison between " +
+                "sources is ever needed.",
+        )
+        frontier = next
+    }
+
+    val farthest = dist.maxByOrNull { it.value }!!
+    val unreached = (0 until GRID_ROWS * GRID_COLS).toSet() - rotWalls - visited
+    frames += PathFrame(
+        visited, emptySet(), farthest.key, setOf(farthest.key), rotWalls,
+        "Everything reachable is claimed after ${farthest.value} minute(s) — the answer is the largest distance " +
+            "assigned, and ${if (unreached.isEmpty()) "no cell was left out" else "${unreached.size} walled-off cell(s) were never reached, which is the case that returns −1"}. " +
+            "Running a separate BFS per source and taking the minimum gives the same numbers for k times the work.",
+    )
+    return frames
+}
+
 // ── Interview-prep pattern: grid as a graph ──────────────────────────────────
 // Land cells; everything else is water and reuses the wall colour. START and GOAL are deliberately
 // water so the renderer's start/goal markers never appear — this lab has neither.
@@ -432,6 +484,11 @@ private fun islandCountFrames(): List<PathFrame> {
 }
 
 private val pathConfigs = mapOf(
+    "multi_source_bfs_pattern" to PathConfig(
+        intro = "Two rotten oranges spreading at once — the S and G markers are the seeds, not a start and a goal. " +
+            "Every cell is claimed by whichever wave reaches it first, so one sweep answers all of them.",
+        build = ::multiSourceBfsFrames,
+    ),
     "matrix_islands_pattern" to PathConfig(
         intro = "Counting islands by flood fill. Dark cells are water, and each fill consumes one whole region before " +
             "the outer scan moves on — the number of fills started is the answer.",
