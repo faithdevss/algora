@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,19 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val insertionSortContent = TopicContent(
     topicId = "insertion_sort",
+    figure = Figure(
+        caption = "The prefix is always sorted; each new element slides left until it lands. Work is " +
+            "proportional to how far elements have to move, so a nearly-sorted array costs O(n) — which " +
+            "is why real sorts (Timsort, introsort) switch to it once the subarrays get small.",
+        shape = FigureShape.Strip(
+            cells = listOf("2", "5", "7", "9", "4", "8"),
+            bands = listOf(
+                FigureBand(0, 3, "sorted prefix"),
+                FigureBand(4, 4, "key", FigureTone.Accent),
+            ),
+            pointers = listOf(FigurePointer(1, "lands here"), FigurePointer(4, "key")),
+        ),
+    ),
     whatIsIt = listOf(
         "Insertion sort builds a sorted prefix one element at a time, taking the next element and sliding it left until it sits in the right spot.",
         "It works the way most people sort a hand of playing cards: pick up the next card and insert it into its correct position among the cards already held.",

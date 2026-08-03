@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,19 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val selectionSortContent = TopicContent(
     topicId = "selection_sort",
+    figure = Figure(
+        caption = "Scan the unsorted region for its minimum, then put it in place — always n−1 swaps, no " +
+            "matter what order the input arrived in. That is the only reason to reach for it: when a " +
+            "write is far more expensive than a comparison, nothing else moves data less.",
+        shape = FigureShape.Strip(
+            cells = listOf("2", "3", "9", "7", "5", "8"),
+            bands = listOf(
+                FigureBand(0, 1, "sorted", FigureTone.Muted),
+                FigureBand(2, 5, "unsorted"),
+            ),
+            pointers = listOf(FigurePointer(2, "i"), FigurePointer(4, "min")),
+        ),
+    ),
     whatIsIt = listOf(
         "Selection sort builds the sorted array one slot at a time by repeatedly finding the smallest remaining element and swapping it into place.",
         "It splits the array into a sorted prefix and an unsorted suffix, growing the prefix by one element on every pass.",

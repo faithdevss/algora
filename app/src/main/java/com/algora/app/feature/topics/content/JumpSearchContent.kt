@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,20 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val jumpSearchContent = TopicContent(
     topicId = "jump_search",
+    figure = Figure(
+        caption = "Step forward in blocks until the value overshoots, then walk back through one block. " +
+            "√n is the block size that balances the two halves of that cost — O(√n) is worse than binary " +
+            "search's O(log n), and it exists for storage where jumping *backwards* is the expensive " +
+            "move, so a sequential sweep with few rewinds wins.",
+        shape = FigureShape.Strip(
+            cells = listOf("3", "8", "15", "27", "34", "42", "50", "61", "73"),
+            bands = listOf(
+                FigureBand(3, 5, "scan back", FigureTone.Accent),
+                FigureBand(6, 8, "overshot", FigureTone.Muted),
+            ),
+            pointers = listOf(FigurePointer(2, "jump"), FigurePointer(5, "jump"), FigurePointer(8, "jump")),
+        ),
+    ),
     whatIsIt = listOf(
         "Jump search works on a sorted array by leaping ahead in fixed-size blocks until it overshoots the target, then scanning linearly back within the last block.",
         "It sits between linear and binary search: fewer comparisons than linear, but it only ever jumps forward, which suits data that is costly to seek backward through.",

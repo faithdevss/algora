@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,18 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val countingSortContent = TopicContent(
     topicId = "counting_sort",
+    figure = Figure(
+        caption = "No comparisons at all: count how many of each value there are, prefix-sum the counts " +
+            "to get final positions, then place each element. O(n + k) — linear in the input *and* the " +
+            "value range, so it wins only while k stays small. Walking the input backwards is what keeps " +
+            "it stable, which is what radix sort then depends on.",
+        shape = FigureShape.Strip(
+            cells = listOf("0", "2", "3", "1", "0", "1"),
+            bands = listOf(FigureBand(2, 2, "three 2s", FigureTone.Accent)),
+            aux = listOf("0", "2", "5", "6", "6", "7"),
+            auxLabel = "prefix-summed counts — where each value's block ends",
+        ),
+    ),
     whatIsIt = listOf(
         "Counting sort orders integers without comparing them: it counts how many times each key appears, then uses those counts to place every element directly into its final position.",
         "It beats the O(n log n) comparison-sort barrier by exploiting a small, known range of keys — but only when that range k is not much larger than n.",

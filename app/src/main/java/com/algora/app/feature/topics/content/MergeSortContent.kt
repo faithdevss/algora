@@ -2,6 +2,10 @@ package com.algora.app.feature.topics.content
 
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -10,6 +14,18 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val mergeSortContent = TopicContent(
     topicId = "merge_sort",
+    figure = Figure(
+        caption = "The merge is where the work happens: two already-sorted halves are walked in step, and " +
+            "taking the smaller head each time costs one comparison per output element. Equal values take " +
+            "from the left half first — that tie-break is the whole of stability — and the output needs " +
+            "its own array, which is the O(n) space quicksort does not pay.",
+        shape = FigureShape.Strip(
+            cells = listOf("1", "2", "3", "·", "·", "·"),
+            bands = listOf(FigureBand(0, 2, "merged output", FigureTone.Accent)),
+            aux = listOf("4", "8", "5", "9"),
+            auxLabel = "remaining heads — left half 4, 8 · right half 5, 9",
+        ),
+    ),
     whatIsIt = listOf(
         "Merge sort is a divide-and-conquer sort that splits an array in half, recursively sorts each half, then merges the two sorted halves back together.",
         "The merge step is the key insight: merging two already-sorted lists into one sorted list only takes a single linear pass.",

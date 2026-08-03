@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,21 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val quickSortContent = TopicContent(
     topicId = "quick_sort",
+    figure = Figure(
+        caption = "Partition puts the pivot at its final index and needs no extra array — that in-place " +
+            "property is why it beats merge sort in practice despite the same average bound. The cost is " +
+            "the worst case: a first-element pivot on already-sorted input splits 0 and n−1 every time, " +
+            "which is O(n²). A random or median-of-three pivot is what removes it.",
+        shape = FigureShape.Strip(
+            cells = listOf("2", "1", "5", "9", "7", "8"),
+            bands = listOf(
+                FigureBand(0, 1, "< pivot"),
+                FigureBand(2, 2, "pivot", FigureTone.Accent),
+                FigureBand(3, 5, "> pivot", FigureTone.Warn),
+            ),
+            pointers = listOf(FigurePointer(2, "final")),
+        ),
+    ),
     whatIsIt = listOf(
         "Quick sort is a divide-and-conquer sort that picks a pivot, partitions the array so smaller elements go left and larger go right, then recursively sorts each side.",
         "The partition step does all the work — once the pivot is in its final position, the two sides can be sorted independently.",

@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,19 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val linearSearchContent = TopicContent(
     topicId = "linear_search",
+    figure = Figure(
+        caption = "The only search with no precondition — no sorting, no index, no random access — which " +
+            "is why it is the one that works on a linked list or a stream. Every miss costs the full n, " +
+            "and that is also the honest baseline the other searches are measured against.",
+        shape = FigureShape.Strip(
+            cells = listOf("42", "8", "27", "61", "15", "34"),
+            bands = listOf(
+                FigureBand(0, 2, "checked", FigureTone.Muted),
+                FigureBand(3, 3, "checking", FigureTone.Accent),
+            ),
+            pointers = listOf(FigurePointer(3, "i")),
+        ),
+    ),
     whatIsIt = listOf(
         "Linear search looks for a target by checking each element in order until it finds a match or reaches the end.",
         "It makes no assumptions about the data — the array need not be sorted — which is why it is the fallback whenever no structure can be exploited.",

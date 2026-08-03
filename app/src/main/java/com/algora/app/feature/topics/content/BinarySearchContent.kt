@@ -2,6 +2,11 @@ package com.algora.app.feature.topics.content
 
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -10,6 +15,19 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val binarySearchContent = TopicContent(
     topicId = "binary_search",
+    figure = Figure(
+        caption = "Sorted input turns one comparison into a decision about half the array. The loop is " +
+            "three lines and still the most-failed whiteboard exercise: mid = lo + (hi − lo) / 2 avoids " +
+            "overflow, and whether hi is n−1 or n decides every boundary that follows.",
+        shape = FigureShape.Strip(
+            cells = listOf("3", "8", "15", "27", "34", "42", "50", "61"),
+            bands = listOf(
+                FigureBand(0, 3, "discarded", FigureTone.Muted),
+                FigureBand(4, 7, "live range"),
+            ),
+            pointers = listOf(FigurePointer(4, "lo"), FigurePointer(5, "mid"), FigurePointer(7, "hi")),
+        ),
+    ),
     whatIsIt = listOf(
         "Binary search finds a target value in a sorted array by repeatedly halving the search range.",
         "Think of looking up a word in a paper dictionary: you open to the middle, decide which half your word is in, and repeat — never scanning page by page.",

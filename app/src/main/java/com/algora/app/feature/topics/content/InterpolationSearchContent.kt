@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,17 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val interpolationSearchContent = TopicContent(
     topicId = "interpolation_search",
+    figure = Figure(
+        caption = "Binary search always probes the middle; this one guesses *where* the value should be " +
+            "from how far along the range it sits — the way you open a phone book near the back for " +
+            "\"W\". On uniformly spread data that is O(log log n). On clustered data the guess is " +
+            "consistently wrong and it degrades to O(n), which binary search never does.",
+        shape = FigureShape.Strip(
+            cells = listOf("10", "20", "30", "40", "50", "60", "70", "80"),
+            bands = listOf(FigureBand(6, 6, "probe 70", FigureTone.Accent)),
+            pointers = listOf(FigurePointer(0, "lo"), FigurePointer(6, "guess"), FigurePointer(7, "hi")),
+        ),
+    ),
     whatIsIt = listOf(
         "Interpolation search improves on binary search for uniformly distributed sorted data by estimating where the target likely sits instead of always probing the middle.",
         "It's how you find a name in a phone book: for 'Aaron' you open near the front, not the center — the probe position is guided by the target's value.",

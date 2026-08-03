@@ -2,6 +2,11 @@ package com.algora.app.feature.topics.content
 
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -10,6 +15,19 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val bubbleSortContent = TopicContent(
     topicId = "bubble_sort",
+    figure = Figure(
+        caption = "Only adjacent pairs are ever compared, so each pass drags the largest remaining value " +
+            "to the end and the sorted tail grows by exactly one. The one thing it has over the other " +
+            "quadratic sorts: a pass with no swap proves the array is sorted, making the best case O(n).",
+        shape = FigureShape.Strip(
+            cells = listOf("3", "7", "2", "5", "8", "9"),
+            bands = listOf(
+                FigureBand(1, 2, "compare", FigureTone.Accent),
+                FigureBand(4, 5, "settled", FigureTone.Muted),
+            ),
+            pointers = listOf(FigurePointer(1, "i"), FigurePointer(2, "i+1")),
+        ),
+    ),
     whatIsIt = listOf(
         "Bubble sort repeatedly steps through an array, swapping adjacent elements that are out of order, until no swaps are needed.",
         "The name comes from how larger elements 'bubble up' toward the end of the array with each pass.",

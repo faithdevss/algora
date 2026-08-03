@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,20 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val heapSortContent = TopicContent(
     topicId = "heap_sort",
+    figure = Figure(
+        caption = "Two regions in one array: a max-heap on the left, the finished tail on the right. Each " +
+            "step swaps the root — the largest remaining — into the tail and sifts the new root down. " +
+            "O(n log n) guaranteed with O(1) extra space, but its cache behaviour and lack of stability " +
+            "are why quicksort usually wins in practice.",
+        shape = FigureShape.Strip(
+            cells = listOf("7", "5", "6", "2", "8", "9"),
+            bands = listOf(
+                FigureBand(0, 3, "heap region"),
+                FigureBand(4, 5, "sorted", FigureTone.Muted),
+            ),
+            pointers = listOf(FigurePointer(0, "root"), FigurePointer(3, "swap to")),
+        ),
+    ),
     whatIsIt = listOf(
         "Heap sort turns the array into a max-heap, then repeatedly extracts the largest element to the end, shrinking the heap until the array is sorted.",
         "It combines the O(1) max access of a heap with in-place array storage — no extra memory and a guaranteed O(n log n) worst case.",

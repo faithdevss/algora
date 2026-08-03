@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,27 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val radixSortContent = TopicContent(
     topicId = "radix_sort",
+    figure = Figure(
+        caption = "One stable pass per digit, least significant first. Each pass only orders by that " +
+            "digit, and stability is what preserves the previous passes' work — swap in an unstable " +
+            "inner sort and the whole thing collapses. d passes over n items, so O(d · n) with no " +
+            "comparison between whole keys ever made.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("170", "45", "75", "90", "802"),
+                listOf("170", "90", "802", "45", "75"),
+                listOf("802", "45", "170", "75", "90"),
+                listOf("45", "75", "90", "170", "802"),
+            ),
+            rowHeaders = listOf("input", "by 1s", "by 10s", "by 100s"),
+            marks = listOf(
+                FigureCell(1, 0, FigureTone.Primary),
+                FigureCell(1, 1, FigureTone.Primary),
+                FigureCell(2, 0, FigureTone.Accent),
+                FigureCell(3, 4, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Radix sort orders numbers by processing them one digit at a time, using a stable sort (usually counting sort) on each digit from least significant to most significant.",
         "Because each digit-pass is stable, sorting the last digit and working up to the first leaves the whole array correctly ordered — no comparisons between full values.",

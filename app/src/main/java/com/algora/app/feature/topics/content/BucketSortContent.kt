@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,26 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val bucketSortContent = TopicContent(
     topicId = "bucket_sort",
+    figure = Figure(
+        caption = "Scatter into buckets by value range, sort each one, concatenate. It is O(n) *only* " +
+            "while the input is spread evenly — the assumption is doing all the work. Skewed data piles " +
+            "into one bucket and the cost collapses back to whatever sort runs inside it.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0.12", "0.17"),
+                listOf("0.21", "—"),
+                listOf("—", "—"),
+                listOf("0.68", "0.64"),
+            ),
+            rowHeaders = listOf("0.0–0.2", "0.2–0.4", "0.4–0.6", "0.6–0.8"),
+            marks = listOf(
+                FigureCell(3, 0, FigureTone.Accent),
+                FigureCell(3, 1, FigureTone.Accent),
+                FigureCell(2, 0, FigureTone.Muted),
+                FigureCell(2, 1, FigureTone.Muted),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Bucket sort scatters values into a set of ordered buckets by range, sorts each bucket with a simple algorithm, then concatenates the buckets in order.",
         "It is not a comparison sort at the top level, so it escapes the O(n log n) bound — but only when the input is spread evenly. If every value lands in one bucket the algorithm degenerates to whatever sorts that bucket, typically O(n²).",

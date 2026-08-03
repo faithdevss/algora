@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,20 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val exponentialSearchContent = TopicContent(
     topicId = "exponential_search",
+    figure = Figure(
+        caption = "For input with no known end — a stream, an unbounded array, an API that pages — double " +
+            "the bound until it overshoots, then binary-search the last doubling. Finding the range costs " +
+            "O(log i) in the *answer's* position rather than the collection's size, which is what makes " +
+            "it beat a plain binary search when the target sits near the front.",
+        shape = FigureShape.Strip(
+            cells = listOf("3", "8", "15", "27", "34", "42", "50", "61"),
+            bands = listOf(
+                FigureBand(0, 3, "bound doubles: 1, 2, 4", FigureTone.Muted),
+                FigureBand(4, 7, "binary search here", FigureTone.Accent),
+            ),
+            pointers = listOf(FigurePointer(3, "lo = 4"), FigurePointer(7, "hi = 8")),
+        ),
+    ),
     whatIsIt = listOf(
         "Exponential search finds a target in a sorted array by first doubling an index until it passes the target, then binary-searching the bounded range that must contain it.",
         "It shines when the array is unbounded or huge and the target is near the front — the range is found in a logarithmic number of doublings, before any binary search runs.",
