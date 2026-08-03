@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -568,20 +569,29 @@ private fun PlotFigure(shape: FigureShape.Plot) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             shape.yLabel?.let {
                 Text(it, style = MaterialTheme.typography.labelSmall, color = muted)
             }
-            Box(modifier = Modifier.weight(1f))
-            shape.series.filter { it.label.isNotBlank() }.forEach { series ->
-                Text(
-                    series.label,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = toneFor.getValue(series.tone),
-                )
+            // A FlowRow, not a Row: three series with names as long as "with momentum" overrun the
+            // width left beside the y-label, and a plain Row lets the last one wrap on top of its
+            // neighbour instead of moving to a line of its own.
+            FlowRow(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End),
+                verticalArrangement = Arrangement.spacedBy(1.dp),
+            ) {
+                shape.series.filter { it.label.isNotBlank() }.forEach { series ->
+                    Text(
+                        series.label,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = toneFor.getValue(series.tone),
+                        maxLines = 1,
+                    )
+                }
             }
         }
 
