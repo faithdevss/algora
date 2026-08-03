@@ -66,6 +66,7 @@ internal fun FigureCard(figure: Figure, modifier: Modifier = Modifier) {
                 is FigureShape.Grid -> GridFigure(shape)
                 is FigureShape.Stacks -> StacksFigure(shape)
                 is FigureShape.Tree -> TreeFigure(shape)
+                is FigureShape.Graph -> GraphFigure(shape)
             }
             Text(
                 figure.caption,
@@ -291,6 +292,68 @@ private fun GridFigure(shape: FigureShape.Grid) {
             val uy = dy / length
             drawLine(colour, end, Offset(end.x - (ux + uy) * headSize, end.y - (uy - ux) * headSize), strokeWidth = 2f)
             drawLine(colour, end, Offset(end.x - (ux - uy) * headSize, end.y - (uy + ux) * headSize), strokeWidth = 2f)
+        }
+    }
+}
+
+@Composable
+private fun GraphFigure(shape: FigureShape.Graph) {
+    val textMeasurer = rememberTextMeasurer()
+    val onSurface = MaterialTheme.colorScheme.onSurface
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val toneFor = FigureTone.entries.associateWith { toneColor(it) }
+    val nodeStyle = TextStyle(color = onSurface, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+    val edgeStyle = TextStyle(color = muted, fontSize = 9.sp, fontWeight = FontWeight.Medium)
+
+    Canvas(modifier = Modifier.fillMaxWidth().height(132.dp)) {
+        val inset = 22f
+        fun centreOf(index: Int) = Offset(
+            inset + shape.nodes[index].x * (size.width - 2 * inset),
+            inset + shape.nodes[index].y * (size.height - 2 * inset),
+        )
+        val radius = 17f
+
+        shape.edges.forEach { edge ->
+            val from = centreOf(edge.from)
+            val to = centreOf(edge.to)
+            val colour = toneFor.getValue(edge.tone)
+            val dx = to.x - from.x
+            val dy = to.y - from.y
+            val length = kotlin.math.hypot(dx, dy).coerceAtLeast(1f)
+            val ux = dx / length
+            val uy = dy / length
+            val start = Offset(from.x + ux * radius, from.y + uy * radius)
+            val end = Offset(to.x - ux * radius, to.y - uy * radius)
+            drawLine(colour, start, end, strokeWidth = 2f)
+            if (edge.directed) {
+                val head = 8f
+                drawLine(colour, end, Offset(end.x - (ux + uy) * head, end.y - (uy - ux) * head), strokeWidth = 2f)
+                drawLine(colour, end, Offset(end.x - (ux - uy) * head, end.y - (uy + ux) * head), strokeWidth = 2f)
+            }
+            edge.label?.let { label ->
+                val layout = textMeasurer.measure(label, edgeStyle)
+                val mid = Offset((start.x + end.x) / 2f, (start.y + end.y) / 2f)
+                // Nudge the weight off the line so it does not sit on top of it.
+                drawText(
+                    layout,
+                    topLeft = Offset(
+                        mid.x - layout.size.width / 2f + uy * 9f,
+                        mid.y - layout.size.height / 2f - ux * 9f,
+                    ),
+                )
+            }
+        }
+
+        shape.nodes.forEachIndexed { index, node ->
+            val tone = toneFor.getValue(node.tone)
+            val centre = centreOf(index)
+            drawCircle(tone.copy(alpha = 0.24f), radius = radius, center = centre)
+            drawCircle(tone, radius = radius, center = centre, style = Stroke(width = 1.8f))
+            val layout = textMeasurer.measure(node.label, nodeStyle)
+            drawText(
+                layout,
+                topLeft = Offset(centre.x - layout.size.width / 2f, centre.y - layout.size.height / 2f),
+            )
         }
     }
 }

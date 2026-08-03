@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,21 @@ import com.algora.app.core.data.model.TopicContent
 // state and an integer is the set.
 internal val bitmaskStatePatternContent = TopicContent(
     topicId = "bitmask_state_pattern",
+    figure = Figure(
+        caption = "The mask is the visited *set* and the dp index at once, so every route reaching the " +
+            "same set collapses into one state. 4! = 24 orderings become 2⁴ × 4 = 64 states — still " +
+            "exponential, but the difference between 20! and 2²⁰ × 20 is the difference between " +
+            "impossible and merely expensive.",
+        shape = FigureShape.Strip(
+            cells = listOf("1", "0", "1", "1"),
+            bands = listOf(
+                FigureBand(0, 0, "D unvisited", FigureTone.Muted),
+                FigureBand(2, 3, "visited", FigureTone.Accent),
+            ),
+            aux = listOf("D", "C", "B", "A"),
+            auxLabel = "mask 1011 = { A, B, D } — also the dp array index 11",
+        ),
+    ),
     whatIsIt = listOf(
         "When the constraint says n ≤ 20, the intended state is often the *set* of items already used. An integer's bits encode that set, so a whole subset is one array index and the DP table is 2^n wide.",
         "It replaces a factorial search over orderings with an exponential one over subsets: n! becomes 2^n · n, which is the difference between impossible and instant at n = 15.",

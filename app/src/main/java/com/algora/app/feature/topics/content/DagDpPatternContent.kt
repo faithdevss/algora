@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +18,29 @@ import com.algora.app.core.data.model.TopicContent
 // once you have it, DP over a DAG is a single relaxation sweep.
 internal val dagDpPatternContent = TopicContent(
     topicId = "dag_dp_pattern",
+    figure = Figure(
+        caption = "Longest path is NP-hard in general and a single scan on a DAG: relaxing nodes in " +
+            "topological order means every predecessor is finished before the node is read, so each " +
+            "node is final the first time it is popped. Each edge is relaxed once — O(V + E).",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("A 0", 0.06f, 0.18f, FigureTone.Primary),
+                FigureGraphNode("B 0", 0.06f, 0.82f, FigureTone.Primary),
+                FigureGraphNode("C 6", 0.38f, 0.50f, FigureTone.Primary),
+                FigureGraphNode("D 10", 0.70f, 0.16f),
+                FigureGraphNode("E 8", 0.70f, 0.84f),
+                FigureGraphNode("F 17", 0.96f, 0.50f, FigureTone.Accent),
+            ),
+            edges = listOf(
+                FigureEdge(0, 2, "3", directed = true),
+                FigureEdge(1, 2, "6", directed = true, tone = FigureTone.Accent),
+                FigureEdge(2, 3, "4", directed = true, tone = FigureTone.Accent),
+                FigureEdge(2, 4, "2", directed = true),
+                FigureEdge(3, 5, "5", directed = true),
+                FigureEdge(4, 5, "9", directed = true),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A DAG has no cycles, so its vertices can be linearised: every edge points forward. Sweep the vertices in that order and each one's answer is final by the time you reach it — the DP has no circular dependency to resolve.",
         "This is what makes longest path tractable on a DAG (NP-hard on general graphs) and what turns path counting, earliest/latest start times and grid DP with arbitrary moves into one linear pass.",

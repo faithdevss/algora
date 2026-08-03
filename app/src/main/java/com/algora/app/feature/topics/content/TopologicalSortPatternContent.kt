@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +18,29 @@ import com.algora.app.core.data.model.TopicContent
 // topic that implements the technique.
 internal val topologicalSortPatternContent = TopicContent(
     topicId = "topological_sort_pattern",
+    figure = Figure(
+        caption = "In-degree is the count of unmet prerequisites. Nodes at zero are ready now; emitting " +
+            "one decrements its neighbours and may free them. If fewer than n nodes are emitted, the " +
+            "leftovers are sitting on a cycle — the count *is* the cycle check.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("A 0", 0.06f, 0.18f, FigureTone.Accent),
+                FigureGraphNode("B 0", 0.06f, 0.82f, FigureTone.Accent),
+                FigureGraphNode("C 2", 0.38f, 0.50f, FigureTone.Primary),
+                FigureGraphNode("D 1", 0.70f, 0.16f),
+                FigureGraphNode("E 1", 0.70f, 0.84f),
+                FigureGraphNode("F 2", 0.96f, 0.50f),
+            ),
+            edges = listOf(
+                FigureEdge(0, 2, directed = true, tone = FigureTone.Accent),
+                FigureEdge(1, 2, directed = true, tone = FigureTone.Accent),
+                FigureEdge(2, 3, directed = true),
+                FigureEdge(2, 4, directed = true),
+                FigureEdge(3, 5, directed = true),
+                FigureEdge(4, 5, directed = true),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Topological sort orders the nodes of a directed acyclic graph so every edge points forward. In interviews it arrives disguised: course schedules, build targets, task dependencies, alien dictionaries.",
         "Kahn's BFS form is the one to reach for, because the count of emitted nodes doubles as the cycle check — if fewer than n came out, the remaining nodes are locked in a cycle.",

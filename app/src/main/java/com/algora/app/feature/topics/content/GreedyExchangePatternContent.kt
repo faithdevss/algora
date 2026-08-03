@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +18,18 @@ import com.algora.app.core.data.model.TopicContent
 // and easy to get wrong, so the interview value is in justifying or rejecting them.
 internal val greedyExchangePatternContent = TopicContent(
     topicId = "greedy_exchange_pattern",
+    figure = Figure(
+        caption = "The exchange argument *is* the proof: if any adjacent out-of-order pair can be " +
+            "swapped without making the solution worse, an optimal solution can be rewritten into the " +
+            "greedy one one swap at a time. Here 7 before 2 costs 5 extra waiting; swapping never loses.",
+        shape = FigureShape.Strip(
+            cells = listOf("4", "1", "7", "2"),
+            bands = listOf(FigureBand(2, 3, "out of order — exchange", FigureTone.Warn)),
+            pointers = listOf(FigurePointer(2, "swap"), FigurePointer(3, "with")),
+            aux = listOf("1", "2", "4", "7"),
+            auxLabel = "shortest-job-first — total wait 4 + 6 + 10 + 17 → 1 + 3 + 7 + 14",
+        ),
+    ),
     whatIsIt = listOf(
         "A greedy algorithm commits to the locally best choice and never revisits it. That is only correct when a local choice cannot foreclose a better global outcome — and interviews are full of problems where it quietly can.",
         "The exchange argument is the proof: take any optimal solution, show it can be rewritten to start with your greedy choice without getting worse, and induct. If you cannot make that rewrite, you have found the counterexample instead, and the answer is DP.",

@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,23 @@ import com.algora.app.core.data.model.TopicContent
 // every "maximum XOR" question, which brute force cannot reach.
 internal val bitTriePatternContent = TopicContent(
     topicId = "bit_trie_pattern",
+    figure = Figure(
+        caption = "Insert every value into a binary trie, most significant bit first. A maximum-XOR " +
+            "query then walks down taking the *opposite* branch whenever one exists — greedy is optimal " +
+            "because one high bit outweighs every lower bit combined.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("root", null),
+                FigureNode("0", 0, FigureTone.Primary),
+                FigureNode("1", 0, FigureTone.Accent),
+                FigureNode("0", 1),
+                FigureNode("1", 1, FigureTone.Primary),
+                FigureNode("1", 2, FigureTone.Accent),
+                FigureNode("5", 4, FigureTone.Primary),
+                FigureNode("25", 5, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A binary trie stores each number as its bit string, most significant bit first. To maximise a XOR against a stored set, walk the trie greedily taking the *opposite* bit at every level — that fixes the highest possible bits first, which dominates every lower bit combined.",
         "The greedy is safe because one bit at position k outweighs all bits below it: 2^k > 2^k - 1. Each query is 32 steps regardless of how many numbers are stored, turning an O(n²) pairwise scan into O(n · 32).",

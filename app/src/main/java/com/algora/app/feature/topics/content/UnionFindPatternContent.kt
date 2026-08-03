@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +18,28 @@ import com.algora.app.core.data.model.TopicContent
 // topic that implements the technique.
 internal val unionFindPatternContent = TopicContent(
     topicId = "union_find_pattern",
+    figure = Figure(
+        caption = "Components are stored as trees pointing at their roots, so \"are these connected\" " +
+            "is two finds and a comparison. An edge whose endpoints already share a root would close a " +
+            "cycle — that check is how Kruskal rejects edges and how cycle detection is written.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("A", 0.10f, 0.20f, FigureTone.Accent),
+                FigureGraphNode("B", 0.10f, 0.80f, FigureTone.Primary),
+                FigureGraphNode("C", 0.40f, 0.50f, FigureTone.Primary),
+                FigureGraphNode("D", 0.70f, 0.20f, FigureTone.Accent),
+                FigureGraphNode("E", 0.70f, 0.80f, FigureTone.Primary),
+                FigureGraphNode("F", 0.96f, 0.50f, FigureTone.Primary),
+            ),
+            edges = listOf(
+                FigureEdge(1, 0, directed = true, tone = FigureTone.Primary),
+                FigureEdge(2, 0, directed = true, tone = FigureTone.Primary),
+                FigureEdge(1, 2, tone = FigureTone.Warn),
+                FigureEdge(4, 3, directed = true, tone = FigureTone.Primary),
+                FigureEdge(5, 3, directed = true, tone = FigureTone.Primary),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Union-Find answers \"are these two in the same group?\" and \"merge these groups\" in near-constant time, by keeping each group as a tree and caring only about which root it hangs from.",
         "It beats BFS/DFS whenever the edges arrive one at a time — connectivity as a stream — because re-running a traversal after every new edge would be O(E) each time.",

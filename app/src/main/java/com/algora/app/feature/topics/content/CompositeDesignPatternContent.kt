@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureStack
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,26 @@ import com.algora.app.core.data.model.TopicContent
 // structure does it, so pair two whose weaknesses cancel.
 internal val compositeDesignPatternContent = TopicContent(
     topicId = "composite_design_pattern",
+    figure = Figure(
+        caption = "No single container does O(1) everything, so pair two whose weaknesses cancel: the " +
+            "map gives location but no order, the list gives order but no lookup. The map stores a " +
+            "*handle* — a node reference — which is what keeps the partner edit O(1) too.",
+        shape = FigureShape.Stacks(
+            columns = listOf(
+                FigureStack(
+                    label = "hash map: key → node",
+                    entries = listOf("A → ●", "C → ●", "D → ●"),
+                    note = "O(1) location, no order",
+                ),
+                FigureStack(
+                    label = "doubly linked list",
+                    entries = listOf("D (MRU)", "A", "C (LRU)"),
+                    tone = FigureTone.Accent,
+                    note = "O(1) order, no lookup — evict from the tail",
+                ),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Design questions ask for a structure where every operation is O(1) — insert, delete, get random, get min, evict least-recently-used. No single container offers all of that, so the answer is always two containers kept in sync.",
         "The recipe is fixed: a hash map for O(1) location, plus a second structure supplying the ordering the map lacks — a doubly linked list for recency, an array for random sampling, a parallel stack for running minima.",

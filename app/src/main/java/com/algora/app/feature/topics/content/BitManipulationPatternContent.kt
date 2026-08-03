@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,20 @@ import com.algora.app.core.data.model.TopicContent
 // topic that implements the technique.
 internal val bitManipulationPatternContent = TopicContent(
     topicId = "bit_manipulation_pattern",
+    figure = Figure(
+        caption = "Position carries the meaning: bit 3 is the 8s place whether it holds a 0 or a 1. " +
+            "XOR is a pairwise cancel (a ^ a = 0), n & (n−1) clears the lowest set bit, and n & −n " +
+            "isolates it — each of those is one instruction where a loop would be O(bits).",
+        shape = FigureShape.Strip(
+            cells = listOf("0", "0", "1", "0", "1", "1", "0", "0"),
+            bands = listOf(
+                FigureBand(2, 2, "highest set", FigureTone.Accent),
+                FigureBand(5, 5, "lowest set: n & −n", FigureTone.Primary),
+            ),
+            aux = listOf("128", "64", "32", "16", "8", "4", "2", "1"),
+            auxLabel = "place values — 44 = 32 + 8 + 4",
+        ),
+    ),
     whatIsIt = listOf(
         "Bit problems reduce to a short vocabulary: XOR cancels pairs, n & (n−1) clears the lowest set bit, n & −n isolates it, and a mask is a set of up to 32 or 64 members held in one integer.",
         "The interview version usually hides one of those identities behind a story — \"every number appears twice except one\" is XOR's self-inverse property and nothing else.",

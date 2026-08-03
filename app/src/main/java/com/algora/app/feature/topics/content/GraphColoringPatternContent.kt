@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +18,30 @@ import com.algora.app.core.data.model.TopicContent
 // different rejection rule — and the directed and undirected rules differ.
 internal val graphColoringPatternContent = TopicContent(
     topicId = "graph_coloring_pattern",
+    figure = Figure(
+        caption = "Greedy in a fixed order gives each node the smallest colour its neighbours do not " +
+            "hold — at most max-degree + 1 colours, though the order changes the result. The triangle " +
+            "A–B–C forces three, and an odd cycle is precisely what makes a graph non-bipartite.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("A c1", 0.08f, 0.18f, FigureTone.Primary),
+                FigureGraphNode("B c2", 0.08f, 0.82f, FigureTone.Accent),
+                FigureGraphNode("C c3", 0.40f, 0.50f, FigureTone.Warn),
+                FigureGraphNode("D c1", 0.72f, 0.16f, FigureTone.Primary),
+                FigureGraphNode("E c1", 0.72f, 0.84f, FigureTone.Primary),
+                FigureGraphNode("F c2", 0.96f, 0.50f, FigureTone.Accent),
+            ),
+            edges = listOf(
+                FigureEdge(0, 1, tone = FigureTone.Warn),
+                FigureEdge(0, 2, tone = FigureTone.Warn),
+                FigureEdge(1, 2, tone = FigureTone.Warn),
+                FigureEdge(2, 3),
+                FigureEdge(2, 4),
+                FigureEdge(3, 5),
+                FigureEdge(4, 5),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Two-colouring walks the graph assigning alternating colours. If an edge ever joins two same-coloured vertices, the graph contains an odd cycle and no valid split exists — that is exactly the bipartite test.",
         "Cycle detection is the same traversal with a different rejection rule. Undirected: any edge to a visited vertex that is not the parent. Directed: an edge back into a vertex still on the current recursion stack — a visited-but-finished vertex is harmless.",

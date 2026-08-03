@@ -87,7 +87,33 @@ sealed interface FigureShape {
     data class Tree(
         val nodes: List<FigureNode>,
     ) : FigureShape
+
+    /**
+     * A small graph with hand-placed nodes. Unlike [Tree] there is no layout to derive — the point of
+     * most graph figures is a specific arrangement (the two halves of a bipartite check, the layers
+     * of a DAG), so positions are part of the spec.
+     */
+    data class Graph(
+        val nodes: List<FigureGraphNode>,
+        val edges: List<FigureEdge>,
+    ) : FigureShape
 }
+
+data class FigureGraphNode(
+    val label: String,
+    /** Position inside the card, 0f..1f in both axes. */
+    val x: Float,
+    val y: Float,
+    val tone: FigureTone = FigureTone.Muted,
+)
+
+data class FigureEdge(
+    val from: Int,
+    val to: Int,
+    val label: String? = null,
+    val directed: Boolean = false,
+    val tone: FigureTone = FigureTone.Muted,
+)
 
 data class FigureNode(
     val label: String,

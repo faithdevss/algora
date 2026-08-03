@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +18,28 @@ import com.algora.app.core.data.model.TopicContent
 // implementations already live in the Algorithms section.
 internal val shortestPathPatternContent = TopicContent(
     topicId = "shortest_path_pattern",
+    figure = Figure(
+        caption = "Pick the algorithm from the edges, not the problem statement. Unit weights → BFS " +
+            "(the queue already is a priority queue). Non-negative weights → Dijkstra. A negative edge " +
+            "→ Bellman-Ford, because settling a node as final is exactly what a negative edge invalidates.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("S 0", 0.05f, 0.50f, FigureTone.Accent),
+                FigureGraphNode("A 1", 0.38f, 0.14f, FigureTone.Primary),
+                FigureGraphNode("B 4", 0.38f, 0.86f, FigureTone.Primary),
+                FigureGraphNode("C 5", 0.72f, 0.50f, FigureTone.Primary),
+                FigureGraphNode("T 6", 0.96f, 0.16f, FigureTone.Accent),
+            ),
+            edges = listOf(
+                FigureEdge(0, 1, "1", directed = true, tone = FigureTone.Primary),
+                FigureEdge(0, 2, "4", directed = true, tone = FigureTone.Accent),
+                FigureEdge(1, 3, "6", directed = true),
+                FigureEdge(2, 3, "1", directed = true, tone = FigureTone.Accent),
+                FigureEdge(1, 4, "9", directed = true, tone = FigureTone.Warn),
+                FigureEdge(3, 4, "1", directed = true, tone = FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Once edges carry weights, BFS stops being correct — the fewest hops and the cheapest route are different questions. The shortest-path pattern is choosing between BFS, 0-1 BFS, Dijkstra and Bellman-Ford by looking at the weights.",
         "Dijkstra is the default: a min-heap always expands the cheapest frontier node, and because no edge can lower a settled cost, the first time a node is popped its distance is final. That guarantee dies with negative edges.",

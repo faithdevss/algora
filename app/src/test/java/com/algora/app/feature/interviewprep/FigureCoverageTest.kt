@@ -20,21 +20,9 @@ class FigureCoverageTest {
         TopicContentProvider.get(topic.id)?.figure?.let { topic.id to it }
     }
 
-    // Guides still waiting for a figure, authored batch by batch alongside the primitives they need.
-    // The list only shrinks — `no pending entry already has a figure` fails if one is left behind.
-    private val pendingFigures = setOf(
-        "bit_manipulation_pattern",
-        "bit_trie_pattern",
-        "bitmask_state_pattern",
-        "composite_design_pattern",
-        "dag_dp_pattern",
-        "graph_coloring_pattern",
-        "greedy_exchange_pattern",
-        "hash_counting_pattern",
-        "shortest_path_pattern",
-        "topological_sort_pattern",
-        "union_find_pattern",
-    )
+    // Every pattern guide now has a figure; the set stays as the seam the batches were tracked
+    // through, and `no pending entry already has a figure` keeps it honest if it is repopulated.
+    private val pendingFigures = emptySet<String>()
 
     @Test
     fun `every pattern guide has a figure`() {
@@ -161,6 +149,32 @@ class FigureCoverageTest {
                     else if (parent >= index) add("node $index points forward to parent $parent")
                 }
                 if (tree.nodes.any { it.label.isBlank() }) add("a node has no label")
+            }
+            if (faults.isEmpty()) null else "$id: ${faults.joinToString("; ")}"
+        }
+        assertTrue(problems.joinToString("\n"), problems.isEmpty())
+    }
+
+    // Graph positions are hand-placed rather than derived, so a coordinate outside 0..1 puts a node
+    // half off the card — which looks like a layout bug rather than a spec one.
+    @Test
+    fun `every graph figure places its nodes on the card`() {
+        val problems = figures.mapNotNull { (id, figure) ->
+            val graph = figure.shape as? FigureShape.Graph ?: return@mapNotNull null
+            val faults = buildList {
+                if (graph.nodes.isEmpty()) add("no nodes")
+                graph.nodes.forEach { node ->
+                    if (node.x !in 0f..1f || node.y !in 0f..1f) {
+                        add("node \"${node.label}\" at (${node.x}, ${node.y}) is off the card")
+                    }
+                    if (node.label.isBlank()) add("a node has no label")
+                }
+                graph.edges.forEach { edge ->
+                    if (edge.from !in graph.nodes.indices || edge.to !in graph.nodes.indices) {
+                        add("edge ${edge.from} → ${edge.to} of ${graph.nodes.size} nodes")
+                    }
+                    if (edge.from == edge.to) add("self-loop on node ${edge.from}")
+                }
             }
             if (faults.isEmpty()) null else "$id: ${faults.joinToString("; ")}"
         }

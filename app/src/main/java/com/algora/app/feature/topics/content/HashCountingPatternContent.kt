@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,25 @@ import com.algora.app.core.data.model.TopicContent
 // a nested loop, either by counting or by remembering what a complement would look like.
 internal val hashCountingPatternContent = TopicContent(
     topicId = "hash_counting_pattern",
+    figure = Figure(
+        caption = "The map does not hold the input — it holds what has been *seen*, so a later element " +
+            "can ask one question instead of scanning. Keyed on prefix sums it answers \"subarrays " +
+            "summing to k\"; keyed on character counts, anagrams; on remainders, divisibility.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0 × 1", "—"),
+                listOf("3 × 1", "10 × 1"),
+                listOf("7 × 2", "—"),
+                listOf("14 × 1", "11 × 1"),
+            ),
+            rowHeaders = listOf("b0", "b1", "b2", "b3"),
+            colHeaders = listOf("entry", "chained"),
+            marks = listOf(
+                FigureCell(2, 0, FigureTone.Accent),
+                FigureCell(0, 0, FigureTone.Primary),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "The hashing pattern removes an inner loop by remembering what has already been seen. Two shapes cover almost every use: count occurrences in a map, or store each element so a future element can look up its complement in O(1).",
         "The strongest version pairs a map with a running prefix value — subarrays summing to k, or matching parity or remainder — turning \"check every subarray\" from O(n²) into one pass.",
