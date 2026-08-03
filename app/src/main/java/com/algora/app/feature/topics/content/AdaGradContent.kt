@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,41 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val adaGradContent = TopicContent(
     topicId = "adagrad",
+    figure = Figure(
+        caption = "Both curves are the same mechanism read twice. At step 200 the rare feature still " +
+            "holds 1.58× the dense one's rate — the protection AdaGrad was built for. Keep going and " +
+            "both keep falling, because G_t only ever accumulates: by step 2,000 the dense rate is " +
+            "lr/√t and still dropping, long after the loss has flattened. Nothing inside AdaGrad stops " +
+            "it.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    label = "sparse feature",
+                    points = listOf(
+                        FigurePoint(0.025f, 1f),
+                        FigurePoint(0.10f, 0.50f),
+                        FigurePoint(0.25f, 0.316f),
+                        FigurePoint(0.50f, 0.224f),
+                        FigurePoint(1f, 0.158f),
+                    ),
+                ),
+                FigureSeries(
+                    label = "dense feature",
+                    points = listOf(
+                        FigurePoint(0.025f, 0.632f),
+                        FigurePoint(0.10f, 0.316f),
+                        FigurePoint(0.25f, 0.20f),
+                        FigurePoint(0.50f, 0.141f),
+                        FigurePoint(1f, 0.10f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+            ),
+            xLabel = "2,000 steps — G_t never resets",
+            yLabel = "effective learning rate",
+            markers = listOf(FigurePoint(0.10f, 0.50f, "1.58× dense at step 200", FigureTone.Primary)),
+        ),
+    ),
     whatIsIt = listOf(
         "AdaGrad gives every parameter its own learning rate, scaled by the inverse square root of every squared gradient that parameter has ever received: G_t += g_t², effective rate = lr/√(G_t+ε). A parameter with large or frequent gradients accumulates a large G_t and gets a small effective rate; one with small or rare gradients keeps a larger rate. The motivating case is a rare feature that matters a lot when it does show up — AdaGrad is supposed to keep it from being drowned out by a dense feature that updates every step.",
         "Run a dense feature (gradient magnitude 1, every step) beside a sparse one (magnitude 2, one step in ten) for 200 steps: the dense feature accumulates G=200 (200 steps of 1²), the sparse one only G=80 (20 firings of 2²) — fewer, bigger gradients still sum to less here. That flips into the effective rate: dense settles to 0.0354, sparse keeps 0.0559 — 1.58× the dense rate, exactly the rare-feature protection AdaGrad is built for.",

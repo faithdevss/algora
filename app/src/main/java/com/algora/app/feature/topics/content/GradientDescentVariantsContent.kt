@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,52 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val gradientDescentVariantsContent = TopicContent(
     topicId = "gradient_descent_variants",
+    figure = Figure(
+        caption = "The ravine that motivates every variant on this page: steep across, shallow along. " +
+            "Plain SGD spends its step budget crossing the walls and barely advances down the floor. " +
+            "Momentum accumulates the component that keeps pointing the same way and cancels the one " +
+            "that reverses every step — same gradients, same learning rate, different bookkeeping.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    label = "ravine floor",
+                    points = listOf(FigurePoint(0f, 0.5f), FigurePoint(1f, 0.5f)),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    label = "plain SGD",
+                    points = listOf(
+                        FigurePoint(0f, 0.95f),
+                        FigurePoint(0.08f, 0.12f),
+                        FigurePoint(0.16f, 0.85f),
+                        FigurePoint(0.24f, 0.18f),
+                        FigurePoint(0.32f, 0.78f),
+                        FigurePoint(0.40f, 0.24f),
+                        FigurePoint(0.50f, 0.72f),
+                        FigurePoint(0.60f, 0.30f),
+                        FigurePoint(0.70f, 0.68f),
+                        FigurePoint(0.80f, 0.35f),
+                        FigurePoint(0.90f, 0.64f),
+                        FigurePoint(1f, 0.40f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+                FigureSeries(
+                    label = "with momentum",
+                    points = listOf(
+                        FigurePoint(0f, 0.95f),
+                        FigurePoint(0.10f, 0.62f),
+                        FigurePoint(0.25f, 0.53f),
+                        FigurePoint(0.50f, 0.50f),
+                        FigurePoint(1f, 0.50f),
+                    ),
+                ),
+            ),
+            xLabel = "one step budget, one learning rate",
+            yLabel = "position across the ravine",
+        ),
+    ),
     whatIsIt = listOf(
         "Gradient descent variants differ in how much data each step uses and how the step size adapts — trading noise, speed, and memory.",
         "Modern optimizers like Adam add momentum and per-parameter learning rates on top of plain SGD, making deep networks train far faster and more reliably.",

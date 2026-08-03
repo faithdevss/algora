@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,40 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val adamContent = TopicContent(
     topicId = "adam",
+    figure = Figure(
+        caption = "Both moment estimates start at zero, so both start biased toward zero. On a constant " +
+            "gradient the corrected ratio m̂/√v̂ is exactly 1.000 from step one; the uncorrected one " +
+            "opens at 3.16, peaks at 6.57 around step 12, and is still 3.24 at step 100. Bias " +
+            "correction is not an early-training nicety — it is the whole difference between Adam and " +
+            "\"momentum plus RMSprop\".",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    label = "uncorrected",
+                    points = listOf(
+                        FigurePoint(0.01f, 0.452f),
+                        FigurePoint(0.05f, 0.80f),
+                        FigurePoint(0.12f, 0.938f),
+                        FigurePoint(0.25f, 0.75f),
+                        FigurePoint(0.50f, 0.58f),
+                        FigurePoint(0.75f, 0.50f),
+                        FigurePoint(1f, 0.463f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+                FigureSeries(
+                    label = "bias-corrected",
+                    points = listOf(FigurePoint(0.01f, 0.143f), FigurePoint(1f, 0.143f)),
+                ),
+            ),
+            xLabel = "step 1 → 100, constant gradient g = 2.0",
+            yLabel = "m/√v",
+            markers = listOf(
+                FigurePoint(0.12f, 0.938f, "6.57", FigureTone.Warn),
+                FigurePoint(0.55f, 0.143f, "1.000, exactly"),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Adam combines momentum's first-moment EMA (m_t = β1·m_{t-1} + (1−β1)·g_t) and RMSprop's second-moment EMA (v_t = β2·v_{t-1} + (1−β2)·g_t², β1=0.9, β2=0.999) and steps by m_t/√v_t. Both EMAs start at zero, which biases early estimates toward zero — Adam's actual contribution beyond \"momentum plus RMSprop\" is the correction that fixes exactly that bias: m̂_t = m_t/(1−β1^t), v̂_t = v_t/(1−β2^t).",
         "Run a single constant gradient (g=2.0) through both EMAs and check the correction as an identity rather than an approximation: with a truly constant input, m_t = (1−β1^t)·g at every step — an exact geometric-series identity — so m̂_t = g exactly, at every t, not just asymptotically. The same holds for v̂_t = g². The corrected step ratio m̂_t/√v̂_t is exactly 1.000 from step 1 onward.",

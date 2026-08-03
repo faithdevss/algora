@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,52 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val momentumContent = TopicContent(
     topicId = "momentum",
+    figure = Figure(
+        caption = "The steep axis of the same ill-conditioned bowl, one learning rate, two β values. " +
+            "β=0.9 overshoots the minimum by 0.737 of its starting distance and damps out; β=0.99 " +
+            "comes back 0.996 — essentially the whole way — and is still ringing at step 60, final " +
+            "loss 0.2416 against β=0.9's 0.0070. More velocity is not more optimiser.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    label = "minimum",
+                    points = listOf(FigurePoint(0f, 0.5f), FigurePoint(1f, 0.5f)),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    label = "β = 0.9",
+                    points = listOf(
+                        FigurePoint(0f, 1f),
+                        FigurePoint(0.12f, 0.131f),
+                        FigurePoint(0.28f, 0.72f),
+                        FigurePoint(0.44f, 0.36f),
+                        FigurePoint(0.60f, 0.57f),
+                        FigurePoint(0.75f, 0.46f),
+                        FigurePoint(0.90f, 0.51f),
+                        FigurePoint(1f, 0.50f),
+                    ),
+                ),
+                FigureSeries(
+                    label = "β = 0.99",
+                    points = listOf(
+                        FigurePoint(0f, 1f),
+                        FigurePoint(0.12f, 0.002f),
+                        FigurePoint(0.28f, 0.98f),
+                        FigurePoint(0.44f, 0.03f),
+                        FigurePoint(0.60f, 0.95f),
+                        FigurePoint(0.76f, 0.06f),
+                        FigurePoint(0.90f, 0.92f),
+                        FigurePoint(1f, 0.10f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+            ),
+            xLabel = "60 steps at lr = 0.012",
+            yLabel = "position on the steep axis",
+            markers = listOf(FigurePoint(0.12f, 0.002f, "0.996 back", FigureTone.Warn)),
+        ),
+    ),
     whatIsIt = listOf(
         "Plain gradient descent takes the current gradient and nothing else: v_t = g_t. Momentum keeps a running velocity instead, v_t = β·v_{t-1} + g_t, and steps by that velocity rather than the instantaneous gradient. A consistent downhill direction compounds across steps instead of being paid one small increment at a time — the effective step length on a steady gradient is roughly 1/(1−β) times the raw one, so β=0.9 acts like a step about 10× larger than its learning rate alone would suggest.",
         "On the same ill-conditioned bowl gradient_descent_variants runs — 20× steeper on w1 than w2 — a β sweep at one fixed learning rate (0.012) shows where that compounding pays off and where it doesn't. β=0.5 barely helps: final loss 0.1623 after 60 steps, not far off plain SGD. β=0.9 is the clear winner at 0.0070 — more than an order of magnitude lower. β=0.99 overshoots: 0.2416, worse than β=0.5.",

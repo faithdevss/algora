@@ -21,11 +21,13 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.algora.app.core.data.model.Figure
@@ -69,6 +71,7 @@ internal fun FigureCard(figure: Figure, modifier: Modifier = Modifier) {
                 is FigureShape.Stacks -> StacksFigure(shape)
                 is FigureShape.Tree -> TreeFigure(shape)
                 is FigureShape.Graph -> GraphFigure(shape)
+                is FigureShape.Plot -> PlotFigure(shape)
             }
             Text(
                 figure.caption,
@@ -319,7 +322,6 @@ private fun GraphFigure(shape: FigureShape.Graph) {
     val toneFor = FigureTone.entries.associateWith { toneColor(it) }
     val nodeStyle = TextStyle(color = onSurface, fontSize = 10.sp, fontWeight = FontWeight.Bold)
     val edgeStyle = TextStyle(color = muted, fontSize = 9.sp, fontWeight = FontWeight.Medium)
-    val widestNode = shape.nodes.maxOf { textMeasurer.measure(it.label, nodeStyle).size.width }
 
     Canvas(modifier = Modifier.fillMaxWidth().height(132.dp)) {
         val inset = 22f
@@ -542,6 +544,119 @@ private fun TimelineFigure(shape: FigureShape.Timeline) {
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+    }
+}
+
+// The legend and the axis names are composables around the canvas rather than text inside it: a
+// series label drawn at the end of its own curve lands on top of the next curve as soon as two of
+// them converge, which is exactly what an optimiser comparison does.
+@Composable
+private fun PlotFigure(shape: FigureShape.Plot) {
+    val textMeasurer = rememberTextMeasurer()
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val axisColor = muted.copy(alpha = 0.35f)
+    val toneFor = FigureTone.entries.associateWith { toneColor(it) }
+    val tickStyle = TextStyle(color = muted, fontSize = 9.sp, fontWeight = FontWeight.Medium)
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            shape.yLabel?.let {
+                Text(it, style = MaterialTheme.typography.labelSmall, color = muted)
+            }
+            Box(modifier = Modifier.weight(1f))
+            shape.series.filter { it.label.isNotBlank() }.forEach { series ->
+                Text(
+                    series.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = toneFor.getValue(series.tone),
+                )
+            }
+        }
+
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(124.dp)
+                .padding(top = 4.dp),
+        ) {
+            // Bars carry their names under the axis; a curve plot gives that strip back to the plot.
+            val bottomPad = if (shape.bars.isEmpty()) 6f else 24f
+            val leftPad = 6f
+            val plotW = size.width - leftPad - 8f
+            val plotH = size.height - bottomPad - 8f
+            val baseline = 8f + plotH
+
+            fun at(x: Float, y: Float) = Offset(leftPad + x * plotW, 8f + (1f - y) * plotH)
+
+            drawLine(axisColor, Offset(leftPad, 8f), Offset(leftPad, baseline), strokeWidth = 1.5f)
+            drawLine(axisColor, Offset(leftPad, baseline), Offset(size.width, baseline), strokeWidth = 1.5f)
+
+            shape.series.forEach { series ->
+                val colour = toneFor.getValue(series.tone)
+                val effect = if (series.dashed) {
+                    PathEffect.dashPathEffect(floatArrayOf(9f, 7f))
+                } else {
+                    null
+                }
+                series.points.zipWithNext().forEach { (a, b) ->
+                    drawLine(
+                        colour,
+                        at(a.x, a.y),
+                        at(b.x, b.y),
+                        strokeWidth = 2.4f,
+                        pathEffect = effect,
+                    )
+                }
+            }
+
+            shape.bars.forEachIndexed { index, bar ->
+                val colour = toneFor.getValue(bar.tone)
+                val slot = plotW / shape.bars.size
+                val width = slot * 0.56f
+                val centre = leftPad + (index + 0.5f) * slot
+                val height = (bar.value * plotH).coerceAtLeast(2f)
+                drawRoundRect(
+                    color = colour.copy(alpha = 0.85f),
+                    topLeft = Offset(centre - width / 2f, baseline - height),
+                    size = Size(width, height),
+                    cornerRadius = CornerRadius(5f, 5f),
+                )
+                val layout = textMeasurer.measure(bar.label, tickStyle)
+                drawText(
+                    layout,
+                    topLeft = Offset(centre - layout.size.width / 2f, baseline + 5f),
+                )
+            }
+
+            shape.markers.forEach { point ->
+                val colour = toneFor.getValue(point.tone)
+                val centre = at(point.x, point.y)
+                drawCircle(colour, radius = 4.5f, center = centre)
+                point.label?.let { label ->
+                    val layout = textMeasurer.measure(label, tickStyle.copy(color = colour))
+                    // Above the point, and pulled back inside the canvas when it sits near the right
+                    // edge — a called-out minimum is often the last point of the curve.
+                    val x = (centre.x - layout.size.width / 2f)
+                        .coerceIn(0f, (size.width - layout.size.width).coerceAtLeast(0f))
+                    drawText(layout, topLeft = Offset(x, centre.y - layout.size.height - 6f))
+                }
+            }
+        }
+
+        shape.xLabel?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.labelSmall,
+                color = muted,
+                modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                textAlign = TextAlign.Center,
             )
         }
     }

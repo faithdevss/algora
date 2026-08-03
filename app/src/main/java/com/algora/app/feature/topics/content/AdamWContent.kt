@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,22 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val adamWContent = TopicContent(
     topicId = "adamw",
+    figure = Figure(
+        caption = "Two parameters, identical λ, second moments 100× apart after 300 warm-up steps. " +
+            "Folded into the gradient, the decay is divided by √v̂ like everything else, so the " +
+            "small-v parameter is decayed 10.0× harder than the large-v one. Applied to the weight " +
+            "directly, both get exactly lr·λ — a ratio of 1.000, which is what \"weight decay\" meant " +
+            "before Adam broke it.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("L2, v=0.06", 1f, FigureTone.Warn),
+                FigureBar("L2, v=6.5", 0.10f, FigureTone.Warn),
+                FigureBar("AdamW, v=0.06", 0.254f),
+                FigureBar("AdamW, v=6.5", 0.254f),
+            ),
+            yLabel = "decay actually applied (× lr·λ)",
+        ),
+    ),
     whatIsIt = listOf(
         "The standard way to add L2 regularization to Adam is to fold it into the gradient before anything else happens: g'_t = g_t + λ·w. That decay term then flows through the same first- and second-moment EMAs as any gradient, which means it gets divided by √v̂_t exactly like the data gradient does. AdamW's fix is to skip that entirely — apply the decay directly to the weight, outside the adaptive step: w_t = w_t − lr·(m̂_t/√v̂_t) − lr·λ·w_t.",
         "The difference is not cosmetic. Warm up two parameters for 300 steps with different gradient histories — magnitude 5 for one, 0.5 for the other — so their accumulated second moments land 100× apart (v=6.482 vs v=0.0648). Now take one weight-decay-only step (no new data gradient) under each method. L2-in-Adam decays the small-v parameter 10.0× faster than the large-v one — identical weight decay λ, wildly unequal effect, purely because the decay term got divided by different v's.",

@@ -248,4 +248,45 @@ class FigureShapeTest {
         }
         assertTrue(problems.joinToString("\n"), problems.isEmpty())
     }
+
+    // A plot is the one shape whose values are read against a scale rather than compared to their
+    // neighbours, so a point outside 0..1 is not merely clipped — it silently rescales nothing and
+    // draws off the canvas while every other point still looks right.
+    @Test
+    fun `every plot stays inside its axes`() {
+        val problems = figures.mapNotNull { (id, figure) ->
+            val plot = figure.shape as? FigureShape.Plot ?: return@mapNotNull null
+            val faults = buildList {
+                // Curves and bars answer different questions; one axis cannot carry both legibly.
+                if (plot.series.isEmpty() && plot.bars.isEmpty()) add("neither series nor bars")
+                if (plot.series.isNotEmpty() && plot.bars.isNotEmpty()) {
+                    add("${plot.series.size} series and ${plot.bars.size} bars on one axis")
+                }
+                plot.series.forEach { series ->
+                    if (series.label.isBlank()) add("a series has no label")
+                    if (series.points.size < 2) {
+                        add("series \"${series.label}\" has ${series.points.size} point(s) — nothing to draw")
+                    }
+                    series.points.forEach { point ->
+                        if (point.x !in 0f..1f || point.y !in 0f..1f) {
+                            add("series \"${series.label}\" leaves the axes at (${point.x}, ${point.y})")
+                        }
+                    }
+                }
+                plot.bars.forEach { bar ->
+                    if (bar.label.isBlank()) add("a bar has no label")
+                    if (bar.value !in 0f..1f) add("bar \"${bar.label}\" is ${bar.value} of the axis")
+                }
+                plot.markers.forEach { marker ->
+                    if (marker.x !in 0f..1f || marker.y !in 0f..1f) {
+                        add("marker at (${marker.x}, ${marker.y}) is off the axes")
+                    }
+                    // An unlabelled marker is a dot with nothing to say — the callout is the point.
+                    if (marker.label.isNullOrBlank()) add("a marker has no label")
+                }
+            }
+            if (faults.isEmpty()) null else "$id: ${faults.joinToString("; ")}"
+        }
+        assertTrue(problems.joinToString("\n"), problems.isEmpty())
+    }
 }

@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,35 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val rmsPropContent = TopicContent(
     topicId = "rmsprop",
+    figure = Figure(
+        caption = "The same dense gradient stream through both accumulators. AdaGrad's running sum only " +
+            "grows, so its effective rate traces lr/√t all the way down to 0.0112 by step 2,000. " +
+            "RMSprop's moving average can fall as well as rise, so it settles at 0.5000 — the raw " +
+            "learning rate — and stays there. 44.7× apart on identical input.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    label = "RMSprop",
+                    points = listOf(FigurePoint(0f, 1f), FigurePoint(1f, 1f)),
+                ),
+                FigureSeries(
+                    label = "AdaGrad",
+                    points = listOf(
+                        FigurePoint(0.0005f, 1f),
+                        FigurePoint(0.025f, 0.141f),
+                        FigurePoint(0.10f, 0.0707f),
+                        FigurePoint(0.25f, 0.0447f),
+                        FigurePoint(0.50f, 0.0316f),
+                        FigurePoint(1f, 0.0224f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+            ),
+            xLabel = "2,000 steps, gradient 1 every step",
+            yLabel = "dense-feature rate (÷ lr)",
+            markers = listOf(FigurePoint(1f, 0.0224f, "44.7× smaller", FigureTone.Warn)),
+        ),
+    ),
     whatIsIt = listOf(
         "RMSprop replaces AdaGrad's running sum of squared gradients with an exponential moving average: E[g²]_t = γ·E[g²]_{t-1} + (1−γ)·g_t², γ typically 0.9. A moving average can go back down as well as up, which is exactly what a running sum can't do — it fixes AdaGrad's stall by letting the accumulator forget old gradients instead of keeping every one of them forever.",
         "On the identical dense/sparse stream AdaGrad runs (gradient 1 every step, gradient 2 one step in ten), the fix is visible directly: by step 2,000 RMSprop's dense-feature rate has settled at 0.5000 — essentially the raw learning rate — and stays there. AdaGrad's has shrunk to 0.0112 over the same steps, 44.7× smaller for the identical gradient stream. RMSprop simply doesn't stall.",

@@ -97,7 +97,55 @@ sealed interface FigureShape {
         val nodes: List<FigureGraphNode>,
         val edges: List<FigureEdge>,
     ) : FigureShape
+
+    /**
+     * Axes with either curves or bars on them. The first shape the AI topics needed that the DSA six
+     * could not fake: a loss falling over steps, an activation's kink at zero, the two arms of the
+     * bias-variance trade-off, a softmax distribution. All of those are a quantity read against a
+     * scale, which none of the cell-and-node shapes can say.
+     *
+     * [series] and [bars] are alternatives, not layers — a curve and a distribution are different
+     * questions, and drawing both on one axis makes neither legible. Exactly one is populated, which
+     * `FigureShapeTest` enforces since the type cannot.
+     */
+    data class Plot(
+        val series: List<FigureSeries> = emptyList(),
+        val bars: List<FigureBar> = emptyList(),
+        val xLabel: String? = null,
+        val yLabel: String? = null,
+        /** Called-out points: the minimum, the operating point, the knee of the curve. */
+        val markers: List<FigurePoint> = emptyList(),
+    ) : FigureShape
 }
+
+data class FigureSeries(
+    val label: String,
+    /** Draw order, left to right. */
+    val points: List<FigurePoint>,
+    val tone: FigureTone = FigureTone.Primary,
+    /** For the baseline a curve is being compared against — plain SGD under Adam, chance under ROC. */
+    val dashed: Boolean = false,
+)
+
+/**
+ * A point in plot space. Both axes run 0f..1f, and **y is measured up from the axis** — the renderer
+ * flips it. Authoring a loss curve with y descending would otherwise mean writing every value
+ * upside down.
+ */
+data class FigurePoint(
+    val x: Float,
+    val y: Float,
+    /** Set only on a [FigureShape.Plot.markers] entry; points inside a series are not labelled. */
+    val label: String? = null,
+    val tone: FigureTone = FigureTone.Accent,
+)
+
+data class FigureBar(
+    val label: String,
+    /** 0f..1f of the axis height. */
+    val value: Float,
+    val tone: FigureTone = FigureTone.Primary,
+)
 
 data class FigureGraphNode(
     val label: String,
