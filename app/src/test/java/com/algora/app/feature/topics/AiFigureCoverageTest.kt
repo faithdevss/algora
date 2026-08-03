@@ -30,6 +30,9 @@ class AiFigureCoverageTest {
     private val pilotFigures = listOf(
         // A1 — optimisers, on the new Plot shape.
         "adam", "adamw", "momentum", "rmsprop", "adagrad", "gradient_descent_variants",
+        // A2 — activations and losses, still on Plot.
+        "relu", "leaky_relu", "sigmoid", "softmax", "activation_functions",
+        "cross_entropy_loss", "mse", "hinge_loss",
     )
 
     @Test
@@ -47,6 +50,6 @@ class AiFigureCoverageTest {
     @Test
     fun `the pilot is the size the phase was scoped against`() {
         // Keeps the batch table in docs/plan/phase-12-ai-figures.md verifiable rather than folklore.
-        assertEquals(6, pilotFigures.size)
+        assertEquals(14, pilotFigures.size)
     }
 }

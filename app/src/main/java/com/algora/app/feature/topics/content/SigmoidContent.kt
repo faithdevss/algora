@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,44 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val sigmoidContent = TopicContent(
     topicId = "sigmoid",
+    figure = Figure(
+        caption = "The output curve is not the problem — the one under it is. σ′ = σ(1−σ) peaks at " +
+            "exactly 0.25 and falls away fast on both sides, and backpropagation multiplies one such " +
+            "factor per layer. Twenty layers later the first layer's gradient is around 10¹¹ times " +
+            "weaker than the last's, before a single weight is taken into account.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    label = "σ(z)",
+                    points = listOf(
+                        FigurePoint(0f, 0.002f),
+                        FigurePoint(0.17f, 0.018f),
+                        FigurePoint(0.33f, 0.119f),
+                        FigurePoint(0.5f, 0.5f),
+                        FigurePoint(0.67f, 0.881f),
+                        FigurePoint(0.83f, 0.982f),
+                        FigurePoint(1f, 0.998f),
+                    ),
+                ),
+                FigureSeries(
+                    label = "σ′(z)",
+                    points = listOf(
+                        FigurePoint(0f, 0.0025f),
+                        FigurePoint(0.17f, 0.0177f),
+                        FigurePoint(0.33f, 0.105f),
+                        FigurePoint(0.5f, 0.25f),
+                        FigurePoint(0.67f, 0.105f),
+                        FigurePoint(0.83f, 0.0177f),
+                        FigurePoint(1f, 0.0025f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+            ),
+            xLabel = "z, −6 → 6",
+            yLabel = "output and slope, same scale",
+            markers = listOf(FigurePoint(0.5f, 0.25f, "0.25, the best it ever gets", FigureTone.Warn)),
+        ),
+    ),
     whatIsIt = listOf(
         "σ(z) = 1/(1+e⁻ᶻ) takes any real number and returns something in (0, 1). It is smooth, monotone, and its output reads directly as a probability — which is why it was the default hidden activation for three decades and why it remains exactly the right choice as the output of a binary classifier.",
         "Its problem is the derivative. σ′(z) = σ(z)(1−σ(z)) peaks at exactly 0.25, at z = 0, and falls away quickly on both sides. Backpropagation multiplies one such factor per layer, so a deep sigmoid stack multiplies the gradient by at most a quarter per layer before the weights are even considered — the simulation runs twenty layers and measures the first layer's gradient at around 10¹¹ times weaker than the last's.",

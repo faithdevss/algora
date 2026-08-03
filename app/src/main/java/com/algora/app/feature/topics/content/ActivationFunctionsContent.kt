@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,50 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val activationFunctionsContent = TopicContent(
     topicId = "activation_functions",
+    figure = Figure(
+        caption = "Three shapes, three different answers to the same question — what happens to a " +
+            "gradient passing through. Sigmoid and tanh both flatten at either end, so a saturated " +
+            "unit passes almost nothing back; tanh at least sits centred on zero, which sigmoid does " +
+            "not. ReLU never flattens on the positive side, and that is the whole reason it replaced " +
+            "both. Drawn on a shared axis from −4 to 4, with ReLU clipped where it leaves the top.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    label = "sigmoid",
+                    points = listOf(
+                        FigurePoint(0f, 0.509f),
+                        FigurePoint(0.25f, 0.545f),
+                        FigurePoint(0.5f, 0.75f),
+                        FigurePoint(0.75f, 0.955f),
+                        FigurePoint(1f, 0.991f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+                FigureSeries(
+                    label = "tanh",
+                    points = listOf(
+                        FigurePoint(0f, 0.0005f),
+                        FigurePoint(0.25f, 0.018f),
+                        FigurePoint(0.5f, 0.5f),
+                        FigurePoint(0.75f, 0.982f),
+                        FigurePoint(1f, 0.9995f),
+                    ),
+                    tone = FigureTone.Muted,
+                ),
+                FigureSeries(
+                    label = "ReLU",
+                    points = listOf(
+                        FigurePoint(0f, 0.5f),
+                        FigurePoint(0.5f, 0.5f),
+                        FigurePoint(0.625f, 1f),
+                        FigurePoint(1f, 1f),
+                    ),
+                ),
+            ),
+            xLabel = "z, −4 → 4",
+            yLabel = "output, −1 → 1",
+        ),
+    ),
     whatIsIt = listOf(
         "Activation functions are the non-linearities applied after each neuron's weighted sum — they're what let a network model curves, not just straight lines.",
         "The choice matters: it affects how gradients flow, whether neurons saturate, and how fast the network trains.",

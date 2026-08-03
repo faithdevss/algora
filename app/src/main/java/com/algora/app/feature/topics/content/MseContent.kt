@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,35 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val mseContent = TopicContent(
     topicId = "mse",
+    figure = Figure(
+        caption = "Squaring is not just a way to make errors positive — it decides which points the fit " +
+            "listens to. Double the residual and the penalty quadruples, so a handful of outliers can " +
+            "own the objective: on the lab's data, 4 contaminated points out of 44 (9.1%) account for " +
+            "81.2% of the total squared error. That is MSE working as designed, not failing.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    label = "|error|",
+                    points = listOf(FigurePoint(0f, 0f), FigurePoint(1f, 1f)),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    label = "error²",
+                    points = listOf(
+                        FigurePoint(0f, 0f),
+                        FigurePoint(0.25f, 0.0625f),
+                        FigurePoint(0.5f, 0.25f),
+                        FigurePoint(0.75f, 0.5625f),
+                        FigurePoint(1f, 1f),
+                    ),
+                ),
+            ),
+            xLabel = "residual",
+            yLabel = "penalty",
+            markers = listOf(FigurePoint(0.5f, 0.25f, "half the error, a quarter the cost")),
+        ),
+    ),
     whatIsIt = listOf(
         "Mean squared error is 1/n Σ(y − ŷ)² — the average squared residual. Squaring does two things at once: it makes every error positive so they don't cancel, and it weights large errors far more than small ones, since a residual twice as big contributes four times the penalty.",
         "That second property is the whole story on the lab's data: 40 clean points plus 4 deliberately contaminated ones (44 total, so the contaminated share is 9.1% of the data). Fit by least squares, the model's MSE is 18.482 — but the 4 contaminated points alone account for 81.2% of that total squared error. Nine percent of the data produces the large majority of the number.",

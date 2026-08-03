@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,43 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val hingeLossContent = TopicContent(
     topicId = "hinge_loss",
+    figure = Figure(
+        caption = "Past margin 1 hinge loss is exactly zero, not merely small — and so is its gradient. " +
+            "That flat region is why an SVM's solution depends only on the points near the boundary: on " +
+            "1,000 margins only 110 contribute anything at all. Logistic loss has no flat region. At " +
+            "margin 5 its gradient is still 6.69×10⁻³, at margin 10 still 4.54×10⁻⁵ — it never stops " +
+            "asking an already-correct point to move further.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    label = "hinge",
+                    points = listOf(
+                        FigurePoint(0f, 1f),
+                        FigurePoint(0.25f, 0.5f),
+                        FigurePoint(0.5f, 0f),
+                        FigurePoint(1f, 0f),
+                    ),
+                ),
+                FigureSeries(
+                    label = "logistic",
+                    points = listOf(
+                        FigurePoint(0f, 0.657f),
+                        FigurePoint(0.25f, 0.347f),
+                        FigurePoint(0.5f, 0.157f),
+                        FigurePoint(0.75f, 0.063f),
+                        FigurePoint(1f, 0.0245f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+            ),
+            xLabel = "margin y·f(x), −1 → 3",
+            yLabel = "loss",
+            markers = listOf(
+                FigurePoint(0.5f, 0f, "zero from here on", FigureTone.Primary),
+                FigurePoint(1f, 0.0245f, "still 0.049", FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Hinge loss is max(0, 1 − margin), where margin is y·f(x) — positive when a point is on the correct side of the decision boundary, negative when it's on the wrong side. Past margin 1, the loss is exactly zero, not merely small. That flat zero region is the entire design: it is what makes a support vector machine's solution depend only on the points near the boundary, ignoring everything already safely classified.",
         "On the lab's 1,000 margins, hinge loss is nonzero for only 110 of them — the support vectors. The other 890 sit past the margin and contribute nothing at all to the loss or its gradient: hingeGradient is exactly 0.0 for any margin ≥ 1. Logistic loss, evaluated on the same 1,000 margins, is nonzero for all 1,000 — it has no flat region and never fully lets a point go.",

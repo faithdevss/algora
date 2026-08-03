@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,24 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val leakyReluContent = TopicContent(
     topicId = "leaky_relu",
+    figure = Figure(
+        caption = "α = 0.01 is too small to see on a plot of the curve, so this is what it does " +
+            "instead — the same learning-rate sweep, run on both. ReLU loses 12.5%, 78% and finally " +
+            "the entire layer as the rate climbs; Leaky ReLU loses nothing at any rate tested. The " +
+            "dying problem is not reduced, it is structurally absent: a unit cannot become permanently " +
+            "unreachable when the derivative is never exactly zero.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("ReLU 30", 0.125f, FigureTone.Warn),
+                FigureBar("Leaky", 0f),
+                FigureBar("ReLU 60", 0.78f, FigureTone.Warn),
+                FigureBar("Leaky", 0f),
+                FigureBar("ReLU 100", 1f, FigureTone.Warn),
+                FigureBar("Leaky", 0f),
+            ),
+            yLabel = "units dead for every input in the batch",
+        ),
+    ),
     whatIsIt = listOf(
         "max(αz, z) with α = 0.01 instead of max(0, z). The negative branch is no longer flat, so its derivative is 0.01 rather than 0 — small, but not zero, and that is the entire point. A unit whose bias has drifted negative still receives a gradient, so it can still come back.",
         "The simulation runs the same learning-rate sweep that kills ReLU's units. ReLU loses 12.5%, 78% and 100% of its layer as the rate climbs from 30 to 100; Leaky ReLU loses nothing at any rate tested. The dying problem is not reduced, it is structurally absent — a unit cannot become permanently unreachable when the derivative is never exactly zero.",

@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,27 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val reluContent = TopicContent(
     topicId = "relu",
+    figure = Figure(
+        caption = "One kink, and everything follows from which side of it a unit sits on. To the right " +
+            "the derivative is exactly 1, so backpropagation multiplies by one per layer instead of by " +
+            "at most a quarter — that is most of why depth became practical. To the left it is exactly " +
+            "0, and a unit driven there by too large a step receives no gradient from any example ever " +
+            "again: at lr 60, 78% of the layer; at lr 100, all of it.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    label = "max(0, z)",
+                    points = listOf(FigurePoint(0f, 0f), FigurePoint(0.5f, 0f), FigurePoint(1f, 1f)),
+                ),
+            ),
+            xLabel = "z, −1 → 1",
+            yLabel = "output",
+            markers = listOf(
+                FigurePoint(0.25f, 0f, "derivative 0 — nothing comes back", FigureTone.Warn),
+                FigurePoint(0.85f, 0.70f, "derivative 1", FigureTone.Primary),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "max(0, z). No exponential, no division, and a derivative that is exactly 1 wherever the unit is active — so backpropagation multiplies the signal by exactly one per layer instead of by at most a quarter. That single property is most of why depth stopped being impractical around 2012, and it is worth appreciating how little machinery it took.",
         "The half of the domain with zero derivative looks like sigmoid's problem and is a different thing. The simulation measures both: ReLU's zero-derivative fraction is 50% and stays at 50% no matter how wide the pre-activations get, because the boundary sits at zero and does not move. Sigmoid's climbs from 0% to 78% over the same sweep. One is a fixed property of the shape — and a useful one, since exact zeros make the representation sparse — while the other is a failure that worsens as weights grow during training.",

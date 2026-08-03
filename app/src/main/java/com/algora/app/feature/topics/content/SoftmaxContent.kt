@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,21 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val softmaxContent = TopicContent(
     topicId = "softmax",
+    figure = Figure(
+        caption = "Logits [1000, 1001, 1002] — one apart, and eᶻ on them overflows to NaN. Subtract the " +
+            "maximum first, which cancels between numerator and denominator and changes the result by " +
+            "exactly nothing, and they soften into these three. Note what a single logit of separation " +
+            "buys: 0.665 against 0.245. Every output depends on every input, which is why the " +
+            "derivative is a matrix whose rows sum to zero rather than a number.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("z = 1000", 0.090f),
+                FigureBar("1001", 0.245f),
+                FigureBar("1002", 0.665f, FigureTone.Accent),
+            ),
+            yLabel = "p — non-negative, sums to exactly 1",
+        ),
+    ),
     whatIsIt = listOf(
         "Softmax is the odd one out in this category, and the difference is structural rather than a matter of curve shape. Every other activation here maps one number to one number; softmax maps a whole vector to a whole vector. Each output depends on every input, because the denominator is a sum over all of them, and the results are non-negative and sum to exactly 1 — a probability distribution over classes rather than an independent score per class.",
         "Dividing the logits by a temperature before exponentiating controls how peaked the distribution is and nothing else about it. The simulation sweeps it: at T = 0.25 the top class takes 98.2% of the mass, at T = 5 only 32.2%, with entropy climbing from 0.09 to 1.37 nats. That is the sampling temperature in every text generator, and it is a property of the softmax rather than of the model — the logits never changed.",

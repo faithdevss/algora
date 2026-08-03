@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,34 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val crossEntropyLossContent = TopicContent(
     topicId = "cross_entropy_loss",
+    figure = Figure(
+        caption = "The loss depends on one number: the probability the model happened to assign to the " +
+            "class that was actually right. −ln(p) costs almost nothing near p = 1 and is unbounded as " +
+            "p → 0, so the same prediction (0.659, 0.242, 0.099) costs 0.417 when it is right and " +
+            "2.317 — 5.56× more — when the truth was its least-favoured class. Confidently wrong is " +
+            "the expensive case, by construction.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    label = "L = −ln p",
+                    points = listOf(
+                        FigurePoint(0.02f, 0.978f),
+                        FigurePoint(0.1f, 0.576f),
+                        FigurePoint(0.242f, 0.355f),
+                        FigurePoint(0.4f, 0.229f),
+                        FigurePoint(0.659f, 0.104f),
+                        FigurePoint(1f, 0f),
+                    ),
+                ),
+            ),
+            xLabel = "p the model gave the true class",
+            yLabel = "loss",
+            markers = listOf(
+                FigurePoint(0.099f, 0.578f, "2.317", FigureTone.Warn),
+                FigurePoint(0.659f, 0.104f, "0.417", FigureTone.Primary),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Cross-entropy loss for a C-class classifier is L = −Σ_c y_c·ln(p_c), where p = softmax(z) and y is the one-hot true label. Paired with softmax specifically, this loss has a gradient with respect to the logits that reduces to one line: dL/dz = p − y — prediction minus label, nothing else. That's not a coincidence of small examples; it's an algebraic identity of the softmax-plus-cross-entropy combination, checked here two independent ways on the same numbers.",
         "Logits (2.0, 1.0, 0.1) soften into p = (0.659, 0.242, 0.099). With true class 0 — the model's own favorite — loss is 0.4170. Compute dL/dz directly as p−y, and separately compute it the long way: dL/dp (nonzero only at the true class, −1/p_true) multiplied through softmax's actual Jacobian, J_ij = p_i(δ_ij−p_j). The two results agree to a maximum difference of 0.0 (floating-point exact) — which is the entire reason this combination is used everywhere instead of computing that Jacobian at every training step.",
