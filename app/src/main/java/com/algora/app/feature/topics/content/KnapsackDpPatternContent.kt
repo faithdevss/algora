@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureArrow
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +18,31 @@ import com.algora.app.core.data.model.TopicContent
 // weight/value knapsack — subset sum, partition and coin change are the same recurrence.
 internal val knapsackDpPatternContent = TopicContent(
     topicId = "knapsack_dp_pattern",
+    figure = Figure(
+        caption = "dp[i][c] is the best value from the first i items within capacity c, and every cell " +
+            "is one skip-or-take decision: dp[i−1][c], or value + dp[i−1][c − weight]. Subset sum, " +
+            "partition and coin change are this table with the value term changed.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0", "0", "0", "0", "0", "0"),
+                listOf("0", "0", "3", "3", "3", "3"),
+                listOf("0", "0", "3", "4", "4", "7"),
+                listOf("0", "0", "3", "4", "5", "7"),
+                listOf("0", "0", "3", "4", "5", "7"),
+            ),
+            rowHeaders = listOf("ε", "w2·v3", "w3·v4", "w4·v5", "w5·v6"),
+            colHeaders = listOf("0", "1", "2", "3", "4", "5"),
+            marks = listOf(
+                FigureCell(2, 5, FigureTone.Accent),
+                FigureCell(1, 5, FigureTone.Muted),
+                FigureCell(1, 2, FigureTone.Primary),
+            ),
+            arrows = listOf(
+                FigureArrow(1, 2, 2, 5),
+                FigureArrow(1, 5, 2, 5, FigureTone.Muted),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "The knapsack pattern is the take-it-or-leave-it decision repeated over a budget. State is (items considered, budget used); each item is either skipped, keeping the old value, or taken, spending its cost and adding its value.",
         "Subset sum, partition-into-equal-halves, target sum and coin change are all this recurrence with the value term changed. Recognising the family is worth more than memorising any one of them.",

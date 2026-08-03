@@ -58,7 +58,49 @@ sealed interface FigureShape {
         val marker: Int? = null,
         val markerLabel: String? = null,
     ) : FigureShape
+
+    /**
+     * A table: DP over two indices, a matrix, or a grid of cells. [arrows] draw the dependency the
+     * recurrence has — which is the part of a DP that prose struggles to say and a picture does not.
+     */
+    data class Grid(
+        val rows: List<List<String>>,
+        val rowHeaders: List<String> = emptyList(),
+        val colHeaders: List<String> = emptyList(),
+        val marks: List<FigureCell> = emptyList(),
+        val arrows: List<FigureArrow> = emptyList(),
+    ) : FigureShape
+
+    /**
+     * One or two vertical stacks side by side — a call stack, a monotonic stack, the two heaps of a
+     * running median. Entries are listed top-first, the way the structure is talked about.
+     */
+    data class Stacks(
+        val columns: List<FigureStack>,
+    ) : FigureShape
 }
+
+data class FigureCell(
+    val row: Int,
+    val col: Int,
+    val tone: FigureTone = FigureTone.Primary,
+)
+
+data class FigureArrow(
+    val fromRow: Int,
+    val fromCol: Int,
+    val toRow: Int,
+    val toCol: Int,
+    val tone: FigureTone = FigureTone.Accent,
+)
+
+data class FigureStack(
+    val label: String,
+    /** Top of the stack first. */
+    val entries: List<String>,
+    val tone: FigureTone = FigureTone.Primary,
+    val note: String? = null,
+)
 
 data class FigureBand(
     val from: Int,

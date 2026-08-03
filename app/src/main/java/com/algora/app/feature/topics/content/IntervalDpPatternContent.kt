@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureArrow
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +18,30 @@ import com.algora.app.core.data.model.TopicContent
 // transition picks the last (or first) thing to happen inside it.
 internal val intervalDpPatternContent = TopicContent(
     topicId = "interval_dp_pattern",
+    figure = Figure(
+        caption = "The state is a range, not a prefix, and the transition picks what happens *last* " +
+            "inside it: dp[i][j] = best over k of dp[i][k] + dp[k][j] + cost. Only the upper triangle " +
+            "fills, and it must fill by length — row-major order reads cells that are not written yet.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0", "6", "18", "30"),
+                listOf("—", "0", "8", "21"),
+                listOf("—", "—", "0", "9"),
+                listOf("—", "—", "—", "0"),
+            ),
+            rowHeaders = listOf("i=0", "i=1", "i=2", "i=3"),
+            colHeaders = listOf("j=0", "j=1", "j=2", "j=3"),
+            marks = listOf(
+                FigureCell(0, 3, FigureTone.Accent),
+                FigureCell(0, 1, FigureTone.Primary),
+                FigureCell(1, 3, FigureTone.Primary),
+            ),
+            arrows = listOf(
+                FigureArrow(0, 1, 0, 3),
+                FigureArrow(1, 3, 0, 3),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Interval DP indexes the state by a range [i, j] instead of a prefix, and decides what happens *last* inside it — which split point, which balloon bursts, which pair of parentheses closes.",
         "The order of filling matters: every range depends on shorter ranges inside it, so iterate by length, shortest first. Matrix chain multiplication, burst balloons and palindrome partitioning are all this shape.",

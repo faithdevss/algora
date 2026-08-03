@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,27 @@ import com.algora.app.core.data.model.TopicContent
 // submatrix query into four array lookups.
 internal val prefix2dPatternContent = TopicContent(
     topicId = "prefix_2d_pattern",
+    figure = Figure(
+        caption = "P[r][c] is the sum of the whole rectangle from the origin to that cell, so any " +
+            "submatrix is four lookups: the big rectangle, minus the strip above, minus the strip left, " +
+            "plus the corner that was subtracted twice. 28 − 8 − 9 + 3 = 14.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0", "0", "0", "0", "0"),
+                listOf("0", "3", "3", "4", "8"),
+                listOf("0", "8", "14", "18", "24"),
+                listOf("0", "9", "17", "21", "28"),
+            ),
+            rowHeaders = listOf("0", "r0", "r1", "r2"),
+            colHeaders = listOf("0", "c0", "c1", "c2", "c3"),
+            marks = listOf(
+                FigureCell(3, 4, FigureTone.Accent),
+                FigureCell(1, 4, FigureTone.Warn),
+                FigureCell(3, 1, FigureTone.Warn),
+                FigureCell(1, 1, FigureTone.Primary),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A 2D prefix table stores, at each cell, the sum of the whole rectangle from the origin to it. Any submatrix sum is then four lookups: the big rectangle, minus the strip above, minus the strip to the left, plus the corner that was subtracted twice.",
         "That inclusion-exclusion is the pattern. Build costs O(rows · cols) once; every query afterwards is O(1), which is what makes counting submatrices with a given sum feasible at all.",

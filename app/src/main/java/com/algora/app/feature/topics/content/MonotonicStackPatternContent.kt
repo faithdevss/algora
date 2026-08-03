@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureStack
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,26 @@ import com.algora.app.core.data.model.TopicContent
 // topic that implements the technique.
 internal val monotonicStackPatternContent = TopicContent(
     topicId = "monotonic_stack_pattern",
+    figure = Figure(
+        caption = "The stack holds indices whose answer is still unknown, kept in decreasing value " +
+            "order. An incoming larger value pops every smaller one at once — each pop is one index " +
+            "learning its answer, and each index is pushed and popped at most once, so O(n).",
+        shape = FigureShape.Stacks(
+            columns = listOf(
+                FigureStack(
+                    label = "stack (top first)",
+                    entries = listOf("a[4] = 2", "a[3] = 6", "a[2] = 5"),
+                    note = "values increase downward — the invariant",
+                ),
+                FigureStack(
+                    label = "incoming a[5] = 3",
+                    entries = listOf("3"),
+                    tone = FigureTone.Accent,
+                    note = "pops a[4] = 2, whose next greater is 3",
+                ),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A monotonic stack keeps its contents sorted — increasing or decreasing — by popping anything that would break the order. Each pop is the moment a question about the popped element gets answered.",
         "It solves the whole \"next greater / previous smaller\" family in one pass, because an element only waits on the stack while no later element has beaten it yet.",

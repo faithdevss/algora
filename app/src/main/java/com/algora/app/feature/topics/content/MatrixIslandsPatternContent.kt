@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,30 @@ import com.algora.app.core.data.model.TopicContent
 // topic that implements the technique.
 internal val matrixIslandsPatternContent = TopicContent(
     topicId = "matrix_islands_pattern",
+    figure = Figure(
+        caption = "A grid is a graph: cells are nodes, the four neighbours are edges, and \"count the " +
+            "islands\" is \"count the connected components\". The outer scan starts one flood per " +
+            "unvisited land cell, so the number of floods started is the answer.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("1", "1", "0", "0", "1"),
+                listOf("1", "0", "0", "1", "1"),
+                listOf("0", "0", "1", "0", "0"),
+                listOf("0", "1", "1", "0", "0"),
+            ),
+            marks = listOf(
+                FigureCell(0, 0, FigureTone.Primary),
+                FigureCell(0, 1, FigureTone.Primary),
+                FigureCell(1, 0, FigureTone.Primary),
+                FigureCell(0, 4, FigureTone.Accent),
+                FigureCell(1, 4, FigureTone.Accent),
+                FigureCell(1, 3, FigureTone.Accent),
+                FigureCell(2, 2, FigureTone.Warn),
+                FigureCell(3, 2, FigureTone.Warn),
+                FigureCell(3, 1, FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A grid is a graph whose nodes are cells and whose edges are the four (sometimes eight) neighbours. Once you see it that way, \"count the islands\" is just \"count the connected components\".",
         "The pattern is an outer scan that starts a flood fill on every unvisited qualifying cell. Each fill consumes one whole region, so the number of fills started is the answer.",

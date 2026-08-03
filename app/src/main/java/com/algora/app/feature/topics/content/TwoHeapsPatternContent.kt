@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureStack
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,26 @@ import com.algora.app.core.data.model.TopicContent
 // Structures topic that supplies the heap.
 internal val twoHeapsPatternContent = TopicContent(
     topicId = "two_heaps_pattern",
+    figure = Figure(
+        caption = "The stream is split in half: a max-heap of the smaller values and a min-heap of the " +
+            "larger ones, sizes kept within one of each other. Both middle candidates are roots, so the " +
+            "median is O(1) — here (8 + 9) / 2 = 8.5.",
+        shape = FigureShape.Stacks(
+            columns = listOf(
+                FigureStack(
+                    label = "lo — max-heap, root first",
+                    entries = listOf("8", "5", "3"),
+                    note = "the smaller half",
+                ),
+                FigureStack(
+                    label = "hi — min-heap, root first",
+                    entries = listOf("9", "10", "15"),
+                    tone = FigureTone.Accent,
+                    note = "the larger half",
+                ),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Two heaps split a stream in half: a max-heap holding the smaller values and a min-heap holding the larger ones. The two roots sit either side of the median, so the middle of the data is always one or two peeks away.",
         "It answers \"what is the middle / what is the k-th boundary right now\" after every insert, without re-sorting anything. Sorting after each of n inserts is O(n² log n); this is O(n log n) total.",

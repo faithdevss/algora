@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,30 @@ import com.algora.app.core.data.model.TopicContent
 // difference between O(V + E) and O(k(V + E)).
 internal val multiSourceBfsPatternContent = TopicContent(
     topicId = "multi_source_bfs_pattern",
+    figure = Figure(
+        caption = "Every source is queued at distance 0 *before* the loop starts, so one wave spreads " +
+            "from all of them at once and each cell is claimed by its nearest. The loop body is " +
+            "ordinary BFS — the whole pattern lives in the initialisation.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("2", "1", "2", "3", "4"),
+                listOf("1", "0", "1", "2", "3"),
+                listOf("2", "1", "2", "2", "2"),
+                listOf("3", "2", "2", "1", "1"),
+                listOf("4", "3", "2", "1", "0"),
+            ),
+            marks = listOf(
+                FigureCell(1, 1, FigureTone.Accent),
+                FigureCell(4, 4, FigureTone.Accent),
+                FigureCell(0, 1, FigureTone.Primary),
+                FigureCell(1, 0, FigureTone.Primary),
+                FigureCell(1, 2, FigureTone.Primary),
+                FigureCell(2, 1, FigureTone.Primary),
+                FigureCell(3, 4, FigureTone.Primary),
+                FigureCell(4, 3, FigureTone.Primary),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Multi-source BFS seeds the queue with every starting cell at once, all at distance 0. The wave spreads from all of them simultaneously, so the first time a cell is reached, it is reached by its nearest source.",
         "It replaces \"run BFS from each source and take the minimum\", turning O(k(V + E)) into a single O(V + E) sweep. The trick is purely in the initialisation — the loop body is ordinary BFS.",

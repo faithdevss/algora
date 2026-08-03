@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureStack
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,26 @@ import com.algora.app.core.data.model.TopicContent
 // problems would otherwise need.
 internal val expressionStackPatternContent = TopicContent(
     topicId = "expression_stack_pattern",
+    figure = Figure(
+        caption = "Nesting is the signal. Each '[' pushes the context that must be restored — the " +
+            "repeat count and the text built so far — and each ']' pops one and folds the finished " +
+            "piece into its parent. This is a recursive parser without the depth limit.",
+        shape = FigureShape.Stacks(
+            columns = listOf(
+                FigureStack(
+                    label = "stack: pending count × text",
+                    entries = listOf("2 × \"a\"", "3 × \"\""),
+                    note = "one entry per unclosed bracket",
+                ),
+                FigureStack(
+                    label = "current piece",
+                    entries = listOf("bc"),
+                    tone = FigureTone.Accent,
+                    note = "']' → \"a\" + \"bc\" × 2",
+                ),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Anything nested — brackets, repeated blocks, directory paths, arithmetic with parentheses — is parsed with a stack. Opening a context pushes the state you must restore; closing it pops and folds the finished piece back into its parent.",
         "This is iterative recursion. The stack holds exactly what a recursive parser would keep in its call frames, without the depth limit, and one pass over the input is enough.",

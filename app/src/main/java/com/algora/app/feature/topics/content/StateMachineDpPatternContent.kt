@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureArrow
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +18,29 @@ import com.algora.app.core.data.model.TopicContent
 // question: a tiny finite-state machine advanced one index at a time.
 internal val stateMachineDpPatternContent = TopicContent(
     topicId = "state_machine_dp_pattern",
+    figure = Figure(
+        caption = "The rows are modes, not positions: holding, just sold, resting. Each column is one " +
+            "day, and every arrow is a legal transition — buying only from *rest* is the cooldown rule, " +
+            "and drawing it is most of the work.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("−1", "−1", "−1", "1", "1"),
+                listOf("0", "1", "2", "−1", "3"),
+                listOf("0", "0", "1", "2", "2"),
+            ),
+            rowHeaders = listOf("hold", "sold", "rest"),
+            colHeaders = listOf("p1", "p2", "p3", "p0", "p2"),
+            marks = listOf(
+                FigureCell(1, 4, FigureTone.Accent),
+                FigureCell(0, 3, FigureTone.Primary),
+                FigureCell(2, 3, FigureTone.Primary),
+            ),
+            arrows = listOf(
+                FigureArrow(2, 3, 0, 4),
+                FigureArrow(0, 3, 1, 4),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Some sequence problems carry a mode, not just a position: holding or not holding a stock, in a cooldown, having used one deletion. The DP state becomes (index, mode) and each step is a transition between modes.",
         "Drawing the machine — a few nodes and the moves between them — turns a confusing word problem into a handful of one-line recurrences, each usually rolled into a couple of scalars.",

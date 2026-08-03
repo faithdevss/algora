@@ -21,8 +21,12 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.algora.app.core.data.model.Figure
 import com.algora.app.core.data.model.FigureShape
 import com.algora.app.core.data.model.FigureTone
@@ -58,6 +62,8 @@ internal fun FigureCard(figure: Figure, modifier: Modifier = Modifier) {
             when (val shape = figure.shape) {
                 is FigureShape.Strip -> StripFigure(shape)
                 is FigureShape.Timeline -> TimelineFigure(shape)
+                is FigureShape.Grid -> GridFigure(shape)
+                is FigureShape.Stacks -> StacksFigure(shape)
             }
             Text(
                 figure.caption,
@@ -188,6 +194,149 @@ private fun StripFigure(shape: FigureShape.Strip) {
                 }
                 // Keep the aux cells the same width as the row above when it is shorter.
                 repeat(count - shape.aux.size) { Box(modifier = Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+// Drawn on one canvas rather than as nested Rows: the arrows are the point of most of these figures,
+// and an arrow between two cells of a Compose grid has nowhere to live.
+@Composable
+private fun GridFigure(shape: FigureShape.Grid) {
+    val rows = shape.rows.size
+    val cols = shape.rows.maxOf { it.size }
+    val textMeasurer = rememberTextMeasurer()
+    val onSurface = MaterialTheme.colorScheme.onSurface
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val idleFill = muted.copy(alpha = 0.10f)
+    val toneFor = FigureTone.entries.associateWith { toneColor(it) }
+    val cellStyle = TextStyle(color = onSurface, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+    val headerStyle = TextStyle(color = muted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+
+    val hasRowHeaders = shape.rowHeaders.isNotEmpty()
+    val hasColHeaders = shape.colHeaders.isNotEmpty()
+    // 30dp per row plus the header strip; wide tables simply get shorter cells, never a scroll.
+    val height = 30.dp * rows + if (hasColHeaders) 16.dp else 0.dp
+
+    Canvas(modifier = Modifier.fillMaxWidth().height(height)) {
+        val headerWidth = if (hasRowHeaders) size.width * 0.14f else 0f
+        val headerHeight = if (hasColHeaders) size.height * 0.14f else 0f
+        val cellW = (size.width - headerWidth) / cols
+        val cellH = (size.height - headerHeight) / rows
+
+        fun centreOf(row: Int, col: Int) =
+            Offset(headerWidth + (col + 0.5f) * cellW, headerHeight + (row + 0.5f) * cellH)
+
+        if (hasColHeaders) {
+            shape.colHeaders.forEachIndexed { col, text ->
+                val layout = textMeasurer.measure(text, headerStyle)
+                drawText(
+                    layout,
+                    topLeft = Offset(
+                        headerWidth + (col + 0.5f) * cellW - layout.size.width / 2f,
+                        headerHeight / 2f - layout.size.height / 2f,
+                    ),
+                )
+            }
+        }
+
+        shape.rows.forEachIndexed { row, cells ->
+            if (hasRowHeaders && row < shape.rowHeaders.size) {
+                val layout = textMeasurer.measure(shape.rowHeaders[row], headerStyle)
+                drawText(
+                    layout,
+                    topLeft = Offset(
+                        headerWidth / 2f - layout.size.width / 2f,
+                        headerHeight + (row + 0.5f) * cellH - layout.size.height / 2f,
+                    ),
+                )
+            }
+            cells.forEachIndexed { col, text ->
+                val mark = shape.marks.firstOrNull { it.row == row && it.col == col }
+                val tone = mark?.let { toneFor.getValue(it.tone) }
+                val centre = centreOf(row, col)
+                drawRoundRect(
+                    color = tone?.copy(alpha = 0.22f) ?: idleFill,
+                    topLeft = Offset(centre.x - cellW / 2f + 2f, centre.y - cellH / 2f + 2f),
+                    size = Size(cellW - 4f, cellH - 4f),
+                    cornerRadius = CornerRadius(6f, 6f),
+                )
+                val layout = textMeasurer.measure(
+                    text,
+                    if (tone == null) cellStyle else cellStyle.copy(color = tone, fontWeight = FontWeight.Bold),
+                )
+                drawText(
+                    layout,
+                    topLeft = Offset(centre.x - layout.size.width / 2f, centre.y - layout.size.height / 2f),
+                )
+            }
+        }
+
+        shape.arrows.forEach { arrow ->
+            val from = centreOf(arrow.fromRow, arrow.fromCol)
+            val to = centreOf(arrow.toRow, arrow.toCol)
+            val colour = toneFor.getValue(arrow.tone)
+            val dx = to.x - from.x
+            val dy = to.y - from.y
+            val length = kotlin.math.hypot(dx, dy).coerceAtLeast(1f)
+            // Stop short of the target so the head sits beside the cell, not on top of its text.
+            val inset = minOf(cellW, cellH) * 0.34f
+            val start = Offset(from.x + dx / length * inset, from.y + dy / length * inset)
+            val end = Offset(to.x - dx / length * inset, to.y - dy / length * inset)
+            drawLine(colour, start, end, strokeWidth = 2f)
+            val headSize = 7f
+            val ux = dx / length
+            val uy = dy / length
+            drawLine(colour, end, Offset(end.x - (ux + uy) * headSize, end.y - (uy - ux) * headSize), strokeWidth = 2f)
+            drawLine(colour, end, Offset(end.x - (ux - uy) * headSize, end.y - (uy + ux) * headSize), strokeWidth = 2f)
+        }
+    }
+}
+
+@Composable
+private fun StacksFigure(shape: FigureShape.Stacks) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        shape.columns.forEach { column ->
+            val tone = toneColor(column.tone)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                Text(
+                    column.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = tone,
+                )
+                column.entries.forEachIndexed { index, entry ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(30.dp)
+                            .background(
+                                tone.copy(alpha = if (index == 0) 0.26f else 0.12f),
+                                RoundedCornerShape(8.dp),
+                            ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            entry,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = if (index == 0) FontWeight.Bold else FontWeight.Normal,
+                            color = if (index == 0) tone else MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+                column.note?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }

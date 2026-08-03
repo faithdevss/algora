@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureArrow
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +18,29 @@ import com.algora.app.core.data.model.TopicContent
 // path-counting all fill the same table with different cell rules.
 internal val gridDpPatternContent = TopicContent(
     topicId = "grid_dp_pattern",
+    figure = Figure(
+        caption = "One cell, two ways in: dp[r][c] = cost + min(up, left). The first row and column have " +
+            "only one, which is why they are seeded separately — and sweeping rows left to right is " +
+            "what guarantees both dependencies are already written.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("1", "4", "5", "7"),
+                listOf("2", "7", "6", "9"),
+                listOf("6", "8", "7", "8"),
+            ),
+            rowHeaders = listOf("r0", "r1", "r2"),
+            colHeaders = listOf("c0", "c1", "c2", "c3"),
+            marks = listOf(
+                FigureCell(1, 2, FigureTone.Accent),
+                FigureCell(0, 2, FigureTone.Primary),
+                FigureCell(1, 1, FigureTone.Primary),
+            ),
+            arrows = listOf(
+                FigureArrow(0, 2, 1, 2),
+                FigureArrow(1, 1, 1, 2),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Grid DP indexes a table by two positions — two string prefixes, or a row and column of a matrix — and fills each cell from its neighbours above and to the left. The answer lands in the far corner.",
         "Longest common subsequence, edit distance, unique paths and minimum path sum are the same table with different cell rules: match-or-branch for sequences, accumulate for paths.",

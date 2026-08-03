@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureArrow
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +18,30 @@ import com.algora.app.core.data.model.TopicContent
 // the coordinate mapping and respecting the boundaries.
 internal val matrixTransformPatternContent = TopicContent(
     topicId = "matrix_transform_pattern",
+    figure = Figure(
+        caption = "Rotating 90° clockwise sends (r, c) to (c, n−1−r) — stated as one mapping it is easy " +
+            "to get backwards, so state it as two: transpose (swap across the diagonal, upper triangle " +
+            "only), then reverse each row.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("1", "2", "3", "4"),
+                listOf("5", "6", "7", "8"),
+                listOf("9", "10", "11", "12"),
+                listOf("13", "14", "15", "16"),
+            ),
+            rowHeaders = listOf("r0", "r1", "r2", "r3"),
+            colHeaders = listOf("c0", "c1", "c2", "c3"),
+            marks = listOf(
+                FigureCell(0, 1, FigureTone.Accent),
+                FigureCell(1, 0, FigureTone.Accent),
+                FigureCell(0, 0, FigureTone.Muted),
+                FigureCell(1, 1, FigureTone.Muted),
+                FigureCell(2, 2, FigureTone.Muted),
+                FigureCell(3, 3, FigureTone.Muted),
+            ),
+            arrows = listOf(FigureArrow(0, 1, 1, 0)),
+        ),
+    ),
     whatIsIt = listOf(
         "Matrix manipulation questions are index arithmetic in disguise: rotate in place, spiral out, set rows and columns to zero, search a sorted grid. There is no clever algorithm to recall — only a coordinate mapping to get right.",
         "Two habits solve most of them. Express the transform as a composition of simple ones (rotate = transpose, then reverse each row), and shrink the working region with explicit boundaries rather than tracking a visited grid.",

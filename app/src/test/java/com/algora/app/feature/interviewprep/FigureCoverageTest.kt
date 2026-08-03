@@ -24,7 +24,6 @@ class FigureCoverageTest {
     // The list only shrinks — `no pending entry already has a figure` fails if one is left behind.
     private val pendingFigures = setOf(
         "backtracking_pattern",
-        "two_heaps_pattern",
         "binary_lifting_pattern",
         "bit_manipulation_pattern",
         "bit_trie_pattern",
@@ -33,23 +32,13 @@ class FigureCoverageTest {
         "composite_design_pattern",
         "dag_dp_pattern",
         "divide_conquer_pattern",
-        "expression_stack_pattern",
         "game_theory_dp_pattern",
         "graph_coloring_pattern",
         "greedy_exchange_pattern",
-        "grid_dp_pattern",
         "hash_counting_pattern",
-        "interval_dp_pattern",
-        "knapsack_dp_pattern",
-        "matrix_islands_pattern",
-        "matrix_transform_pattern",
         "meet_in_middle_pattern",
         "memo_recursion_pattern",
-        "monotonic_stack_pattern",
-        "multi_source_bfs_pattern",
-        "prefix_2d_pattern",
         "shortest_path_pattern",
-        "state_machine_dp_pattern",
         "subsets_pattern",
         "topological_sort_pattern",
         "tree_bfs_pattern",
@@ -128,6 +117,59 @@ class FigureCoverageTest {
                 clash
             }
             if (clashes.isEmpty()) null else "$id: overlapping bands ${clashes.map { it.label }}"
+        }
+        assertTrue(problems.joinToString("\n"), problems.isEmpty())
+    }
+
+    @Test
+    fun `every grid figure is rectangular and addresses real cells`() {
+        val problems = figures.mapNotNull { (id, figure) ->
+            val grid = figure.shape as? FigureShape.Grid ?: return@mapNotNull null
+            val rows = grid.rows.size
+            val cols = grid.rows.firstOrNull()?.size ?: 0
+            val faults = buildList {
+                if (rows == 0 || cols == 0) add("empty grid")
+                if (grid.rows.any { it.size != cols }) {
+                    add("ragged rows: ${grid.rows.map { it.size }}")
+                }
+                if (grid.rowHeaders.isNotEmpty() && grid.rowHeaders.size != rows) {
+                    add("${grid.rowHeaders.size} row headers for $rows rows")
+                }
+                if (grid.colHeaders.isNotEmpty() && grid.colHeaders.size != cols) {
+                    add("${grid.colHeaders.size} column headers for $cols columns")
+                }
+                grid.marks.forEach {
+                    if (it.row !in 0 until rows || it.col !in 0 until cols) {
+                        add("mark at (${it.row}, ${it.col}) outside ${rows}×$cols")
+                    }
+                }
+                grid.arrows.forEach {
+                    if (it.fromRow !in 0 until rows || it.fromCol !in 0 until cols ||
+                        it.toRow !in 0 until rows || it.toCol !in 0 until cols
+                    ) {
+                        add("arrow (${it.fromRow}, ${it.fromCol}) → (${it.toRow}, ${it.toCol}) outside ${rows}×$cols")
+                    }
+                    if (it.fromRow == it.toRow && it.fromCol == it.toCol) add("arrow to itself")
+                }
+            }
+            if (faults.isEmpty()) null else "$id: ${faults.joinToString("; ")}"
+        }
+        assertTrue(problems.joinToString("\n"), problems.isEmpty())
+    }
+
+    @Test
+    fun `every stack figure has labelled, non-empty columns`() {
+        val problems = figures.mapNotNull { (id, figure) ->
+            val stacks = figure.shape as? FigureShape.Stacks ?: return@mapNotNull null
+            val faults = buildList {
+                if (stacks.columns.isEmpty()) add("no columns")
+                if (stacks.columns.size > 2) add("${stacks.columns.size} columns — the card fits two")
+                stacks.columns.forEach { column ->
+                    if (column.entries.isEmpty()) add("column \"${column.label}\" is empty")
+                    if (column.label.isBlank()) add("a column has no label")
+                }
+            }
+            if (faults.isEmpty()) null else "$id: ${faults.joinToString("; ")}"
         }
         assertTrue(problems.joinToString("\n"), problems.isEmpty())
     }
