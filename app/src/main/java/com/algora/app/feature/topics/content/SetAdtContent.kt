@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,29 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val setAdtContent = TopicContent(
     topicId = "set_adt",
+    figure = Figure(
+        caption = "A Set promises membership and no duplicates — nothing about order. Backing it with a " +
+            "hash table gives O(1) membership and no order at all; backing it with a balanced tree costs " +
+            "O(log n) and hands back sorted iteration and range queries, which the hash version cannot do.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("O(1)*", "O(log n)"),
+                listOf("O(1)*", "O(log n)"),
+                listOf("no", "yes"),
+                listOf("no", "yes"),
+            ),
+            rowHeaders = listOf("add", "contains", "sorted iter", "range query"),
+            colHeaders = listOf("hash set", "tree set"),
+            marks = listOf(
+                FigureCell(0, 0, FigureTone.Accent),
+                FigureCell(1, 0, FigureTone.Accent),
+                FigureCell(2, 1, FigureTone.Primary),
+                FigureCell(3, 1, FigureTone.Primary),
+                FigureCell(2, 0, FigureTone.Warn),
+                FigureCell(3, 0, FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A Set is an abstract data type holding a collection of unique elements with no duplicates, defined by membership and the classic set operations.",
         "Its two common implementations differ in ordering: a hash set gives O(1) average membership but no order, while a tree set keeps elements sorted at O(log n).",

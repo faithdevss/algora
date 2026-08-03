@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,16 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val stringContent = TopicContent(
     topicId = "string",
+    figure = Figure(
+        caption = "A string is an array with text-specific operations bolted on — and in most languages " +
+            "an *immutable* one, so every \"edit\" allocates a new block. That is why building a string " +
+            "in a loop is quadratic unless a builder or list-join collects the pieces first.",
+        shape = FigureShape.Strip(
+            cells = listOf("a", "l", "g", "o", "r", "a"),
+            bands = listOf(FigureBand(1, 3, "substring — a new allocation", FigureTone.Accent)),
+            pointers = listOf(FigurePointer(1, "start"), FigurePointer(3, "end")),
+        ),
+    ),
     whatIsIt = listOf(
         "A string is a sequence of characters stored much like an array — each character sits at a known index and is reachable directly.",
         "In many languages strings are immutable: operations that look like edits actually build a brand-new string rather than changing the original.",

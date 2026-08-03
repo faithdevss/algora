@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,16 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val dequeContent = TopicContent(
     topicId = "deque",
+    figure = Figure(
+        caption = "A queue that gave up on choosing an end: push and pop are both O(1) at the front and " +
+            "the back. That symmetry is what lets it stand in for a stack, a queue, or the monotonic " +
+            "window structure that answers sliding-window maximum in one pass.",
+        shape = FigureShape.Strip(
+            cells = listOf("A", "B", "C", "D"),
+            bands = listOf(FigureBand(0, 3, "O(1) at either end")),
+            pointers = listOf(FigurePointer(0, "front"), FigurePointer(3, "back")),
+        ),
+    ),
     whatIsIt = listOf(
         "A deque — double-ended queue — allows insertion and removal at both the front and the back in O(1), making it a stack and a queue at the same time.",
         "It is usually built either on a doubly linked list or on a circular array with two moving indices. The array version is the one used in practice: contiguous memory, no per-element node allocation, and wraparound instead of shifting.",

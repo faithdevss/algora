@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,16 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val doublyLinkedListContent = TopicContent(
     topicId = "doubly_linked_list",
+    figure = Figure(
+        caption = "The second pointer is the entire structural difference. With prev, a node can unlink " +
+            "*itself* — B.next = D and D.prev = B, no walk to find the predecessor — which is what makes it the partner " +
+            "structure in an LRU cache. The cost is one more pointer per node and two more writes per edit.",
+        shape = FigureShape.Strip(
+            cells = listOf("A", "B", "C", "D"),
+            bands = listOf(FigureBand(1, 2, "unlink in O(1)", FigureTone.Accent)),
+            pointers = listOf(FigurePointer(1, "prev"), FigurePointer(2, "node"), FigurePointer(3, "next")),
+        ),
+    ),
     whatIsIt = listOf(
         "A doubly linked list chains nodes together where each node stores a value plus two pointers: one to the next node and one to the previous node.",
         "The extra back-pointer lets you walk the list in both directions and remove a node in O(1) once you hold it — the key advantage over a singly linked list.",

@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,29 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val priorityQueueAdtContent = TopicContent(
     topicId = "priority_queue_adt",
+    figure = Figure(
+        caption = "\"Give me the smallest\" is the only promise, and the heap is the implementation that " +
+            "balances it: nothing is fully sorted, just enough order is kept for the root to be correct. " +
+            "The two array versions each make one operation free by making the other linear.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("O(log n)", "O(n)", "O(1)"),
+                listOf("O(1)", "O(1)", "O(n)"),
+                listOf("O(log n)", "O(1)", "O(n)"),
+                listOf("O(n)", "O(n log n)", "O(1)"),
+            ),
+            rowHeaders = listOf("push", "peek min", "pop min", "build"),
+            colHeaders = listOf("binary heap", "sorted array", "unsorted"),
+            marks = listOf(
+                FigureCell(0, 0, FigureTone.Accent),
+                FigureCell(2, 0, FigureTone.Accent),
+                FigureCell(3, 0, FigureTone.Accent),
+                FigureCell(0, 1, FigureTone.Warn),
+                FigureCell(1, 2, FigureTone.Warn),
+                FigureCell(2, 2, FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A Priority Queue is an abstract data type that always serves the highest- (or lowest-) priority element next, regardless of insertion order.",
         "It's almost always implemented with a binary heap, giving O(log n) insert and remove and O(1) peek at the top-priority element.",

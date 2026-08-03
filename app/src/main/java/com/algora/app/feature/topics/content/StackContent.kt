@@ -2,6 +2,9 @@ package com.algora.app.feature.topics.content
 
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureStack
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -10,6 +13,20 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val stackContent = TopicContent(
     topicId = "stack",
+    figure = Figure(
+        caption = "One end, two operations. Everything a stack is good at follows from that restriction: " +
+            "the most recent thing is the cheapest to reach, so it models nesting — call frames, " +
+            "bracket matching, undo — where the last context opened is always the first that must close.",
+        shape = FigureShape.Stacks(
+            columns = listOf(
+                FigureStack(
+                    label = "stack (top first)",
+                    entries = listOf("D ← push / pop", "C", "B", "A"),
+                    note = "only the top is reachable — O(1) both ways",
+                ),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A stack is a last-in, first-out (LIFO) collection — elements are added and removed from the same end, called the top.",
         "Think of a stack of plates: you can only take from the top, and the last plate you put down is the first one you pick back up.",

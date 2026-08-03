@@ -2,6 +2,11 @@ package com.algora.app.feature.topics.content
 
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -10,6 +15,19 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val singlyLinkedListContent = TopicContent(
     topicId = "singly_linked_list",
+    figure = Figure(
+        caption = "No index arithmetic: reaching the k-th node means walking k links, so random access is " +
+            "O(n). What it buys is O(1) splicing — given the node before, inserting or deleting is two " +
+            "pointer writes and no shifting, which an array cannot do at any position but the end.",
+        shape = FigureShape.Strip(
+            cells = listOf("A →", "B →", "C →", "D →", "∅"),
+            bands = listOf(
+                FigureBand(0, 0, "head"),
+                FigureBand(4, 4, "null", FigureTone.Muted),
+            ),
+            pointers = listOf(FigurePointer(1, "prev"), FigurePointer(2, "splice here")),
+        ),
+    ),
     whatIsIt = listOf(
         "A singly linked list is a chain of nodes where each node holds a value and a pointer to the next node — there's no requirement that nodes sit next to each other in memory.",
         "Think of it like a scavenger hunt: each clue tells you where to find the next one, but you can't jump ahead without following the chain.",

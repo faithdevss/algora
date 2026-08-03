@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,28 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val hashTableContent = TopicContent(
     topicId = "hash_table",
+    figure = Figure(
+        caption = "The hash turns a key into a bucket index, so lookup skips the search entirely — but " +
+            "two keys can land in the same bucket, and then the chain has to be walked. Average O(1) is " +
+            "really \"O(1 + chain length)\", which is why the load factor is watched and the table resized.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("—", "—"),
+                listOf("cat", "—"),
+                listOf("—", "—"),
+                listOf("dog", "owl"),
+                listOf("fish", "—"),
+            ),
+            rowHeaders = listOf("0", "1", "2", "3", "4"),
+            colHeaders = listOf("first", "chained"),
+            marks = listOf(
+                FigureCell(3, 0, FigureTone.Warn),
+                FigureCell(3, 1, FigureTone.Warn),
+                FigureCell(1, 0, FigureTone.Primary),
+                FigureCell(4, 0, FigureTone.Primary),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A hash table stores key-value pairs and finds any key in expected O(1) time by turning the key into an array index with a hash function.",
         "Because two keys can hash to the same slot (a collision), a hash table also needs a strategy — chaining or open addressing — to keep those keys apart.",

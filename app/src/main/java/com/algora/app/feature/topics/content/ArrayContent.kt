@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CodeVariant
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,16 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val arrayContent = TopicContent(
     topicId = "array",
+    figure = Figure(
+        caption = "Contiguity is the whole bargain. Every element is the same size and sits next to the " +
+            "last, so a[i] is one multiply-and-add — no search, no pointer chase. The same layout is why " +
+            "inserting at the front has to shift everything after it.",
+        shape = FigureShape.Strip(
+            cells = listOf("7", "3", "9", "4", "1", "8"),
+            bands = listOf(FigureBand(0, 5, "one contiguous block")),
+            pointers = listOf(FigurePointer(3, "a[3]")),
+        ),
+    ),
     whatIsIt = listOf(
         "An array is a collection of elements stored in contiguous memory, each reachable directly by its index.",
         "Think of it like a row of numbered mailboxes on a street — if you know the box number, you can walk straight to it without checking every box along the way.",

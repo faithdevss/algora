@@ -2,6 +2,11 @@ package com.algora.app.feature.topics.content
 
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -10,6 +15,19 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val queueContent = TopicContent(
     topicId = "queue",
+    figure = Figure(
+        caption = "Two ends: add at the back, remove from the front. Implemented on an array the indices " +
+            "wrap around modulo the capacity, so nothing is ever shifted — the empty cells behind the " +
+            "front are reused, and the structure is a ring rather than a line.",
+        shape = FigureShape.Strip(
+            cells = listOf("·", "·", "C", "D", "E", "·"),
+            bands = listOf(
+                FigureBand(0, 1, "free (wraps)", FigureTone.Muted),
+                FigureBand(2, 4, "in the queue"),
+            ),
+            pointers = listOf(FigurePointer(2, "front"), FigurePointer(5, "back")),
+        ),
+    ),
     whatIsIt = listOf(
         "A queue is a first-in, first-out (FIFO) collection — elements are added at the back and removed from the front.",
         "Think of a checkout line: the first person to join is the first person served.",

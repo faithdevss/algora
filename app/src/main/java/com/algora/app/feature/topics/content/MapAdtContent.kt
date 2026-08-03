@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,27 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val mapAdtContent = TopicContent(
     topicId = "map_adt",
+    figure = Figure(
+        caption = "Same trade one level up: a Map is key → value with unique keys, and the backing " +
+            "structure decides what else you get. Hash for speed, tree for order, insertion-ordered hash " +
+            "when iteration has to be predictable — the interface is identical in all three.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("O(1)*", "O(log n)", "O(1)*"),
+                listOf("O(1)*", "O(log n)", "O(1)*"),
+                listOf("none", "sorted", "insertion"),
+            ),
+            rowHeaders = listOf("put", "get", "iteration"),
+            colHeaders = listOf("hash map", "tree map", "linked hash"),
+            marks = listOf(
+                FigureCell(0, 0, FigureTone.Accent),
+                FigureCell(1, 0, FigureTone.Accent),
+                FigureCell(2, 1, FigureTone.Primary),
+                FigureCell(2, 2, FigureTone.Primary),
+                FigureCell(2, 0, FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A Map (dictionary, associative array) is an abstract data type storing key-value pairs, letting you look up, insert, or remove a value by its unique key.",
         "Like Set, it comes in a hash-backed flavor (O(1) average, unordered) and a tree-backed flavor (O(log n), keys kept sorted).",

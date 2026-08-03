@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,28 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val listAdtContent = TopicContent(
     topicId = "list_adt",
+    figure = Figure(
+        caption = "The List *interface* — ordered, indexable, duplicates allowed — says nothing about " +
+            "cost. Two implementations answer the same calls with opposite performance, so the question " +
+            "\"which list\" is really \"which operation runs in the loop\".",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("O(1)", "O(n)"),
+                listOf("O(n)", "O(1)"),
+                listOf("O(1)*", "O(1)"),
+                listOf("O(n)", "O(1)†"),
+            ),
+            rowHeaders = listOf("get(i)", "add front", "append", "remove"),
+            colHeaders = listOf("array list", "linked list"),
+            marks = listOf(
+                FigureCell(0, 0, FigureTone.Accent),
+                FigureCell(1, 1, FigureTone.Accent),
+                FigureCell(3, 1, FigureTone.Accent),
+                FigureCell(0, 1, FigureTone.Warn),
+                FigureCell(1, 0, FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A List is an abstract data type: an ordered collection with positional access, defined by what operations it supports — not by how it's stored.",
         "The same List interface can be backed by a dynamic array or a linked list, and that hidden choice sets the performance profile of every operation.",
