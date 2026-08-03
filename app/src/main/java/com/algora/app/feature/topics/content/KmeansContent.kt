@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,36 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val kmeansContent = TopicContent(
     topicId = "kmeans",
+    figure = Figure(
+        caption = "Every point belongs to exactly one centroid, and every centroid is the mean of the " +
+            "points that chose it — the two halves define each other, which is why the algorithm just " +
+            "alternates between them until nothing moves. The point in the middle is the honest part: " +
+            "it belongs to whichever centroid is marginally nearer, so its cluster can flip between two " +
+            "runs that differ only in where the centroids started.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("c₁", 0.22f, 0.28f, FigureTone.Accent),
+                FigureGraphNode("x", 0.08f, 0.12f, FigureTone.Primary),
+                FigureGraphNode("x", 0.34f, 0.08f, FigureTone.Primary),
+                FigureGraphNode("x", 0.10f, 0.52f, FigureTone.Primary),
+                FigureGraphNode("c₂", 0.78f, 0.68f, FigureTone.Accent),
+                FigureGraphNode("x", 0.92f, 0.48f),
+                FigureGraphNode("x", 0.64f, 0.90f),
+                FigureGraphNode("x", 0.94f, 0.88f),
+                FigureGraphNode("?", 0.50f, 0.46f, FigureTone.Warn),
+            ),
+            edges = listOf(
+                FigureEdge(1, 0, directed = true, tone = FigureTone.Primary),
+                FigureEdge(2, 0, directed = true, tone = FigureTone.Primary),
+                FigureEdge(3, 0, directed = true, tone = FigureTone.Primary),
+                FigureEdge(5, 4, directed = true),
+                FigureEdge(6, 4, directed = true),
+                FigureEdge(7, 4, directed = true),
+                FigureEdge(8, 0, directed = true, tone = FigureTone.Warn),
+                FigureEdge(8, 4, directed = true, tone = FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "K-Means is an unsupervised clustering algorithm that partitions data into k groups, each represented by its centroid — the mean of its members.",
         "It alternates between assigning points to the nearest centroid and recomputing centroids, until the assignments stop changing.",

@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,22 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val decisionTreesContent = TopicContent(
     topicId = "decision_trees",
+    figure = Figure(
+        caption = "Every internal node is one threshold on one feature, chosen because it separates the " +
+            "classes better than any other threshold on any other feature — that is all Gini impurity " +
+            "and information gain are for. The path to a leaf is the prediction *and* its explanation, " +
+            "which no other model here gives for free. Left unpruned, the same greedy rule keeps " +
+            "splitting until every leaf holds one point, and the tree has memorised rather than learned.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("x₁ < 2.5", null, FigureTone.Primary),
+                FigureNode("x₂ < 1.0", 0, FigureTone.Primary),
+                FigureNode("B", 0, FigureTone.Accent),
+                FigureNode("A", 1, FigureTone.Accent),
+                FigureNode("B", 1, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A decision tree classifies or predicts by asking a sequence of yes/no questions about the features, splitting the data at each node until it reaches a leaf with an answer.",
         "Each split is chosen to make the resulting groups as pure as possible, measured by Gini impurity or information gain (entropy).",

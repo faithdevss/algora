@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureArrow
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,28 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val qLearningContent = TopicContent(
     topicId = "q_learning",
+    figure = Figure(
+        caption = "One number per state-action pair, and the update pulls the cell you just visited " +
+            "toward the reward plus the *best* cell in the row you landed in. That max is what makes " +
+            "Q-learning off-policy: the target does not care which action the exploring policy actually " +
+            "took next, so the table converges on the optimal values while the agent is still behaving " +
+            "randomly. Nothing here knows the environment's dynamics — the table is the whole model.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0.2", "0.8", "0.1", "0.0"),
+                listOf("0.3", "0.9", "0.4", "0.2"),
+                listOf("0.5", "0.6", "0.7", "0.3"),
+                listOf("0.0", "0.0", "0.0", "0.0"),
+            ),
+            rowHeaders = listOf("s₁", "s₂", "s₃", "s₄"),
+            colHeaders = listOf("↑", "→", "↓", "←"),
+            marks = listOf(
+                FigureCell(0, 1),
+                FigureCell(2, 2, FigureTone.Accent),
+            ),
+            arrows = listOf(FigureArrow(2, 2, 0, 1, label = "γ·max")),
+        ),
+    ),
     whatIsIt = listOf(
         "Q-learning learns the value of taking each action in each state — the Q-function — directly from experience, without knowing the environment's dynamics.",
         "It's off-policy: it learns the optimal action-values while behaving with an exploratory policy, bootstrapping each estimate from the best next action.",

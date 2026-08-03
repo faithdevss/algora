@@ -37,6 +37,8 @@ class AiFigureCoverageTest {
         "mlp", "cnn", "transformers", "backpropagation", "batch_normalization", "dropout", "gans", "vae",
         // A4 — attention, on the new Heatmap shape.
         "attention", "multi_head_attention", "self_cross_attention", "positional_encodings",
+        // A5 — AI content on the six shapes the DSA phase already had.
+        "tokenization", "decision_trees", "kmeans", "q_learning",
     )
 
     @Test
@@ -54,6 +56,6 @@ class AiFigureCoverageTest {
     @Test
     fun `the pilot is the size the phase was scoped against`() {
         // Keeps the batch table in docs/plan/phase-12-ai-figures.md verifiable rather than folklore.
-        assertEquals(26, pilotFigures.size)
+        assertEquals(30, pilotFigures.size)
     }
 }

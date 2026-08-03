@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,23 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val tokenizationContent = TopicContent(
     topicId = "tokenization",
+    figure = Figure(
+        caption = "Four words, five tokens, and none of the boundaries are where a reader would put " +
+            "them. A subword vocabulary never has to say \"unknown\": a rare word is spelled out of " +
+            "pieces it already holds, which is why \"tokenization\" costs two tokens and \"is\" costs " +
+            "one. Everything downstream is priced in this row — context length, the cost of a " +
+            "generated word, and which languages fit in a budget at all.",
+        shape = FigureShape.Strip(
+            cells = listOf("token", "ization", "▁is", "n't", "▁hard"),
+            bands = listOf(
+                FigureBand(0, 1, "one rare word"),
+                FigureBand(3, 4, "a contraction split", FigureTone.Accent),
+            ),
+            pointers = listOf(FigurePointer(1, "no OOV here")),
+            aux = listOf("9421", "2734", "318", "470", "1327"),
+            auxLabel = "ids — what the model actually receives",
+        ),
+    ),
     whatIsIt = listOf(
         "Tokenization splits raw text into the smaller units — tokens — that a model actually processes, whether whole words, subwords, or characters.",
         "It's the first step of every NLP pipeline: the choice of token granularity shapes vocabulary size, how rare words are handled, and how much text fits in a model's context.",
