@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,22 @@ import com.algora.app.core.data.model.TopicContent
 // topic that implements the technique.
 internal val subsetsPatternContent = TopicContent(
     topicId = "subsets_pattern",
+    figure = Figure(
+        caption = "Each level decides one element: take it or leave it. The leaves are the 2ⁿ subsets, " +
+            "and every internal node is a partial choice — which is why the recursion depth is n and the " +
+            "output size, not the search, is what makes it exponential.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("{}", null, FigureTone.Primary),
+                FigureNode("skip a", 0),
+                FigureNode("take a", 0, FigureTone.Primary),
+                FigureNode("{}", 1, FigureTone.Accent),
+                FigureNode("{b}", 1, FigureTone.Accent),
+                FigureNode("{a}", 2, FigureTone.Accent),
+                FigureNode("{a,b}", 2, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Every element faces one binary decision — in or out — so the power set of n items has 2ⁿ members, and any enumeration is a walk over those decisions.",
         "Two equivalent framings show up in interviews: a recursive include/exclude tree, and an iterative pass that doubles the answer list by cloning it with each new element appended. Duplicates in the input are what turn this from a template into a real question.",

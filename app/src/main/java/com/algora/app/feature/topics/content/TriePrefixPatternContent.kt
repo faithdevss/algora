@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,22 @@ import com.algora.app.core.data.model.TopicContent
 // the trie replaces the hash map.
 internal val triePrefixPatternContent = TopicContent(
     topicId = "trie_prefix_pattern",
+    figure = Figure(
+        caption = "One node per character, one path per word, so words sharing a prefix share nodes. " +
+            "search and startsWith walk identically — only the terminal flag (●) separates them, and a " +
+            "counter on each node turns the same tree into a prefix index.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("·", null),
+                FigureNode("a", 0, FigureTone.Primary),
+                FigureNode("p", 1, FigureTone.Primary),
+                FigureNode("p●", 2, FigureTone.Accent),
+                FigureNode("t●", 2, FigureTone.Accent),
+                FigureNode("l", 3),
+                FigureNode("e●", 5, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "The trie pattern stores a set of strings as a tree of shared prefixes: one node per character, one path per word. Lookup costs O(L) in the word's length and is independent of how many words are stored.",
         "A hash map answers \"is this exact key present\". A trie answers the prefix questions a hash map cannot: every word starting with \"pre\", the longest stored prefix of a query, or matching a whole dictionary against a board in one traversal.",

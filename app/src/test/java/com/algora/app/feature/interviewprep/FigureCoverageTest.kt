@@ -23,28 +23,16 @@ class FigureCoverageTest {
     // Guides still waiting for a figure, authored batch by batch alongside the primitives they need.
     // The list only shrinks — `no pending entry already has a figure` fails if one is left behind.
     private val pendingFigures = setOf(
-        "backtracking_pattern",
-        "binary_lifting_pattern",
         "bit_manipulation_pattern",
         "bit_trie_pattern",
         "bitmask_state_pattern",
-        "bst_inorder_pattern",
         "composite_design_pattern",
         "dag_dp_pattern",
-        "divide_conquer_pattern",
-        "game_theory_dp_pattern",
         "graph_coloring_pattern",
         "greedy_exchange_pattern",
         "hash_counting_pattern",
-        "meet_in_middle_pattern",
-        "memo_recursion_pattern",
         "shortest_path_pattern",
-        "subsets_pattern",
         "topological_sort_pattern",
-        "tree_bfs_pattern",
-        "tree_dfs_pattern",
-        "tree_dp_pattern",
-        "trie_prefix_pattern",
         "union_find_pattern",
     )
 
@@ -151,6 +139,28 @@ class FigureCoverageTest {
                     }
                     if (it.fromRow == it.toRow && it.fromCol == it.toCol) add("arrow to itself")
                 }
+            }
+            if (faults.isEmpty()) null else "$id: ${faults.joinToString("; ")}"
+        }
+        assertTrue(problems.joinToString("\n"), problems.isEmpty())
+    }
+
+    // The layout walks the node list in reverse to centre parents over children, which only works
+    // because a parent always sits at a smaller index — a forward reference silently loses a node.
+    @Test
+    fun `every tree figure is a real tree in parents-first order`() {
+        val problems = figures.mapNotNull { (id, figure) ->
+            val tree = figure.shape as? FigureShape.Tree ?: return@mapNotNull null
+            val faults = buildList {
+                if (tree.nodes.isEmpty()) add("no nodes")
+                val roots = tree.nodes.count { it.parent == null }
+                if (roots != 1) add("$roots roots")
+                tree.nodes.forEachIndexed { index, node ->
+                    val parent = node.parent ?: return@forEachIndexed
+                    if (parent !in tree.nodes.indices) add("node $index has parent $parent, which does not exist")
+                    else if (parent >= index) add("node $index points forward to parent $parent")
+                }
+                if (tree.nodes.any { it.label.isBlank() }) add("a node has no label")
             }
             if (faults.isEmpty()) null else "$id: ${faults.joinToString("; ")}"
         }

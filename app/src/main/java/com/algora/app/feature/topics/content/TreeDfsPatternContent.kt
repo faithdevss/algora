@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,24 @@ import com.algora.app.core.data.model.TopicContent
 // topic that implements the technique.
 internal val treeDfsPatternContent = TopicContent(
     topicId = "tree_dfs_pattern",
+    figure = Figure(
+        caption = "State travels *down* as an argument — the budget left after subtracting this node — " +
+            "and the path is popped on the way back up, so siblings never inherit each other's state. " +
+            "5 → 4 → 11 → 2 spends exactly 22.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("5", null, FigureTone.Accent),
+                FigureNode("4", 0, FigureTone.Accent),
+                FigureNode("8", 0),
+                FigureNode("11", 1, FigureTone.Accent),
+                FigureNode("13", 2),
+                FigureNode("4", 2),
+                FigureNode("7", 3, FigureTone.Warn),
+                FigureNode("2", 3, FigureTone.Accent),
+                FigureNode("1", 5),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Tree DFS follows one root-to-leaf path to its end before backtracking. The recursion carries state down (a running sum, the path so far) and returns answers up (a height, a best value).",
         "Most tree questions are really about which direction the information flows. \"Does a path with sum X exist?\" pushes down; \"what is the diameter?\" pulls up; path-printing questions need both plus an un-choose on the way out.",

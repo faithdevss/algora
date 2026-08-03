@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,22 @@ import com.algora.app.core.data.model.TopicContent
 // is a minimising layer in the recurrence.
 internal val gameTheoryDpPatternContent = TopicContent(
     topicId = "game_theory_dp_pattern",
+    figure = Figure(
+        caption = "The levels alternate: your move maximises, the reply minimises. Define the value as " +
+            "the score *difference* from the mover's side and the turn flag disappears — every level " +
+            "becomes max over moves of (gain − best(rest)).",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("max +7", null, FigureTone.Accent),
+                FigureNode("min −8", 0, FigureTone.Warn),
+                FigureNode("min +5", 0, FigureTone.Primary),
+                FigureNode("take 9", 1, FigureTone.Muted),
+                FigureNode("take 2", 1, FigureTone.Muted),
+                FigureNode("take 3", 2, FigureTone.Muted),
+                FigureNode("take 1", 2, FigureTone.Muted),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "In a two-player game with perfect information, both sides play optimally — so the recurrence alternates: your move maximises, their reply minimises. Modelling the opponent as adversarial rather than passive is the entire difference from ordinary DP.",
         "The clean formulation drops the turn flag: define the answer as the *score difference* from the mover's point of view. Then every level is a max over moves of (gain − best(rest)), because the opponent's advantage is your loss.",

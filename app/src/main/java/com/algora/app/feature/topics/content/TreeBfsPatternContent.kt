@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,24 @@ import com.algora.app.core.data.model.TopicContent
 // topic that implements the technique.
 internal val treeBfsPatternContent = TopicContent(
     topicId = "tree_bfs_pattern",
+    figure = Figure(
+        caption = "The queue holds one contiguous frontier, but mid-level it mixes two — so the level " +
+            "size is frozen before the level is processed. That single line is the difference between a " +
+            "level-grouped answer and a flat traversal.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("5", null, FigureTone.Muted),
+                FigureNode("4", 0, FigureTone.Primary),
+                FigureNode("8", 0, FigureTone.Primary),
+                FigureNode("11", 1, FigureTone.Accent),
+                FigureNode("13", 2, FigureTone.Accent),
+                FigureNode("4", 2, FigureTone.Accent),
+                FigureNode("7", 3),
+                FigureNode("2", 3),
+                FigureNode("1", 5),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Tree BFS visits nodes level by level using a queue. The trick that makes it an interview pattern is snapshotting the queue's size at the top of each iteration — that count is exactly one level.",
         "Anything phrased in terms of depth (level averages, right-side view, minimum depth, zigzag order) is a BFS question, because depth is the order BFS produces for free.",

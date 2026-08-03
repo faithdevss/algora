@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,22 @@ import com.algora.app.core.data.model.TopicContent
 // the cross-boundary cases during the merge.
 internal val divideConquerPatternContent = TopicContent(
     topicId = "divide_conquer_pattern",
+    figure = Figure(
+        caption = "Splitting is the cheap half. The answers that *span* the split — the inversions " +
+            "between the two halves, the subarray crossing the midpoint, the closest pair straddling " +
+            "the line — are found during the combine step, and that step is the algorithm.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("5,3,8,1", null, FigureTone.Accent),
+                FigureNode("5,3", 0, FigureTone.Primary),
+                FigureNode("8,1", 0, FigureTone.Primary),
+                FigureNode("5", 1),
+                FigureNode("3", 1),
+                FigureNode("8", 2),
+                FigureNode("1", 2),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Divide and conquer splits the input in half, solves both halves recursively, and spends linear work combining them. The answers that span the split are found during that combine step — which is where the real algorithm lives.",
         "Counting inversions is the classic: merge sort's merge step already knows how many left-half elements outrank a right-half element, so the count falls out of a sort that was happening anyway.",

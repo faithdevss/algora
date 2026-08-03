@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,22 @@ import com.algora.app.core.data.model.TopicContent
 // successor queries in O(log n) each.
 internal val binaryLiftingPatternContent = TopicContent(
     topicId = "binary_lifting_pattern",
+    figure = Figure(
+        caption = "up[j][v] is the 2^j-th ancestor, each row built from the one above it. The 3rd " +
+            "ancestor of E is then 3 = 11 in binary: one 2-jump and one 1-jump, never three steps — and " +
+            "the same table lifts two nodes to their LCA.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("A", null, FigureTone.Accent),
+                FigureNode("B", 0, FigureTone.Primary),
+                FigureNode("F", 0),
+                FigureNode("C", 1, FigureTone.Primary),
+                FigureNode("G", 2),
+                FigureNode("D", 3),
+                FigureNode("E", 5, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Binary lifting precomputes, for every node, the ancestor 1, 2, 4, 8 … steps above it. Any k-th ancestor is then reached by following the set bits of k — at most log n jumps instead of k.",
         "The same table answers lowest common ancestor: lift the deeper node to its partner's depth, then jump both upward by the largest powers that keep them apart. Whatever remains one step up is the LCA.",

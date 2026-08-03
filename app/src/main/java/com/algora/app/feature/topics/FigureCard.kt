@@ -21,6 +21,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
@@ -64,6 +65,7 @@ internal fun FigureCard(figure: Figure, modifier: Modifier = Modifier) {
                 is FigureShape.Timeline -> TimelineFigure(shape)
                 is FigureShape.Grid -> GridFigure(shape)
                 is FigureShape.Stacks -> StacksFigure(shape)
+                is FigureShape.Tree -> TreeFigure(shape)
             }
             Text(
                 figure.caption,
@@ -289,6 +291,65 @@ private fun GridFigure(shape: FigureShape.Grid) {
             val uy = dy / length
             drawLine(colour, end, Offset(end.x - (ux + uy) * headSize, end.y - (uy - ux) * headSize), strokeWidth = 2f)
             drawLine(colour, end, Offset(end.x - (ux - uy) * headSize, end.y - (uy + ux) * headSize), strokeWidth = 2f)
+        }
+    }
+}
+
+// Same leaf-slot layout the recursion-tree player uses: leaves take sequential x slots and every
+// internal node centres over its children, so a lopsided tree still reads as one.
+@Composable
+private fun TreeFigure(shape: FigureShape.Tree) {
+    val textMeasurer = rememberTextMeasurer()
+    val edgeColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.40f)
+    val onSurface = MaterialTheme.colorScheme.onSurface
+    val toneFor = FigureTone.entries.associateWith { toneColor(it) }
+
+    val childrenOf = shape.nodes.indices.groupBy { shape.nodes[it].parent }
+    val depthOf = IntArray(shape.nodes.size)
+    shape.nodes.forEachIndexed { index, node ->
+        depthOf[index] = node.parent?.let { depthOf[it] + 1 } ?: 0
+    }
+    val depth = (depthOf.maxOrNull() ?: 0) + 1
+    val leaves = shape.nodes.indices.filter { childrenOf[it].isNullOrEmpty() }
+    val slotOf = HashMap<Int, Float>()
+    leaves.forEachIndexed { slot, index -> slotOf[index] = slot.toFloat() }
+    // Parents after their children: indices descend, so every child already has a slot.
+    shape.nodes.indices.reversed().forEach { index ->
+        val kids = childrenOf[index].orEmpty()
+        if (kids.isNotEmpty()) slotOf[index] = kids.map { slotOf.getValue(it) }.average().toFloat()
+    }
+    val slots = leaves.size.coerceAtLeast(1)
+
+    Canvas(modifier = Modifier.fillMaxWidth().height(34.dp * depth + 8.dp)) {
+        val rowHeight = size.height / depth
+        val slotWidth = size.width / slots
+        val radius = minOf(rowHeight * 0.30f, slotWidth * 0.42f)
+
+        fun centreOf(index: Int) = Offset(
+            (slotOf.getValue(index) + 0.5f) * slotWidth,
+            (depthOf[index] + 0.5f) * rowHeight,
+        )
+
+        shape.nodes.forEachIndexed { index, node ->
+            node.parent?.let { drawLine(edgeColor, centreOf(it), centreOf(index), strokeWidth = 1.6f) }
+        }
+        shape.nodes.forEachIndexed { index, node ->
+            val tone = toneFor.getValue(node.tone)
+            val centre = centreOf(index)
+            drawCircle(tone.copy(alpha = 0.22f), radius = radius, center = centre)
+            drawCircle(tone, radius = radius, center = centre, style = Stroke(width = 1.6f))
+            val layout = textMeasurer.measure(
+                node.label,
+                TextStyle(
+                    color = if (node.tone == FigureTone.Muted) onSurface else tone,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                ),
+            )
+            drawText(
+                layout,
+                topLeft = Offset(centre.x - layout.size.width / 2f, centre.y - layout.size.height / 2f),
+            )
         }
     }
 }

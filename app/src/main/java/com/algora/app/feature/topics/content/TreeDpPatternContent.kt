@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,24 @@ import com.algora.app.core.data.model.TopicContent
 // while the global answer is updated on the way up.
 internal val treeDpPatternContent = TopicContent(
     topicId = "tree_dp_pattern",
+    figure = Figure(
+        caption = "Each node returns its longest *downward* path, but the best path *through* it joins " +
+            "two children and is only recorded — a parent cannot use a path that bends here. Confusing " +
+            "the returned value with the recorded one is the classic bug.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("5 ↓4", null, FigureTone.Primary),
+                FigureNode("4 ↓3", 0, FigureTone.Accent),
+                FigureNode("8 ↓3", 0, FigureTone.Accent),
+                FigureNode("11 ↓2", 1, FigureTone.Accent),
+                FigureNode("13 ↓1", 2),
+                FigureNode("4 ↓2", 2, FigureTone.Accent),
+                FigureNode("7 ↓1", 3, FigureTone.Accent),
+                FigureNode("2 ↓1", 3),
+                FigureNode("1 ↓1", 5, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Tree DP computes each node's answer from its children in one post-order pass. The recursion returns what the *parent* needs, while the answer that involves the whole subtree is recorded on the way up.",
         "Diameter is the canonical example: a node returns its longest downward path, but the best path *through* it — left + right — is combined locally and never returned. Confusing those two values is the single most common bug.",

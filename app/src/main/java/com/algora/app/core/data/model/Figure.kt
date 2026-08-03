@@ -78,7 +78,23 @@ sealed interface FigureShape {
     data class Stacks(
         val columns: List<FigureStack>,
     ) : FigureShape
+
+    /**
+     * A rooted tree: real trees, tries, recursion trees, game trees. Nodes are ordered parents-first
+     * (a node's parent is always an earlier index), which is also how they are laid out — leaves take
+     * sequential slots and parents centre over their children.
+     */
+    data class Tree(
+        val nodes: List<FigureNode>,
+    ) : FigureShape
 }
+
+data class FigureNode(
+    val label: String,
+    /** Index of the parent in the same list, or null for the root. Must be smaller than this node's. */
+    val parent: Int?,
+    val tone: FigureTone = FigureTone.Muted,
+)
 
 data class FigureCell(
     val row: Int,

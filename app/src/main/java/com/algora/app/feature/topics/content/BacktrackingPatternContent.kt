@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,22 @@ import com.algora.app.core.data.model.TopicContent
 // topic that implements the technique.
 internal val backtrackingPatternContent = TopicContent(
     topicId = "backtracking_pattern",
+    figure = Figure(
+        caption = "Choose, recurse, un-choose. Every edge is a decision, every dead end is pruned the " +
+            "moment the running sum passes the target, and the un-choose on the way back out is what " +
+            "keeps siblings from inheriting each other's state.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("[]", null, FigureTone.Primary),
+                FigureNode("2", 0, FigureTone.Primary),
+                FigureNode("3", 0),
+                FigureNode("2,2", 1, FigureTone.Primary),
+                FigureNode("2,3", 1, FigureTone.Accent),
+                FigureNode("3,3", 2, FigureTone.Warn),
+                FigureNode("2,2,2", 3, FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Backtracking builds a candidate one decision at a time and abandons a branch the moment it cannot lead to a valid answer. The shape is always the same: choose, recurse, un-choose.",
         "What separates a passing answer from a timing-out one is pruning — the constraint check that kills a subtree before it is explored, and the ordering that makes those checks fire early.",

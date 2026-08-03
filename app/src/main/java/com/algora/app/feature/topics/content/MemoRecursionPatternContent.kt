@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,24 @@ import com.algora.app.core.data.model.TopicContent
 // one cache. This is usually the fastest correct answer to give under time pressure.
 internal val memoRecursionPatternContent = TopicContent(
     topicId = "memo_recursion_pattern",
+    figure = Figure(
+        caption = "The cache does not speed the recursion up — it deletes most of it. The second call " +
+            "for any k returns immediately, so the whole subtree that would have been rebuilt below it " +
+            "never exists, and the exponential tree collapses to one node per distinct state.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("fib(5)", null, FigureTone.Primary),
+                FigureNode("fib(4)", 0, FigureTone.Primary),
+                FigureNode("fib(3) hit", 0, FigureTone.Warn),
+                FigureNode("fib(3)", 1, FigureTone.Primary),
+                FigureNode("fib(2) hit", 1, FigureTone.Warn),
+                FigureNode("fib(2)", 3, FigureTone.Primary),
+                FigureNode("fib(1) hit", 3, FigureTone.Warn),
+                FigureNode("fib(1)", 5, FigureTone.Accent),
+                FigureNode("fib(0)", 5, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Top-down memoization keeps the brute-force recursion and caches its results by argument. Repeated subproblems collapse to one evaluation each, so exponential recursion becomes linear in the number of distinct states.",
         "It is the safest route to a DP in an interview: write the recursion you can reason about, prove it is correct, then add the cache. Converting to a bottom-up table afterwards is mechanical.",

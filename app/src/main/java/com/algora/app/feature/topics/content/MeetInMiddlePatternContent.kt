@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,24 @@ import com.algora.app.core.data.model.TopicContent
 // polynomial algorithm to exist — roughly 30 to 40 items.
 internal val meetInMiddlePatternContent = TopicContent(
     topicId = "meet_in_middle_pattern",
+    figure = Figure(
+        caption = "Split the input in half and enumerate each half separately: 2^(n/2) + 2^(n/2) " +
+            "instead of 2ⁿ. Sorting one side and binary-searching it for target − s is what joins the " +
+            "halves back up — the two subtrees never have to be combined element by element.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("target", null, FigureTone.Accent),
+                FigureNode("left half", 0, FigureTone.Primary),
+                FigureNode("right half", 0, FigureTone.Primary),
+                FigureNode("0", 1),
+                FigureNode("3", 1),
+                FigureNode("34", 1),
+                FigureNode("0", 2),
+                FigureNode("12", 2),
+                FigureNode("5", 2),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Meet in the middle splits the input in half, enumerates every subset of each half separately, and joins the two halves through a sorted list or hash map. Two runs of 2^(n/2) replace one run of 2^n.",
         "At n = 40 that is a million-element enumeration twice instead of a trillion-step one. The trade is memory: you must store one half's results to search them.",

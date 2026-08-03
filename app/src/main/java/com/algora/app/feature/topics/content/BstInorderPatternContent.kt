@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,24 @@ import com.algora.app.core.data.model.TopicContent
 // traversal that lets you stop early or stream the result.
 internal val bstInorderPatternContent = TopicContent(
     topicId = "bst_inorder_pattern",
+    figure = Figure(
+        caption = "In-order on a BST emits sorted keys, so k-th smallest, validation, successor and " +
+            "range counting all become questions about a sorted sequence you never materialise. The " +
+            "stack holds only a left spine — O(height), not O(n).",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("8", null, FigureTone.Primary),
+                FigureNode("4", 0, FigureTone.Primary),
+                FigureNode("12", 0),
+                FigureNode("2", 1, FigureTone.Primary),
+                FigureNode("6", 1),
+                FigureNode("10", 2),
+                FigureNode("14", 2),
+                FigureNode("1", 3, FigureTone.Accent),
+                FigureNode("3", 3),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "In-order traversal of a binary search tree emits its keys in sorted order. That single fact answers validation, k-th smallest, closest value, successor and range queries — each becomes a question about a sorted sequence you never have to materialise.",
         "Doing it iteratively with an explicit stack adds the ability to stop early and to resume: the same loop body powers a BST iterator with O(height) memory rather than O(n).",
