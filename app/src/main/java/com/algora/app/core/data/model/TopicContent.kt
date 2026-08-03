@@ -11,8 +11,9 @@ data class TopicContent(
     val applications: List<ApplicationCard>,
     val takeaways: List<String>,
     val crossLinks: List<CrossLink> = emptyList(),
-    // Drawn above the How-It-Works steps. Null on every topic that has not been given one, which is
-    // everything outside the interview-prep pattern guides.
+    // Drawn above the How-It-Works steps. Every interview-prep pattern guide and every Data
+    // Structures and Algorithms topic has one; the AI sections are partway through their own phase,
+    // so null there still means "not drawn yet" rather than "does not want one".
     val figure: Figure? = null,
 )
 

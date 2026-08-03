@@ -1,6 +1,11 @@
 # Phase 11 — Figures for Data Structures & Algorithms
 
-Status: **Planned.**
+Status: **Shipped through F7** — all 122 topics carry a figure and `DsaFigureCoverageTest` asserts it
+with no pending set. **F8 was not run**: the consistency sweep and the walk of all 122 pages are still
+outstanding, deliberately skipped so the AI figure phase could start. Two deviations from the plan
+below are worth knowing: F2 did change `FigureCard.kt` (tree and graph node radius now come from the
+measured label width), and the AI phase added the three shapes this doc predicted — see
+`phase-12-ai-figures.md`.
 Depends on: the figure layer shipped with the pattern-library expansion (`core/data/model/Figure.kt`,
 `feature/topics/FigureCard.kt`, `FigureCoverageTest`).
 
