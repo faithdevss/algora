@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureLayer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,23 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val transformersContent = TopicContent(
     topicId = "transformers",
+    figure = Figure(
+        caption = "One block, repeated N times. Attention is the only place tokens talk to each other — " +
+            "the feed-forward runs on each position independently — so the whole sequence goes through " +
+            "in parallel instead of one step at a time. That parallelism is the reason these scaled and " +
+            "RNNs did not, and it is also why position has to be added as an input: nothing in the " +
+            "block itself knows what order the tokens came in.",
+        shape = FigureShape.LayerStack(
+            layers = listOf(
+                FigureLayer("token + positional embeddings", "order is data here, not structure"),
+                FigureLayer("multi-head self-attention", "every token sees every token", FigureTone.Primary),
+                FigureLayer("add & norm", "the residual keeps the gradient short"),
+                FigureLayer("feed-forward", "each position on its own", FigureTone.Primary),
+                FigureLayer("add & norm"),
+                FigureLayer("× N blocks", "identical, stacked", FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "The Transformer is a sequence architecture built entirely on self-attention, letting every token directly attend to every other token — no recurrence, no convolution.",
         "Because attention processes a whole sequence in parallel, Transformers train far faster than RNNs and scale to the enormous models behind modern LLMs.",

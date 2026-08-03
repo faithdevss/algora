@@ -289,4 +289,26 @@ class FigureShapeTest {
         }
         assertTrue(problems.joinToString("\n"), problems.isEmpty())
     }
+
+    @Test
+    fun `every layer stack fits the card`() {
+        val problems = figures.mapNotNull { (id, figure) ->
+            val stack = figure.shape as? FigureShape.LayerStack ?: return@mapNotNull null
+            val faults = buildList {
+                // One block is a box, not an architecture — the flow between them is the figure.
+                if (stack.layers.size < 2) add("${stack.layers.size} layer(s)")
+                val limit = if (stack.horizontal) 5 else 8
+                if (stack.layers.size > limit) {
+                    add("${stack.layers.size} layers — ${if (stack.horizontal) "a row" else "a column"} fits $limit")
+                }
+                stack.layers.forEach { layer ->
+                    if (layer.label.isBlank()) add("a layer has no label")
+                    if (layer.detail?.isBlank() == true) add("layer \"${layer.label}\" has an empty detail line")
+                }
+                if (stack.backwardLabel?.isBlank() == true) add("an empty backward label")
+            }
+            if (faults.isEmpty()) null else "$id: ${faults.joinToString("; ")}"
+        }
+        assertTrue(problems.joinToString("\n"), problems.isEmpty())
+    }
 }

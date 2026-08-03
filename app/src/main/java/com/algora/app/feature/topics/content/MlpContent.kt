@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureLayer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,20 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val mlpContent = TopicContent(
     topicId = "mlp",
+    figure = Figure(
+        caption = "The hidden layer does not draw more lines — it changes where the points are. XOR's " +
+            "four inputs are not linearly separable, so the hidden units map them into a space where " +
+            "they are, and the output unit draws one straight line there. Take the tanh out and the " +
+            "whole thing collapses: a composition of linear maps is a linear map, and the loss stops " +
+            "dead at 0.6931, which is ln 2 — the loss of predicting a coin flip.",
+        shape = FigureShape.LayerStack(
+            layers = listOf(
+                FigureLayer("input", "(x₁, x₂) — XOR, not separable here"),
+                FigureLayer("hidden layer, tanh", "3 units — a new coordinate system", FigureTone.Primary),
+                FigureLayer("output, sigmoid", "one straight line, drawn there", FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A single perceptron draws one straight line. XOR — output 1 when exactly one input is 1 — puts (0,0) and (1,1) in one class and (0,1) and (1,0) in the other, on opposite diagonals, and no line separates them. Minsky and Papert made this precise in 1969, and the field largely stopped for a decade. The multi-layer perceptron is the answer: put a layer of units between input and output, and give it a non-linear activation.",
         "What that layer buys is not more lines. It is a change of coordinates. The hidden units map each input to a new position in a new space, and the output unit then draws one straight line *there*. In the simulation you can read the hidden activations for all four XOR inputs after training and see it: the network did not learn XOR, it learned a representation in which XOR is linearly separable, and then solved the easy problem. Every layer of every deep network is doing that, and it is the entire argument for depth.",

@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureLayer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,24 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val gansContent = TopicContent(
     topicId = "gans",
+    figure = Figure(
+        caption = "The generator never sees the training data. Its only signal is the gradient that " +
+            "comes back through the discriminator, which is why the two have to improve together — a " +
+            "discriminator that wins too easily returns almost nothing to learn from, and one that " +
+            "cannot tell fakes apart returns nothing worth learning. The instability everyone reports " +
+            "is this dependency, not a bad hyperparameter.",
+        shape = FigureShape.LayerStack(
+            layers = listOf(
+                FigureLayer("z ~ N(0, I)", "noise"),
+                FigureLayer("generator", null, FigureTone.Primary),
+                FigureLayer("fake sample", "beside a real one"),
+                FigureLayer("discriminator", null, FigureTone.Warn),
+                FigureLayer("real or fake", null, FigureTone.Accent),
+            ),
+            horizontal = true,
+            backwardLabel = "the generator's only gradient",
+        ),
+    ),
     whatIsIt = listOf(
         "A generative adversarial network (GAN) pits two networks against each other: a generator that fabricates fake samples and a discriminator that tries to tell fakes from real data.",
         "They train in a minimax game — as the discriminator improves, the generator is pushed to produce ever more realistic outputs, until fakes are indistinguishable from real.",

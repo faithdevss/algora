@@ -116,7 +116,28 @@ sealed interface FigureShape {
         /** Called-out points: the minimum, the operating point, the knee of the curve. */
         val markers: List<FigurePoint> = emptyList(),
     ) : FigureShape
+
+    /**
+     * Ordered blocks with the signal running through them. A network architecture is the one thing an
+     * AI page almost always draws on a whiteboard and never had a way to draw here: [Stacks] is the
+     * wrong shape for it, because a call stack's entries are the same kind of thing and a network's
+     * layers deliberately are not.
+     */
+    data class LayerStack(
+        val layers: List<FigureLayer>,
+        /** Left to right instead of top to bottom — an unrolled RNN, an encoder beside its decoder. */
+        val horizontal: Boolean = false,
+        /** When set, a return arrow runs back along the stack carrying this label — "∂L/∂w". */
+        val backwardLabel: String? = null,
+    ) : FigureShape
 }
+
+data class FigureLayer(
+    val label: String,
+    /** The shape line under the name: "784 → 128", "3×3×64, stride 1". */
+    val detail: String? = null,
+    val tone: FigureTone = FigureTone.Muted,
+)
 
 data class FigureSeries(
     val label: String,

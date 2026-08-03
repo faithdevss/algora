@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureLayer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,21 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val dropoutContent = TopicContent(
     topicId = "dropout",
+    figure = Figure(
+        caption = "A different subnetwork on every training step, sampled from an exponentially large " +
+            "family — and inference averages over all of them for free. The scaling step is what makes " +
+            "that free: divide by the keep probability during training and the expected activation is " +
+            "unchanged, so the test-time network is the plain one with no mask and no correction. What " +
+            "it buys is that no feature can depend on a specific partner being present.",
+        shape = FigureShape.LayerStack(
+            layers = listOf(
+                FigureLayer("layer output", "n activations"),
+                FigureLayer("mask ~ Bernoulli(1 − p)", "resampled every step", FigureTone.Primary),
+                FigureLayer("zero the dropped units", "co-adaptation has nothing to lean on", FigureTone.Warn),
+                FigureLayer("÷ (1 − p)", "so inference needs no change at all", FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Dropout randomly zeroes a fraction p of a layer's units on every training step, so the network can never rely on any single neuron being present.",
         "The effect is co-adaptation breaking: features must be individually useful rather than useful only in combination with a specific partner. Equivalently, training samples from an exponential family of thinned sub-networks, and inference averages over them — a very cheap ensemble.",

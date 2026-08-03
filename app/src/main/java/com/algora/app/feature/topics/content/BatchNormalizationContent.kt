@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureLayer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,22 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val batchNormalizationContent = TopicContent(
     topicId = "batch_normalization",
+    figure = Figure(
+        caption = "Standardise, then hand the scale back. The first two steps put every pre-activation " +
+            "on a well-conditioned range no matter what the layer below did; γ and β then let the " +
+            "network move it wherever it actually wanted — including all the way back, if the answer " +
+            "was that the normalisation was unhelpful. Note the dependency the middle steps introduce: " +
+            "a training example's output now depends on which other examples shared its batch.",
+        shape = FigureShape.LayerStack(
+            layers = listOf(
+                FigureLayer("pre-activations z", "one mini-batch"),
+                FigureLayer("− batch mean", "centred", FigureTone.Primary),
+                FigureLayer("÷ batch std", "unit variance, whatever the layer below did", FigureTone.Primary),
+                FigureLayer("× γ, + β", "learned — the layer can undo all of the above", FigureTone.Accent),
+                FigureLayer("activation"),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Batch normalization standardizes each layer's pre-activations across the current mini-batch — subtract the batch mean, divide by the batch standard deviation — then rescales them with two learned parameters, γ and β.",
         "The normalization keeps activations in a well-conditioned range as they pass through a deep stack, which smooths the loss surface and lets you train faster with higher learning rates. γ and β exist so the layer can undo the normalization when that is genuinely what the network needs.",

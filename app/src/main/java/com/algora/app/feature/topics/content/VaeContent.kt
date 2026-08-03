@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureLayer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,24 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val vaeContent = TopicContent(
     topicId = "vae",
+    figure = Figure(
+        caption = "Two changes to an autoencoder, and each one earns its place. The encoder emits a " +
+            "distribution instead of a point, and the sampling is moved into an input so gradients can " +
+            "pass — the score-function alternative is unbiased too, but its variance runs 95× higher at " +
+            "eight dimensions and worsens with each one added. The KL term then pulls every code onto " +
+            "one shared prior, which is what makes sampling-and-decoding produce anything at all, and " +
+            "it prunes: given four latent dimensions for two real factors, exactly two survive across a " +
+            "fortyfold range of β.",
+        shape = FigureShape.LayerStack(
+            layers = listOf(
+                FigureLayer("x"),
+                FigureLayer("encoder → μ, σ", "a distribution, not a point", FigureTone.Primary),
+                FigureLayer("z = μ + σ⊙ε", "the randomness is an input now", FigureTone.Accent),
+                FigureLayer("decoder → x̂"),
+                FigureLayer("recon + β·KL(q ‖ N(0, I))", "the second term deletes dimensions", FigureTone.Primary),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A variational autoencoder makes two changes to an ordinary autoencoder, and the pair of them is what turns a compressor into a generator. The encoder stops emitting a point and starts emitting a distribution — a mean and a variance per latent dimension. And the loss gains a second term, the KL divergence between that distribution and a standard normal, which pulls every code toward the same shared prior. The consequence is the whole point: because all codes are pushed onto one known distribution, you can sample from that distribution and decode, and get something plausible. A plain autoencoder's latent space has holes, and decoding a point you did not encode gives you nothing.",
         "The first change creates a problem that has a famous fix and an under-told reason. You cannot backpropagate through \"draw a sample\", so z = μ + σ⊙ε moves the randomness into an input. The usual justification stops there, but it is not that the alternative is impossible — the score-function estimator differentiates through a sample perfectly well and is unbiased. It is that its variance is unusable. Measured on the same objective with the same number of samples, both estimators recover the true gradient of 2.0 — 2.008 and 2.063 — but their variances are 4.01 and 382.3. That is a factor of 95, and it is not a constant: it is 7.5× at one dimension, 33× at four, 95× at eight and 316× at sixteen. Reparameterization's variance does not grow with dimension and the alternative's does, which is why one of them scales to a real latent space and the other does not.",

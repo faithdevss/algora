@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureLayer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,22 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val backpropagationContent = TopicContent(
     topicId = "backpropagation",
+    figure = Figure(
+        caption = "Two passes over the same stack. Forward, each layer keeps what it computed; backward, " +
+            "the loss hands each layer a gradient and every layer reuses those saved values instead of " +
+            "recomputing them. That reuse is the whole algorithm — the chain rule was never the hard " +
+            "part, and computing each weight's contribution independently would cost a forward pass per " +
+            "weight.",
+        shape = FigureShape.LayerStack(
+            layers = listOf(
+                FigureLayer("input x"),
+                FigureLayer("hidden layer", "z = Wx + b, then a = f(z)", FigureTone.Primary),
+                FigureLayer("output layer", "ŷ", FigureTone.Primary),
+                FigureLayer("loss L(ŷ, y)", "where the backward pass starts", FigureTone.Accent),
+            ),
+            backwardLabel = "∂L/∂w, one chain-rule factor per layer",
+        ),
+    ),
     whatIsIt = listOf(
         "Backpropagation is the algorithm that computes how much each weight in a neural network contributed to the error, so gradient descent knows which way to adjust them.",
         "It's the chain rule applied efficiently: gradients from the loss flow backward through the network, reusing intermediate results instead of recomputing them.",

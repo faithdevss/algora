@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureLayer
 import com.algora.app.core.data.model.FigureShape
 import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.ui.theme.SimColors
@@ -72,6 +73,7 @@ internal fun FigureCard(figure: Figure, modifier: Modifier = Modifier) {
                 is FigureShape.Tree -> TreeFigure(shape)
                 is FigureShape.Graph -> GraphFigure(shape)
                 is FigureShape.Plot -> PlotFigure(shape)
+                is FigureShape.LayerStack -> LayerStackFigure(shape)
             }
             Text(
                 figure.caption,
@@ -657,6 +659,84 @@ private fun PlotFigure(shape: FigureShape.Plot) {
                 color = muted,
                 modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
                 textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+// Composables rather than a canvas: a layer block is a label over a shape line, and text laid out by
+// Compose wraps and measures itself where text drawn onto a canvas has to be told how wide it may be.
+@Composable
+private fun LayerStackFigure(shape: FigureShape.LayerStack) {
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+
+    @Composable
+    fun Block(layer: FigureLayer, modifier: Modifier) {
+        val tone = toneColor(layer.tone)
+        Column(
+            modifier = modifier
+                .background(tone.copy(alpha = 0.16f), RoundedCornerShape(9.dp))
+                .padding(horizontal = 8.dp, vertical = 7.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                layer.label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (layer.tone == FigureTone.Muted) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    tone
+                },
+                textAlign = TextAlign.Center,
+            )
+            layer.detail?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = muted,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+    }
+
+    @Composable
+    fun Flow(text: String) {
+        Text(text, style = MaterialTheme.typography.labelSmall, color = muted.copy(alpha = 0.7f))
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        if (shape.horizontal) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                shape.layers.forEachIndexed { index, layer ->
+                    Block(layer, Modifier.weight(1f))
+                    if (index != shape.layers.lastIndex) Flow("→")
+                }
+            }
+        } else {
+            shape.layers.forEachIndexed { index, layer ->
+                Block(layer, Modifier.fillMaxWidth())
+                if (index != shape.layers.lastIndex) Flow("↓")
+            }
+        }
+
+        // The return path is one line under the stack rather than an arrow beside it: a vertical
+        // gutter costs width every figure would rather spend on the layer labels themselves.
+        shape.backwardLabel?.let {
+            Text(
+                if (shape.horizontal) "←  $it  ←" else "↑  $it  ↑",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = toneColor(FigureTone.Accent),
+                modifier = Modifier.padding(top = 6.dp),
             )
         }
     }

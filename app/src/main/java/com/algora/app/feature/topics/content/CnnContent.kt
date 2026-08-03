@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureLayer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,24 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val cnnContent = TopicContent(
     topicId = "cnn",
+    figure = Figure(
+        caption = "Every convolution layer holds the same small filter and slides it over the whole " +
+            "input, so its parameter count depends on the filter and the channel counts and not at all " +
+            "on how large the image is — that is weight sharing, and it is why this stack is affordable " +
+            "where a dense layer on raw pixels is not. Pooling halves the resolution between blocks, so " +
+            "a filter late in the stack covers a large part of the original picture while still being " +
+            "3×3.",
+        shape = FigureShape.LayerStack(
+            layers = listOf(
+                FigureLayer("input", "32 × 32 × 3"),
+                FigureLayer("conv 3×3, 32 filters", "the same weights at every position", FigureTone.Primary),
+                FigureLayer("max pool 2×2", "16 × 16"),
+                FigureLayer("conv 3×3, 64 filters", "features built out of features", FigureTone.Primary),
+                FigureLayer("max pool 2×2", "8 × 8"),
+                FigureLayer("flatten → dense", "the only part that cares about input size", FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Convolutional neural networks (CNNs) process grid-like data — especially images — by sliding small learnable filters across the input to detect local patterns.",
         "Two ideas make them efficient: weight sharing (the same filter everywhere) and translation invariance (a feature is detected wherever it appears).",

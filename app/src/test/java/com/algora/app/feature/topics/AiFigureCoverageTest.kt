@@ -33,6 +33,8 @@ class AiFigureCoverageTest {
         // A2 — activations and losses, still on Plot.
         "relu", "leaky_relu", "sigmoid", "softmax", "activation_functions",
         "cross_entropy_loss", "mse", "hinge_loss",
+        // A3 — architectures, on the new LayerStack shape.
+        "mlp", "cnn", "transformers", "backpropagation", "batch_normalization", "dropout", "gans", "vae",
     )
 
     @Test
@@ -50,6 +52,6 @@ class AiFigureCoverageTest {
     @Test
     fun `the pilot is the size the phase was scoped against`() {
         // Keeps the batch table in docs/plan/phase-12-ai-figures.md verifiable rather than folklore.
-        assertEquals(14, pilotFigures.size)
+        assertEquals(22, pilotFigures.size)
     }
 }
