@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,37 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val tarjansAlgorithmContent = TopicContent(
     topicId = "tarjans_algorithm",
+    figure = Figure(
+        caption = "The graph is A→B→C→A with C→D and D⇄E, and DFS reaches the nodes in that order — so " +
+            "each label reads as discovery index and low-link, A being 1|1 and E being 5|4. Low-link " +
+            "means \"the earliest-discovered node reachable from this subtree\", and it propagates back " +
+            "up the recursion — so C's edge to A " +
+            "pulls the whole cycle down to 1. A node is the root of a strongly connected component " +
+            "exactly when its low-link equals its own index, and the component is everything sitting " +
+            "above it on the stack: D closes {D, E} first, then A closes {A, B, C}. The edge C→D crosses " +
+            "between components and must not merge them, which is what the \"is it still on the stack\" " +
+            "test is for — D had already been popped, so its index is ignored rather than pulled into " +
+            "C's low-link. One DFS, O(V+E), against Kosaraju's two passes and a transpose.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("1|1", 0.10f, 0.20f, FigureTone.Primary),
+                FigureGraphNode("2|1", 0.10f, 0.80f, FigureTone.Primary),
+                FigureGraphNode("3|1", 0.40f, 0.50f, FigureTone.Primary),
+                FigureGraphNode("4|4", 0.78f, 0.20f, FigureTone.Accent),
+                FigureGraphNode("5|4", 0.78f, 0.80f, FigureTone.Accent),
+            ),
+            edges = listOf(
+                FigureEdge(0, 1, directed = true, tone = FigureTone.Primary),
+                FigureEdge(1, 2, directed = true, tone = FigureTone.Primary),
+                FigureEdge(2, 0, directed = true, tone = FigureTone.Warn),
+                // Unlabelled: the edge is nearly horizontal, so a name sits on the line rather than
+                // beside it. The caption names it instead.
+                FigureEdge(2, 3, directed = true),
+                FigureEdge(3, 4, directed = true, tone = FigureTone.Accent),
+                FigureEdge(4, 3, directed = true, tone = FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Tarjan's algorithm finds the strongly connected components (SCCs) of a directed graph — maximal groups where every node can reach every other — in a single DFS pass.",
         "It tracks each node's discovery time and a 'low-link' value (the earliest node reachable from its subtree), and pops a full SCC off a stack whenever a node's low-link equals its own index.",

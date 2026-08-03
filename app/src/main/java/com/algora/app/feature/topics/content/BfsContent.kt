@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,35 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val bfsContent = TopicContent(
     topicId = "bfs",
+    figure = Figure(
+        caption = "Labels are the distance from A, and BFS assigns them in the order it visits: A, B, C, " +
+            "D, E, F — one whole layer before the next begins. The queue is what enforces that, and it " +
+            "is why the label a node gets the first time it is seen is already final: on an unweighted " +
+            "graph nothing found later can be closer. Give the edges different weights and that stops " +
+            "being true, which is the entire reason Dijkstra exists. B–C connects two nodes on the same " +
+            "layer, so it can never be a tree edge — in an undirected BFS every non-tree edge joins " +
+            "nodes at most one layer apart, and that is what makes odd cycles (and bipartiteness) " +
+            "detectable in the same pass.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("A 0", 0.08f, 0.50f, FigureTone.Accent),
+                FigureGraphNode("B 1", 0.36f, 0.16f, FigureTone.Primary),
+                FigureGraphNode("C 1", 0.36f, 0.84f, FigureTone.Primary),
+                FigureGraphNode("D 2", 0.66f, 0.16f, FigureTone.Primary),
+                FigureGraphNode("E 2", 0.66f, 0.84f, FigureTone.Primary),
+                FigureGraphNode("F 3", 0.93f, 0.50f, FigureTone.Primary),
+            ),
+            edges = listOf(
+                FigureEdge(0, 1, tone = FigureTone.Accent),
+                FigureEdge(0, 2, tone = FigureTone.Accent),
+                FigureEdge(1, 3, tone = FigureTone.Accent),
+                FigureEdge(2, 4, tone = FigureTone.Accent),
+                FigureEdge(3, 5, tone = FigureTone.Accent),
+                FigureEdge(1, 2, "same layer", tone = FigureTone.Warn),
+                FigureEdge(4, 5),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Breadth-first search (BFS) explores a graph or tree level by level, visiting all neighbors of a node before moving to the next level.",
         "Think of ripples spreading from a stone dropped in water — BFS visits everything at distance 1, then distance 2, and so on.",

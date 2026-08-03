@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,32 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val maxFlowContent = TopicContent(
     topicId = "max_flow",
+    figure = Figure(
+        caption = "Every edge here has capacity 1. Take the obvious first augmenting path, S→A→B→T: it " +
+            "saturates the middle edge and now neither S→B nor A→T can reach the other side. A greedy " +
+            "algorithm stops at 1 and is wrong. What saves it is that pushing a unit along A→B creates " +
+            "a backward edge B→A of the same size, so the second path S→B→A→T can travel it and " +
+            "*cancel* the first commitment on its way through — the answer is 2. That reverse edge is " +
+            "the whole difference between Ford-Fulkerson and greed, and it is why no bad early choice is " +
+            "permanent. When no augmenting path is left, the set still reachable from S is one side of a " +
+            "minimum cut and its capacity equals the flow. Choosing paths by BFS makes it Edmonds-Karp, " +
+            "at O(V·E²) regardless of the capacities.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("S", 0.08f, 0.50f, FigureTone.Primary),
+                FigureGraphNode("A", 0.45f, 0.16f, FigureTone.Primary),
+                FigureGraphNode("B", 0.45f, 0.84f, FigureTone.Primary),
+                FigureGraphNode("T", 0.92f, 0.50f, FigureTone.Accent),
+            ),
+            edges = listOf(
+                FigureEdge(0, 1, "1", directed = true, tone = FigureTone.Accent),
+                FigureEdge(0, 2, "1", directed = true, tone = FigureTone.Accent),
+                FigureEdge(1, 3, "1", directed = true, tone = FigureTone.Accent),
+                FigureEdge(2, 3, "1", directed = true, tone = FigureTone.Accent),
+                FigureEdge(2, 1, "undo 1", directed = true, tone = FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Maximum flow asks how much can be pushed from a source to a sink through a network whose edges each have a capacity.",
         "Ford-Fulkerson answers it by repeatedly finding a path with spare capacity and saturating it. The subtlety is the residual graph: every unit pushed along u → v creates a backward edge v → u, so a later path can undo an earlier commitment. Choosing augmenting paths by BFS (shortest first) is Edmonds-Karp and gives a polynomial bound.",

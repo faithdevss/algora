@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureStack
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,32 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val kosarajusAlgorithmContent = TopicContent(
     topicId = "kosarajus_algorithm",
+    figure = Figure(
+        caption = "The same graph Tarjan's page uses — A→B→C→A with C→D and D⇄E — done in two passes " +
+            "instead of one. The left column is the order the first DFS finished nodes in, latest on " +
+            "top; the right column is what the second pass, run on the graph with every edge reversed, " +
+            "pulls out. The reason it works is one fact: the node that finishes last always lies in a " +
+            "*source* component of the condensation. Reversing the edges turns that source into a sink, " +
+            "so a DFS started there physically cannot leave its own component, and every tree of the " +
+            "second pass is exactly one SCC. Same O(V+E) as Tarjan's, with a whole extra traversal and " +
+            "a transposed copy of the graph — bought in exchange for an argument you can hold in your " +
+            "head.",
+        shape = FigureShape.Stacks(
+            columns = listOf(
+                FigureStack(
+                    label = "finish order",
+                    entries = listOf("A", "B", "C", "D", "E"),
+                    note = "pass 1, on the graph — last to finish on top",
+                ),
+                FigureStack(
+                    label = "components",
+                    entries = listOf("{A,B,C}", "{D,E}"),
+                    tone = FigureTone.Accent,
+                    note = "pass 2, on the reverse — one tree each",
+                ),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Kosaraju's algorithm finds the strongly connected components of a directed graph with two depth-first passes — one on the graph, one on its reverse.",
         "It's less subtle than Tarjan's: the trick is that finishing-time order from the first pass, replayed on the transposed graph, cleanly separates each SCC.",

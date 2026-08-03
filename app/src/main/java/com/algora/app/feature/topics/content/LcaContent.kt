@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,27 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val lcaContent = TopicContent(
     topicId = "lca",
+    figure = Figure(
+        caption = "The two marked nodes are the query and A is their answer — the point where their two " +
+            "root-paths merge, and the deepest node that still has both below it. One query can just " +
+            "walk both paths up in O(h) and that is the right answer for a handful of queries. Binary " +
+            "lifting is for thousands: precompute up[k][v], the 2ᵏ-th ancestor, as two 2ᵏ⁻¹ hops, " +
+            "then level the deeper node by the binary decomposition of the depth gap and jump both nodes " +
+            "from the largest power downward — but only where their ancestors *differ*. That rule is " +
+            "what keeps the jumps from overshooting: the pair lands immediately below the meeting point " +
+            "every time, so the answer is one parent step up. O(n log n) to build, O(log n) per query.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("R", null, FigureTone.Primary),
+                FigureNode("A", 0, FigureTone.Accent),
+                FigureNode("C", 1, FigureTone.Primary),
+                FigureNode("E", 2, FigureTone.Warn),
+                FigureNode("F", 2),
+                FigureNode("D", 1, FigureTone.Warn),
+                FigureNode("B", 0),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "The lowest common ancestor of two nodes is the deepest node that has both of them as descendants — the point where their two root-paths merge.",
         "A single query can be answered by walking both paths in O(h), but when thousands of queries hit the same tree it pays to preprocess. Binary lifting stores each node's 2^k-th ancestor, letting a query jump in powers of two and land on the LCA in O(log n).",

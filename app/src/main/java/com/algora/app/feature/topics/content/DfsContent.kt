@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,34 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val dfsContent = TopicContent(
     topicId = "dfs",
+    figure = Figure(
+        caption = "The same graph BFS's page uses, numbered by visit order instead of by distance: A, B, " +
+            "C, E, F, D. The tree is one long chain, because DFS commits to a direction and only " +
+            "reconsiders when it runs out of room — deep and narrow where BFS is shallow and wide, on " +
+            "identical input. A–C is a back edge, reaching a node still open on the current path, and " +
+            "back edges are exactly what cycle detection watches for; the ancestor relation they expose " +
+            "is what Tarjan's low-links generalise. The cost is the stack: recursion depth is O(V) here " +
+            "rather than O(width), so a long graph overflows a DFS that a BFS would have walked fine.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("A 1", 0.08f, 0.50f, FigureTone.Accent),
+                FigureGraphNode("B 2", 0.36f, 0.16f, FigureTone.Primary),
+                FigureGraphNode("C 3", 0.36f, 0.84f, FigureTone.Primary),
+                FigureGraphNode("D 6", 0.66f, 0.16f, FigureTone.Primary),
+                FigureGraphNode("E 4", 0.66f, 0.84f, FigureTone.Primary),
+                FigureGraphNode("F 5", 0.93f, 0.50f, FigureTone.Primary),
+            ),
+            edges = listOf(
+                FigureEdge(0, 1, tone = FigureTone.Accent),
+                FigureEdge(1, 2, tone = FigureTone.Accent),
+                FigureEdge(2, 4, tone = FigureTone.Accent),
+                FigureEdge(4, 5, tone = FigureTone.Accent),
+                FigureEdge(3, 5, tone = FigureTone.Accent),
+                FigureEdge(0, 2, "back edge", tone = FigureTone.Warn),
+                FigureEdge(1, 3),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Depth-first search explores a graph by going as deep as possible along one path before backtracking to try the next unexplored branch.",
         "It uses a stack — explicit, or implicitly via recursion — so the most recently discovered node is the next one expanded.",

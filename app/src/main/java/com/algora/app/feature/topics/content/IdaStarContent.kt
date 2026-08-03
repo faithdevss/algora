@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,28 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val idaStarContent = TopicContent(
     topicId = "ida_star",
+    figure = Figure(
+        caption = "Each cell is one iteration's f-threshold and the row below is roughly how many nodes " +
+            "it admits on a tree branching about three ways. The threshold is never guessed: it starts " +
+            "at h(start) and each round raises it to the smallest f that round had to prune, so every " +
+            "iteration lets in exactly the next distinct f value. Nothing is stored except the current " +
+            "path — O(d) memory against A*'s frontier, which is the entire reason to reach for it. " +
+            "Restarting from scratch every time sounds ruinous and usually is not: node counts grow " +
+            "geometrically with the bound, so the last iteration dominates the sum of all the earlier " +
+            "ones and the re-expansion is a constant factor. Where it genuinely breaks is real-valued " +
+            "edge costs, because then almost every f is distinct, each round admits a handful of nodes, " +
+            "and the iteration count approaches the node count. It also keeps no closed list, so " +
+            "transpositions A* would have collapsed get walked again.",
+        shape = FigureShape.Strip(
+            cells = listOf("4", "6", "8", "10", "12"),
+            bands = listOf(
+                FigureBand(0, 3, "re-expanded each round"),
+                FigureBand(4, 4, "goal", FigureTone.Accent),
+            ),
+            aux = listOf("3", "9", "28", "81", "244"),
+            auxLabel = "nodes admitted per round — the last one outweighs every round before it",
+        ),
+    ),
     whatIsIt = listOf(
         "IDA* — iterative-deepening A* — finds the same optimal path A* finds, using memory proportional to the depth of that path rather than to the number of states explored. It is what you reach for when A*'s frontier is the thing that fails, not A*'s running time.",
         "The mechanism is a depth-first search bounded by f-cost instead of by depth. Set the initial threshold to h(start), the cheapest the answer could possibly be. Run a plain recursive DFS that abandons any node whose f = g + h exceeds the threshold, and while abandoning them, record the smallest f it had to reject. If the search returns without a goal, that recorded minimum becomes the next threshold, and the search restarts from scratch. Each iteration therefore admits exactly the nodes with the next distinct f value, and the first iteration that reaches the goal reaches it at the optimal cost — provided h is admissible, exactly as for A*.",

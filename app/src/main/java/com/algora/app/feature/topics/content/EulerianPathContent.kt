@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,33 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val eulerianPathContent = TopicContent(
     topicId = "eulerian_path",
+    figure = Figure(
+        caption = "Königsberg, 1736 — four land masses, seven bridges, and the labels are degrees (the " +
+            "doubled edges are two bridges drawn as one line). All four are odd, and that settles it " +
+            "without any searching at all. Every time a walk enters a vertex it has to leave again, so " +
+            "edges get consumed in pairs and an odd vertex can only ever be an endpoint; a walk has two " +
+            "endpoints, four odd vertices is two too many, and no amount of cleverness would have " +
+            "helped. Zero odd vertices gives a circuit, exactly two gives a path forced to run between " +
+            "them, anything else gives nothing. Existence decided by counting in linear time is what " +
+            "makes this the easy twin — the Hamiltonian version, one word different, has no such test. " +
+            "Given a legal graph, Hierholzer's algorithm builds the walk in O(V+E) by splicing " +
+            "sub-circuits back into the first one.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("N 3", 0.38f, 0.10f, FigureTone.Warn),
+                FigureGraphNode("A 5", 0.14f, 0.50f, FigureTone.Warn),
+                FigureGraphNode("S 3", 0.38f, 0.90f, FigureTone.Warn),
+                FigureGraphNode("B 3", 0.82f, 0.50f, FigureTone.Warn),
+            ),
+            edges = listOf(
+                FigureEdge(1, 0, "×2"),
+                FigureEdge(1, 2, "×2"),
+                FigureEdge(1, 3, "1"),
+                FigureEdge(0, 3, "1"),
+                FigureEdge(2, 3, "1"),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "An Eulerian path walks every edge of a graph exactly once. If it also returns to where it started it is an Eulerian circuit. This is the problem Euler settled in 1736 for the seven bridges of Königsberg, and the settling of it is generally taken as the start of graph theory.",
         "What makes it remarkable is that existence is decided by counting, not by searching. An undirected connected graph has an Eulerian circuit exactly when every vertex has even degree, and an Eulerian path exactly when either zero or two vertices have odd degree — and when there are two, the walk is forced to start at one and end at the other. The reason is local: every time the walk enters a vertex it must leave again, consuming edges in pairs, so an odd-degree vertex can only be an endpoint. Königsberg had four odd vertices, which is two too many, and no amount of cleverness could have helped.",

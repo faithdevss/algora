@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,36 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val articulationPointsContent = TopicContent(
     topicId = "articulation_points",
+    figure = Figure(
+        caption = "Two triangles joined by a single edge. Remove C or D and the graph falls into two " +
+            "pieces; remove anything else and it does not, because every other vertex sits on a cycle " +
+            "and a cycle has no single point of failure. One DFS finds both: with disc as visit time and " +
+            "low as the earliest vertex a subtree can reach using at most one back edge, a tree edge " +
+            "u→v marks u as a cut vertex when low[v] ≥ disc[u] — the child cannot get above its parent, " +
+            "so nothing bypasses it. Make the inequality strict and the edge itself is a bridge, which " +
+            "C–D is. The DFS root is the one exception, being a cut vertex only when it has two or more " +
+            "DFS children rather than one. O(V+E), same pass, same low-link machinery Tarjan's uses on " +
+            "directed graphs.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("A", 0.08f, 0.18f),
+                FigureGraphNode("B", 0.08f, 0.82f),
+                FigureGraphNode("C", 0.36f, 0.50f, FigureTone.Warn),
+                FigureGraphNode("D", 0.66f, 0.50f, FigureTone.Warn),
+                FigureGraphNode("E", 0.93f, 0.18f),
+                FigureGraphNode("F", 0.93f, 0.82f),
+            ),
+            edges = listOf(
+                FigureEdge(0, 1),
+                FigureEdge(0, 2),
+                FigureEdge(1, 2),
+                FigureEdge(2, 3, "bridge", tone = FigureTone.Warn),
+                FigureEdge(3, 4),
+                FigureEdge(3, 5),
+                FigureEdge(4, 5),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "An articulation point is a vertex whose removal increases the number of connected components; a bridge is an edge with the same property. They are the single points of failure in a network.",
         "One DFS finds them all. Each vertex is stamped with a discovery time, and `low` records the earliest-discovered vertex reachable from its subtree using at most one back edge. If a child cannot reach above its parent, that parent is a cut vertex.",

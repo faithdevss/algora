@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,33 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val aStarSearchContent = TopicContent(
     topicId = "a_star_search",
+    figure = Figure(
+        caption = "The numbers are h — each cell's Manhattan distance to the goal, the cheapest the rest " +
+            "of the trip could possibly be. Ordering the queue by f = g + h means that among cells " +
+            "reached at equal cost, the one with the smaller estimate wins, so the search walks the " +
+            "marked corridor and touches a fraction of the grid. Set h to zero everywhere and f is just " +
+            "g: that is Dijkstra, expanding outward in every direction and eventually visiting all " +
+            "fifteen cells to reach the same answer. Optimality holds as long as h never overestimates " +
+            "— an admissible heuristic can only slow the search down, never make it wrong. Overestimate " +
+            "anywhere and A* may return a path that is not shortest, which is exactly the trade weighted " +
+            "A* makes deliberately for speed.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("5", "4", "3", "2", "1"),
+                listOf("4", "3", "2", "1", "0"),
+                listOf("5", "4", "3", "2", "1"),
+            ),
+            rowHeaders = listOf("r0", "r1", "r2"),
+            colHeaders = listOf("c0", "c1", "c2", "c3", "c4"),
+            marks = listOf(
+                FigureCell(1, 0, FigureTone.Primary),
+                FigureCell(1, 1, FigureTone.Primary),
+                FigureCell(1, 2, FigureTone.Primary),
+                FigureCell(1, 3, FigureTone.Primary),
+                FigureCell(1, 4, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A* is a best-first pathfinding search that finds the shortest path from a start to a goal by combining the actual cost so far with a heuristic estimate of the cost remaining.",
         "It's Dijkstra's algorithm with a sense of direction: the heuristic steers the search toward the goal, expanding far fewer nodes while staying optimal when the heuristic never overestimates.",

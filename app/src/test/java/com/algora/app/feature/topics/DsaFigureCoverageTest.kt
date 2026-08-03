@@ -18,37 +18,25 @@ class DsaFigureCoverageTest {
 
     private val dsaTopics = DataStructuresTopics.topics + AlgorithmsTopics.topics
 
-    // F1-F2 (all 29 Data Structures), F3 (sorting + searching), F4 (recursion, backtracking,
-    // divide & conquer) and F6 (dynamic programming + greedy) are done. F5 and F7 remain.
+    // Everything except F7 (strings, math & number theory, bits, geometry) is done: F1-F2 covered
+    // all 29 Data Structures, F3 sorting and searching, F4 recursion and divide & conquer,
+    // F5 graph algorithms and pathfinding, F6 dynamic programming and greedy.
     private val pendingFigures = setOf(
-        "a_star_search",
         "aho_corasick",
-        "articulation_points",
-        "bellman_ford",
-        "bfs",
         "bit_basics",
         "chinese_remainder_theorem",
         "convex_hull",
         "count_set_bits",
-        "d_star_algorithm",
-        "dfs",
         "difference_array",
         "euclid_gcd",
-        "eulerian_path",
         "fast_power",
         "fermats_little_theorem",
-        "floyd_warshall",
-        "hamiltonian_path",
-        "ida_star",
         "kadanes_algorithm",
         "kmp",
-        "kosarajus_algorithm",
-        "lca",
         "line_intersection",
         "longest_common_substring",
         "longest_palindromic_substring",
         "manacher",
-        "max_flow",
         "modular_arithmetic",
         "modular_exponentiation",
         "monte_carlo_method",
@@ -62,11 +50,8 @@ class DsaFigureCoverageTest {
         "sieve_of_eratosthenes",
         "sliding_window",
         "subsets_bitmask",
-        "tarjans_algorithm",
         "top_k_elements",
-        "topological_sort",
         "two_pointer",
-        "uniform_cost_search",
         "xor_tricks",
         "z_algorithm",
     )

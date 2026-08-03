@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,36 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val dStarAlgorithmContent = TopicContent(
     topicId = "d_star_algorithm",
+    figure = Figure(
+        caption = "The robot has driven two cells along a planned route when a sensor reveals the " +
+            "obstacle. Because the plan is computed backward from the goal, each cell stores a " +
+            "cost-to-go that stays valid as the robot moves — movement alone invalidates nothing, and " +
+            "only new information does. The cells whose cost-to-go actually changed are marked " +
+            "inconsistent and the repair propagates outward until it stops mattering, which here is a " +
+            "detour of three cells; everything behind the robot is untouched and everything ahead of the " +
+            "detour is reused as-is. Re-running A* instead would recompute the whole grid, at every " +
+            "single step, which is the cost D* exists to avoid on a robot that discovers its terrain by " +
+            "driving into it. The worst case still degenerates to a full replan — the win is that the " +
+            "common case, a local change, costs local work.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("·", "·", "↑", "→", "↓"),
+                listOf("S", "→", "→", "■", "G"),
+                listOf("·", "·", "·", "·", "·"),
+            ),
+            rowHeaders = listOf("r0", "r1", "r2"),
+            colHeaders = listOf("c0", "c1", "c2", "c3", "c4"),
+            marks = listOf(
+                FigureCell(1, 0, FigureTone.Muted),
+                FigureCell(1, 1, FigureTone.Muted),
+                FigureCell(1, 3, FigureTone.Warn),
+                FigureCell(0, 2, FigureTone.Accent),
+                FigureCell(0, 3, FigureTone.Accent),
+                FigureCell(0, 4, FigureTone.Accent),
+                FigureCell(1, 4, FigureTone.Primary),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "D* (Dynamic A*) is an incremental pathfinding algorithm for environments that change as you move — it repairs the existing path locally instead of replanning from scratch.",
         "Built for robots exploring unknown terrain, it plans from the goal backward and, when new obstacles appear, updates only the affected region, making it far cheaper than re-running A* each step.",

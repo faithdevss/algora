@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,34 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val bellmanFordContent = TopicContent(
     topicId = "bellman_ford",
+    figure = Figure(
+        caption = "Distances after each full pass over the edges, on a graph with S→A 5, S→B 4, " +
+            "B→A −3 and A→C 2. Watch A: it reads 5 after the first pass and then *drops* to 1, because " +
+            "the negative edge out of B undercuts a value that already looked settled. Dijkstra cannot " +
+            "survive that — it would have finalised A at 5 and never looked again. Bellman-Ford gives up " +
+            "on being clever and relaxes every edge V−1 times, which is enough whatever order the edges " +
+            "come in, because a shortest path uses at most V−1 of them. The last row is the extra pass: " +
+            "nothing improves, so there is no negative cycle. Anything that still improved would prove " +
+            "one, and would mean no shortest path exists at all. O(V·E).",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0", "∞", "∞", "∞"),
+                listOf("0", "5", "4", "∞"),
+                listOf("0", "1", "4", "7"),
+                listOf("0", "1", "4", "3"),
+                listOf("0", "1", "4", "3"),
+            ),
+            rowHeaders = listOf("init", "pass 1", "pass 2", "pass 3", "check"),
+            colHeaders = listOf("S", "A", "B", "C"),
+            marks = listOf(
+                FigureCell(2, 1, FigureTone.Warn),
+                FigureCell(3, 3, FigureTone.Accent),
+                FigureCell(4, 1, FigureTone.Muted),
+                FigureCell(4, 2, FigureTone.Muted),
+                FigureCell(4, 3, FigureTone.Muted),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Bellman-Ford finds shortest paths from a single source even when edges have negative weights — the case Dijkstra's greedy approach can't handle.",
         "Instead of settling nodes one at a time, it relaxes every edge repeatedly; after V−1 full passes all shortest paths are final, and one extra pass detects negative cycles.",

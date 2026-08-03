@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureArrow
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,36 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val floydWarshallContent = TopicContent(
     topicId = "floyd_warshall",
+    figure = Figure(
+        caption = "The finished all-pairs matrix for A→B 3, B→C 1, C→D 2, A→C 8. The marked cell is " +
+            "A→D, and it was written by reading A→B and B→D — one cell in its own row, one in its own " +
+            "column, which is why the update is safe to do in place with no second matrix. What makes " +
+            "the algorithm work is that k is the *outer* loop: after k rounds the matrix holds the best " +
+            "route using only the first k nodes as intermediates, so every value it reads is already " +
+            "final for that restriction. Put k innermost — the loop order that looks natural — and it " +
+            "silently returns wrong answers on some inputs rather than failing. O(V³) time and O(V²) " +
+            "space, negative edges allowed; a negative number appearing on the diagonal is the " +
+            "negative-cycle detector.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0", "3", "4", "6"),
+                listOf("∞", "0", "1", "3"),
+                listOf("∞", "∞", "0", "2"),
+                listOf("∞", "∞", "∞", "0"),
+            ),
+            rowHeaders = listOf("A", "B", "C", "D"),
+            colHeaders = listOf("A", "B", "C", "D"),
+            marks = listOf(
+                FigureCell(0, 3, FigureTone.Accent),
+                FigureCell(0, 1, FigureTone.Primary),
+                FigureCell(1, 3, FigureTone.Primary),
+            ),
+            arrows = listOf(
+                FigureArrow(0, 1, 0, 3, label = "via B"),
+                FigureArrow(1, 3, 0, 3),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Floyd-Warshall computes the shortest path between every pair of nodes at once, using a compact triple loop over an all-pairs distance matrix.",
         "Its idea is deceptively simple: allow paths to pass through one more intermediate node at a time, and keep whichever route is shorter.",

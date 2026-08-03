@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,36 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val hamiltonianPathContent = TopicContent(
     topicId = "hamiltonian_path",
+    figure = Figure(
+        caption = "A six-cycle: every vertex has degree 2, and the Hamiltonian circuit is the graph " +
+            "itself. Dirac's condition wants every degree to be at least n/2 = 3 and Ore's wants " +
+            "non-adjacent degrees summing to at least 6; this fails both comfortably and is Hamiltonian " +
+            "anyway. That is the shape of the whole problem — the sufficient conditions prove yes and " +
+            "can never prove no, so a negative answer always costs a search. Swap \"edge\" for \"vertex\" " +
+            "in the Eulerian definition and the statement barely changes while the difficulty changes " +
+            "completely: Eulerian existence is a degree count in linear time, Hamiltonian existence is " +
+            "NP-complete. Backtracking is O(n!) worst case; for weighted circuits Held-Karp trades that " +
+            "for O(2ⁿ·n²) time at O(2ⁿ·n) memory, which moves the practical ceiling from about twelve " +
+            "vertices to about twenty.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("1", 0.50f, 0.06f, FigureTone.Accent),
+                FigureGraphNode("2", 0.86f, 0.29f, FigureTone.Accent),
+                FigureGraphNode("3", 0.86f, 0.73f, FigureTone.Accent),
+                FigureGraphNode("4", 0.50f, 0.94f, FigureTone.Accent),
+                FigureGraphNode("5", 0.14f, 0.73f, FigureTone.Accent),
+                FigureGraphNode("6", 0.14f, 0.29f, FigureTone.Accent),
+            ),
+            edges = listOf(
+                FigureEdge(0, 1, tone = FigureTone.Accent),
+                FigureEdge(1, 2, tone = FigureTone.Accent),
+                FigureEdge(2, 3, tone = FigureTone.Accent),
+                FigureEdge(3, 4, tone = FigureTone.Accent),
+                FigureEdge(4, 5, tone = FigureTone.Accent),
+                FigureEdge(5, 0, tone = FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A Hamiltonian path visits every vertex exactly once; a Hamiltonian circuit is one that closes back to its start. Swapping the word \"edge\" for \"vertex\" in the Eulerian definition changes almost nothing about the statement and everything about the difficulty.",
         "Eulerian existence is settled by counting degrees in linear time. Hamiltonian existence is NP-complete, and no degree condition decides it. There are sufficient conditions — Dirac's, that every vertex has degree at least n/2, and Ore's, that every non-adjacent pair has degrees summing to at least n — but they are one-way. A graph can fail both comfortably and still be Hamiltonian; a cycle on ten vertices has every degree equal to 2 and is trivially Hamiltonian while satisfying neither. So the conditions prove yes and never prove no, which is why the general algorithm is search.",
