@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureArrow
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,34 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val bitmaskDpContent = TopicContent(
     topicId = "bitmask_dp",
+    figure = Figure(
+        caption = "Three cities, start at 0, with costs 0↔1 = 2, 1↔2 = 3, 0↔2 = 5. The row is the set " +
+            "of visited cities written as bits and the column is where the tour currently stands, so " +
+            "\"which cities have I used\" is an array index instead of a collection. Adding a city only " +
+            "ever sets a bit, so a mask's value strictly increases along every transition — which means " +
+            "plain numeric order over the rows is already a valid topological order and no sorting is " +
+            "needed. Closing the tour from the marked cell gives 5 + 5 = 10. The table is 2ⁿ·n cells " +
+            "each extended n ways: O(2ⁿ·n²) against O(n!), which at n = 20 is around 4·10⁸ operations " +
+            "instead of 2·10¹⁸.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0", "—", "—"),
+                listOf("—", "2", "—"),
+                listOf("—", "—", "5"),
+                listOf("—", "8", "5"),
+            ),
+            rowHeaders = listOf("001", "011", "101", "111"),
+            colHeaders = listOf("at 0", "at 1", "at 2"),
+            marks = listOf(
+                FigureCell(3, 2, FigureTone.Accent),
+                FigureCell(1, 1, FigureTone.Primary),
+                FigureCell(3, 1, FigureTone.Muted),
+            ),
+            arrows = listOf(
+                FigureArrow(1, 1, 3, 2, label = "visit 2"),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Bitmask DP encodes a set as the bits of an integer, so \"which items have I used so far\" becomes an array index instead of a collection.",
         "That turns an exponential search over subsets into a table of 2^n entries filled once. The canonical example is the travelling salesman problem: dp[mask][i] is the cheapest way to visit exactly the cities in `mask` and stop at city i — O(2^n · n²) instead of O(n!).",

@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,20 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val fibonacciDpContent = TopicContent(
     topicId = "fibonacci_dp",
+    figure = Figure(
+        caption = "The same numbers the naive recursion recomputed exponentially, each written exactly " +
+            "once. There are only n distinct subproblems no matter how many times the recursion asked " +
+            "for them, so filling left to right is linear — and the direction is the only thing that " +
+            "differs from top-down memoisation, which fills the same cells in the order the calls " +
+            "happen to reach them. The band is the second observation: a cell reads nothing but its two " +
+            "predecessors, so the array can be thrown away and two variables kept instead, which is why " +
+            "the practical version is O(1) space.",
+        shape = FigureShape.Strip(
+            cells = listOf("0", "1", "1", "2", "3", "5", "8"),
+            bands = listOf(FigureBand(4, 5, "all state kept", FigureTone.Accent)),
+            pointers = listOf(FigurePointer(6, "F(6)=8")),
+        ),
+    ),
     whatIsIt = listOf(
         "Fibonacci by dynamic programming computes F(n) in linear time by storing each result instead of recomputing it — the fix for naive recursion's exponential blowup.",
         "It's the gateway example for the two DP styles: top-down memoization (recurse, but cache) and bottom-up tabulation (fill a table from the base cases up).",

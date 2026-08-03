@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureArrow
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,38 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val longestCommonSubsequenceContent = TopicContent(
     topicId = "longest_common_subsequence",
+    figure = Figure(
+        caption = "A = ABC down the side, B = ACB across the top, and every cell is one comparison of " +
+            "two prefixes. On a match the value comes from the diagonal plus one â the two characters " +
+            "pair off and both prefixes shrink. On a mismatch nothing is paid and nothing is added: the " +
+            "cell copies the better of its two neighbours, because the answer is a length being " +
+            "maximised rather than a cost being minimised. That is the whole difference from edit " +
+            "distance, which reads three neighbours and always adds one. The corner reads 2 (AB or AC), " +
+            "and walking back along the arrows recovers which characters those were.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0", "0", "0", "0"),
+                listOf("0", "1", "1", "1"),
+                listOf("0", "1", "1", "2"),
+                listOf("0", "1", "2", "2"),
+            ),
+            rowHeaders = listOf("ø", "A", "B", "C"),
+            colHeaders = listOf("ø", "A", "C", "B"),
+            marks = listOf(
+                FigureCell(3, 3, FigureTone.Accent),
+                FigureCell(2, 3, FigureTone.Primary),
+                FigureCell(3, 2, FigureTone.Primary),
+                FigureCell(1, 2, FigureTone.Muted),
+            ),
+            arrows = listOf(
+                // Diagonal: B == B, so dp[1][2] + 1. The two below are the mismatch, taking the better
+                // neighbour rather than paying for the difference.
+                FigureArrow(1, 2, 2, 3),
+                FigureArrow(2, 3, 3, 3, FigureTone.Muted),
+                FigureArrow(3, 2, 3, 3, FigureTone.Muted),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "The longest common subsequence (LCS) of two strings is the longest sequence of characters appearing in both in the same order, though not necessarily contiguously.",
         "It's a foundational two-string DP: a table indexed by prefixes of each string, where each cell extends or inherits the best subsequence found so far.",

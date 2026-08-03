@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,33 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val kruskalsMstContent = TopicContent(
     topicId = "kruskals_mst",
+    figure = Figure(
+        caption = "Edges considered cheapest-first: 1, 2, 3, then 4 — which is rejected. Not for being " +
+            "expensive, but because B and C already sit in the same component by then, so adding it " +
+            "would close a cycle; that is the only test Kruskal ever performs, and a disjoint-set " +
+            "structure answers it in near-constant time. Drawn here is the finished tree; mid-run it " +
+            "would not look like a tree at all, because after 1 and 2 there are two disconnected " +
+            "fragments and nothing joining them — Prim's never has that stage. The run stops at " +
+            "V − 1 = 4 edges, so the edge weighted 6 is never " +
+            "examined at all. Total weight 11, and the sort dominates: O(E log E).",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("A", 0.12f, 0.22f, FigureTone.Primary),
+                FigureGraphNode("B", 0.12f, 0.80f, FigureTone.Primary),
+                FigureGraphNode("C", 0.50f, 0.50f, FigureTone.Primary),
+                FigureGraphNode("D", 0.88f, 0.22f, FigureTone.Primary),
+                FigureGraphNode("E", 0.88f, 0.80f, FigureTone.Primary),
+            ),
+            edges = listOf(
+                FigureEdge(0, 1, "1", tone = FigureTone.Accent),
+                FigureEdge(2, 3, "2", tone = FigureTone.Accent),
+                FigureEdge(0, 2, "3", tone = FigureTone.Accent),
+                FigureEdge(1, 2, "4", tone = FigureTone.Warn),
+                FigureEdge(3, 4, "5", tone = FigureTone.Accent),
+                FigureEdge(2, 4, "6"),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Kruskal's algorithm builds a minimum spanning tree by repeatedly adding the cheapest edge that doesn't form a cycle, until every node is connected.",
         "It is edge-centric and greedy: sort all edges by weight, then grow a forest of trees that gradually merge into one, using a disjoint-set structure to detect cycles.",

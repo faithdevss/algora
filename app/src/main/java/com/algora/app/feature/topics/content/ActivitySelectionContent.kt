@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureSpan
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,23 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val activitySelectionContent = TopicContent(
     topicId = "activity_selection",
+    figure = Figure(
+        caption = "This is the input that kills the shortest-duration rule. The middle activity is only " +
+            "two hours long and looks like the cheapest thing to commit to, but it starts before the " +
+            "first one ends and ends after the last one starts, so taking it blocks both and the day " +
+            "yields one activity instead of two. Earliest-finish-first takes 0–5, is free again at 5, " +
+            "and takes 5–10. The same input also defeats earliest-start-first if the 0–5 activity ran " +
+            "to 10 instead. Finishing early is the only property that matters, because it is the only " +
+            "one that measures how much of the resource is left afterwards.",
+        shape = FigureShape.Timeline(
+            spans = listOf(
+                FigureSpan(0, 5, "0–5 taken", FigureTone.Accent),
+                FigureSpan(4, 6, "4–6 shortest, blocks both", FigureTone.Warn),
+                FigureSpan(5, 10, "5–10 taken", FigureTone.Accent),
+            ),
+            axisMax = 11,
+        ),
+    ),
     whatIsIt = listOf(
         "Given a set of activities, each with a start and a finish time, activity selection asks for the largest number of them you can run on a single resource without any two overlapping. It is the interval-scheduling problem in its purest form: no weights, no priorities, just count.",
         "The answer is one line — sort by finish time, then sweep left to right taking any activity that starts at or after the last one you took. What makes this worth studying is not the code but why the code is correct, because the three obvious alternatives are all wrong. Earliest start first fails on a single activity that opens the day and closes it. Shortest duration first fails on a short activity wedged between two long ones it blocks. Fewest conflicts first survives longer but still has counterexamples. Earliest finish first has none.",

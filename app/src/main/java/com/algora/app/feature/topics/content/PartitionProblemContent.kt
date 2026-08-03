@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,22 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val partitionProblemContent = TopicContent(
     topicId = "partition_problem",
+    figure = Figure(
+        caption = "Five values totalling 12, so each side has to reach exactly 6 — which turns partition " +
+            "into subset-sum with a fixed target and nothing else. Two rejections come free before any " +
+            "table is built: an odd total can never be halved, and a single element larger than half " +
+            "the total can never be balanced. The picture flatters the problem, though. The table is " +
+            "O(n · T/2) cells and T is the *value* of the total, not its length, so the cost is " +
+            "exponential in the number of digits written down — pseudo-polynomial, and no contradiction " +
+            "of NP-completeness. A hundred numbers around a billion is a short input and a hopeless table.",
+        shape = FigureShape.Strip(
+            cells = listOf("3", "1", "2", "1", "5"),
+            bands = listOf(
+                FigureBand(0, 2, "sum 6"),
+                FigureBand(3, 4, "sum 6", FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "The partition problem asks whether a multiset of positive integers can be split into two groups with equal sums. It is a decision problem — yes or no — and it is NP-complete, which is worth stating plainly before the tractable-looking table below makes it seem easy.",
         "The reduction that makes it solvable is one observation: if the total is T, then the two halves must each sum to T/2, so a valid split exists exactly when some subset sums to T/2. That turns partition into subset-sum with a fixed target, and immediately gives two free rejections — an odd total can never be split, and neither can a set containing an element larger than T/2. Everything after that is the standard subset-sum table: dp[i][s] is true when some subset of the first i items reaches sum s, and each cell either skips item i or takes it and looks up dp[i−1][s − wᵢ].",

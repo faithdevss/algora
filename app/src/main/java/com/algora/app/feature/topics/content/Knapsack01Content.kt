@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureArrow
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,36 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val knapsack01Content = TopicContent(
     topicId = "knapsack_01",
+    figure = Figure(
+        caption = "Three items — weight 2 value 3, weight 3 value 5, weight 4 value 6 — against a bag " +
+            "of capacity 6. Each row adds one item to the pool, so the take arrow always reaches into " +
+            "the row *above*: item 3 is used at most once, which is exactly what 0/1 means and exactly " +
+            "what greedy value-per-weight cannot honour. The corner is 9, from items 1 and 3 filling the " +
+            "bag exactly. Which items those were is not stored anywhere — it is recovered by walking " +
+            "back up the last column and noting every row where the value changed. The table is n·W " +
+            "cells, and W is a magnitude rather than an input length, so this is pseudo-polynomial: a " +
+            "capacity of a billion is one number to type and an impossible table to fill.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0", "0", "0", "0", "0", "0", "0"),
+                listOf("0", "0", "3", "3", "3", "3", "3"),
+                listOf("0", "0", "3", "5", "5", "8", "8"),
+                listOf("0", "0", "3", "5", "6", "8", "9"),
+            ),
+            rowHeaders = listOf("ø", "w2 v3", "w3 v5", "w4 v6"),
+            colHeaders = listOf("0", "1", "2", "3", "4", "5", "6"),
+            marks = listOf(
+                FigureCell(3, 6, FigureTone.Accent),
+                FigureCell(2, 2, FigureTone.Primary),
+                FigureCell(2, 6, FigureTone.Muted),
+            ),
+            arrows = listOf(
+                FigureArrow(2, 2, 3, 6, label = "take"),
+                // One cell long, so it carries no label: this is the skip.
+                FigureArrow(2, 6, 3, 6, FigureTone.Muted),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "The 0/1 knapsack problem maximizes the value packed into a weight-limited bag where each item is taken whole or left behind — no fractions allowed.",
         "That all-or-nothing constraint defeats greedy strategies, so it's solved by dynamic programming over a table of (items considered, capacity used).",

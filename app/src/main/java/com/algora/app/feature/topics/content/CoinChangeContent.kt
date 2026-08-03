@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,23 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val coinChangeContent = TopicContent(
     topicId = "coin_change",
+    figure = Figure(
+        caption = "Coins {1, 4, 5} against a target of 8. Greed takes 5 first and then has only ones " +
+            "left — four coins; the table finds 4 + 4 in two. Every cell reads dp[a − coin] in the same " +
+            "row it is being written into, so a coin can be picked again and again, and that single " +
+            "detail is the whole difference from the 0/1 knapsack, which reads the row above to force " +
+            "each item to be used once. The cost is O(amount × coins), which is pseudo-polynomial: the " +
+            "amount is a magnitude, so doubling the number of digits in it squares the work.",
+        shape = FigureShape.Strip(
+            cells = listOf("0", "1", "2", "3", "4", "5", "6", "7", "8"),
+            bands = listOf(
+                FigureBand(4, 4, "dp[4]"),
+                FigureBand(8, 8, "2 coins", FigureTone.Accent),
+            ),
+            aux = listOf("0", "1", "2", "3", "1", "1", "2", "3", "2"),
+            auxLabel = "dp[a] — fewest coins making a; dp[8] = 1 + dp[4]",
+        ),
+    ),
     whatIsIt = listOf(
         "Coin change asks for the fewest coins (or the number of distinct ways) to make a target amount from a set of denominations.",
         "Greedy works for some coin systems but not all, so the general answer is dynamic programming over amounts from 0 up to the target.",

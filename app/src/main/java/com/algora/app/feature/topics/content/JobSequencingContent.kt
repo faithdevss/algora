@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,22 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val jobSequencingContent = TopicContent(
     topicId = "job_sequencing",
+    figure = Figure(
+        caption = "Three unit-length slots, jobs placed profit-first: J1 earns 100 by deadline 2, J2 " +
+            "earns 60 by deadline 1, J4 earns 20 by deadline 3. J1 goes into slot 2, not slot 1 — as " +
+            "late as its deadline permits — and that is the whole trick. Placed early it would have " +
+            "occupied the only slot J2 can ever use, and 60 would have been lost for nothing. J3 (40 by " +
+            "deadline 2) arrives to find both slots at or before 2 already filled and is dropped: a job " +
+            "is skipped only when every slot it could legally use is gone. Total 180.",
+        shape = FigureShape.Strip(
+            cells = listOf("t1", "t2", "t3"),
+            bands = listOf(
+                FigureBand(0, 0, "J2 · 60"),
+                FigureBand(1, 1, "J1 · 100", FigureTone.Accent),
+                FigureBand(2, 2, "J4 · 20"),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Job sequencing with deadlines schedules unit-time jobs, each with a deadline and a profit, on a single machine to maximize total profit — every job earns its profit only if finished by its deadline.",
         "The greedy insight: consider jobs by profit high-to-low, and place each as late as its deadline allows, keeping late slots open for the profitable jobs still to come.",

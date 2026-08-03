@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,32 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val primsMstContent = TopicContent(
     topicId = "prims_mst",
+    figure = Figure(
+        caption = "The same graph Kruskal's page uses, caught mid-run. The tree so far is {A, B} and the " +
+            "only edges that exist as far as Prim is concerned are the ones crossing out of it: 3 beats " +
+            "4, so C joins next. Look at the edge weighted 2 — it is the cheapest edge left anywhere in " +
+            "the graph and Prim will not look at it yet, because neither end is in the tree. Kruskal " +
+            "would already have taken it. That is the real difference: one connected tree growing " +
+            "across a cut, never a forest, so no cycle test is needed at all — an edge into a node " +
+            "already inside simply is not a crossing edge. Same MST, weight 11, different order.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("A", 0.12f, 0.22f, FigureTone.Primary),
+                FigureGraphNode("B", 0.12f, 0.80f, FigureTone.Primary),
+                FigureGraphNode("C", 0.50f, 0.50f),
+                FigureGraphNode("D", 0.88f, 0.22f),
+                FigureGraphNode("E", 0.88f, 0.80f),
+            ),
+            edges = listOf(
+                FigureEdge(0, 1, "1", tone = FigureTone.Primary),
+                FigureEdge(0, 2, "3", tone = FigureTone.Accent),
+                FigureEdge(1, 2, "4", tone = FigureTone.Warn),
+                FigureEdge(2, 3, "2"),
+                FigureEdge(3, 4, "5"),
+                FigureEdge(2, 4, "6"),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Prim's algorithm grows a minimum spanning tree from a single starting node, repeatedly adding the cheapest edge that connects the tree to a node not yet in it.",
         "Where Kruskal thinks in edges, Prim is node-centric: it keeps one connected tree the whole time and extends its frontier greedily.",

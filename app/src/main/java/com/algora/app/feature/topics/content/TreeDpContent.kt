@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,24 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val treeDpContent = TopicContent(
     topicId = "tree_dp",
+    figure = Figure(
+        caption = "Maximum-weight independent set on a tree with weights 3, 4, 5, 2, 1. Each node " +
+            "carries two numbers — best answer for its subtree if the node is taken, best if it is not " +
+            "— and both are finished before the parent reads them, which is what post-order means here. " +
+            "Taking a node forbids its children, so it sums their *skip* values; skipping it sums the " +
+            "better of each child's two. The root is 6 if taken and 9 if skipped, and 9 wins because " +
+            "leaving the root out frees both children (4 + 5). Because a tree has no cycles, every " +
+            "subtree is solved exactly once and the state per node is constant, so the whole DP is O(n).",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("6|9", null, FigureTone.Accent),
+                FigureNode("4|3", 0, FigureTone.Primary),
+                FigureNode("2|0", 1),
+                FigureNode("1|0", 1),
+                FigureNode("5|0", 0, FigureTone.Primary),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Tree DP is dynamic programming where the subproblems are subtrees: each node's answer is assembled from its children's answers during a post-order traversal.",
         "Because a tree has no cycles, every subtree is solved exactly once and the whole DP costs O(n). The recurring pattern is a small state per node — most often \"best answer if this node is used\" versus \"best if it is not\".",

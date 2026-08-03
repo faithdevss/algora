@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,30 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val dijkstrasAlgorithmContent = TopicContent(
     topicId = "dijkstras_algorithm",
+    figure = Figure(
+        caption = "Final distances, settled in increasing order: S at 0, A at 2, B at 3, C at 5. B was " +
+            "labelled 5 at first, by the direct edge from S, and dropped to 3 once A was relaxed — " +
+            "relaxation only ever lowers a label, never raises one. The greedy step is declaring A " +
+            "final while B still read 5, and it is sound only because every weight is non-negative: no " +
+            "path leaving A can come back cheaper than the label it already has. One negative edge " +
+            "anywhere breaks that reasoning — a distance locked in early could be undercut later — " +
+            "which is the whole reason Bellman-Ford exists.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("S 0", 0.10f, 0.50f, FigureTone.Primary),
+                FigureGraphNode("A 2", 0.42f, 0.18f, FigureTone.Primary),
+                FigureGraphNode("B 3", 0.42f, 0.82f, FigureTone.Primary),
+                FigureGraphNode("C 5", 0.86f, 0.50f, FigureTone.Accent),
+            ),
+            edges = listOf(
+                FigureEdge(0, 1, "2", directed = true, tone = FigureTone.Accent),
+                FigureEdge(0, 2, "5", directed = true, tone = FigureTone.Warn),
+                FigureEdge(1, 2, "1", directed = true, tone = FigureTone.Accent),
+                FigureEdge(1, 3, "7", directed = true, tone = FigureTone.Warn),
+                FigureEdge(2, 3, "2", directed = true, tone = FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Dijkstra's algorithm finds the shortest paths from a single source to every other node in a graph with non-negative edge weights.",
         "It is greedy: at each step it locks in the closest unfinished node, confident that no cheaper route to it can appear later — a guarantee that holds only when weights are non-negative.",

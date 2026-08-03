@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,22 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val coinChangeGreedyContent = TopicContent(
     topicId = "coin_change_greedy",
+    figure = Figure(
+        caption = "Coins {1, 3, 4}, target 6. Greed takes the 4 and is then stuck with ones — three " +
+            "coins — while 3 + 3 does it in two. Nothing is wrong with the rule; the coin system simply " +
+            "lacks the structure that makes the rule safe. Systems where greed is always optimal are " +
+            "called canonical, and real currencies are canonical by design: the 1-2-5 pattern of most " +
+            "banknote series is a deliberate choice. There is no simple arithmetic test for it, but " +
+            "Pearson's algorithm decides the question in O(n³) by checking a bounded set of candidate " +
+            "amounts derived from the greedy representations. When canonicity is not guaranteed, the DP " +
+            "at O(amount × n) is the correct algorithm.",
+        shape = FigureShape.Strip(
+            cells = listOf("4", "1", "1"),
+            bands = listOf(FigureBand(0, 2, "greedy · 3 coins", FigureTone.Warn)),
+            aux = listOf("3", "3"),
+            auxLabel = "optimal · 2 coins — the table finds this, the greedy rule cannot",
+        ),
+    ),
     whatIsIt = listOf(
         "Greedy coin change makes an amount out of the fewest coins by repeatedly taking the largest denomination that still fits. On the coins in your pocket it is what you already do without thinking: 68¢ becomes 25 + 25 + 10 + 5 + 1 + 1 + 1, and no shorter answer exists.",
         "But the correctness comes from the denominations, not from the algorithm. With coins {1, 3, 4} and a target of 6, greed takes 4, then can only add 1 + 1 — three coins — while 3 + 3 does it in two. Nothing about the greedy rule is at fault; the coin system simply does not have the structure that makes the rule safe. The simulation runs both the greedy sweep and the DP table on exactly this input so the failure is watched rather than asserted.",

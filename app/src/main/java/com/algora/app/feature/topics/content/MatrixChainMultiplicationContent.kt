@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureArrow
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,33 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val matrixChainMultiplicationContent = TopicContent(
     topicId = "matrix_chain_multiplication",
+    figure = Figure(
+        caption = "A₁ is 10×30, A₂ is 30×5, A₃ is 5×60 — the values never enter it, only the shapes. " +
+            "The cell for the whole chain tries both places the *last* multiplication could happen. " +
+            "Splitting after A₂ costs 1500 + 0 + 10·5·60 = 4500; splitting after A₁ costs 0 + 9000 + " +
+            "10·30·60 = 27000. Same product, six times the arithmetic. Only the upper triangle is ever " +
+            "filled, and it has to fill by interval length rather than row by row, because a cell reads " +
+            "two shorter intervals that must already be finished.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0", "1500", "4500"),
+                listOf("—", "0", "9000"),
+                listOf("—", "—", "0"),
+            ),
+            rowHeaders = listOf("i=1", "i=2", "i=3"),
+            colHeaders = listOf("j=1", "j=2", "j=3"),
+            marks = listOf(
+                FigureCell(0, 2, FigureTone.Accent),
+                FigureCell(0, 1, FigureTone.Primary),
+                FigureCell(2, 2, FigureTone.Primary),
+                FigureCell(1, 2, FigureTone.Warn),
+            ),
+            arrows = listOf(
+                FigureArrow(0, 1, 0, 2),
+                FigureArrow(2, 2, 0, 2, label = "split k=2"),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Matrix chain multiplication finds the cheapest way to parenthesize a product of matrices — the result is identical, but the order of multiplications drastically changes the scalar-multiplication count.",
         "It's the canonical interval DP: solve every subchain, and for each, try every split point, combining the two halves' costs plus the cost of joining them.",

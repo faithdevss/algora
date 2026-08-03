@@ -3,6 +3,9 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +14,22 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val longestIncreasingSubsequenceContent = TopicContent(
     topicId = "longest_increasing_subsequence",
+    figure = Figure(
+        caption = "The aux row is dp[i]: the longest increasing run ending *exactly* at i. Computing one " +
+            "cell means scanning every earlier cell with a smaller value, which is where the O(n²) " +
+            "comes from, and the answer is the maximum anywhere in that row rather than its last entry " +
+            "— the 4 at index 5 happens to be last here, but the 9 could have been a 0 and the answer " +
+            "would still be 4. The subsequence itself is 1, 4, 5, 9, and it is not contiguous. The " +
+            "O(n log n) version drops dp entirely and keeps a tails array instead — tails[k] is the " +
+            "smallest value any length-k+1 run can end on — binary-searching each value into place. " +
+            "Its length is the answer, but its contents are not a real subsequence.",
+        shape = FigureShape.Strip(
+            cells = listOf("3", "1", "4", "1", "5", "9"),
+            pointers = listOf(FigurePointer(5, "max = 4")),
+            aux = listOf("1", "1", "2", "1", "3", "4"),
+            auxLabel = "dp[i] — longest run ending at i, not the answer so far",
+        ),
+    ),
     whatIsIt = listOf(
         "The longest increasing subsequence (LIS) is the longest run of strictly increasing values you can pull from a sequence while keeping their original order.",
         "It has two classic solutions: an intuitive O(n²) DP, and a slicker O(n log n) method that keeps the smallest possible tail for each length using binary search.",

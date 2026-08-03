@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureArrow
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,35 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val editDistanceContent = TopicContent(
     topicId = "edit_distance",
+    figure = Figure(
+        caption = "sun → sat, and the marked cell has three ways in rather than LCS's two: the diagonal " +
+            "is a substitution, the cell above a deletion, the cell to the left an insertion. All three " +
+            "cost one, so the cell is 1 + the cheapest of them — unless the characters match, in which " +
+            "case the diagonal is carried through free and nothing is added at all. The borders are not " +
+            "zeros either: row 0 counts 0..n because turning an empty string into a prefix of length n " +
+            "costs n insertions. The corner is 2, which is u→a and n→t.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0", "1", "2", "3"),
+                listOf("1", "0", "1", "2"),
+                listOf("2", "1", "1", "2"),
+                listOf("3", "2", "2", "2"),
+            ),
+            rowHeaders = listOf("ø", "s", "u", "n"),
+            colHeaders = listOf("ø", "s", "a", "t"),
+            marks = listOf(
+                FigureCell(3, 3, FigureTone.Accent),
+                FigureCell(2, 2, FigureTone.Primary),
+                FigureCell(2, 3, FigureTone.Muted),
+                FigureCell(3, 2, FigureTone.Muted),
+            ),
+            arrows = listOf(
+                FigureArrow(2, 2, 3, 3),
+                FigureArrow(2, 3, 3, 3, FigureTone.Muted),
+                FigureArrow(3, 2, 3, 3, FigureTone.Muted),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Edit distance (Levenshtein distance) is the minimum number of single-character insertions, deletions, or substitutions needed to turn one string into another.",
         "Like LCS it's a two-string DP over prefixes, but each cell minimizes a cost rather than maximizing a length.",

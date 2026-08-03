@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,24 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val fractionalKnapsackContent = TopicContent(
     topicId = "fractional_knapsack",
+    figure = Figure(
+        caption = "Capacity 50 kg, and three items taken in value-per-kilogram order: A at 6/kg fills " +
+            "10 kg, B at 5/kg fills 20, and C at 4/kg only partly fits — so two thirds of it goes in " +
+            "and the bag closes exactly full, for 60 + 100 + 80 = 240. The slice is the entire reason " +
+            "greed is exact here: the bag never ends with wasted capacity, so no other arrangement can " +
+            "beat filling it with the densest material available. Forbid the slice and the argument " +
+            "collapses immediately — that is 0/1 knapsack, and it needs a table. Everything here is one " +
+            "sort: O(n log n).",
+        shape = FigureShape.Strip(
+            cells = listOf("10", "20", "30", "40", "50"),
+            bands = listOf(
+                FigureBand(0, 0, "A · 6/kg"),
+                FigureBand(1, 2, "B · 5/kg"),
+                FigureBand(3, 4, "⅔ of C · 4/kg", FigureTone.Accent),
+            ),
+            pointers = listOf(FigurePointer(4, "bag full")),
+        ),
+    ),
     whatIsIt = listOf(
         "The fractional knapsack problem fills a weight-limited bag to maximize value, where items may be taken in any fraction — half an item is allowed.",
         "That divisibility is what makes it greedy-solvable: always take from the item with the best value-per-weight first, unlike the all-or-nothing 0/1 knapsack which needs dynamic programming.",

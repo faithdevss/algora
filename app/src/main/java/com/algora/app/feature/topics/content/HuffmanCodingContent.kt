@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,26 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val huffmanCodingContent = TopicContent(
     topicId = "huffman_coding",
+    figure = Figure(
+        caption = "Frequencies A:5, B:2, C:1, D:1, merged two-smallest-first — so the rarest symbols are " +
+            "buried the deepest and end up with the longest codes, which is the entire compression " +
+            "argument. Depth is code length: A costs 1 bit, B 2, C and D 3 each, for 5·1 + 2·2 + 1·3 " +
+            "+ 1·3 = 15 bits against 18 for fixed two-bit codes. Every symbol sits at a leaf and no " +
+            "internal node holds one, which is what makes the code prefix-free: the decoder can read " +
+            "bits until it falls off the tree and never needs a separator. Internal nodes carry the " +
+            "summed frequency and nothing else.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("9", null, FigureTone.Primary),
+                FigureNode("A:5", 0, FigureTone.Accent),
+                FigureNode("4", 0, FigureTone.Primary),
+                FigureNode("B:2", 2, FigureTone.Accent),
+                FigureNode("2", 2, FigureTone.Primary),
+                FigureNode("C:1", 4),
+                FigureNode("D:1", 4),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Huffman coding compresses data by giving frequent symbols short bit codes and rare symbols long ones, minimizing the total encoded length.",
         "It greedily builds a binary tree from the bottom up, always merging the two least-frequent symbols, so the resulting prefix-free code is provably optimal for symbol-by-symbol encoding.",
