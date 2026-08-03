@@ -477,7 +477,77 @@ private fun subsetsTrace(itemCount: Int): RecTrace {
     return RecTrace(t.nodes, t.frames)
 }
 
+// ── Interview-prep pattern guides ────────────────────────────────────────────
+
+// The naive fib tree with a cache in front of it: the second call for any k returns immediately, so
+// the whole right-hand subtree that would have been rebuilt never appears.
+private fun memoFibTrace(n: Int): RecTrace {
+    val t = Tracer()
+    val memo = HashMap<Int, Long>()
+
+    fun fib(parent: Int?, k: Int): Long {
+        val id = t.call(parent, "fib($k)")
+        val cached = memo[k]
+        if (cached != null) {
+            t.ret(id, "= $cached (memo hit — the whole subtree below this call is skipped)")
+            return cached
+        }
+        val value = if (k < 2) k.toLong() else fib(id, k - 1) + fib(id, k - 2)
+        memo[k] = value
+        t.ret(id, "= $value (stored: k=$k will never be recomputed)")
+        return value
+    }
+
+    fib(null, n)
+    return RecTrace(t.nodes, t.frames)
+}
+
+// Subset sums of each half enumerated separately: 2^(n/2) + 2^(n/2) leaves instead of 2^n.
+private val meetItems = listOf(3, 34, 4, 12, 5, 2)
+
+private fun meetInMiddleTrace(n: Int): RecTrace {
+    val t = Tracer()
+    val items = meetItems.take(n)
+    val half = items.size / 2
+    val target = 15
+    val root = t.call(null, "target $target")
+
+    fun enumerate(parent: Int, label: String, part: List<Int>, index: Int, sum: Int, sums: MutableList<Int>) {
+        if (index == part.size) {
+            val leaf = t.call(parent, "sum $sum")
+            sums += sum
+            t.ret(leaf, "= $sum")
+            return
+        }
+        val id = t.call(parent, "$label${part[index]}?")
+        enumerate(id, label, part, index + 1, sum, sums)
+        enumerate(id, label, part, index + 1, sum + part[index], sums)
+        t.ret(id, "both branches enumerated")
+    }
+
+    val leftSums = mutableListOf<Int>()
+    val leftId = t.call(root, "left ${items.take(half).joinToString(",")}")
+    enumerate(leftId, "L", items.take(half), 0, 0, leftSums)
+    t.ret(leftId, "= ${leftSums.size} sums")
+
+    val rightSums = mutableListOf<Int>()
+    val rightId = t.call(root, "right ${items.drop(half).joinToString(",")}")
+    enumerate(rightId, "R", items.drop(half), 0, 0, rightSums)
+    t.ret(rightId, "= ${rightSums.size} sums")
+
+    val hit = leftSums.any { l -> rightSums.any { r -> l + r == target } }
+    t.ret(
+        root,
+        "${leftSums.size} + ${rightSums.size} = ${leftSums.size + rightSums.size} sums enumerated instead of " +
+            "2^${items.size} = ${1 shl items.size}. Sort one side and binary-search it for target − s: " +
+            if (hit) "$target is reachable." else "$target is not reachable.",
+    )
+    return RecTrace(t.nodes, t.frames)
+}
+
 private val recursionConfigs = mapOf(
+    "memo_recursion_pattern" to RecursionConfig(3f..7f, 6, "n") { memoFibTrace(it) },
+    "meet_in_middle_pattern" to RecursionConfig(4f..6f, 6, "items") { meetInMiddleTrace(it) },
     "fast_power" to RecursionConfig(1f..20f, 13, "exponent") { fastPowerTrace(it) },
     "modular_exponentiation" to RecursionConfig(1f..20f, 13, "exponent") { modularPowerTrace(it) },
     "factorial" to RecursionConfig(1f..8f, 5, "n") { factorialTrace(it) },

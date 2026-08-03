@@ -65,18 +65,11 @@ class PatternCoverageTest {
     // Guides still waiting for their own config, authored batch by batch. The list only shrinks —
     // `no pending entry already has a config` fails the moment one is written and left here.
     private val pendingConfigs = setOf(
-        "bit_trie_pattern",
-        "bitmask_state_pattern",
         "composite_design_pattern",
-        "dag_dp_pattern",
         "expression_stack_pattern",
         "game_theory_dp_pattern",
-        "graph_coloring_pattern",
         "hash_counting_pattern",
-        "meet_in_middle_pattern",
-        "memo_recursion_pattern",
         "modified_binary_search_pattern",
-        "shortest_path_pattern",
     )
 
     private fun hasOwnConfig(topicId: String): Boolean {

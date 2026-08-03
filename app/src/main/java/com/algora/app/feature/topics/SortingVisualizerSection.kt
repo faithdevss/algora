@@ -629,6 +629,25 @@ private fun sortConfigFor(topicId: String): SortConfig =
 // inherits the fallback above.
 internal val sortingVisualizerTopicIds: Set<String> get() = sortConfigs.keys
 
+/**
+ * Every highlight in a frame is a bar index, and the renderer silently drops one that is off the end
+ * — so a partition or merge whose bounds are one past the array looks fine until you compare it with
+ * the status line. Checked here instead.
+ */
+internal fun sortingFrameCount(topicId: String): Int {
+    val frames = sortConfigFor(topicId).build()
+    frames.forEachIndexed { index, frame ->
+        require(frame.values.isNotEmpty()) { "$topicId frame $index draws no bars" }
+        require(frame.status.isNotBlank()) { "$topicId frame $index has no status line" }
+        (frame.compared + frame.moved + frame.sorted + frame.range).forEach { bar ->
+            require(bar in frame.values.indices) {
+                "$topicId frame $index highlights bar $bar of ${frame.values.size}"
+            }
+        }
+    }
+    return frames.size
+}
+
 @Composable
 fun SortingVisualizerSection(topicId: String) {
     val config = remember(topicId) { sortConfigFor(topicId) }

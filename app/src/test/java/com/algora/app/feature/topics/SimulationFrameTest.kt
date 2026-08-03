@@ -84,4 +84,11 @@ class SimulationFrameTest {
     @Test
     fun `every recursion-tree config builds frames across its whole slider range`() =
         check("RecursionTree", recursionTreeTopicIds, ::recursionTreeFrameCount)
+
+    // Added with the pattern-guide simulation batches. The sorting player had no guard, and its
+    // frames address bars by index — a partition or merge bound that is one past the end silently
+    // draws nothing rather than failing.
+    @Test
+    fun `every sorting config builds frames whose highlights are real bars`() =
+        check("Sorting", sortingVisualizerTopicIds, ::sortingFrameCount)
 }

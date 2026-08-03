@@ -897,6 +897,295 @@ private val cutGraph = GraphDef(
     ),
 )
 
+// ── Interview-prep pattern guides ────────────────────────────────────────────
+
+// Weighted DAG: the same shape as dagGraph, but the weights are what the DP is about.
+private val dagDpGraph = GraphDef(
+    nodes = listOf(
+        GNode("A", 0.08f, 0.20f),
+        GNode("B", 0.08f, 0.80f),
+        GNode("C", 0.38f, 0.50f),
+        GNode("D", 0.68f, 0.18f),
+        GNode("E", 0.68f, 0.82f),
+        GNode("F", 0.94f, 0.50f),
+    ),
+    edges = listOf(
+        GEdge("A", "C", 3, directed = true),
+        GEdge("B", "C", 6, directed = true),
+        GEdge("C", "D", 4, directed = true),
+        GEdge("C", "E", 2, directed = true),
+        GEdge("D", "F", 5, directed = true),
+        GEdge("E", "F", 9, directed = true),
+    ),
+)
+
+// dp over a DAG: relax in topological order and every node is final on its first pop. The same
+// recurrence on a cyclic graph has no order that works, which is the pattern's precondition.
+private fun dagDpFrames(): List<GraphAlgoFrame> {
+    val def = dagDpGraph
+    val frames = mutableListOf<GraphAlgoFrame>()
+    val inDegree = def.ids.associateWith { id -> def.edges.count { it.to == id } }.toMutableMap()
+    val best = def.ids.associateWith { 0 }.toMutableMap()
+    val done = mutableSetOf<String>()
+
+    fun badges() = best.mapValues { (_, v) -> v.toString() }
+
+    frames += GraphAlgoFrame(
+        status = "Longest path from any source. On a general graph this is NP-hard; on a DAG it is a scan, because " +
+            "a topological order guarantees every predecessor of a node is finished before the node is read.",
+        badges = badges(),
+    )
+
+    val ready = ArrayDeque(def.ids.filter { inDegree.getValue(it) == 0 })
+    frames += GraphAlgoFrame(
+        status = "A and B have no incoming edges, so their best-path values are already final at 0. Everything else " +
+            "starts at 0 and can only grow.",
+        nodeMarks = ready.associateWith { NodeMark.FRONTIER },
+        badges = badges(),
+    )
+
+    while (ready.isNotEmpty()) {
+        val u = ready.removeFirst()
+        done += u
+        val outgoing = def.edges.withIndex().filter { it.value.from == u }
+        val improved = mutableListOf<String>()
+
+        for ((_, edge) in outgoing) {
+            val candidate = best.getValue(u) + (edge.weight ?: 0)
+            if (candidate > best.getValue(edge.to)) {
+                best[edge.to] = candidate
+                improved += edge.to
+            }
+            inDegree[edge.to] = inDegree.getValue(edge.to) - 1
+            if (inDegree.getValue(edge.to) == 0) ready += edge.to
+        }
+
+        frames += GraphAlgoFrame(
+            status = "$u is final at ${best.getValue(u)} — no unprocessed node can still reach it. Relaxing its " +
+                "edges: " + if (improved.isEmpty()) "nothing improved." else improved.joinToString(", ") { to ->
+                "$to → ${best.getValue(to)}"
+            } + ". Each edge is relaxed exactly once, so the whole thing is O(V + E).",
+            nodeMarks = buildMap {
+                putAll(done.associateWith { NodeMark.DONE })
+                putAll(ready.associateWith { NodeMark.FRONTIER })
+                putAll(improved.associateWith { NodeMark.UPDATED })
+                put(u, NodeMark.ACTIVE)
+            },
+            badges = badges(),
+            edgeMarks = outgoing.associate { it.index to EdgeMark.ACTIVE },
+        )
+    }
+
+    val winner = best.maxByOrNull { it.value }!!
+    frames += GraphAlgoFrame(
+        status = "Longest path ends at ${winner.key} with weight ${winner.value}. Flip the comparison to get the " +
+            "shortest path, or count instead of maximise to get path counts — the traversal never changes, only the " +
+            "combine step does.",
+        nodeMarks = def.ids.associateWith { NodeMark.DONE } + (winner.key to NodeMark.UPDATED),
+        badges = badges(),
+        edgeMarks = def.edges.indices.associateWith { EdgeMark.ACCEPTED },
+    )
+    return frames
+}
+
+// One node set carrying unit costs, then real weights, then a negative edge.
+private val shortestPathChoiceGraph = GraphDef(
+    nodes = listOf(
+        GNode("S", 0.06f, 0.50f),
+        GNode("A", 0.38f, 0.14f),
+        GNode("B", 0.38f, 0.86f),
+        GNode("C", 0.72f, 0.50f),
+        GNode("T", 0.95f, 0.14f),
+    ),
+    edges = listOf(
+        GEdge("S", "A", 1, directed = true),
+        GEdge("S", "B", 4, directed = true),
+        GEdge("A", "C", 6, directed = true),
+        GEdge("B", "C", 1, directed = true),
+        GEdge("A", "T", 9, directed = true),
+        GEdge("C", "T", 1, directed = true),
+    ),
+)
+
+private fun shortestPathChoiceFrames(): List<GraphAlgoFrame> {
+    val def = shortestPathChoiceGraph
+    val frames = mutableListOf<GraphAlgoFrame>()
+
+    // ── Unit weights: BFS is enough ──
+    val bfsDist = mutableMapOf("S" to 0)
+    val queue = ArrayDeque(listOf("S"))
+    frames += GraphAlgoFrame(
+        status = "First question to ask: what do the edges cost? If every edge is 1, a queue is already a priority " +
+            "queue — BFS settles nodes in distance order for free.",
+        badges = mapOf("S" to "0"),
+        hideWeights = true,
+    )
+    while (queue.isNotEmpty()) {
+        val u = queue.removeFirst()
+        val outgoing = def.edges.withIndex().filter { it.value.from == u }
+        val discovered = mutableListOf<String>()
+        for ((_, e) in outgoing) {
+            if (e.to !in bfsDist) {
+                bfsDist[e.to] = bfsDist.getValue(u) + 1
+                queue += e.to
+                discovered += e.to
+            }
+        }
+        frames += GraphAlgoFrame(
+            status = "BFS from $u (hop ${bfsDist.getValue(u)}): " +
+                if (discovered.isEmpty()) "everything reachable is already labelled."
+                else "${discovered.joinToString(", ")} reached in ${bfsDist.getValue(u) + 1} hop(s), and that is final " +
+                    "— a later path can only be longer.",
+            nodeMarks = bfsDist.keys.associateWith { NodeMark.FRONTIER } + (u to NodeMark.ACTIVE),
+            badges = bfsDist.mapValues { it.value.toString() },
+            edgeMarks = outgoing.associate { it.index to EdgeMark.ACTIVE },
+            hideWeights = true,
+        )
+    }
+
+    // ── Real weights: Dijkstra ──
+    val dist = def.ids.associateWith { if (it == "S") 0 else GRAPH_INF }.toMutableMap()
+    val settled = mutableSetOf<String>()
+
+    fun badges() = dist.mapValues { (_, v) -> if (v >= GRAPH_INF) "∞" else v.toString() }
+
+    frames += GraphAlgoFrame(
+        status = "Now the real weights. BFS's answer (S→A→T, 2 hops) costs ${1 + 9} — while S→B→C→T takes three hops " +
+            "but costs ${4 + 1 + 1}. Hop count and cost disagree, so the queue has to become a priority queue.",
+        badges = badges(),
+    )
+
+    while (settled.size < def.ids.size) {
+        val u = dist.filterKeys { it !in settled }.minByOrNull { it.value }?.key ?: break
+        if (dist.getValue(u) >= GRAPH_INF) break
+        settled += u
+        val outgoing = def.edges.withIndex().filter { it.value.from == u }
+        val improved = mutableListOf<String>()
+        for ((_, e) in outgoing) {
+            val candidate = dist.getValue(u) + (e.weight ?: 0)
+            if (candidate < dist.getValue(e.to)) {
+                dist[e.to] = candidate
+                improved += e.to
+            }
+        }
+        frames += GraphAlgoFrame(
+            status = "Pop the cheapest unsettled node: $u at ${dist.getValue(u)}. Dijkstra declares it final here — " +
+                "no unsettled node is closer, and every edge is non-negative, so no detour can undercut it. " +
+                if (improved.isEmpty()) "No neighbour improved."
+                else "Improved: ${improved.joinToString(", ") { "$it → ${dist.getValue(it)}" }}.",
+            nodeMarks = buildMap {
+                putAll(settled.associateWith { NodeMark.DONE })
+                putAll(improved.associateWith { NodeMark.UPDATED })
+                put(u, NodeMark.ACTIVE)
+            },
+            badges = badges(),
+            edgeMarks = outgoing.associate { it.index to EdgeMark.ACTIVE },
+        )
+    }
+
+    // ── One negative edge: the assumption breaks ──
+    frames += GraphAlgoFrame(
+        status = "Dijkstra settles T at ${dist.getValue("T")}. Now change A→T from 9 to −3: S→A→T would cost " +
+            "${1 - 3}, but Dijkstra already finalised T and never looks again. That finality is exactly what a " +
+            "negative edge invalidates — Bellman-Ford drops it, relaxing every edge V−1 times instead, at O(V·E).",
+        nodeMarks = def.ids.associateWith { NodeMark.DONE } + ("T" to NodeMark.UPDATED),
+        badges = badges(),
+        edgeMarks = mapOf(4 to EdgeMark.REJECTED),
+    )
+    return frames
+}
+
+// A four-cycle (two-colourable) with a triangle welded on (not).
+private val colouringGraph = GraphDef(
+    nodes = listOf(
+        GNode("A", 0.10f, 0.18f),
+        GNode("B", 0.10f, 0.82f),
+        GNode("C", 0.42f, 0.50f),
+        GNode("D", 0.72f, 0.16f),
+        GNode("E", 0.72f, 0.84f),
+        GNode("F", 0.96f, 0.50f),
+    ),
+    edges = listOf(
+        GEdge("A", "B"),
+        GEdge("A", "C"),
+        GEdge("B", "C"),
+        GEdge("C", "D"),
+        GEdge("C", "E"),
+        GEdge("D", "F"),
+        GEdge("E", "F"),
+    ),
+)
+
+private fun graphColouringFrames(): List<GraphAlgoFrame> {
+    val def = colouringGraph
+    val frames = mutableListOf<GraphAlgoFrame>()
+    val adjacency = def.ids.associateWith { id ->
+        def.edges.filter { it.from == id || it.to == id }.map { if (it.from == id) it.to else it.from }
+    }
+    val colour = mutableMapOf<String, Int>()
+    val names = listOf("c1", "c2", "c3", "c4")
+
+    frames += GraphAlgoFrame(
+        status = "Colour every node so no edge joins two of the same colour, using as few colours as possible. " +
+            "Optimal colouring is NP-hard; greedy in a fixed order is the cheap answer, and its cost is bounded by " +
+            "max degree + 1.",
+    )
+
+    def.ids.forEach { id ->
+        val used = adjacency.getValue(id).mapNotNull { colour[it] }.toSet()
+        val pick = (0..used.size).first { it !in used }
+        colour[id] = pick
+        frames += GraphAlgoFrame(
+            status = "$id: neighbours already hold " +
+                (if (used.isEmpty()) "nothing" else used.sorted().joinToString(", ") { names[it] }) +
+                ", so take the smallest colour not among them — ${names[pick]}. Greedy never backtracks, which is " +
+                "why the node order changes the result.",
+            nodeMarks = mapOf(id to NodeMark.ACTIVE),
+            groups = colour.toMap(),
+            badges = colour.mapValues { names[it.value] },
+        )
+    }
+
+    val used = colour.values.distinct().size
+    frames += GraphAlgoFrame(
+        status = "$used colours in this order. The triangle A–B–C alone forces three: three mutually adjacent nodes " +
+            "cannot share any colour, so no ordering does better here.",
+        groups = colour.toMap(),
+        badges = colour.mapValues { names[it.value] },
+        nodeMarks = def.ids.associateWith { NodeMark.DONE },
+    )
+
+    // ── Bipartite check: the same machinery asking a yes/no question ──
+    val side = mutableMapOf("D" to 0)
+    val queue = ArrayDeque(listOf("D"))
+    val bipartitePart = setOf("C", "D", "E", "F")
+    while (queue.isNotEmpty()) {
+        val u = queue.removeFirst()
+        adjacency.getValue(u).filter { it in bipartitePart }.forEach { v ->
+            if (side[v] == null) {
+                side[v] = 1 - side.getValue(u)
+                queue += v
+            }
+        }
+    }
+    frames += GraphAlgoFrame(
+        status = "\"Is it bipartite?\" is the two-colour case, and BFS answers it: alternate colours across every " +
+            "edge and see whether anything clashes. On the C–D–F–E square it succeeds — ${side.entries.sortedBy { it.key }.joinToString(", ") { "${it.key}=${names[it.value]}" }} — so that part is bipartite.",
+        groups = side.toMap(),
+        badges = side.mapValues { names[it.value] },
+        nodeMarks = side.keys.associateWith { NodeMark.DONE },
+    )
+    frames += GraphAlgoFrame(
+        status = "Run the same alternation into the triangle and it fails: A and B are adjacent yet both sit one step " +
+            "from C, so they demand the same colour and share an edge. An odd cycle is precisely what makes a graph " +
+            "non-bipartite — the conflict edge, not a colour count, is the proof to state in an interview.",
+        nodeMarks = mapOf("A" to NodeMark.ACTIVE, "B" to NodeMark.ACTIVE, "C" to NodeMark.DONE),
+        edgeMarks = mapOf(0 to EdgeMark.REJECTED, 1 to EdgeMark.ACCEPTED, 2 to EdgeMark.ACCEPTED),
+        badges = mapOf("A" to "c1", "B" to "c1", "C" to "c2"),
+    )
+    return frames
+}
+
 private fun topologicalSortFrames(): List<GraphAlgoFrame> {
     val def = dagGraph
     val frames = mutableListOf<GraphAlgoFrame>()
@@ -1776,6 +2065,39 @@ private fun gatFrames(): List<GraphAlgoFrame> {
 }
 
 private val graphAlgoConfigs = mapOf(
+    "dag_dp_pattern" to GraphAlgoConfig(
+        intro = "Longest path in a weighted DAG. Badges are the best distance found so far — relaxing nodes in " +
+            "topological order means each one is finished the first time it is popped.",
+        def = dagDpGraph,
+        legend = listOf(
+            NodeMarkColors.getValue(NodeMark.ACTIVE) to "Relaxing from",
+            NodeMarkColors.getValue(NodeMark.UPDATED) to "Improved",
+            NodeMarkColors.getValue(NodeMark.DONE) to "Final",
+        ),
+        build = ::dagDpFrames,
+    ),
+    "shortest_path_pattern" to GraphAlgoConfig(
+        intro = "One graph, three answers: BFS when every edge costs 1, Dijkstra when they differ, and the negative " +
+            "edge that breaks Dijkstra's finality assumption and hands the problem to Bellman-Ford.",
+        def = shortestPathChoiceGraph,
+        legend = listOf(
+            NodeMarkColors.getValue(NodeMark.ACTIVE) to "Settling",
+            NodeMarkColors.getValue(NodeMark.FRONTIER) to "Reached",
+            NodeMarkColors.getValue(NodeMark.DONE) to "Final",
+        ),
+        build = ::shortestPathChoiceFrames,
+    ),
+    "graph_coloring_pattern" to GraphAlgoConfig(
+        intro = "Greedy colouring in a fixed node order, then the same graph two-coloured as a bipartite check — " +
+            "until the odd cycle refuses and forces a third colour.",
+        def = colouringGraph,
+        legend = listOf(
+            NodeMarkColors.getValue(NodeMark.ACTIVE) to "Colouring now",
+            EdgeMarkColors.getValue(EdgeMark.REJECTED) to "Conflict edge",
+            NodeMarkColors.getValue(NodeMark.DONE) to "Coloured",
+        ),
+        build = ::graphColouringFrames,
+    ),
     "topological_sort_pattern" to GraphAlgoConfig(
         intro = "Course schedule, the interview phrasing of a topological sort: first a curriculum that works, then " +
             "the same one with a back edge added — where the emitted count, not a separate check, catches the cycle.",

@@ -433,7 +433,152 @@ private fun twoSinglesFrames(): List<BitFrame> {
     return frames
 }
 
+// ── Interview-prep pattern guides ────────────────────────────────────────────
+
+// Maximum XOR pair through a binary trie: the greedy walk is bit by bit, from the top.
+private val xorNumbers = listOf(3, 10, 5, 25, 2, 8)
+private const val XOR_WIDTH = 5
+
+private fun bitTriePatternFrames(): List<BitFrame> {
+    val frames = mutableListOf<BitFrame>()
+
+    frames += BitFrame(
+        status = "Find the pair with the largest XOR among ${xorNumbers.joinToString(", ")}. Every pair is O(n²); a " +
+            "binary trie of the values, most significant bit first, answers each query in $XOR_WIDTH steps.",
+        rows = xorNumbers.map { row(it.toString().padStart(2), it, width = XOR_WIDTH) },
+        readout = "${xorNumbers.size} values, ${XOR_WIDTH} bits each",
+    )
+
+    val query = 5
+    var partner = 0
+    var best = 0
+    for (bit in XOR_WIDTH - 1 downTo 0) {
+        val queryBit = (query shr bit) and 1
+        val wanted = 1 - queryBit
+        val prefixMask = (-1 shl bit) and ((1 shl XOR_WIDTH) - 1)
+        val candidates = xorNumbers.filter {
+            (it and prefixMask) == ((partner and (prefixMask shl 1)) or (wanted shl bit))
+        }
+        val taken = candidates.isNotEmpty()
+        if (taken) partner = partner or (wanted shl bit) else partner = partner or (queryBit shl bit)
+        best = query xor partner
+        frames += BitFrame(
+            status = "Bit $bit of the query is $queryBit, so the branch worth ${1 shl bit} is the one holding " +
+                "$wanted. " + if (taken) {
+                "The trie has ${candidates.size} value(s) down that branch (${candidates.joinToString(", ")}), so " +
+                    "take it — that bit of the answer is now guaranteed 1."
+            } else {
+                "Nothing is stored down that branch, so the walk is forced into the $queryBit side and this bit of " +
+                    "the answer is 0. Being forced never undoes a higher bit already won."
+            },
+            rows = listOf(
+                row("query $query", query, width = XOR_WIDTH, marks = arrayOf("active" to setOf(bit))),
+                row("partner", partner, width = XOR_WIDTH, marks = arrayOf("result" to setOf(bit))),
+                row("xor", best, width = XOR_WIDTH, marks = arrayOf("result" to setOf(bit))),
+            ),
+            readout = "best so far = $best",
+        )
+    }
+
+    val bruteBest = xorNumbers.flatMap { a -> xorNumbers.map { b -> a xor b } }.max()
+    frames += BitFrame(
+        status = "Greedy from the top is optimal because one high bit outweighs every lower bit combined: " +
+            "${1 shl (XOR_WIDTH - 1)} > ${(1 shl (XOR_WIDTH - 1)) - 1}. Query $query pairs best with $partner for " +
+            "$best; over all queries the maximum is $bruteBest. n insertions and n queries, $XOR_WIDTH steps each — " +
+            "O(n · bits) instead of O(n²).",
+        rows = listOf(
+            row("query $query", query, width = XOR_WIDTH),
+            row("partner", partner, width = XOR_WIDTH),
+            row("xor", best, width = XOR_WIDTH, marks = arrayOf("result" to (0 until XOR_WIDTH).filter { (best shr it) and 1 == 1 }.toSet())),
+        ),
+        readout = "max XOR = $bruteBest",
+    )
+    return frames
+}
+
+// Bitmask DP: the mask is the visited set, and it is also the array index.
+private val tspCities = listOf("A", "B", "C", "D")
+private val tspCost = listOf(
+    listOf(0, 5, 9, 4),
+    listOf(5, 0, 3, 8),
+    listOf(9, 3, 0, 6),
+    listOf(4, 8, 6, 0),
+)
+
+private fun bitmaskStatePatternFrames(): List<BitFrame> {
+    val n = tspCities.size
+    val full = (1 shl n) - 1
+    val frames = mutableListOf<BitFrame>()
+    val dp = Array(1 shl n) { IntArray(n) { Int.MAX_VALUE / 4 } }
+    dp[1][0] = 0
+
+    fun members(mask: Int) = tspCities.indices.filter { (mask shr it) and 1 == 1 }
+
+    frames += BitFrame(
+        status = "Visit all ${n} cities once, starting at ${tspCities[0]}. The state that matters is *which* cities " +
+            "are visited plus where you are — not the order you visited them in. That set is a ${n}-bit mask, and " +
+            "the mask doubles as the dp array index.",
+        rows = listOf(row("mask", 1, width = n, marks = arrayOf("result" to setOf(0)))),
+        readout = "${1 shl n} masks × $n positions = ${(1 shl n) * n} states",
+    )
+
+    for (mask in 1..full) {
+        if (mask and 1 == 0) continue
+        for (last in members(mask)) {
+            if (dp[mask][last] >= Int.MAX_VALUE / 4) continue
+            for (next in tspCities.indices) {
+                if ((mask shr next) and 1 == 1) continue
+                val nextMask = mask or (1 shl next)
+                val candidate = dp[mask][last] + tspCost[last][next]
+                if (candidate < dp[nextMask][next]) dp[nextMask][next] = candidate
+            }
+        }
+        val reachable = members(mask).filter { dp[mask][it] < Int.MAX_VALUE / 4 }
+        if (reachable.isEmpty()) continue
+        frames += BitFrame(
+            status = "mask $mask = { ${members(mask).joinToString(", ") { tspCities[it] }} }. Best cost per ending " +
+                "city: ${reachable.joinToString(", ") { "${tspCities[it]} ${dp[mask][it]}" }}. Every route reaching " +
+                "this same set collapses into these $n numbers — that collapse is what turns ${(1..n).fold(1) { acc, k -> acc * k }} " +
+                "orderings into ${(1 shl n) * n} states.",
+            rows = listOf(
+                row("mask", mask, width = n, marks = arrayOf("result" to members(mask).toSet())),
+            ),
+            readout = "visited ${members(mask).size} of $n",
+        )
+    }
+
+    val best = tspCities.indices.filter { it != 0 }.minOf { dp[full][it] + tspCost[it][0] }
+    frames += BitFrame(
+        status = "Full mask $full — every city visited. Closing the tour back to ${tspCities[0]} costs $best. " +
+            "O(2ⁿ · n²) is still exponential, but it is the difference between ${(1..n).fold(1) { acc, k -> acc * k }} " +
+            "permutations at n = $n and 20! ≈ 2.4 × 10¹⁸ at n = 20, where the mask version is merely expensive.",
+        rows = listOf(row("mask", full, width = n, marks = arrayOf("result" to tspCities.indices.toSet()))),
+        readout = "optimal tour = $best",
+    )
+    return frames
+}
+
 private val bitConfigs = mapOf(
+    "bit_trie_pattern" to BitConfig(
+        intro = "Maximum XOR through a binary trie: walk the query's bits from the top and take the opposite branch " +
+            "whenever one exists. One high bit outweighs every lower bit, so greedy is optimal.",
+        legend = listOf(
+            OneFill to "Set bit",
+            ActiveFillBit to "Bit being decided",
+            ResultFillBit to "Answer bit",
+        ),
+        build = ::bitTriePatternFrames,
+    ),
+    "bitmask_state_pattern" to BitConfig(
+        intro = "Held-Karp on four cities. The mask is the visited set *and* the dp index, which is the whole trick — " +
+            "routes that visit the same set collapse into one state.",
+        legend = listOf(
+            OneFill to "Visited",
+            ResultFillBit to "In this state",
+            MaskedFill to "Outside the width",
+        ),
+        build = ::bitmaskStatePatternFrames,
+    ),
     "bit_manipulation_pattern" to BitConfig(
         intro = "Two values appear once, everything else twice. XOR collapses the pairs, then the lowest set bit of " +
             "the result splits the input into two groups that each hide exactly one answer.",
