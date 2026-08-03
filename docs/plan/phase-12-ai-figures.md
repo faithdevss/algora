@@ -87,6 +87,9 @@ Two things the pilot showed that a plan could not have:
 - **The DSA-era guards caught AI figures immediately.** A5 hit two `FigureShapeTest` failures on its
   first run — an over-long band label, and a one-cell arrow whose label lands on the value it points
   at. The second changed the figure rather than the caption.
+- **And the guards still could not see the one real defect.** Horizontal `LayerStack` at five blocks
+  rendered "discriminator" as "discri / minat / or" and left the row a ragged staircase of four
+  different heights. Every unit test passed. See Verification.
 
 **Cost, for planning the full phase:** roughly 4–8 topics per commit, with the constraint being how
 much of each page's prose has to be read before its figure is honest — not the spec, which is 15–40
@@ -98,11 +101,21 @@ Per batch: `./gradlew :app:testDebugUnitTest` (`FigureShapeTest`, `AiFigureCover
 `DsaFigureCoverageTest`, `FigureCoverageTest`, `ContentCoverageTest`) then `./gradlew assembleDebug`.
 Both green for A1–A5.
 
-**Outstanding:** the emulator pass. All 30 pages, light and dark, has not been run. This is the step
-that caught the pattern work's only two real defects — a muted tone unreadable on dark, and graph
-labels hanging outside their circles — and the three new shapes raise the risk rather than lowering
-it: the heatmap ramp's contrast at low intensity, the plot's axis-label crowding, and the horizontal
-`LayerStack` at five blocks are all invisible to a unit test.
+**Emulator pass — partial, and it earned its keep.** Nine of the 30 pages walked on a 1080×2400
+emulator, chosen to hit every shape at its densest: MLP and CNNs (vertical `LayerStack` at three and
+six blocks), GANs (horizontal at five), Backpropagation (`backwardLabel`), Sigmoid and Momentum
+(`Plot` at two and three series), Leaky ReLU (`Plot` at six bars), Multi-Head Attention (4×8
+`Heatmap`) and K-Means (nine-node `Graph`). Dark for all nine; light for GANs, Multi-Head Attention
+and Sigmoid.
+
+One defect, and it was the predicted one: **horizontal `LayerStack` at five blocks**. Fixed in
+`5e4bbce` — equal block heights via `IntrinsicSize.Min`, 10sp labels in horizontal mode, and the
+guard's cap dropped from five blocks to four. Re-verified in both themes.
+
+Two risks named above turned out not to be real: the heatmap ramp is legible at 0.10 intensity in
+both themes, and the plot's axis labels do not crowd at three series.
+
+**Still outstanding:** the other 21 pages, and light mode for six of the nine walked.
 
 ## Non-goals
 
