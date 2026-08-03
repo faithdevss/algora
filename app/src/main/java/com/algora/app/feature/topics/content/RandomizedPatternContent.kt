@@ -18,17 +18,23 @@ import com.algora.app.core.data.model.TopicContent
 // length, shuffling without bias, and adversary-proof pivots.
 internal val randomizedPatternContent = TopicContent(
     topicId = "randomized_pattern",
+    // The lab below animates Fisher-Yates, so the figure carries the other primitive: reservoir
+    // sampling, where the stream length is never known and the probability has to be right anyway.
     figure = Figure(
-        caption = "Fisher-Yates draws from [i, n) — the unprocessed suffix — and swaps. Drawing from " +
-            "[0, n) instead gives nⁿ equally likely paths onto n! permutations, which cannot divide " +
-            "evenly, so some orders come out more often than others.",
+        caption = "Reservoir sampling keeps k items from a stream of unknown length: the first k are " +
+            "kept outright, and the i-th arrival replaces a random one with probability k/i. Item 5 " +
+            "enters with probability 3/5 — falling as the stream grows, which is exactly what leaves " +
+            "every item seen so far holding k/n at the end. The lab below runs the other primitive, " +
+            "Fisher-Yates, where the length *is* known and the draw range is what must be right.",
         shape = FigureShape.Strip(
-            cells = listOf("A", "B", "C", "D", "E", "F"),
+            cells = listOf("s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"),
             bands = listOf(
-                FigureBand(0, 1, "fixed", FigureTone.Muted),
-                FigureBand(2, 5, "legal draws [i, n)"),
+                FigureBand(0, 2, "first k kept outright", FigureTone.Muted),
+                FigureBand(4, 4, "arriving", FigureTone.Accent),
             ),
-            pointers = listOf(FigurePointer(2, "i"), FigurePointer(4, "j")),
+            pointers = listOf(FigurePointer(4, "i = 5")),
+            aux = listOf("s1", "s5", "s3"),
+            auxLabel = "reservoir (k = 3) — s5 kept with probability k/i = 3/5, replacing a uniformly chosen s2",
         ),
     ),
     whatIsIt = listOf(

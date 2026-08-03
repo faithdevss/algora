@@ -24,7 +24,7 @@ internal val greedyExchangePatternContent = TopicContent(
             "greedy one one swap at a time. Here 7 before 2 costs 5 extra waiting; swapping never loses.",
         shape = FigureShape.Strip(
             cells = listOf("4", "1", "7", "2"),
-            bands = listOf(FigureBand(2, 3, "out of order — exchange", FigureTone.Warn)),
+            bands = listOf(FigureBand(2, 3, "out of order", FigureTone.Warn)),
             pointers = listOf(FigurePointer(2, "swap"), FigurePointer(3, "with")),
             aux = listOf("1", "2", "4", "7"),
             auxLabel = "shortest-job-first — total wait 4 + 6 + 10 + 17 → 1 + 3 + 7 + 14",

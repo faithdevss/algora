@@ -24,8 +24,8 @@ internal val bitManipulationPatternContent = TopicContent(
         shape = FigureShape.Strip(
             cells = listOf("0", "0", "1", "0", "1", "1", "0", "0"),
             bands = listOf(
-                FigureBand(2, 2, "highest set", FigureTone.Accent),
-                FigureBand(5, 5, "lowest set: n & −n", FigureTone.Primary),
+                FigureBand(2, 2, "highest", FigureTone.Accent),
+                FigureBand(5, 5, "n & −n", FigureTone.Primary),
             ),
             aux = listOf("128", "64", "32", "16", "8", "4", "2", "1"),
             auxLabel = "place values — 44 = 32 + 8 + 4",

@@ -134,6 +134,8 @@ data class FigureArrow(
     val toRow: Int,
     val toCol: Int,
     val tone: FigureTone = FigureTone.Accent,
+    /** Names the transition. Needed once a cell has more than two arrows into it to tell apart. */
+    val label: String? = null,
 )
 
 data class FigureStack(

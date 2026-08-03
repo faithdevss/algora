@@ -79,6 +79,35 @@ class FigureCoverageTest {
         assertTrue(problems.joinToString("\n"), problems.isEmpty())
     }
 
+    // A band's label is laid out over exactly the cells the band covers, so a long one on a narrow
+    // band wraps into a four-line column above the strip. Roughly eleven characters fit per cell.
+    @Test
+    fun `band and arrow labels fit the space they are drawn in`() {
+        val problems = figures.flatMap { (id, figure) ->
+            when (val shape = figure.shape) {
+                is FigureShape.Strip -> shape.bands.mapNotNull { band ->
+                    val budget = 11 * (band.to - band.from + 1)
+                    if (band.label.length <= budget) null
+                    else "$id: band \"${band.label}\" is ${band.label.length} chars over ${band.to - band.from + 1} cell(s), budget $budget"
+                }
+                is FigureShape.Grid -> shape.arrows.mapNotNull { arrow ->
+                    val label = arrow.label ?: return@mapNotNull null
+                    when {
+                        label.isBlank() -> "$id: an arrow has a blank label"
+                        // An arrow one cell long has no room beside it for a name.
+                        maxOf(
+                            kotlin.math.abs(arrow.toRow - arrow.fromRow),
+                            kotlin.math.abs(arrow.toCol - arrow.fromCol),
+                        ) < 2 -> "$id: labelled arrow \"$label\" spans one cell — the label lands on the value"
+                        else -> null
+                    }
+                }
+                else -> emptyList()
+            }
+        }
+        assertTrue(problems.joinToString("\n"), problems.isEmpty())
+    }
+
     // Bands are drawn by walking the strip left to right and asking which band covers each cell, so
     // two bands over the same cell would silently drop one of them.
     @Test

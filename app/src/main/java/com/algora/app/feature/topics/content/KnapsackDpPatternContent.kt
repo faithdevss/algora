@@ -20,8 +20,10 @@ internal val knapsackDpPatternContent = TopicContent(
     topicId = "knapsack_dp_pattern",
     figure = Figure(
         caption = "dp[i][c] is the best value from the first i items within capacity c, and every cell " +
-            "is one skip-or-take decision: dp[i−1][c], or value + dp[i−1][c − weight]. Subset sum, " +
-            "partition and coin change are this table with the value term changed.",
+            "is one skip-or-take decision. The two variants differ only in where the take arrow starts: " +
+            "0/1 reads the row *above* (dp[i−1][c − weight]), so each item is used once; unbounded reads " +
+            "the *same* row (dp[i][c − weight]), so it can be used again. Rolled to one array that " +
+            "difference becomes the loop direction — capacity descending for 0/1, ascending for unbounded.",
         shape = FigureShape.Grid(
             rows = listOf(
                 listOf("0", "0", "0", "0", "0", "0"),
@@ -36,10 +38,13 @@ internal val knapsackDpPatternContent = TopicContent(
                 FigureCell(2, 5, FigureTone.Accent),
                 FigureCell(1, 5, FigureTone.Muted),
                 FigureCell(1, 2, FigureTone.Primary),
+                FigureCell(2, 2, FigureTone.Warn),
             ),
             arrows = listOf(
-                FigureArrow(1, 2, 2, 5),
+                FigureArrow(1, 2, 2, 5, label = "take · 0/1"),
+                // Unlabelled: it is one cell long, so a label sits on the value it points at.
                 FigureArrow(1, 5, 2, 5, FigureTone.Muted),
+                FigureArrow(2, 2, 2, 5, FigureTone.Warn, label = "take · unbounded"),
             ),
         ),
     ),

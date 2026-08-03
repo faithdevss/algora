@@ -24,7 +24,7 @@ internal val lisPatiencePatternContent = TopicContent(
             "answer; recovering an actual subsequence needs a parent index recorded per element.",
         shape = FigureShape.Strip(
             cells = listOf("10", "9", "2", "5", "3", "7", "101", "18"),
-            bands = listOf(FigureBand(7, 7, "replaces tails[3]", FigureTone.Accent)),
+            bands = listOf(FigureBand(7, 7, "→ tails[3]", FigureTone.Accent)),
             pointers = listOf(FigurePointer(7, "x")),
             aux = listOf("2", "3", "7", "18"),
             auxLabel = "tails — length 4 is the LIS length",

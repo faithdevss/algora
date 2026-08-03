@@ -294,6 +294,19 @@ private fun GridFigure(shape: FigureShape.Grid) {
             val uy = dy / length
             drawLine(colour, end, Offset(end.x - (ux + uy) * headSize, end.y - (uy - ux) * headSize), strokeWidth = 2f)
             drawLine(colour, end, Offset(end.x - (ux - uy) * headSize, end.y - (uy + ux) * headSize), strokeWidth = 2f)
+            arrow.label?.let { label ->
+                val layout = textMeasurer.measure(label, headerStyle.copy(color = colour))
+                // Perpendicular to the arrow and scaled to the cell, so the name clears both the line
+                // and the values it passes over — a fixed pixel offset lands on top of them.
+                val push = minOf(cellW, cellH) * 0.34f
+                drawText(
+                    layout,
+                    topLeft = Offset(
+                        (start.x + end.x) / 2f - layout.size.width / 2f + uy * push,
+                        (start.y + end.y) / 2f - layout.size.height / 2f - ux * push,
+                    ),
+                )
+            }
         }
     }
 }

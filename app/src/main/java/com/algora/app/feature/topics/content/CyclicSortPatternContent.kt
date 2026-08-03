@@ -24,7 +24,7 @@ internal val cyclicSortPatternContent = TopicContent(
             "missing number.",
         shape = FigureShape.Strip(
             cells = listOf("3", "1", "5", "4", "3"),
-            bands = listOf(FigureBand(2, 2, "belongs at index 4", FigureTone.Accent)),
+            bands = listOf(FigureBand(2, 2, "→ index 4", FigureTone.Accent)),
             pointers = listOf(FigurePointer(0, "i"), FigurePointer(4, "home")),
             aux = listOf("1", "2", "3", "4", "5"),
             auxLabel = "index i wants value i+1",
