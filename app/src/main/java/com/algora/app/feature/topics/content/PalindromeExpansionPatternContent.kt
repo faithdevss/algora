@@ -19,9 +19,9 @@ import com.algora.app.core.data.model.TopicContent
 internal val palindromeExpansionPatternContent = TopicContent(
     topicId = "palindrome_expansion_pattern",
     figure = Figure(
-        caption = "Every palindrome is symmetric about a centre — a character for odd lengths, a gap " +
-            "for even ones, so 2n − 1 centres in total. Growing outward from each finds them all in " +
-            "O(n²) time and O(1) space; forgetting the gap centres is the standard bug.",
+        caption = "Both centre kinds are drawn here: the gap between indices 1 and 2 grows outward into " +
+            "\"abba\", the character at 5 into \"anana\". Enumerating gaps as well as characters is the " +
+            "half people skip, and it costs nothing — O(1) space, no table at all.",
         shape = FigureShape.Strip(
             cells = listOf("a", "b", "b", "a", "n", "a", "n", "a"),
             bands = listOf(

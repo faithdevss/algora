@@ -18,9 +18,9 @@ import com.algora.app.core.data.model.TopicContent
 internal val prefix2dPatternContent = TopicContent(
     topicId = "prefix_2d_pattern",
     figure = Figure(
-        caption = "P[r][c] is the sum of the whole rectangle from the origin to that cell, so any " +
-            "submatrix is four lookups: the big rectangle, minus the strip above, minus the strip left, " +
-            "plus the corner that was subtracted twice. 28 − 8 − 9 + 3 = 14.",
+        caption = "Four highlighted cells answer the query, and the sign pattern is the whole rule: " +
+            "28 − 8 − 9 + 3 = 14. The corner comes back because both subtracted strips contain it — " +
+            "and the rectangle's size never entered the cost.",
         shape = FigureShape.Grid(
             rows = listOf(
                 listOf("0", "0", "0", "0", "0"),

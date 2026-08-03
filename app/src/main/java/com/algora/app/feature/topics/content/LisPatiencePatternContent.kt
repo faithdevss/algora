@@ -19,9 +19,9 @@ import com.algora.app.core.data.model.TopicContent
 internal val lisPatiencePatternContent = TopicContent(
     topicId = "lis_patience_pattern",
     figure = Figure(
-        caption = "tails[k] is the smallest value any increasing subsequence of length k+1 can end on. " +
-            "Each element replaces the first tail ≥ itself, found by binary search — so the row's " +
-            "*length* is the answer, while its contents are not a subsequence of the input.",
+        caption = "The lower row is not a subsequence of the upper one — it is one best-possible ending per " +
+            "length, kept as small as it can be so later elements have room. Its *length*, 4, is the " +
+            "answer; recovering an actual subsequence needs a parent index recorded per element.",
         shape = FigureShape.Strip(
             cells = listOf("10", "9", "2", "5", "3", "7", "101", "18"),
             bands = listOf(FigureBand(7, 7, "replaces tails[3]", FigureTone.Accent)),

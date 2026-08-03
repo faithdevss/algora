@@ -19,8 +19,9 @@ import com.algora.app.core.data.model.TopicContent
 internal val dutchFlagPatternContent = TopicContent(
     topicId = "dutch_flag_pattern",
     figure = Figure(
-        caption = "Three regions and three pointers. Everything before low is small, everything after " +
-            "high is large, and mid walks the unclassified middle — the invariant is the picture.",
+        caption = "Four regions, three pointers, one pass, no extra array. Everything mid touches is " +
+            "classified immediately — except after a swap with high, where mid stalls, because the " +
+            "value that just arrived has never been looked at.",
         shape = FigureShape.Strip(
             cells = listOf("0", "0", "1", "?", "?", "2", "2"),
             bands = listOf(

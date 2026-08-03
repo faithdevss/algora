@@ -18,9 +18,9 @@ import com.algora.app.core.data.model.TopicContent
 internal val bitManipulationPatternContent = TopicContent(
     topicId = "bit_manipulation_pattern",
     figure = Figure(
-        caption = "Position carries the meaning: bit 3 is the 8s place whether it holds a 0 or a 1. " +
-            "XOR is a pairwise cancel (a ^ a = 0), n & (n−1) clears the lowest set bit, and n & −n " +
-            "isolates it — each of those is one instruction where a loop would be O(bits).",
+        caption = "Read the row by position rather than value: the shaded cells are the 32s and the 4s " +
+            "place, and 44 is simply which places are occupied. Every trick here — n & (n−1), n & −n, " +
+            "the XOR cancel — is a statement about position, so each is one instruction, not a loop.",
         shape = FigureShape.Strip(
             cells = listOf("0", "0", "1", "0", "1", "1", "0", "0"),
             bands = listOf(

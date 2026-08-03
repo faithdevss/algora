@@ -47,7 +47,9 @@ import com.algora.app.core.ui.theme.SimColors
 private fun toneColor(tone: FigureTone): Color = when (tone) {
     FigureTone.Primary -> SimColors.Blue
     FigureTone.Accent -> Color(0xFFF59E0B)
-    FigureTone.Muted -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
+    // Full strength, not a faded onSurfaceVariant: every caller already fades it for fills, and the
+    // same value is used for the *text* inside a muted band — which went unreadable on dark.
+    FigureTone.Muted -> MaterialTheme.colorScheme.onSurfaceVariant
     FigureTone.Warn -> SimColors.Red
 }
 
@@ -311,7 +313,9 @@ private fun GraphFigure(shape: FigureShape.Graph) {
             inset + shape.nodes[index].x * (size.width - 2 * inset),
             inset + shape.nodes[index].y * (size.height - 2 * inset),
         )
-        val radius = 17f
+        // Proportional, not a fixed pixel count: a node carries a label like "A c1" or "F 17", and a
+        // circle sized in raw pixels leaves that text hanging outside it on a dense screen.
+        val radius = size.height * 0.15f
 
         shape.edges.forEach { edge ->
             val from = centreOf(edge.from)

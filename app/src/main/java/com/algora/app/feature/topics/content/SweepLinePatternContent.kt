@@ -17,9 +17,9 @@ import com.algora.app.core.data.model.TopicContent
 internal val sweepLinePatternContent = TopicContent(
     topicId = "sweep_line_pattern",
     figure = Figure(
-        caption = "Throw the intervals away and keep only their endpoints: +1 where one opens, −1 " +
-            "where one closes. Sorting those events and running a counter gives the number of active " +
-            "intervals everywhere in one pass; its peak is the maximum overlap.",
+        caption = "The bars are the input; the sweep only ever sees their six endpoints, +1 and −1. At " +
+            "x = 4 the running counter reads 3 — the maximum overlap — and no interval was consulted " +
+            "to find that out.",
         shape = FigureShape.Timeline(
             spans = listOf(
                 FigureSpan(1, 5, "1–5"),

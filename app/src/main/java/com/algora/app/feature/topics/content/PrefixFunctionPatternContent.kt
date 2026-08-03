@@ -18,9 +18,9 @@ import com.algora.app.core.data.model.TopicContent
 internal val prefixFunctionPatternContent = TopicContent(
     topicId = "prefix_function_pattern",
     figure = Figure(
-        caption = "pi[i] is the length of the longest proper prefix of s[0..i] that is also its suffix. " +
-            "Here the prefix \"ab\" reappears at the end, so pi[7] = 2 — and on a mismatch the search " +
-            "falls back to pi[k−1] rather than restarting, which is what keeps the build linear.",
+        caption = "The two shaded runs are the same two characters: \"ab\" both opens the string and closes " +
+            "it, so pi[7] = 2. On a mismatch the candidate drops to pi[k−1] rather than to zero, which " +
+            "is the fallback that keeps the whole build linear.",
         shape = FigureShape.Strip(
             cells = listOf("a", "b", "a", "c", "a", "b", "a", "b"),
             bands = listOf(
