@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,23 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val quickselectContent = TopicContent(
     topicId = "quickselect",
+    figure = Figure(
+        caption = "The same partition quicksort runs, used to throw work away instead of to divide it. " +
+            "Pivot 4 lands at p = 2; the target k = 3 sits to its right, so everything at or left of p " +
+            "is discarded unexamined and never sorted. Recursing one side turns the recurrence from " +
+            "quicksort's 2T(n/2) into T(n/2), and n + n/2 + n/4 + … sums to 2n — linear expected time, " +
+            "with no log factor. The worst case is unchanged though: pivots that shave off one element " +
+            "at a time still give O(n²) unless the pivot is chosen deliberately.",
+        shape = FigureShape.Strip(
+            cells = listOf("3", "1", "4", "9", "7", "8"),
+            bands = listOf(
+                FigureBand(0, 1, "discarded", FigureTone.Warn),
+                FigureBand(2, 2, "p=2", FigureTone.Accent),
+                FigureBand(3, 5, "recurse here"),
+            ),
+            pointers = listOf(FigurePointer(3, "k=3")),
+        ),
+    ),
     whatIsIt = listOf(
         "Quickselect finds the k-th smallest element of an unsorted array in expected linear time, without sorting the whole thing.",
         "It reuses quicksort's partition step, but recurses into only the one side that must contain the k-th element — halving the work each time instead of sorting both halves.",

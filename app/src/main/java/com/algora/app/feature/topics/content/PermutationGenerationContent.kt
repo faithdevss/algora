@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,25 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val permutationGenerationContent = TopicContent(
     topicId = "permutation_generation",
+    figure = Figure(
+        caption = "The branching factor shrinks by one at every level — three choices for the first slot, " +
+            "two for the second, one for the last. That is why the tree has n! leaves and not nⁿ: a used " +
+            "element is simply not offered again. Only the first branch is drawn out. The swap-back on " +
+            "the way out of each node is what makes it work in place: without it the array would still " +
+            "be permuted when the next sibling starts, and every later branch would be built on the " +
+            "wrong arrangement.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("···", null, FigureTone.Primary),
+                FigureNode("A··", 0, FigureTone.Primary),
+                FigureNode("AB·", 1, FigureTone.Primary),
+                FigureNode("ABC", 2, FigureTone.Accent),
+                FigureNode("AC·", 1),
+                FigureNode("B··", 0),
+                FigureNode("C··", 0),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Permutation generation produces every possible ordering of a set of elements — n elements yield n! arrangements.",
         "The recursive approach fixes one element at each position and permutes the rest, using backtracking to swap choices in and out of place.",

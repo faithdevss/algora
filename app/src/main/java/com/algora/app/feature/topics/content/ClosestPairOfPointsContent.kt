@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,32 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val closestPairOfPointsContent = TopicContent(
     topicId = "closest_pair_of_points",
+    figure = Figure(
+        caption = "Points sorted by x and split down the middle: a, b, c on the left, d, e, f on the " +
+            "right. Each half returns its own closest pair, and δ is the smaller of the two. Neither is " +
+            "the answer — c and d straddle the split and beat both. The recursion alone would miss them, " +
+            "so the combine step re-checks the band within δ of the dividing line, and that band is why " +
+            "this is O(n log n) rather than O(n²): walking it in y order, a point can have at most a " +
+            "handful of others closer than δ before they would have been closer to each other, so the " +
+            "check is a constant number of comparisons per point, not all of them.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("a", 0.10f, 0.25f),
+                FigureGraphNode("b", 0.22f, 0.72f),
+                FigureGraphNode("c", 0.40f, 0.40f, FigureTone.Accent),
+                FigureGraphNode("d", 0.60f, 0.34f, FigureTone.Accent),
+                FigureGraphNode("e", 0.76f, 0.76f),
+                FigureGraphNode("f", 0.92f, 0.20f),
+            ),
+            edges = listOf(
+                FigureEdge(0, 2, "δ left", tone = FigureTone.Primary),
+                FigureEdge(3, 5, "δ right", tone = FigureTone.Primary),
+                // No label: the pair is the shortest edge on the card by construction, and a name at
+                // that length lands on both circles rather than between them.
+                FigureEdge(2, 3, tone = FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Given points in a plane, the closest-pair problem finds the two with the smallest distance between them — the brute-force answer is O(n²), checking every pair.",
         "A divide-and-conquer approach reaches O(n log n) by splitting the points, solving each half, and cleverly checking only a thin strip along the dividing line for cross-pairs.",

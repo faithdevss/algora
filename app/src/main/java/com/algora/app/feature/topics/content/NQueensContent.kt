@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,32 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val nQueensContent = TopicContent(
     topicId = "n_queens",
+    figure = Figure(
+        caption = "One queen per row is baked into the recursion — row r is the depth, so the row " +
+            "constraint can never be violated and only the column and the two diagonals are ever " +
+            "checked. Here Q(r0,c0) and Q(r1,c2) leave row 2 with no safe square: c0 and c2 are taken " +
+            "columns, c1 and c3 are on r1's diagonals. The branch dies at row 2 and r3 is never " +
+            "reached at all. Pruning at the first dead row is what separates this from generating all " +
+            "nⁿ boards and filtering.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("Q", "·", "·", "·"),
+                listOf("·", "·", "Q", "·"),
+                listOf("×", "×", "×", "×"),
+                listOf("·", "·", "·", "·"),
+            ),
+            rowHeaders = listOf("r0", "r1", "r2", "r3"),
+            colHeaders = listOf("c0", "c1", "c2", "c3"),
+            marks = listOf(
+                FigureCell(0, 0, FigureTone.Accent),
+                FigureCell(1, 2, FigureTone.Accent),
+                FigureCell(2, 0, FigureTone.Warn),
+                FigureCell(2, 1, FigureTone.Warn),
+                FigureCell(2, 2, FigureTone.Warn),
+                FigureCell(2, 3, FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "The N-Queens problem asks you to place N queens on an N×N chessboard so that no two attack each other — no shared row, column, or diagonal.",
         "It's the poster child for backtracking: place a queen, recurse to the next row, and if you hit a dead end, undo the last placement and try the next square.",

@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,28 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val sudokuSolverContent = TopicContent(
     topicId = "sudoku_solver",
+    figure = Figure(
+        caption = "Drawn 4×4 so it fits, but the rule is the 9×9 one: a cell is the intersection of three " +
+            "constraint sets. The marked cell loses 1 to its row, 4 to its column and 3 to its 2×2 box — " +
+            "one digit survives, so the solver writes 2 and recurses without branching at all. That is " +
+            "the whole difference between this and blind backtracking: filling the most-constrained " +
+            "empty cell first turns most of the search into forced moves, and only genuinely ambiguous " +
+            "cells ever cost a branch to undo.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("?", "1", "·", "·"),
+                listOf("·", "3", "·", "·"),
+                listOf("4", "·", "·", "·"),
+                listOf("·", "·", "·", "·"),
+            ),
+            marks = listOf(
+                FigureCell(0, 0, FigureTone.Accent),
+                FigureCell(0, 1, FigureTone.Warn),
+                FigureCell(1, 1, FigureTone.Warn),
+                FigureCell(2, 0, FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A Sudoku solver fills a 9×9 grid so every row, column, and 3×3 box contains the digits 1–9 exactly once, using constraint-based backtracking.",
         "It finds an empty cell, tries each digit the constraints allow, recurses, and backtracks whenever a choice leads to a dead end.",

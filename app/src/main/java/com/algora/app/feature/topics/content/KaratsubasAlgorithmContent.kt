@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,24 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val karatsubasAlgorithmContent = TopicContent(
     topicId = "karatsubas_algorithm",
+    figure = Figure(
+        caption = "Split 1234 into a = 12 and b = 34 (and the other operand into c and d). The obvious " +
+            "expansion wants four half-size products — ac, ad, bc, bd — and T(n) = 4T(n/2) + O(n) is " +
+            "still O(n²), so splitting alone changes nothing. Karatsuba never computes ad and bc " +
+            "separately: their sum falls out of (a+b)(c+d) once ac and bd are subtracted off, which " +
+            "leaves three recursive multiplies and a handful of additions, giving n^log₂3 ≈ n^1.585. The " +
+            "extra additions are why it only pays above a few hundred digits — below that the schoolbook " +
+            "loop wins.",
+        shape = FigureShape.Strip(
+            cells = listOf("1", "2", "3", "4"),
+            bands = listOf(
+                FigureBand(0, 1, "a = 12"),
+                FigureBand(2, 3, "b = 34", FigureTone.Accent),
+            ),
+            aux = listOf("ac", "(a+b)(c+d)", "bd"),
+            auxLabel = "three products — ad + bc is recovered as (a+b)(c+d) − ac − bd, never multiplied for",
+        ),
+    ),
     whatIsIt = listOf(
         "Karatsuba's algorithm multiplies two large numbers faster than the schoolbook O(n²) method by cutting the count of recursive multiplications from four to three.",
         "Splitting each number into high and low halves would normally need four sub-products; Karatsuba's insight computes the cross term from just one extra multiplication, giving sub-quadratic time.",

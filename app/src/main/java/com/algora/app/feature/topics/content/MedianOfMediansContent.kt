@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,33 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val medianOfMediansContent = TopicContent(
     topicId = "median_of_medians",
+    figure = Figure(
+        caption = "Twenty-five values as five groups of five: each column sorted downward, the columns " +
+            "themselves arranged by their median. The middle row holds the five group medians, and its " +
+            "own median — 12 — becomes the pivot. Read the picture and the guarantee falls out: every " +
+            "value up and left of 12 is ≤ it, every value down and right is ≥ it, so each side of the " +
+            "partition is at least three of every ten elements. The split can never be worse than 70/30, " +
+            "which turns quickselect's O(n²) worst case into a proven O(n) — at a constant big enough " +
+            "that a random pivot still wins on real input.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("1", "2", "3", "6", "10"),
+                listOf("4", "5", "7", "11", "15"),
+                listOf("8", "9", "12", "16", "18"),
+                listOf("13", "14", "17", "21", "23"),
+                listOf("19", "20", "22", "24", "25"),
+            ),
+            rowHeaders = listOf("min", "·", "med", "·", "max"),
+            colHeaders = listOf("g1", "g2", "g3", "g4", "g5"),
+            marks = listOf(
+                FigureCell(2, 0),
+                FigureCell(2, 1),
+                FigureCell(2, 2, FigureTone.Accent),
+                FigureCell(2, 3),
+                FigureCell(2, 4),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Median of medians is a pivot-selection strategy that gives quickselect a guaranteed O(n) worst case, instead of quickselect's usual O(n²) on bad pivots.",
         "It finds a provably good pivot by grouping elements into fives, taking each group's median, then recursively finding the median of those medians.",

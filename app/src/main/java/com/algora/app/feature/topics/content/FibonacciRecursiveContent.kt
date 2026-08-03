@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,24 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val fibonacciRecursiveContent = TopicContent(
     topicId = "fibonacci_recursive",
+    figure = Figure(
+        caption = "Two calls per node instead of factorial's one, and the second one is the problem: the " +
+            "F(3) hanging off the root is the same subtree already computed under F(4), recomputed from " +
+            "scratch. Every marked node below is a repeat. The width of this tree roughly multiplies by " +
+            "φ ≈ 1.618 per level, so the call count is exponential while the number of *distinct* " +
+            "subproblems is only n — which is exactly the gap memoisation closes.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("F(5)", null, FigureTone.Accent),
+                FigureNode("F(4)", 0, FigureTone.Primary),
+                FigureNode("F(3)", 0, FigureTone.Warn),
+                FigureNode("F(3)", 1, FigureTone.Primary),
+                FigureNode("F(2)", 1, FigureTone.Warn),
+                FigureNode("F(2)", 2, FigureTone.Warn),
+                FigureNode("F(1)", 2),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "The Fibonacci sequence defines each number as the sum of the two before it: F(n) = F(n−1) + F(n−2), starting from F(0)=0 and F(1)=1.",
         "Its naive recursive form is famous for being a trap — it re-solves the same subproblems exponentially many times, motivating memoization and dynamic programming.",

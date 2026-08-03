@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureStack
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,28 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val factorialContent = TopicContent(
     topicId = "factorial",
+    figure = Figure(
+        caption = "Nothing is multiplied on the way down. Each call defers its multiply and pushes " +
+            "another frame, so the base case at the top is the first thing that can return anything at " +
+            "all — and the arithmetic then happens in reverse, one frame at a time on the way out. " +
+            "That deferred half is the cost: a loop computes the same number in O(1) space, recursion " +
+            "holds n frames, and a large enough n overflows the stack rather than returning a wrong answer.",
+        shape = FigureShape.Stacks(
+            columns = listOf(
+                FigureStack(
+                    label = "frames (top first)",
+                    entries = listOf("fact(0)", "fact(1)", "fact(2)", "fact(3)"),
+                    note = "pushed on the way down",
+                ),
+                FigureStack(
+                    label = "returns",
+                    entries = listOf("1", "1 × 1 = 1", "2 × 1 = 2", "3 × 2 = 6"),
+                    tone = FigureTone.Accent,
+                    note = "resolved on the way back up",
+                ),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "The factorial of n (written n!) is the product of all positive integers up to n, and it's the classic first example of recursion: n! = n × (n−1)!.",
         "It shows the two ingredients every recursive function needs — a base case that stops the recursion (0! = 1) and a recursive case that shrinks the problem toward it.",

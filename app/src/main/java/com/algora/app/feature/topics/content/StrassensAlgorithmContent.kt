@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,21 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val strassensAlgorithmContent = TopicContent(
     topicId = "strassens_algorithm",
+    figure = Figure(
+        caption = "Splitting both matrices into quadrants and multiplying them the obvious way needs " +
+            "eight half-size products — T(n) = 8T(n/2) + O(n²) is still O(n³), so the split on its own " +
+            "buys nothing. Strassen forms seven instead, each a product of quadrant sums, and rebuilds " +
+            "all four result blocks from them by addition alone. One multiply traded for eighteen adds " +
+            "at every level is what moves the exponent: n^log₂7 ≈ n^2.807. Adds are also the catch — the " +
+            "constant is large enough that the crossover is a few hundred rows, and the subtractions " +
+            "cost numerical stability the plain algorithm keeps.",
+        shape = FigureShape.Strip(
+            cells = listOf("M₁", "M₂", "M₃", "M₄", "M₅", "M₆", "M₇"),
+            bands = listOf(FigureBand(0, 6, "seven products, not eight", FigureTone.Accent)),
+            aux = listOf("C₁₁", "C₁₂", "C₂₁", "C₂₂"),
+            auxLabel = "each result quadrant is a ± combination of those seven — no further multiplies",
+        ),
+    ),
     whatIsIt = listOf(
         "Strassen's algorithm multiplies two matrices faster than the standard O(n³) triple loop by reducing the eight sub-block multiplications of a divide-and-conquer split to seven.",
         "It's the matrix analogue of Karatsuba's trick: clever additions of the block quadrants let seven products reconstruct the full result, saving one multiply at every level of recursion.",

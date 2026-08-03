@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,25 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val subsetSumContent = TopicContent(
     topicId = "subset_sum",
+    figure = Figure(
+        caption = "Elements {3, 4, 2} against target 6. Each element is one binary decision — take it and " +
+            "the target drops, skip it and the target stands — so the tree is 2ⁿ leaves wide and the " +
+            "node label is the whole state. Only one thing prunes: a target that has gone negative can " +
+            "never come back, so that branch dies immediately. The success leaf is 4 + 2, reached by " +
+            "skipping the first element. The state at every node is just (elements left, target), and " +
+            "there are far fewer of those pairs than branches — which is the observation the DP table is built on.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("t=6", null, FigureTone.Primary),
+                FigureNode("t=3", 0, FigureTone.Primary),
+                FigureNode("t=6", 0),
+                FigureNode("t=−1", 1, FigureTone.Warn),
+                FigureNode("t=3", 1),
+                FigureNode("t=2", 2, FigureTone.Primary),
+                FigureNode("t=0", 5, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Subset sum asks whether any subset of a set of numbers adds up to a given target — a fundamental yes/no decision problem.",
         "The recursive view makes a binary choice for each element: include it (subtract from the target) or skip it, then recurse on the rest.",

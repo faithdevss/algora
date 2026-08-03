@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,25 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val towerOfHanoiContent = TopicContent(
     topicId = "tower_of_hanoi",
+    figure = Figure(
+        caption = "Every node splits into two recursive calls and exactly one real disk move (marked " +
+            "\"mv\"). The roles of the three pegs rotate on the way down — the target of the outer call " +
+            "is the spare peg of the inner one — and that rotation is the entire algorithm; nothing else " +
+            "decides which disk goes where. Counting the mv nodes gives the move count: T(n) = 2T(n−1) + " +
+            "1 = 2ⁿ − 1, so the recursion is short (depth n) but the output is exponential. Only the " +
+            "first subcall is expanded here.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("3 A→C", null, FigureTone.Primary),
+                FigureNode("2 A→B", 0, FigureTone.Primary),
+                FigureNode("1 A→C", 1),
+                FigureNode("mv 2", 1, FigureTone.Accent),
+                FigureNode("1 C→B", 1),
+                FigureNode("mv 3", 0, FigureTone.Accent),
+                FigureNode("2 B→C", 0, FigureTone.Primary),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Tower of Hanoi moves a stack of differently-sized disks from a source peg to a target peg, one disk at a time, never placing a larger disk on a smaller one.",
         "It's the cleanest example of recursion reducing a problem to two smaller copies of itself: move the top n−1 disks aside, move the biggest, then move the n−1 back.",
