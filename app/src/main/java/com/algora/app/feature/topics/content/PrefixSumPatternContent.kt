@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +18,18 @@ import com.algora.app.core.data.model.TopicContent
 // topic that implements the technique.
 internal val prefixSumPatternContent = TopicContent(
     topicId = "prefix_sum_pattern",
+    figure = Figure(
+        caption = "One pass builds P, and every range query afterwards is two lookups and a " +
+            "subtraction: sum[2..4] = P[4] − P[1] = 14 − 4 = 10. The width of the range never enters " +
+            "the cost.",
+        shape = FigureShape.Strip(
+            cells = listOf("3", "1", "4", "1", "5", "9"),
+            bands = listOf(FigureBand(2, 4, "range asked for", FigureTone.Accent)),
+            pointers = listOf(FigurePointer(1, "P[l−1]"), FigurePointer(4, "P[r]")),
+            aux = listOf("3", "4", "8", "9", "14", "23"),
+            auxLabel = "P — inclusive prefix sums",
+        ),
+    ),
     whatIsIt = listOf(
         "The prefix sum pattern precomputes running totals once so that any later range question — the sum of a[l..r], the count of items before i — costs two lookups instead of a scan.",
         "Interviews rarely ask for the prefix array itself. They ask for \"subarray sums equal to k\" or \"pivot index\", where the answer falls out of pairing a running total with a hash map of totals already seen.",

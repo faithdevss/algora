@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +18,19 @@ import com.algora.app.core.data.model.TopicContent
 // structure is already in the array — including a rotated one.
 internal val modifiedBinarySearchPatternContent = TopicContent(
     topicId = "modified_binary_search_pattern",
+    figure = Figure(
+        caption = "The array is not sorted, but one half of every window still is — compare " +
+            "values[lo] with values[mid] to find out which. Then the ordinary question, is the target " +
+            "inside that sorted half, decides which side to discard.",
+        shape = FigureShape.Strip(
+            cells = listOf("27", "34", "42", "50", "61", "3", "8", "15"),
+            bands = listOf(
+                FigureBand(0, 4, "sorted half"),
+                FigureBand(5, 7, "wrapped", FigureTone.Muted),
+            ),
+            pointers = listOf(FigurePointer(0, "lo"), FigurePointer(3, "mid"), FigurePointer(7, "hi")),
+        ),
+    ),
     whatIsIt = listOf(
         "Textbook binary search finds an exact value. Interviews ask for the boundary instead: the first element ≥ x, the last one < x, the insertion point, or the target inside a rotated array.",
         "Reframe it as a predicate. If some test is false for a prefix and true for the rest, binary search finds the flip point — and returning the boundary index, not a found/not-found flag, handles duplicates, insertion and range queries with one routine.",

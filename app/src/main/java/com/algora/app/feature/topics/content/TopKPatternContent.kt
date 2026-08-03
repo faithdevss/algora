@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +18,18 @@ import com.algora.app.core.data.model.TopicContent
 // topic that implements the technique.
 internal val topKPatternContent = TopicContent(
     topicId = "top_k_pattern",
+    figure = Figure(
+        caption = "A min-heap of size k makes its own root the admission price: anything smaller can be " +
+            "discarded on sight, and the heap never grows past k. O(n log k) beats sorting the whole " +
+            "stream, and works when the stream does not fit in memory at all.",
+        shape = FigureShape.Strip(
+            cells = listOf("7", "2", "9", "4", "11", "3"),
+            bands = listOf(FigureBand(4, 4, "incoming", FigureTone.Accent)),
+            pointers = listOf(FigurePointer(4, "x")),
+            aux = listOf("4", "7", "9"),
+            auxLabel = "min-heap, k = 3 — root 4 is the admission price",
+        ),
+    ),
     whatIsIt = listOf(
         "The top-K pattern finds the K largest, smallest, or most-frequent items without fully sorting the input, by keeping only a size-K heap as it scans.",
         "Reach for it whenever a problem asks for 'the K best' of something — you need the top handful, not a total ordering, so a full sort is wasted work.",

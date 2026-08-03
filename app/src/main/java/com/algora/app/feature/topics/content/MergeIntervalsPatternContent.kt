@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureSpan
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,19 @@ import com.algora.app.core.data.model.TopicContent
 // topic that implements the technique.
 internal val mergeIntervalsPatternContent = TopicContent(
     topicId = "merge_intervals_pattern",
+    figure = Figure(
+        caption = "Sort by start, then one scan: an interval either overlaps the one being built — " +
+            "start ≤ current end, so extend the end — or it does not, and the current interval is " +
+            "finished. Nothing already emitted ever needs revisiting.",
+        shape = FigureShape.Timeline(
+            spans = listOf(
+                FigureSpan(1, 4, "1–4 overlaps"),
+                FigureSpan(2, 6, "2–6 extends it"),
+                FigureSpan(8, 10, "8–10 starts fresh", FigureTone.Accent),
+            ),
+            axisMax = 12,
+        ),
+    ),
     whatIsIt = listOf(
         "The merge-intervals pattern consolidates a set of ranges into the fewest disjoint ranges by sorting them once and sweeping left to right, joining any that touch or overlap.",
         "Reach for it whenever the input is intervals — meeting times, numeric ranges, byte offsets — and the question involves overlap, gaps, or coverage.",

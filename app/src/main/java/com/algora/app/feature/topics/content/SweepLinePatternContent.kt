@@ -3,6 +3,9 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureSpan
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +16,21 @@ import com.algora.app.core.data.model.TopicContent
 // the difference array is the same idea on a fixed index range.
 internal val sweepLinePatternContent = TopicContent(
     topicId = "sweep_line_pattern",
+    figure = Figure(
+        caption = "Throw the intervals away and keep only their endpoints: +1 where one opens, −1 " +
+            "where one closes. Sorting those events and running a counter gives the number of active " +
+            "intervals everywhere in one pass; its peak is the maximum overlap.",
+        shape = FigureShape.Timeline(
+            spans = listOf(
+                FigureSpan(1, 5, "1–5"),
+                FigureSpan(2, 7, "2–7"),
+                FigureSpan(4, 6, "4–6"),
+            ),
+            axisMax = 8,
+            marker = 4,
+            markerLabel = "sweep at x = 4: active = 3, the peak",
+        ),
+    ),
     whatIsIt = listOf(
         "A sweep line throws away the intervals and keeps only their endpoints: +1 where one starts, −1 where one ends. Sorting those events and running a counter gives the number of active intervals at every point in one pass.",
         "The difference array is the same trick on a fixed index range: record d[l] += v and d[r+1] -= v per update, then one prefix sum materialises every value. Both turn a per-interval loop into an endpoint scan.",

@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,19 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val fastSlowPointersContent = TopicContent(
     topicId = "fast_slow_pointers",
+    figure = Figure(
+        caption = "Two pointers over the same list at different speeds. If a cycle exists the fast one " +
+            "laps the slow one and they meet inside it; the distance from the head to the entry equals " +
+            "the distance from the meeting point to the entry, which is why a second walk finds it.",
+        shape = FigureShape.Strip(
+            cells = listOf("A", "B", "C", "D", "E", "F"),
+            bands = listOf(
+                FigureBand(0, 1, "tail", FigureTone.Muted),
+                FigureBand(2, 5, "cycle"),
+            ),
+            pointers = listOf(FigurePointer(3, "slow"), FigurePointer(5, "fast")),
+        ),
+    ),
     whatIsIt = listOf(
         "The fast & slow pointer pattern (Floyd's tortoise and hare) runs two pointers at different speeds through a sequence or linked list.",
         "Because the fast pointer gains one step per move, it detects cycles, finds the midpoint, and locates the k-th-from-end node without measuring length first.",

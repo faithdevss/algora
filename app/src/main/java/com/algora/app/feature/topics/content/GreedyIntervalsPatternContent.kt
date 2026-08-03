@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureSpan
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,19 @@ import com.algora.app.core.data.model.TopicContent
 // topic that implements the technique.
 internal val greedyIntervalsPatternContent = TopicContent(
     topicId = "greedy_intervals_pattern",
+    figure = Figure(
+        caption = "Sort by *end* time, not start or duration — both of those have counterexamples. " +
+            "Finishing early is what frees the room, so taking the earliest finisher can never rule out " +
+            "a better answer.",
+        shape = FigureShape.Timeline(
+            spans = listOf(
+                FigureSpan(1, 3, "1–3 kept", FigureTone.Accent),
+                FigureSpan(2, 5, "2–5 clashes, dropped", FigureTone.Warn),
+                FigureSpan(4, 7, "4–7 kept", FigureTone.Accent),
+            ),
+            axisMax = 8,
+        ),
+    ),
     whatIsIt = listOf(
         "Interval scheduling asks for the largest set of non-overlapping intervals — or the fewest removals that make a set non-overlapping, which is the same question inverted.",
         "Sorting by end time and always taking the earliest finisher is optimal, and the exchange argument for why is a standard follow-up: swapping any optimal solution's first pick for the earliest finisher never makes it worse.",

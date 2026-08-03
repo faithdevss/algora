@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +18,19 @@ import com.algora.app.core.data.model.TopicContent
 // length, shuffling without bias, and adversary-proof pivots.
 internal val randomizedPatternContent = TopicContent(
     topicId = "randomized_pattern",
+    figure = Figure(
+        caption = "Fisher-Yates draws from [i, n) — the unprocessed suffix — and swaps. Drawing from " +
+            "[0, n) instead gives nⁿ equally likely paths onto n! permutations, which cannot divide " +
+            "evenly, so some orders come out more often than others.",
+        shape = FigureShape.Strip(
+            cells = listOf("A", "B", "C", "D", "E", "F"),
+            bands = listOf(
+                FigureBand(0, 1, "fixed", FigureTone.Muted),
+                FigureBand(2, 5, "legal draws [i, n)"),
+            ),
+            pointers = listOf(FigurePointer(2, "i"), FigurePointer(4, "j")),
+        ),
+    ),
     whatIsIt = listOf(
         "Some questions are only answerable with randomness: sample uniformly from a stream of unknown length, shuffle without bias, or pick a pivot an adversary cannot predict.",
         "Reservoir sampling keeps k items and replaces one with probability k/i as the i-th arrives. Fisher-Yates swaps each position with a uniform choice from the *unprocessed* suffix. Both are one pass, O(1) extra state per item, and both are easy to get subtly wrong.",

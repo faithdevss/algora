@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +18,16 @@ import com.algora.app.core.data.model.TopicContent
 // with the collision caveat stated up front.
 internal val rollingHashPatternContent = TopicContent(
     topicId = "rolling_hash_pattern",
+    figure = Figure(
+        caption = "The window is a number in base b mod M. Sliding drops the leading character's " +
+            "weight, shifts, and adds the new one — three operations no matter how wide the window is. " +
+            "Equal hashes are a candidate, so the match is still verified character by character.",
+        shape = FigureShape.Strip(
+            cells = listOf("a", "b", "r", "a", "c", "a", "d"),
+            bands = listOf(FigureBand(0, 3, "h = hash of this window", FigureTone.Accent)),
+            pointers = listOf(FigurePointer(0, "drop"), FigurePointer(4, "add")),
+        ),
+    ),
     whatIsIt = listOf(
         "A rolling hash treats a window of characters as a number in base b modulo a large prime. Sliding by one costs O(1): drop the leading character's contribution, shift, add the new character.",
         "That turns \"compare every length-m substring\" from O(n·m) into O(n + m). Hashes can collide, so a hit is a candidate — confirm it with a direct comparison unless approximate matching is acceptable.",

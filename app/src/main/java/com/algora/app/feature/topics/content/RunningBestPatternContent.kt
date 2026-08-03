@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +18,18 @@ import com.algora.app.core.data.model.TopicContent
 // "best seen so far".
 internal val runningBestPatternContent = TopicContent(
     topicId = "running_best_pattern",
+    figure = Figure(
+        caption = "Two scalars, one pass. cur is the best run that *must* end here; the moment carrying " +
+            "the prefix is worse than starting fresh, it restarts — and best remembers the winner, " +
+            "which may have ended long before the array does.",
+        shape = FigureShape.Strip(
+            cells = listOf("−2", "1", "−3", "4", "−1", "2", "1"),
+            bands = listOf(FigureBand(3, 6, "best run so far", FigureTone.Accent)),
+            pointers = listOf(FigurePointer(3, "restart")),
+            aux = listOf("−2", "1", "−2", "4", "3", "5", "6"),
+            auxLabel = "cur — best run ending at each index",
+        ),
+    ),
     whatIsIt = listOf(
         "The running-best pattern carries two numbers through one pass: the best subarray *ending at* the current index, and the best seen anywhere so far. Kadane's algorithm is the canonical instance.",
         "The insight is that a prefix with negative sum can never help what follows — restart instead of carrying it. That collapses an O(n²) scan over all subarrays into O(n) with O(1) memory.",

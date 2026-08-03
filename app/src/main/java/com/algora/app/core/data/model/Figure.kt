@@ -1,0 +1,81 @@
+package com.algora.app.core.data.model
+
+/**
+ * A static diagram drawn above a topic's How-It-Works steps: the shape of the pattern at a glance,
+ * before the prose walks through it. The simulation below the fold animates one worked example; this
+ * answers "what am I looking at" without anyone pressing play.
+ *
+ * Data only, like [SimulationType]'s configs — no Compose types — so the specs stay unit-testable and
+ * the renderer (`feature/topics/FigureCard.kt`) owns every colour and dimension.
+ */
+data class Figure(
+    val caption: String,
+    val shape: FigureShape,
+)
+
+/**
+ * Colour roles rather than colours. The step cards carry raw `0xFF…` accents because the mock
+ * specifies them per card; a figure is drawn on a canvas that has to read in both themes, so it names
+ * the role and lets the renderer resolve it against the current scheme.
+ */
+enum class FigureTone {
+    /** The structure being maintained — a window, a live range, the current subtree. */
+    Primary,
+
+    /** The thing the pattern is doing right now, or the answer it produces. */
+    Accent,
+
+    /** Context that is present but not the point: already-settled values, unvisited cells. */
+    Muted,
+
+    /** The case the pattern excludes — a rejected candidate, an invalid state, an evicted entry. */
+    Warn,
+}
+
+sealed interface FigureShape {
+
+    /**
+     * A single row of labelled cells: arrays, strings, bit rows, and every pattern whose state is a
+     * range over a sequence. [bands] draw behind a cell range, [pointers] hang below one cell.
+     */
+    data class Strip(
+        val cells: List<String>,
+        val bands: List<FigureBand> = emptyList(),
+        val pointers: List<FigurePointer> = emptyList(),
+        /** Optional second row under the first — a prefix table, a deque, an accumulator. */
+        val aux: List<String> = emptyList(),
+        val auxLabel: String? = null,
+    ) : FigureShape
+
+    /**
+     * Intervals on a shared axis. Everything whose input is a set of ranges — merging, scheduling,
+     * sweeping — is the same picture with a different question asked of it.
+     */
+    data class Timeline(
+        val spans: List<FigureSpan>,
+        val axisMax: Int,
+        /** A vertical line: the sweep position, or the moment being asked about. */
+        val marker: Int? = null,
+        val markerLabel: String? = null,
+    ) : FigureShape
+}
+
+data class FigureBand(
+    val from: Int,
+    val to: Int,
+    val label: String,
+    val tone: FigureTone = FigureTone.Primary,
+)
+
+data class FigurePointer(
+    val index: Int,
+    val label: String,
+    val tone: FigureTone = FigureTone.Accent,
+)
+
+data class FigureSpan(
+    val start: Int,
+    val end: Int,
+    val label: String,
+    val tone: FigureTone = FigureTone.Primary,
+)

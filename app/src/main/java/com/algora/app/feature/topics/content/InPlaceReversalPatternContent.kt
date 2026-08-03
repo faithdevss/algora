@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +18,19 @@ import com.algora.app.core.data.model.TopicContent
 // topic that implements the technique.
 internal val inPlaceReversalPatternContent = TopicContent(
     topicId = "in_place_reversal_pattern",
+    figure = Figure(
+        caption = "Three references and no second list. The reversed part grows behind cur, and next " +
+            "must be saved *before* cur.next is rewritten — the instant it is not, the rest of the list " +
+            "is unreachable.",
+        shape = FigureShape.Strip(
+            cells = listOf("A", "B", "C", "D", "E"),
+            bands = listOf(
+                FigureBand(0, 1, "already reversed", FigureTone.Accent),
+                FigureBand(2, 4, "untouched", FigureTone.Muted),
+            ),
+            pointers = listOf(FigurePointer(1, "prev"), FigurePointer(2, "cur"), FigurePointer(3, "next")),
+        ),
+    ),
     whatIsIt = listOf(
         "In-place reversal rewires a linked list's next-pointers as it walks, using three references — previous, current, and a saved copy of the next node — and no extra list.",
         "Interviewers like it because the naive answers (copy into an array, or recurse) both cost O(n) space, and because sub-list variants force you to keep track of the boundary nodes.",

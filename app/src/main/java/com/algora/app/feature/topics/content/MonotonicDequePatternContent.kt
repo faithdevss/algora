@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,18 @@ import com.algora.app.core.data.model.TopicContent
 // plus an expiry check at the front because the window moves.
 internal val monotonicDequePatternContent = TopicContent(
     topicId = "monotonic_deque_pattern",
+    figure = Figure(
+        caption = "The deque holds indices whose values decrease front to back, so its front is the " +
+            "window's maximum. Two rules per element: drop the front when it slides out, pop the back " +
+            "while it is dominated — each index enters and leaves once, so O(n) not O(n·k).",
+        shape = FigureShape.Strip(
+            cells = listOf("1", "3", "−1", "−3", "5", "3", "6"),
+            bands = listOf(FigureBand(4, 6, "window, k = 3")),
+            pointers = listOf(FigurePointer(6, "max")),
+            aux = listOf("6", "3"),
+            auxLabel = "deque — values decreasing, front first",
+        ),
+    ),
     whatIsIt = listOf(
         "A monotonic deque keeps the indices of a sliding window in decreasing value order. The front is the window's maximum; anything smaller than the incoming element can never be the max again, so it is dropped from the back.",
         "It is what makes sliding-window maximum O(n) instead of O(n·k). A heap also works but costs O(n log k) and needs lazy deletion, because the element leaving the window is rarely the heap's root.",

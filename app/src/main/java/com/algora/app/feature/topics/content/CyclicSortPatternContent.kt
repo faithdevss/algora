@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +18,18 @@ import com.algora.app.core.data.model.TopicContent
 // topic that implements the technique.
 internal val cyclicSortPatternContent = TopicContent(
     topicId = "cyclic_sort_pattern",
+    figure = Figure(
+        caption = "Values 1..n each know the index they belong at, so sorting needs no comparisons — " +
+            "only swaps. Whatever index ends up holding the wrong value is both the duplicate and the " +
+            "missing number.",
+        shape = FigureShape.Strip(
+            cells = listOf("3", "1", "5", "4", "3"),
+            bands = listOf(FigureBand(2, 2, "belongs at index 4", FigureTone.Accent)),
+            pointers = listOf(FigurePointer(0, "i"), FigurePointer(4, "home")),
+            aux = listOf("1", "2", "3", "4", "5"),
+            auxLabel = "index i wants value i+1",
+        ),
+    ),
     whatIsIt = listOf(
         "Cyclic sort exploits a promise the problem hands you: the values are a permutation of 1..n (or 0..n−1). That means every value already knows the index it belongs at.",
         "Sorting is then a sequence of swaps that each place one value permanently, and the leftover mismatches spell out the missing, duplicate or corrupted entries — in O(n) time and no extra memory.",

@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +18,20 @@ import com.algora.app.core.data.model.TopicContent
 // topic that implements the technique.
 internal val binarySearchAnswerContent = TopicContent(
     topicId = "binary_search_answer",
+    figure = Figure(
+        caption = "The array is not what is searched — the *answer space* is. Each candidate is fed to " +
+            "a monotone feasibility test, and because the answers form a false…false-true…true run, the " +
+            "same discard-half loop applies to a range that was never stored anywhere.",
+        shape = FigureShape.Strip(
+            cells = listOf("✗", "✗", "✗", "✗", "✓", "✓", "✓", "✓"),
+            bands = listOf(
+                FigureBand(0, 3, "too small", FigureTone.Warn),
+                FigureBand(4, 4, "answer", FigureTone.Accent),
+                FigureBand(5, 7, "works, wasteful", FigureTone.Muted),
+            ),
+            pointers = listOf(FigurePointer(0, "lo"), FigurePointer(3, "mid"), FigurePointer(7, "hi")),
+        ),
+    ),
     whatIsIt = listOf(
         "Binary search on the answer drops the requirement that the input be sorted. What has to be monotone is the question you ask about a candidate answer: if capacity 15 works, every larger capacity works too.",
         "The search then runs over the range of possible answers — capacities, speeds, distances — and each probe calls a feasibility check that scans the input once.",

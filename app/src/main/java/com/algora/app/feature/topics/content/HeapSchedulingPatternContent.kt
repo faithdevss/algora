@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureSpan
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,22 @@ import com.algora.app.core.data.model.TopicContent
 // the shape behind meeting rooms, CPU scheduling and most simulation questions.
 internal val heapSchedulingPatternContent = TopicContent(
     topicId = "heap_scheduling_pattern",
+    figure = Figure(
+        caption = "Two orderings at once: tasks arrive sorted by start, and a min-heap of end times " +
+            "decides what has already finished. The heap's *size* is the concurrency — for meeting " +
+            "rooms, its peak is the whole answer.",
+        shape = FigureShape.Timeline(
+            spans = listOf(
+                FigureSpan(0, 30, "0–30"),
+                FigureSpan(5, 10, "5–10"),
+                FigureSpan(6, 12, "6–12"),
+                FigureSpan(15, 20, "15–20", FigureTone.Accent),
+            ),
+            axisMax = 32,
+            marker = 8,
+            markerLabel = "t = 8: three rooms in use — the heap holds three end times",
+        ),
+    ),
     whatIsIt = listOf(
         "Scheduling questions have two orderings at once: tasks arrive in one order and are chosen in another. Sort by arrival, then keep a heap of everything currently available and pop whichever the rule prefers — earliest finisher, shortest job, highest frequency.",
         "The heap is the set of live resources or ready tasks. Meeting rooms is the minimal case: a min-heap of end times, where popping every room that has freed up before the next meeting starts leaves the heap size as the room count.",

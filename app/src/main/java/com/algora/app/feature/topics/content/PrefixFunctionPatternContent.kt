@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,20 @@ import com.algora.app.core.data.model.TopicContent
 // number of string questions once you can compute them in linear time.
 internal val prefixFunctionPatternContent = TopicContent(
     topicId = "prefix_function_pattern",
+    figure = Figure(
+        caption = "pi[i] is the length of the longest proper prefix of s[0..i] that is also its suffix. " +
+            "Here the prefix \"ab\" reappears at the end, so pi[7] = 2 — and on a mismatch the search " +
+            "falls back to pi[k−1] rather than restarting, which is what keeps the build linear.",
+        shape = FigureShape.Strip(
+            cells = listOf("a", "b", "a", "c", "a", "b", "a", "b"),
+            bands = listOf(
+                FigureBand(0, 1, "prefix"),
+                FigureBand(6, 7, "same suffix", FigureTone.Accent),
+            ),
+            aux = listOf("0", "0", "1", "0", "1", "2", "3", "2"),
+            auxLabel = "pi — longest border of each prefix",
+        ),
+    ),
     whatIsIt = listOf(
         "The prefix function pi[i] is the length of the longest proper prefix of s[0..i] that is also a suffix of it — its longest *border*. Computing the whole table takes one linear pass.",
         "Borders answer more than string search. The shortest repeating unit of a string is n - pi[n-1] when that divides n; the shortest palindrome extendable from the front comes from a border of s + '#' + reverse(s). KMP is one application, not the whole pattern.",

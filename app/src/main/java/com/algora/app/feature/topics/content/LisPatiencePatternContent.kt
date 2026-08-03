@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +18,18 @@ import com.algora.app.core.data.model.TopicContent
 // turns the O(n²) LIS DP into O(n log n), and a whole family of problems reduces to it.
 internal val lisPatiencePatternContent = TopicContent(
     topicId = "lis_patience_pattern",
+    figure = Figure(
+        caption = "tails[k] is the smallest value any increasing subsequence of length k+1 can end on. " +
+            "Each element replaces the first tail ≥ itself, found by binary search — so the row's " +
+            "*length* is the answer, while its contents are not a subsequence of the input.",
+        shape = FigureShape.Strip(
+            cells = listOf("10", "9", "2", "5", "3", "7", "101", "18"),
+            bands = listOf(FigureBand(7, 7, "replaces tails[3]", FigureTone.Accent)),
+            pointers = listOf(FigurePointer(7, "x")),
+            aux = listOf("2", "3", "7", "18"),
+            auxLabel = "tails — length 4 is the LIS length",
+        ),
+    ),
     whatIsIt = listOf(
         "Longest increasing subsequence has an obvious O(n²) DP, but the intended answer keeps a `tails` array: tails[k] is the smallest possible ending value of an increasing subsequence of length k+1. Each element replaces the first tail ≥ itself, found by binary search.",
         "The reduction matters more than the algorithm. Box nesting, Russian-doll envelopes, minimum removals to sort and maximum chain length all become LIS after the right sort — usually ascending on one dimension, descending on the tie-breaker so equal keys cannot chain.",

@@ -252,6 +252,13 @@ private fun TopicDetailContent(topicId: String, onBack: () -> Unit, onTopicClick
         LazyColumn(modifier = Modifier.weight(1f)) {
             item { HeroSection(topic, content) }
             item { SectionTitle("How Does It Work?") }
+            content.figure?.let { figure ->
+                item {
+                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)) {
+                        FigureCard(figure)
+                    }
+                }
+            }
             item { HowItWorksSection(content.steps) }
             item { SectionTitle("The Mathematics") }
             item { MathSection(content.formulas, content.notationKey) }

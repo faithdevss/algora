@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +18,20 @@ import com.algora.app.core.data.model.TopicContent
 // engine inside quicksort, and the answer to most "sort by category in place" questions.
 internal val dutchFlagPatternContent = TopicContent(
     topicId = "dutch_flag_pattern",
+    figure = Figure(
+        caption = "Three regions and three pointers. Everything before low is small, everything after " +
+            "high is large, and mid walks the unclassified middle — the invariant is the picture.",
+        shape = FigureShape.Strip(
+            cells = listOf("0", "0", "1", "?", "?", "2", "2"),
+            bands = listOf(
+                FigureBand(0, 1, "< pivot"),
+                FigureBand(2, 2, "= pivot", FigureTone.Accent),
+                FigureBand(3, 4, "unclassified", FigureTone.Muted),
+                FigureBand(5, 6, "> pivot", FigureTone.Warn),
+            ),
+            pointers = listOf(FigurePointer(2, "low"), FigurePointer(3, "mid"), FigurePointer(4, "high")),
+        ),
+    ),
     whatIsIt = listOf(
         "In-place partitioning sweeps once and rearranges the array into regions — smaller, equal, larger — using pointers that mark the region boundaries. No extra array, one pass, stable regions by construction of the invariant.",
         "The three-way version (Dijkstra's Dutch national flag) keeps low, mid and high. Everything before low is small, everything after high is large, and mid scans the unclassified middle until it meets high.",

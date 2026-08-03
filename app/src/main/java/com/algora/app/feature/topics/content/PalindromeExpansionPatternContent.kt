@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +18,19 @@ import com.algora.app.core.data.model.TopicContent
 // rather than substrings.
 internal val palindromeExpansionPatternContent = TopicContent(
     topicId = "palindrome_expansion_pattern",
+    figure = Figure(
+        caption = "Every palindrome is symmetric about a centre — a character for odd lengths, a gap " +
+            "for even ones, so 2n − 1 centres in total. Growing outward from each finds them all in " +
+            "O(n²) time and O(1) space; forgetting the gap centres is the standard bug.",
+        shape = FigureShape.Strip(
+            cells = listOf("a", "b", "b", "a", "n", "a", "n", "a"),
+            bands = listOf(
+                FigureBand(0, 3, "even centre", FigureTone.Primary),
+                FigureBand(4, 7, "odd centre", FigureTone.Accent),
+            ),
+            pointers = listOf(FigurePointer(5, "centre")),
+        ),
+    ),
     whatIsIt = listOf(
         "Every palindrome has a centre — a character for odd lengths, a gap between characters for even ones. There are 2n - 1 centres, and growing outward from each finds every palindromic substring in O(n²) with no table.",
         "It beats the O(n³) check-every-substring approach and uses O(1) space, unlike the DP table. Manacher's algorithm gets to O(n) by reusing earlier radii, but expansion is what you write under time pressure.",

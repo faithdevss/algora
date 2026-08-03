@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,16 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val twoPointerPatternContent = TopicContent(
     topicId = "two_pointer_pattern",
+    figure = Figure(
+        caption = "Sorted input turns one comparison into a decision about a whole row of pairs: too " +
+            "small and every pair with l is out, too large and every pair with r is. That is what " +
+            "collapses the O(n²) double loop into one pass.",
+        shape = FigureShape.Strip(
+            cells = listOf("2", "3", "5", "8", "11", "14"),
+            bands = listOf(FigureBand(0, 5, "still possible", FigureTone.Muted)),
+            pointers = listOf(FigurePointer(0, "l"), FigurePointer(5, "r")),
+        ),
+    ),
     whatIsIt = listOf(
         "The two-pointer pattern walks an array or string with two indices instead of one, letting you answer pair/range questions in a single O(n) pass with O(1) space.",
         "The pointers either close in from both ends or chase each other from the same side, depending on what the problem needs.",

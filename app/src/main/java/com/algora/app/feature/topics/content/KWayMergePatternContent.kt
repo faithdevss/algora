@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,17 @@ import com.algora.app.core.data.model.TopicContent
 // topic that implements the technique.
 internal val kWayMergePatternContent = TopicContent(
     topicId = "k_way_merge_pattern",
+    figure = Figure(
+        caption = "Concatenating and sorting throws away the order you were handed. A heap of one head " +
+            "per list keeps it: each output element costs one pop and one push over a heap of size k, " +
+            "so O(n log k) instead of O(n log n).",
+        shape = FigureShape.Strip(
+            cells = listOf("1", "2", "3", "3", "·", "·", "·", "·", "·"),
+            bands = listOf(FigureBand(0, 3, "merged output", FigureTone.Accent)),
+            aux = listOf("4", "6", "6"),
+            auxLabel = "min-heap: one head per list (size ≤ k)",
+        ),
+    ),
     whatIsIt = listOf(
         "K-way merge walks k already-sorted inputs at once. A min-heap holding one candidate per list — the current head of each — always knows which element comes next globally.",
         "The heap never grows past k, so merging n total elements costs O(n log k) rather than the O(n log n) of concatenating everything and sorting.",

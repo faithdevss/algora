@@ -11,6 +11,9 @@ data class TopicContent(
     val applications: List<ApplicationCard>,
     val takeaways: List<String>,
     val crossLinks: List<CrossLink> = emptyList(),
+    // Drawn above the How-It-Works steps. Null on every topic that has not been given one, which is
+    // everything outside the interview-prep pattern guides.
+    val figure: Figure? = null,
 )
 
 // A pointer from one topic's detail page to a related topic (possibly in the other mode),

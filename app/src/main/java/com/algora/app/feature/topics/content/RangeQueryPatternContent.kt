@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +18,18 @@ import com.algora.app.core.data.model.TopicContent
 // queries — a Fenwick or segment tree takes over.
 internal val rangeQueryPatternContent = TopicContent(
     topicId = "range_query_pattern",
+    figure = Figure(
+        caption = "Prefix sums answer in O(1) but rebuild in O(n) after any write. A Fenwick tree stores " +
+            "block aggregates instead — tree[i] covers the i & −i elements ending at i — so a write " +
+            "touches log n blocks and a query recombines log n of them.",
+        shape = FigureShape.Strip(
+            cells = listOf("3", "1", "4", "1", "5", "9", "2", "6"),
+            bands = listOf(FigureBand(2, 5, "range queried", FigureTone.Accent)),
+            pointers = listOf(FigurePointer(2, "l"), FigurePointer(5, "r")),
+            aux = listOf("3", "4", "4", "9", "5", "14", "2", "31"),
+            auxLabel = "Fenwick tree[i] — aggregate of the block ending at i",
+        ),
+    ),
     whatIsIt = listOf(
         "Prefix sums answer range queries in O(1) but need a full O(n) rebuild after any update. When updates and queries interleave, a Fenwick tree or segment tree makes both O(log n) by storing partial aggregates over nested blocks.",
         "The choice follows the operation. Fenwick is small and fast for sums with point updates; a segment tree handles any associative aggregate — min, max, gcd — and, with lazy propagation, range updates too.",

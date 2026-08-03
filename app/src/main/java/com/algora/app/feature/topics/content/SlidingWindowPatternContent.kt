@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -13,6 +17,16 @@ import com.algora.app.core.data.model.TopicContent
 // topic that implements the technique.
 internal val slidingWindowPatternContent = TopicContent(
     topicId = "sliding_window_pattern",
+    figure = Figure(
+        caption = "The window is the whole state. It grows on the right, and shrinks from the left only " +
+            "while the constraint is broken — so every index is added once and removed once, which is " +
+            "why the scan is O(n) rather than O(n²).",
+        shape = FigureShape.Strip(
+            cells = listOf("a", "b", "c", "a", "d", "e"),
+            bands = listOf(FigureBand(1, 3, "window: no repeats")),
+            pointers = listOf(FigurePointer(1, "l"), FigurePointer(3, "r")),
+        ),
+    ),
     whatIsIt = listOf(
         "The sliding window pattern turns a nested-loop scan over every subarray or substring into a single pass by maintaining a moving range and updating it incrementally.",
         "Reach for it whenever a problem asks about a contiguous run — the longest, shortest, or best subarray/substring satisfying some condition.",
