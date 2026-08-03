@@ -254,7 +254,9 @@ private fun TopicDetailContent(topicId: String, onBack: () -> Unit, onTopicClick
             item { SectionTitle("How Does It Work?") }
             content.figure?.let { figure ->
                 item {
-                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)) {
+                    // bottom gap matches HowItWorksSection's 11.dp step spacing so the figure reads
+                    // as the first card in that stack; the title already supplies the gap above.
+                    Box(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 11.dp)) {
                         FigureCard(figure)
                     }
                 }

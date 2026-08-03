@@ -3,12 +3,23 @@ package com.algora.app.feature.topics
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -20,7 +31,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.algora.app.core.ui.theme.SimColors
 import kotlinx.coroutines.delay
@@ -89,10 +102,16 @@ fun PlaybackTransport(state: PlaybackState, modifier: Modifier = Modifier) {
             )
         }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TransportButton("↺", SimColors.Grey, Modifier.weight(1f)) { state.reset() }
-            TransportButton("⏮", SimColors.Blue, Modifier.weight(1f)) { state.stepBack() }
-            TransportButton(if (state.playing) "⏸" else "▶", SimColors.Green, Modifier.weight(1.4f)) { state.togglePlay() }
-            TransportButton("⏭", SimColors.Blue, Modifier.weight(1f)) { state.stepForward() }
+            TransportButton(Icons.Filled.Refresh, "Reset", SimColors.Grey, Modifier.weight(1f)) { state.reset() }
+            TransportButton(Icons.Filled.SkipPrevious, "Step back", SimColors.Blue, Modifier.weight(1f)) { state.stepBack() }
+            TransportButton(
+                if (state.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                if (state.playing) "Pause" else "Play",
+                SimColors.Green,
+                Modifier.weight(1.4f),
+                iconSize = 30.dp,
+            ) { state.togglePlay() }
+            TransportButton(Icons.Filled.SkipNext, "Step forward", SimColors.Blue, Modifier.weight(1f)) { state.stepForward() }
         }
         Slider(
             value = state.speedMs,
@@ -103,11 +122,25 @@ fun PlaybackTransport(state: PlaybackState, modifier: Modifier = Modifier) {
     }
 }
 
+// Icon-only transport control. Material3's default pill shape + 24dp content padding left the glyph
+// stranded in the middle of a wide button, so the shape/height/padding come from the design mock's
+// `btn()` (radius 12, tight vertical padding) and the icon is sized explicitly.
 @Composable
-private fun TransportButton(label: String, color: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun TransportButton(
+    icon: ImageVector,
+    contentDescription: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+    iconSize: Dp = 26.dp,
+    onClick: () -> Unit,
+) {
     Button(
         onClick = onClick,
         colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = Color.White),
-        modifier = modifier,
-    ) { Text(label) }
+        shape = RoundedCornerShape(12.dp),
+        contentPadding = PaddingValues(0.dp),
+        modifier = modifier.height(44.dp),
+    ) {
+        Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(iconSize))
+    }
 }
