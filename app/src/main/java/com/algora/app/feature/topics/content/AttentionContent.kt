@@ -3,6 +3,9 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +14,25 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val attentionContent = TopicContent(
     topicId = "attention",
+    figure = Figure(
+        caption = "One row per output word, one column per input word, and the row sums to 1 — so every " +
+            "output is an explicit mixture of the whole input rather than of one fixed summary vector. " +
+            "That is the seq2seq bottleneck fixed. The outlined cell is the payoff: English \"sat\" is " +
+            "the fourth French word, and the model finds it there without anything in the architecture " +
+            "telling it that word order differs between the two languages.",
+        shape = FigureShape.Heatmap(
+            values = listOf(
+                listOf(0.80f, 0.10f, 0.05f, 0.05f),
+                listOf(0.10f, 0.85f, 0.03f, 0.02f),
+                listOf(0.02f, 0.05f, 0.25f, 0.68f),
+                listOf(0.03f, 0.05f, 0.55f, 0.37f),
+            ),
+            rowLabels = listOf("the", "cat", "sat", "down"),
+            colLabels = listOf("le", "chat", "s'est", "assis"),
+            marks = listOf(FigureCell(2, 3)),
+            legend = "darker = more of that output came from this input",
+        ),
+    ),
     whatIsIt = listOf(
         "Attention lets a model focus on the most relevant parts of the input when producing each output, weighting every input element by how much it matters right now.",
         "It began as a fix for the seq2seq bottleneck — instead of cramming a whole sentence into one vector, the decoder looks back at all encoder states — and became the core of the Transformer.",

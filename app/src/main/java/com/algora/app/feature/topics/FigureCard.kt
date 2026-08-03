@@ -74,6 +74,7 @@ internal fun FigureCard(figure: Figure, modifier: Modifier = Modifier) {
                 is FigureShape.Graph -> GraphFigure(shape)
                 is FigureShape.Plot -> PlotFigure(shape)
                 is FigureShape.LayerStack -> LayerStackFigure(shape)
+                is FigureShape.Heatmap -> HeatmapFigure(shape)
             }
             Text(
                 figure.caption,
@@ -736,6 +737,92 @@ private fun LayerStackFigure(shape: FigureShape.LayerStack) {
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
                 color = toneColor(FigureTone.Accent),
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+    }
+}
+
+// Square cells, not cells that stretch to the card. An attention matrix read as a rectangle
+// misrepresents the symmetry of the thing — the diagonal stops being a diagonal.
+@Composable
+private fun HeatmapFigure(shape: FigureShape.Heatmap) {
+    val textMeasurer = rememberTextMeasurer()
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val ramp = toneColor(shape.tone)
+    val gridColor = muted.copy(alpha = 0.18f)
+    val markColor = toneColor(FigureTone.Accent)
+    val headerStyle = TextStyle(color = muted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+
+    val rows = shape.values.size
+    val cols = shape.values.maxOf { it.size }
+    val hasRowLabels = shape.rowLabels.isNotEmpty()
+    val hasColLabels = shape.colLabels.isNotEmpty()
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(26.dp * rows + if (hasColLabels) 16.dp else 0.dp),
+        ) {
+            val labelWidth = if (hasRowLabels) size.width * 0.16f else 0f
+            val labelHeight = if (hasColLabels) size.height * 0.14f else 0f
+            val cell = minOf((size.width - labelWidth) / cols, (size.height - labelHeight) / rows)
+            // Left-aligned under the row labels rather than centred: a wide card would otherwise
+            // float the matrix away from the names down its side.
+            val originX = labelWidth
+            val originY = labelHeight
+
+            if (hasColLabels) {
+                shape.colLabels.forEachIndexed { col, text ->
+                    val layout = textMeasurer.measure(text, headerStyle)
+                    drawText(
+                        layout,
+                        topLeft = Offset(
+                            originX + (col + 0.5f) * cell - layout.size.width / 2f,
+                            labelHeight / 2f - layout.size.height / 2f,
+                        ),
+                    )
+                }
+            }
+
+            shape.values.forEachIndexed { row, cells ->
+                if (hasRowLabels && row < shape.rowLabels.size) {
+                    val layout = textMeasurer.measure(shape.rowLabels[row], headerStyle)
+                    drawText(
+                        layout,
+                        topLeft = Offset(
+                            labelWidth - layout.size.width - 4f,
+                            originY + (row + 0.5f) * cell - layout.size.height / 2f,
+                        ),
+                    )
+                }
+                cells.forEachIndexed { col, value ->
+                    val topLeft = Offset(originX + col * cell, originY + row * cell)
+                    drawRect(gridColor, topLeft = topLeft, size = Size(cell - 1.5f, cell - 1.5f), style = Stroke(1f))
+                    drawRect(
+                        color = ramp.copy(alpha = value.coerceIn(0f, 1f) * 0.9f),
+                        topLeft = topLeft,
+                        size = Size(cell - 1.5f, cell - 1.5f),
+                    )
+                }
+            }
+
+            shape.marks.forEach { mark ->
+                drawRect(
+                    color = markColor,
+                    topLeft = Offset(originX + mark.col * cell, originY + mark.row * cell),
+                    size = Size(cell - 1.5f, cell - 1.5f),
+                    style = Stroke(width = 2f),
+                )
+            }
+        }
+
+        shape.legend?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.labelSmall,
+                color = muted,
                 modifier = Modifier.padding(top = 6.dp),
             )
         }

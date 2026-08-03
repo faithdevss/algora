@@ -3,6 +3,9 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +14,32 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val positionalEncodingsContent = TopicContent(
     topicId = "positional_encodings",
+    figure = Figure(
+        caption = "Four absolute positions, and the rows are identical — the dot product of two " +
+            "sinusoidal encodings depends only on the offset between them, with a measured spread of " +
+            "0.0000 across these rows. Relative distance is available to attention without ever being " +
+            "stored. What the outlined column shows is the part the smooth curves in most diagrams get " +
+            "wrong: the similarity falls to offset 3 and then rises again at 4, 5 and 6, because it is " +
+            "a sum of cosines at different frequencies. \"Nearby positions look similar\" is true on " +
+            "average and false pointwise, and fixing that is what RoPE and ALiBi are for.",
+        shape = FigureShape.Heatmap(
+            values = listOf(
+                listOf(1f, 0.72f, 0.45f, 0.28f, 0.34f, 0.41f, 0.47f),
+                listOf(1f, 0.72f, 0.45f, 0.28f, 0.34f, 0.41f, 0.47f),
+                listOf(1f, 0.72f, 0.45f, 0.28f, 0.34f, 0.41f, 0.47f),
+                listOf(1f, 0.72f, 0.45f, 0.28f, 0.34f, 0.41f, 0.47f),
+            ),
+            rowLabels = listOf("pos 0", "pos 4", "pos 8", "pos 12"),
+            colLabels = listOf("+0", "+1", "+2", "+3", "+4", "+5", "+6"),
+            marks = listOf(
+                FigureCell(0, 3),
+                FigureCell(1, 3),
+                FigureCell(2, 3),
+                FigureCell(3, 3),
+            ),
+            legend = "dot product with the encoding this many positions away",
+        ),
+    ),
     whatIsIt = listOf(
         "Self-attention is permutation-equivariant: shuffle the input tokens and the output representations shuffle with them, otherwise unchanged. \"the cat sat\" and \"sat cat the\" are the same computation. Order has to be injected as part of the input, because the mechanism itself provably cannot see it — and every difference between the schemes below is a different answer to how.",
         "The original transformer adds a fixed sinusoid per dimension pair, with wavelengths in geometric progression from 2π to 10000·2π, so early dimensions cycle every few positions and late ones barely move across the whole sequence. The property that makes it work is that the dot product of two encodings depends only on the *offset* between them: measured across absolute positions 0, 4, 8 and 12, the spread for a fixed offset is 0.0000 to floating-point precision. Relative distance becomes available to attention without ever being stored.",

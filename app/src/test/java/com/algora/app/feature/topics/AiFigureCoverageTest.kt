@@ -35,6 +35,8 @@ class AiFigureCoverageTest {
         "cross_entropy_loss", "mse", "hinge_loss",
         // A3 — architectures, on the new LayerStack shape.
         "mlp", "cnn", "transformers", "backpropagation", "batch_normalization", "dropout", "gans", "vae",
+        // A4 — attention, on the new Heatmap shape.
+        "attention", "multi_head_attention", "self_cross_attention", "positional_encodings",
     )
 
     @Test
@@ -52,6 +54,6 @@ class AiFigureCoverageTest {
     @Test
     fun `the pilot is the size the phase was scoped against`() {
         // Keeps the batch table in docs/plan/phase-12-ai-figures.md verifiable rather than folklore.
-        assertEquals(22, pilotFigures.size)
+        assertEquals(26, pilotFigures.size)
     }
 }

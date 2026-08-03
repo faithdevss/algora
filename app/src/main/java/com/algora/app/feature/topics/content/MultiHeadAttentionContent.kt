@@ -3,6 +3,9 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +14,27 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val multiHeadAttentionContent = TopicContent(
     topicId = "multi_head_attention",
+    figure = Figure(
+        caption = "One row per head, one distribution each — and that is what the split actually buys. " +
+            "A single head emits one distribution per query, so attending to two positions at once " +
+            "means splitting the mass and receiving a blend of both values: the best it manages on that " +
+            "task is α = 0.50 and 0.697 relative error, where two heads do it exactly. It buys nothing " +
+            "in parameters (four d×d matrices at any head count — 16,384 at d = 64, whether h is 1 or " +
+            "16) and it costs rank: each head is capped at d/h, so at h = 16 the error on a rank-12 " +
+            "pattern is 37.1%.",
+        shape = FigureShape.Heatmap(
+            values = listOf(
+                listOf(0.05f, 0.75f, 0.10f, 0.03f, 0.02f, 0.02f, 0.02f, 0.01f),
+                listOf(0.02f, 0.03f, 0.08f, 0.70f, 0.10f, 0.03f, 0.02f, 0.02f),
+                listOf(0.02f, 0.02f, 0.03f, 0.05f, 0.12f, 0.68f, 0.06f, 0.02f),
+                listOf(0.10f, 0.12f, 0.13f, 0.13f, 0.13f, 0.13f, 0.13f, 0.13f),
+            ),
+            rowLabels = listOf("head 1", "head 2", "head 3", "head 4"),
+            colLabels = listOf("1", "2", "3", "4", "5", "6", "7", "8"),
+            marks = listOf(FigureCell(0, 1), FigureCell(1, 3), FigureCell(2, 5)),
+            legend = "same query, same step — three sharp reads and one head watching everything",
+        ),
+    ),
     whatIsIt = listOf(
         "Multi-head attention splits the model dimension into h slices, runs the same scaled dot-product attention inside each one, and concatenates the results. The first thing to be precise about is the cost, because it is nothing: Q, K, V and the output projection are four d×d matrices at every head count. At d = 64 that is 16,384 parameters whether h is 1 or 16. Heads are a partition of a fixed budget, not an addition to it.",
         "The usual explanation — that a single head cannot represent as many patterns — is a rank argument, and at realistic widths it is the wrong way round. A head's score matrix is QKᵀ with an inner dimension of d/h, so its rank is capped at d/h; a *single* head has the full d and can represent anything a short sequence needs. The rank ceiling only bites when heads get thin: fitting four summed alignment patterns needs rank 12, and at h = 8 each head has 8 dimensions and 13.4% error, at h = 16 it has 4 and 37.1%. Too many heads is a real failure mode.",

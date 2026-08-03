@@ -311,4 +311,35 @@ class FigureShapeTest {
         }
         assertTrue(problems.joinToString("\n"), problems.isEmpty())
     }
+
+    @Test
+    fun `every heatmap is a rectangle of intensities`() {
+        val problems = figures.mapNotNull { (id, figure) ->
+            val heatmap = figure.shape as? FigureShape.Heatmap ?: return@mapNotNull null
+            val faults = buildList {
+                if (heatmap.values.isEmpty()) add("no rows")
+                val width = heatmap.values.firstOrNull()?.size ?: 0
+                if (width == 0) add("no columns")
+                if (heatmap.values.any { it.size != width }) add("ragged rows — the cells would not line up")
+                // The ramp has no scale of its own, so a value above 1 is not "hotter", it is clamped
+                // and silently equal to every other value above 1.
+                heatmap.values.flatten().filterNot { it in 0f..1f }.forEach {
+                    add("value $it is outside the 0..1 ramp")
+                }
+                if (heatmap.rowLabels.isNotEmpty() && heatmap.rowLabels.size != heatmap.values.size) {
+                    add("${heatmap.rowLabels.size} row labels for ${heatmap.values.size} rows")
+                }
+                if (heatmap.colLabels.isNotEmpty() && heatmap.colLabels.size != width) {
+                    add("${heatmap.colLabels.size} column labels for $width columns")
+                }
+                heatmap.marks.forEach { mark ->
+                    if (mark.row !in heatmap.values.indices || mark.col !in 0 until width) {
+                        add("mark at (${mark.row}, ${mark.col}) is off the matrix")
+                    }
+                }
+            }
+            if (faults.isEmpty()) null else "$id: ${faults.joinToString("; ")}"
+        }
+        assertTrue(problems.joinToString("\n"), problems.isEmpty())
+    }
 }

@@ -130,6 +130,26 @@ sealed interface FigureShape {
         /** When set, a return arrow runs back along the stack carrying this label — "∂L/∂w". */
         val backwardLabel: String? = null,
     ) : FigureShape
+
+    /**
+     * A matrix drawn as intensity rather than as numbers. [Grid] can hold the same values, but it
+     * reads them one cell at a time — and the question an attention matrix, a confusion matrix or a
+     * positional dot-product table is asked is where the mass *is*, which is a pattern across all the
+     * cells at once.
+     *
+     * [values] are 0f..1f intensities, not raw magnitudes: the ramp has no scale of its own, so the
+     * caption is where a reader learns what 1.0 meant.
+     */
+    data class Heatmap(
+        val values: List<List<Float>>,
+        val rowLabels: List<String> = emptyList(),
+        val colLabels: List<String> = emptyList(),
+        /** The single hue the ramp runs to; 0f fades to nothing rather than to a second colour. */
+        val tone: FigureTone = FigureTone.Primary,
+        /** Outlined cells — the argmax, the diagonal, the half a causal mask removes. */
+        val marks: List<FigureCell> = emptyList(),
+        val legend: String? = null,
+    ) : FigureShape
 }
 
 data class FigureLayer(

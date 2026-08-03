@@ -3,6 +3,8 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureShape
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +13,25 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val selfCrossAttentionContent = TopicContent(
     topicId = "self_cross_attention",
+    figure = Figure(
+        caption = "The matrix is not square, and that is the entire difference. Self-attention draws Q, " +
+            "K and V from one sequence, so its matrix is n×n and every position refines itself using " +
+            "the rest. Cross-attention takes Q from what is being generated and K, V from somewhere " +
+            "else, so the shape follows the two lengths — the decoder is reading the encoder. Same " +
+            "softmax(QKᵀ/√d)·V either way. Replacing one fixed handover vector with this took the copy " +
+            "task from 0.292 to 0.867, and matching the parameter counts did not close the gap.",
+        shape = FigureShape.Heatmap(
+            values = listOf(
+                listOf(0.72f, 0.14f, 0.05f, 0.04f, 0.03f, 0.02f),
+                listOf(0.12f, 0.70f, 0.10f, 0.04f, 0.02f, 0.02f),
+                listOf(0.05f, 0.12f, 0.68f, 0.10f, 0.03f, 0.02f),
+                listOf(0.03f, 0.05f, 0.12f, 0.65f, 0.10f, 0.05f),
+            ),
+            rowLabels = listOf("y₁", "y₂", "y₃", "y₄"),
+            colLabels = listOf("x₁", "x₂", "x₃", "x₄", "x₅", "x₆"),
+            legend = "rows: decoder queries · columns: encoder keys — every score exists, which is the quadratic cost",
+        ),
+    ),
     whatIsIt = listOf(
         "Self-attention and cross-attention are the same operation. Score every query against every key, softmax the scores, return that weighted mixture of the values — softmax(QKᵀ/√d)·V, identically in both cases. What differs is only where the three come from. In self-attention Q, K and V are all projections of one sequence, so every position is refining its own representation using the rest of the sequence. In cross-attention the queries come from the sequence being generated and the keys and values from a different one, so the decoder is reading the encoder.",
         "That distinction is what turns an encoder-decoder from a bottleneck into an architecture. The encoder-decoder topic measures a fixed context vector failing: on a copy task it scores 0.292 exact match, collapsing to zero by length four, and a linear probe shows the vector holds only what the encoder read last. This lab retrains the same model, on the same 120 pairs, for the same 100 epochs, with cross-attention in place of that single handover — and it scores 0.867, with the per-length curve flat until the very end. The decoder no longer has to receive the source; it can go and look.",
