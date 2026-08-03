@@ -23,11 +23,10 @@ internal val gansContent = TopicContent(
             "is this dependency, not a bad hyperparameter.",
         shape = FigureShape.LayerStack(
             layers = listOf(
-                FigureLayer("z ~ N(0, I)", "noise"),
-                FigureLayer("generator", null, FigureTone.Primary),
-                FigureLayer("fake sample", "beside a real one"),
-                FigureLayer("discriminator", null, FigureTone.Warn),
-                FigureLayer("real or fake", null, FigureTone.Accent),
+                FigureLayer("z", "noise"),
+                FigureLayer("generator", "never sees real data", FigureTone.Primary),
+                FigureLayer("discriminator", "fake beside real", FigureTone.Warn),
+                FigureLayer("real or fake", "one verdict", FigureTone.Accent),
             ),
             horizontal = true,
             backwardLabel = "the generator's only gradient",

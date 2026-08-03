@@ -6,7 +6,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -677,12 +679,22 @@ private fun LayerStackFigure(shape: FigureShape.LayerStack) {
         Column(
             modifier = modifier
                 .background(tone.copy(alpha = 0.16f), RoundedCornerShape(9.dp))
-                .padding(horizontal = 8.dp, vertical = 7.dp),
+                .padding(horizontal = if (shape.horizontal) 2.dp else 8.dp, vertical = 7.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
             Text(
                 layer.label,
-                style = MaterialTheme.typography.labelMedium,
+                // A quarter of the card is not much room for a word like "discriminator", and Compose
+                // breaks mid-word rather than overflowing — "discri / minat / or". The smaller style
+                // is what keeps a horizontal block's name on one line.
+                style = if (shape.horizontal) {
+                    // 10sp, not labelSmall's 11: a quarter of a 1080px card leaves about 185px of
+                    // usable width, and "discriminator" needs every one of them.
+                    MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp)
+                } else {
+                    MaterialTheme.typography.labelMedium
+                },
                 fontWeight = FontWeight.Bold,
                 color = if (layer.tone == FigureTone.Muted) {
                     MaterialTheme.colorScheme.onSurface
@@ -712,13 +724,15 @@ private fun LayerStackFigure(shape: FigureShape.LayerStack) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         if (shape.horizontal) {
+            // IntrinsicSize.Min so every block is as tall as the tallest one. Without it each column
+            // sizes to its own text and the row reads as a ragged staircase rather than a pipeline.
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 shape.layers.forEachIndexed { index, layer ->
-                    Block(layer, Modifier.weight(1f))
+                    Block(layer, Modifier.weight(1f).fillMaxHeight())
                     if (index != shape.layers.lastIndex) Flow("→")
                 }
             }

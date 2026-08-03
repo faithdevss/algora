@@ -297,7 +297,9 @@ class FigureShapeTest {
             val faults = buildList {
                 // One block is a box, not an architecture — the flow between them is the figure.
                 if (stack.layers.size < 2) add("${stack.layers.size} layer(s)")
-                val limit = if (stack.horizontal) 5 else 8
+                // Four horizontal blocks was the emulator's answer, not a guess: five put
+                // "discriminator" into three broken lines on a 1080px screen.
+                val limit = if (stack.horizontal) 4 else 8
                 if (stack.layers.size > limit) {
                     add("${stack.layers.size} layers — ${if (stack.horizontal) "a row" else "a column"} fits $limit")
                 }
