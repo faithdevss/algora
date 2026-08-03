@@ -117,6 +117,8 @@ private val quizTopics = listOf(
     topic("unsupervised_learning_quiz", "Unsupervised Learning Quiz", topicQuizzes, "Clustering assumptions and dimensionality reduction."),
     topic("computer_vision_quiz", "Computer Vision Quiz", topicQuizzes, "Convolutions, receptive fields, detection and segmentation."),
     topic("data_preprocessing_quiz", "Data Preprocessing Quiz", topicQuizzes, "Imputation, encoding, scaling, imbalance and leakage."),
+    topic("optimizers_training_quiz", "Optimizers & Training Quiz", topicQuizzes, "Momentum, adaptive rates, schedules and the losses they minimize."),
+    topic("activation_functions_quiz", "Activation Functions Quiz", topicQuizzes, "ReLU, sigmoid, GELU and the saturation, dead-unit trade-offs."),
 )
 
 // AI-mode interview rounds, mirroring the DSA mock + system-design pair.

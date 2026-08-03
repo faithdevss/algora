@@ -34,6 +34,9 @@ object QuizRegistry {
         "computer_vision_quiz" to computerVisionQuiz,
         "data_preprocessing_quiz" to dataPreprocessingQuiz,
         "ai_ml_mock_interview" to aiMockInterview,
+        // Third AI batch (QuizContentAiTraining.kt)
+        "optimizers_training_quiz" to optimizersTrainingQuiz,
+        "activation_functions_quiz" to activationFunctionsQuiz,
     )
 
     fun get(topicId: String): Quiz? = quizzes[topicId]

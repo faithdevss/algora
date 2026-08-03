@@ -1,9 +1,9 @@
 # Play Store listing — Algora
 
 Copy-paste source for the Play Console listing, plus an inventory of the graphics in this folder.
-Every number quoted below is read out of the registries at build time (versionName `0.1.80`), not
-estimated: 423 authored topics each with a runnable lab, 102 practice problems, 27 timed quizzes
-(159 questions), and 1,976 flashcards.
+Every number quoted below is read out of the registries at build time (versionName `0.1.122`), not
+estimated: 504 authored topics each with a runnable lab, 102 practice problems, 29 timed quizzes
+(171 questions), and 2,414 flashcards.
 
 **Re-check the counts before every upload.** They come from `TopicContentProvider.all`,
 `TopicContentProvider.runnableSimulations`, `ProblemRegistry.all`, `QuizRegistry.all` and
@@ -16,7 +16,7 @@ misrepresentation Play can act on.
 
 | Field | Value |
 |---|---|
-| App name | `Algora` |
+| App name | `Algora: DSA, Algorithms & AI` |
 | Package | `com.algora.app` |
 | Category | Education |
 | Tags | Computer science, Programming, Interview prep, Machine learning |
@@ -32,7 +32,7 @@ misrepresentation Play can act on.
 Max 80 characters. Current: 75.
 
 ```
-Learn algorithms and AI through 423 labs you can run — offline, no account.
+Learn algorithms and AI through 504 labs you can run — offline, no account.
 ```
 
 Alternates, if the first reads too dense:
@@ -42,21 +42,21 @@ Data structures, algorithms and AI — every topic has a lab you can run.
 ```
 
 ```
-See how algorithms actually work: 423 interactive labs, offline and ad-light.
+See how algorithms actually work: 504 interactive labs, offline and ad-light.
 ```
 
 ---
 
 ## Full description
 
-Max 4000 characters. Current: 2980.
+Max 4000 characters. Current: 3471.
 
 ```
 Most algorithm apps hand you a wall of text and a code sample. Algora hands you the thing itself —
 a linked list you can insert into, a graph you can run BFS across, a regression line you can drag
 until the error stops shrinking.
 
-423 topics across two tracks, and every single one ships with an interactive lab.
+504 topics across two tracks, and every single one ships with an interactive lab.
 
 DSA TRACK
 • Data structures — arrays, strings, linked lists, stacks, queues, hash tables, trees, heaps, tries,
@@ -89,7 +89,7 @@ PRACTICE, NOT JUST READING
 • 102 problems grouped by pattern, each with examples, constraints, progressive hints, an approach
   walk-through with complexity, and a full Kotlin solution
 • Every problem lists the topics it depends on, linked, so a gap sends you straight to the fix
-• 27 timed quizzes — mock interview rounds, company-flavoured sets, and per-subject drills across
+• 29 timed quizzes — mock interview rounds, company-flavoured sets, and per-subject drills across
   both tracks, from arrays and bit manipulation to transformers and computer vision
 • Spaced-repetition flashcards on an SM-2 schedule, capped at 20 new cards a day so a keen first
   session doesn't bury you a week later — including curated interview decks for complexities,
@@ -123,9 +123,9 @@ Max 500 characters.
 ```
 First release.
 
-• 423 topics across DSA and AI, each with an interactive lab
+• 504 topics across DSA and AI, each with an interactive lab
 • 102 pattern-grouped practice problems with hints and worked solutions
-• 27 timed quizzes and SM-2 scheduled flashcards, including curated interview decks
+• 29 timed quizzes and SM-2 scheduled flashcards, including curated interview decks
 • 20 pattern guides, 20 behavioural prompts and two system design primers
 • A progress dashboard with per-day activity and milestones
 • Fully offline — no account, no server
@@ -164,7 +164,7 @@ the 6 completed topics behind the progress numbers were completed by hand before
 | 1 | `01-home-dsa.png` | Home, DSA track — featured lab, continue, category grid | Two tracks. One tap to the lab. |
 | 2 | `02-topic-detail.png` | Array topic — hero plus How Does It Work steps | Every topic explains itself first |
 | 3 | `03-lab-linked-list.png` | Linked-list visualiser with insert/delete/search | Then hands you the controls |
-| 4 | `04-simulations-catalog.png` | Catalog of all 423 labs | 423 labs, all runnable offline |
+| 4 | `04-simulations-catalog.png` | Catalog of all 504 labs | 504 labs, all runnable offline |
 | 5 | `05-problem-detail.png` | Problem with examples and prerequisite topics | Problems that link back to the theory |
 | 6 | `06-timed-quiz.png` | Timed mock interview, question 1 of 6 | Timed rounds under a real clock |
 | 7 | `07-flashcards.png` | Revealed card with Again / Good / Easy | Recall on an SM-2 schedule |
