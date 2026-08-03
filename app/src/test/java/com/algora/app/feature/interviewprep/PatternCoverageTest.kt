@@ -75,10 +75,7 @@ class PatternCoverageTest {
         "game_theory_dp_pattern",
         "graph_coloring_pattern",
         "greedy_exchange_pattern",
-        "grid_dp_pattern",
         "hash_counting_pattern",
-        "interval_dp_pattern",
-        "knapsack_dp_pattern",
         "matrix_transform_pattern",
         "meet_in_middle_pattern",
         "memo_recursion_pattern",
@@ -86,7 +83,6 @@ class PatternCoverageTest {
         "multi_source_bfs_pattern",
         "prefix_2d_pattern",
         "shortest_path_pattern",
-        "state_machine_dp_pattern",
     )
 
     private fun hasOwnConfig(topicId: String): Boolean {

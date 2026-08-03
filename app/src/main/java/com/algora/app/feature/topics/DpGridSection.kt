@@ -622,7 +622,262 @@ private fun longestCommonSubstringFrames(): List<DpFrame> {
     return bld.frames
 }
 
+// ── Interview-prep pattern guides ────────────────────────────────────────────
+// The algorithm topics already own one table each (edit distance, coin change, matrix chain). These
+// four are the pattern-level framings: the take-it-or-leave-it decision, the grid proper, ranges
+// filled by length, and a table whose rows are modes rather than positions.
+
+private val knapsackItems = listOf(2 to 3, 3 to 4, 4 to 5, 5 to 6)   // (weight, value)
+private const val KNAPSACK_CAPACITY = 5
+
+private fun knapsackDpPatternFrames(): List<DpFrame> {
+    val rows = knapsackItems.size + 1
+    val cols = KNAPSACK_CAPACITY + 1
+    val bld = DpBuilder(rows, cols)
+    val dp = Array(rows) { IntArray(cols) }
+
+    for (i in 0 until rows) {
+        for (c in 0 until cols) {
+            val status: String
+            dp[i][c] = when {
+                i == 0 -> {
+                    status = "dp[0][$c] = 0 — no items considered yet, so no value at any capacity."
+                    0
+                }
+                else -> {
+                    val (weight, value) = knapsackItems[i - 1]
+                    val skip = dp[i - 1][c]
+                    if (weight > c) {
+                        status = "Item $i weighs $weight, more than capacity $c — the take branch is illegal, so " +
+                            "dp[$i][$c] = dp[${i - 1}][$c] = $skip."
+                        skip
+                    } else {
+                        val take = value + dp[i - 1][c - weight]
+                        status = "Item $i (w$weight, v$value) at capacity $c: skip = $skip, take = $value + " +
+                            "dp[${i - 1}][${c - weight}] = $take. " +
+                            if (take > skip) "Taking wins." else "Skipping wins — the capacity it costs is worth more elsewhere."
+                        maxOf(skip, take)
+                    }
+                }
+            }
+            bld.fill(i, c, dp[i][c].toString(), status)
+        }
+    }
+
+    var i = knapsackItems.size
+    var c = KNAPSACK_CAPACITY
+    val path = mutableListOf(bld.key(i, c))
+    val chosen = mutableListOf<Int>()
+    while (i > 0) {
+        val weight = knapsackItems[i - 1].first
+        if (dp[i][c] == dp[i - 1][c]) {
+            i--
+        } else {
+            chosen += i
+            i--
+            c -= weight
+        }
+        path.add(bld.key(i, c))
+    }
+    bld.trace(path) {
+        "Traceback: a cell equal to the one above it means that item was skipped; a drop of its weight means it was " +
+            "taken. Items ${chosen.reversed().joinToString(" and ")} give value ${dp[knapsackItems.size][KNAPSACK_CAPACITY]}."
+    }
+    return bld.frames
+}
+
+private val gridDpCosts = listOf(
+    listOf(1, 3, 1, 2),
+    listOf(1, 5, 1, 3),
+    listOf(4, 2, 1, 1),
+)
+
+private fun gridDpPatternFrames(): List<DpFrame> {
+    val rows = gridDpCosts.size
+    val cols = gridDpCosts[0].size
+    val bld = DpBuilder(rows, cols)
+    val dp = Array(rows) { IntArray(cols) }
+
+    for (r in 0 until rows) {
+        for (c in 0 until cols) {
+            val cost = gridDpCosts[r][c]
+            val status: String
+            dp[r][c] = when {
+                r == 0 && c == 0 -> {
+                    status = "dp[0][0] = $cost — the start cell is its own cost, nothing to choose."
+                    cost
+                }
+                r == 0 -> {
+                    status = "Top row: the only way in is from the left, so dp[0][$c] = dp[0][${c - 1}] + $cost = " +
+                        "${dp[0][c - 1] + cost}. No max or min appears until a cell has two ways in."
+                    dp[0][c - 1] + cost
+                }
+                c == 0 -> {
+                    status = "Left column: only reachable from above — dp[$r][0] = dp[${r - 1}][0] + $cost = " +
+                        "${dp[r - 1][0] + cost}."
+                    dp[r - 1][0] + cost
+                }
+                else -> {
+                    val up = dp[r - 1][c]
+                    val leftCell = dp[r][c - 1]
+                    status = "dp[$r][$c] = $cost + min(up $up, left $leftCell) = ${cost + minOf(up, leftCell)}. Both " +
+                        "dependencies are already written, which is the whole reason for sweeping rows left to right."
+                    cost + minOf(up, leftCell)
+                }
+            }
+            bld.fill(r, c, dp[r][c].toString(), status)
+        }
+    }
+
+    var r = rows - 1
+    var c = cols - 1
+    val path = mutableListOf(bld.key(r, c))
+    while (r > 0 || c > 0) {
+        when {
+            r == 0 -> c--
+            c == 0 -> r--
+            dp[r - 1][c] <= dp[r][c - 1] -> r--
+            else -> c--
+        }
+        path.add(bld.key(r, c))
+    }
+    bld.trace(path.reversed()) {
+        "Traceback from the corner: at each step, the neighbour whose value the cell was built from. Cheapest path " +
+            "costs ${dp[rows - 1][cols - 1]}."
+    }
+    return bld.frames
+}
+
+private val balloonNums = listOf(3, 1, 5, 8)
+private val balloonPadded = listOf(1) + balloonNums + listOf(1)
+
+private fun intervalDpPatternFrames(): List<DpFrame> {
+    val n = balloonPadded.size
+    val bld = DpBuilder(n, n)
+    val dp = Array(n) { IntArray(n) }
+
+    bld.fill(0, 0, "0", "Burst balloons: dp[i][j] is the best score from the balloons strictly *between* i and j, " +
+        "with i and j still standing. Ranges of width 1 hold nothing, so they score 0.")
+
+    for (len in 2 until n) {
+        for (i in 0..n - 1 - len) {
+            val j = i + len
+            var best = 0
+            var bestK = i + 1
+            for (k in i + 1 until j) {
+                val candidate = dp[i][k] + dp[k][j] + balloonPadded[i] * balloonPadded[k] * balloonPadded[j]
+                if (candidate > best) {
+                    best = candidate
+                    bestK = k
+                }
+            }
+            dp[i][j] = best
+            bld.fill(
+                i, j, best.toString(),
+                "Range ($i, $j), width $len: the balloon that bursts *last* is $bestK. Its neighbours are then i and " +
+                    "j themselves — ${balloonPadded[i]} × ${balloonPadded[bestK]} × ${balloonPadded[j]} = " +
+                    "${balloonPadded[i] * balloonPadded[bestK] * balloonPadded[j]} — plus the two sub-ranges " +
+                    "dp[$i][$bestK] = ${dp[i][bestK]} and dp[$bestK][$j] = ${dp[bestK][j]}, both already filled " +
+                    "because they are shorter. Total $best.",
+            )
+        }
+    }
+
+    bld.fill(
+        0, n - 1, dp[0][n - 1].toString(),
+        "dp[0][${n - 1}] = ${dp[0][n - 1]} over the whole padded array. Choosing what bursts *first* would leave two " +
+            "halves whose neighbours are not yet known — choosing what bursts *last* is what makes the split " +
+            "independent. Filling by length, shortest first, is the only order that has the sub-ranges ready.",
+    )
+    return bld.frames
+}
+
+private val stockPrices = listOf(1, 2, 3, 0, 2)
+private val stockModes = listOf("hold", "sold", "rest")
+
+private fun stateMachineDpPatternFrames(): List<DpFrame> {
+    val days = stockPrices.size
+    val bld = DpBuilder(rows = stockModes.size, cols = days)
+    val hold = IntArray(days)
+    val sold = IntArray(days)
+    val rest = IntArray(days)
+
+    hold[0] = -stockPrices[0]
+    bld.fill(0, 0, hold[0].toString(), "Three modes after each day: holding a share, having just sold (which forces " +
+        "tomorrow's cooldown), or resting free to buy. Day 0 holding means having bought at ${stockPrices[0]}, so " +
+        "the balance is ${hold[0]}.")
+    bld.fill(1, 0, "0", "Selling on day 0 is meaningless with nothing held — 0.")
+    bld.fill(2, 0, "0", "Resting on day 0 costs nothing — 0. Every later cell is one of these three plus a move.")
+
+    for (d in 1 until days) {
+        val price = stockPrices[d]
+        hold[d] = maxOf(hold[d - 1], rest[d - 1] - price)
+        bld.fill(
+            0, d, hold[d].toString(),
+            "Day $d, price $price. hold = max(keep holding ${hold[d - 1]}, buy today from rest " +
+                "${rest[d - 1]} − $price = ${rest[d - 1] - price}) = ${hold[d]}. Buying is only legal from *rest* — " +
+                "that edge is the cooldown rule, and it is the entire difference from the unrestricted version.",
+        )
+        sold[d] = hold[d - 1] + price
+        bld.fill(
+            1, d, sold[d].toString(),
+            "sold = hold(yesterday) + $price = ${hold[d - 1]} + $price = ${sold[d]}. There is no choice here: the " +
+                "only way to be in *sold* is to have been holding and sold today.",
+        )
+        rest[d] = maxOf(rest[d - 1], sold[d - 1])
+        bld.fill(
+            2, d, rest[d].toString(),
+            "rest = max(stay resting ${rest[d - 1]}, yesterday's sold ${sold[d - 1]}) = ${rest[d]}. Coming from sold " +
+                "is what serves the cooldown day.",
+        )
+    }
+
+    val answer = maxOf(sold[days - 1], rest[days - 1])
+    bld.trace(listOf(bld.key(1, days - 1), bld.key(2, days - 1))) {
+        "Answer = max(sold, rest) on the last day = $answer — never *hold*, since ending with an unsold share is " +
+            "money left on the table. Three modes × ${days} days, each cell O(1): O(n) time, and rolling each row " +
+            "to a scalar makes it O(1) space."
+    }
+    return bld.frames
+}
+
 private val dpConfigs = mapOf(
+    "knapsack_dp_pattern" to DpConfig(
+        rows = knapsackItems.size + 1, cols = KNAPSACK_CAPACITY + 1,
+        rowHeader = { if (it == 0) "ε" else "w${knapsackItems[it - 1].first}·v${knapsackItems[it - 1].second}" },
+        colHeader = { it.toString() },
+        corner = "cap",
+        intro = "0/1 knapsack, capacity ${KNAPSACK_CAPACITY}. Every cell is one skip-or-take decision, and the " +
+            "traceback reads the chosen items back out of the table.",
+        build = ::knapsackDpPatternFrames,
+    ),
+    "grid_dp_pattern" to DpConfig(
+        rows = gridDpCosts.size, cols = gridDpCosts[0].size,
+        rowHeader = { "r$it" },
+        colHeader = { "c$it" },
+        corner = "min",
+        intro = "Minimum path sum through a ${gridDpCosts.size}×${gridDpCosts[0].size} grid, moving only right or " +
+            "down. The first row and column have one way in; every other cell picks the cheaper of two.",
+        build = ::gridDpPatternFrames,
+    ),
+    "interval_dp_pattern" to DpConfig(
+        rows = balloonPadded.size, cols = balloonPadded.size,
+        rowHeader = { balloonPadded[it].toString() },
+        colHeader = { balloonPadded[it].toString() },
+        corner = "i\\j",
+        intro = "Burst balloons ${balloonNums.joinToString(", ")}, padded with 1s. Only the upper triangle fills, and " +
+            "it fills by range length — every range needs the shorter ones inside it first.",
+        build = ::intervalDpPatternFrames,
+    ),
+    "state_machine_dp_pattern" to DpConfig(
+        rows = stockModes.size, cols = stockPrices.size,
+        rowHeader = { stockModes[it] },
+        colHeader = { stockPrices[it].toString() },
+        corner = "mode",
+        intro = "Stock trading with a cooldown, prices ${stockPrices.joinToString(", ")}. The rows are modes rather " +
+            "than positions — the table *is* the state machine, one column per day.",
+        build = ::stateMachineDpPatternFrames,
+    ),
     "fibonacci_dp" to DpConfig(
         rows = 1, cols = 10,
         rowHeader = { "dp" }, colHeader = { it.toString() }, corner = "i",
