@@ -3921,6 +3921,838 @@ private fun greedyIntervalsFrames(): List<WalkFrame> {
     return frames
 }
 
+private fun heapSchedulingFrames(): List<WalkFrame> {
+    val meetings = listOf(0 to 30, 5 to 10, 6 to 12, 15 to 20, 25 to 35)
+    val sorted = meetings.sortedBy { it.first }
+    val heap = mutableListOf<Int>()
+    val frames = mutableListOf<WalkFrame>()
+    var peak = 0
+
+    fun label(m: Pair<Int, Int>) = "${m.first}–${m.second}"
+
+    fun heapRow(active: Int? = null) = heap.sorted()
+        .map { CellView(it.toString(), if (it == active) CellMark.ACTIVE else CellMark.DONE) }
+        .ifEmpty { listOf(CellView("empty", CellMark.DIM)) }
+
+    frames += WalkFrame(
+        status = "Five meetings, one calendar: how many rooms run at once? The arrival order is fixed by sorting on " +
+            "start time; the heap decides the one thing left to choose — which room is free.",
+        cells = sorted.map { CellView(label(it), CellMark.IDLE) },
+        aux = heapRow(),
+        auxLabel = "min-heap of end times (rooms in use)",
+        intervals = sorted.map { IntervalView(it.first, it.second, CellMark.IDLE) },
+    )
+
+    sorted.forEachIndexed { i, m ->
+        val (start, end) = m
+        val earliest = heap.minOrNull()
+        var reused = false
+        if (earliest != null && earliest <= start) {
+            heap.remove(earliest)
+            reused = true
+        }
+        heap += end
+        peak = maxOf(peak, heap.size)
+        frames += WalkFrame(
+            status = "${label(m)} starts at $start. " + when {
+                earliest == null -> "Nothing is running yet — open the first room, busy until $end."
+                reused -> "The heap's root says a room frees at $earliest ≤ $start, so pop it and reuse that room. " +
+                    "It is now busy until $end, and the room count did not grow."
+                else -> "The earliest room is busy until $earliest, after $start — nothing has retired, so this " +
+                    "meeting needs a room of its own."
+            },
+            cells = sorted.mapIndexed { j, v ->
+                CellView(
+                    label(v),
+                    when {
+                        j == i -> CellMark.ACTIVE
+                        j < i -> CellMark.DONE
+                        else -> CellMark.IDLE
+                    },
+                )
+            },
+            pointers = mapOf(i to "now"),
+            aux = heapRow(active = end),
+            auxLabel = "min-heap of end times (rooms in use)",
+            intervals = sorted.take(i + 1).map {
+                IntervalView(it.first, it.second, if (it == m) CellMark.ACTIVE else CellMark.WINDOW)
+            },
+            readout = "in use = ${heap.size} · peak = $peak",
+        )
+    }
+
+    frames += WalkFrame(
+        status = "The heap never held more than $peak entries, so $peak rooms cover the day. Heap size *is* the " +
+            "concurrency — the same number a sweep line reports as its maximum overlap, reached from the other side.",
+        cells = sorted.map { CellView(label(it), CellMark.RESULT) },
+        aux = heapRow(),
+        auxLabel = "min-heap of end times (rooms in use)",
+        intervals = sorted.map { IntervalView(it.first, it.second, CellMark.RESULT) },
+        readout = "rooms needed = $peak",
+    )
+    return frames
+}
+
+private fun lisTailsFrames(): List<WalkFrame> {
+    val a = listOf(10, 9, 2, 5, 3, 7, 101, 18)
+    val tails = mutableListOf<Int>()
+    val frames = mutableListOf<WalkFrame>()
+
+    fun tailsRow(active: Int? = null) = tails
+        .mapIndexed { i, v -> CellView(v.toString(), if (i == active) CellMark.ACTIVE else CellMark.WINDOW) }
+        .ifEmpty { listOf(CellView("empty", CellMark.DIM)) }
+
+    frames += WalkFrame(
+        status = "tails[k] will hold the smallest value any increasing subsequence of length k+1 can end on. It is " +
+            "not the subsequence — it is the best possible ending for each length seen so far.",
+        cells = a.map { CellView(it.toString(), CellMark.IDLE) },
+        aux = tailsRow(),
+        auxLabel = "tails[k] = smallest tail of a chain of length k+1",
+    )
+
+    a.forEachIndexed { i, x ->
+        val found = tails.indexOfFirst { it >= x }
+        val pos = if (found == -1) tails.size else found
+        val appended = pos == tails.size
+        val replaced = if (appended) null else tails[pos]
+        if (appended) tails += x else tails[pos] = x
+        frames += WalkFrame(
+            status = if (appended) {
+                "$x is larger than every tail, so no existing chain can absorb it — append. The longest chain is now " +
+                    "${tails.size}."
+            } else {
+                "Binary search lands on tails[$pos] = $replaced, the first tail ≥ $x. Overwrite it: a length-${pos + 1} " +
+                    "chain ending on $x leaves more room for what follows than one ending on $replaced. The length is unchanged."
+            },
+            cells = a.mapIndexed { j, v ->
+                CellView(
+                    v.toString(),
+                    when {
+                        j == i -> CellMark.ACTIVE
+                        j < i -> CellMark.DIM
+                        else -> CellMark.IDLE
+                    },
+                )
+            },
+            pointers = mapOf(i to "x"),
+            aux = tailsRow(active = pos),
+            auxLabel = "tails[k] = smallest tail of a chain of length k+1",
+            readout = "LIS length so far = ${tails.size}",
+        )
+    }
+
+    frames += WalkFrame(
+        status = "tails = ${tails.joinToString(", ")} — length ${tails.size}, and that length is the answer. The row " +
+            "itself is not a subsequence of the input: reconstructing one needs a parent index recorded per element.",
+        cells = a.map { CellView(it.toString(), CellMark.DIM) },
+        aux = tails.map { CellView(it.toString(), CellMark.RESULT) },
+        auxLabel = "tails[k] = smallest tail of a chain of length k+1",
+        readout = "LIS = ${tails.size} · one binary search per element, so O(n log n)",
+    )
+    return frames
+}
+
+private fun windowMaxDequeFrames(): List<WalkFrame> {
+    val a = listOf(1, 3, -1, -3, 5, 3, 6, 7)
+    val k = 3
+    val dq = ArrayDeque<Int>()
+    val out = mutableListOf<Int>()
+    val frames = mutableListOf<WalkFrame>()
+
+    fun dequeRow() = dq.map { CellView("a[$it]=${a[it]}", CellMark.WINDOW) }
+        .ifEmpty { listOf(CellView("empty", CellMark.DIM)) }
+
+    frames += WalkFrame(
+        status = "Maximum of every window of width $k. The deque will hold indices whose values decrease front to " +
+            "back, so its front is always the current window's maximum.",
+        cells = a.map { CellView(it.toString(), CellMark.IDLE) },
+        aux = dequeRow(),
+        auxLabel = "deque of indices, values decreasing",
+    )
+
+    a.forEachIndexed { i, x ->
+        val expired = dq.firstOrNull()?.takeIf { it <= i - k }
+        if (expired != null) dq.removeFirst()
+        val dominated = mutableListOf<Int>()
+        while (dq.isNotEmpty() && a[dq.last()] <= x) dominated += dq.removeLast()
+        dq.addLast(i)
+        if (i >= k - 1) out += a[dq.first()]
+
+        val windowStart = maxOf(0, i - k + 1)
+        frames += WalkFrame(
+            status = buildString {
+                append("a[$i] = $x. ")
+                if (expired != null) append("Index $expired has slid out of the window, so drop it from the front. ")
+                if (dominated.isEmpty()) {
+                    append("Nothing at the back is smaller, so $x just joins it.")
+                } else {
+                    append(
+                        "It dominates ${dominated.joinToString(", ") { "a[$it]=${a[it]}" }} — older *and* smaller can " +
+                            "never be the max again, so pop from the back before pushing.",
+                    )
+                }
+                if (i >= k - 1) append(" Window [$windowStart..$i] max = ${a[dq.first()]}, read straight off the front.")
+            },
+            cells = a.mapIndexed { j, v ->
+                CellView(
+                    v.toString(),
+                    when {
+                        j == i -> CellMark.ACTIVE
+                        i >= k - 1 && j == dq.first() -> CellMark.RESULT
+                        j in windowStart..i -> CellMark.WINDOW
+                        else -> CellMark.IDLE
+                    },
+                )
+            },
+            pointers = mapOf(i to "i"),
+            aux = dequeRow(),
+            auxLabel = "deque of indices, values decreasing",
+            readout = if (out.isEmpty()) null else "maxima: ${out.joinToString(", ")}",
+        )
+    }
+
+    frames += WalkFrame(
+        status = "${out.size} window maxima in ${a.size} steps. Every index was pushed once and popped at most once, " +
+            "so the whole scan is O(n) — a heap would be O(n log k) and would still need stale entries filtered out.",
+        cells = out.map { CellView(it.toString(), CellMark.RESULT) },
+        aux = dequeRow(),
+        auxLabel = "deque of indices, values decreasing",
+        readout = "window maxima = ${out.joinToString(", ")}",
+    )
+    return frames
+}
+
+private fun palindromeExpansionFrames(): List<WalkFrame> {
+    val s = "abbanana"
+    val frames = mutableListOf<WalkFrame>()
+
+    // Inclusive span; an even centre that fails on its first comparison comes back empty (second < first).
+    fun expand(lo: Int, hi: Int): Pair<Int, Int> {
+        var l = lo
+        var r = hi
+        while (l >= 0 && r < s.length && s[l] == s[r]) {
+            l--
+            r++
+        }
+        return (l + 1) to (r - 1)
+    }
+
+    fun width(span: Pair<Int, Int>) = span.second - span.first + 1
+    fun text(span: Pair<Int, Int>) = if (width(span) <= 0) "" else s.substring(span.first, span.second + 1)
+
+    var best = 0 to 0
+    var total = 0
+
+    frames += WalkFrame(
+        status = "\"$s\" has ${2 * s.length - 1} centres: ${s.length} characters and ${s.length - 1} gaps between " +
+            "them. Every palindrome is symmetric about one of them, so enumerating centres finds all of them.",
+        cells = s.map { CellView(it.toString(), CellMark.IDLE) },
+    )
+
+    s.indices.forEach { i ->
+        val odd = expand(i, i)
+        val even = expand(i, i + 1)
+        total += (width(odd) + 1) / 2 + (width(even) + 1) / 2
+        val local = if (width(even) > width(odd)) even else odd
+        if (width(local) > width(best)) best = local
+
+        frames += WalkFrame(
+            status = "Centre $i: expanding around the character gives \"${text(odd)}\" (${width(odd)}). " +
+                if (width(even) <= 0) {
+                    "The gap between $i and ${i + 1} fails on its first comparison — skipping it is the classic bug, " +
+                        "not skipping it costs nothing."
+                } else {
+                    "The gap between $i and ${i + 1} gives \"${text(even)}\" (${width(even)}) — the even case earns its keep here."
+                },
+            cells = s.mapIndexed { j, c ->
+                CellView(
+                    c.toString(),
+                    when {
+                        width(local) > 1 && j in local.first..local.second -> CellMark.WINDOW
+                        j == i -> CellMark.ACTIVE
+                        else -> CellMark.IDLE
+                    },
+                )
+            },
+            pointers = mapOf(i to "centre"),
+            aux = (best.first..best.second).map { CellView(s[it].toString(), CellMark.RESULT) },
+            auxLabel = "longest palindrome so far",
+            readout = "best = \"${text(best)}\" (${width(best)}) · palindromic substrings so far = $total",
+        )
+    }
+
+    frames += WalkFrame(
+        status = "Longest is \"${text(best)}\", and the same sweep counted $total palindromic substrings — every " +
+            "expansion step is one more of them. ${2 * s.length - 1} centres × O(n) growth = O(n²) time, O(1) space.",
+        cells = s.mapIndexed { j, c ->
+            CellView(c.toString(), if (j in best.first..best.second) CellMark.RESULT else CellMark.DIM)
+        },
+        readout = "longest = \"${text(best)}\" · count = $total",
+    )
+    return frames
+}
+
+private fun prefixFunctionFrames(): List<WalkFrame> {
+    val s = "abacabab"
+    val pi = IntArray(s.length)
+    val frames = mutableListOf<WalkFrame>()
+
+    fun piRow(active: Int? = null, filledUpTo: Int) = pi.mapIndexed { i, v ->
+        when {
+            i == active -> CellView(v.toString(), CellMark.ACTIVE)
+            i <= filledUpTo -> CellView(v.toString(), CellMark.WINDOW)
+            else -> CellView("·", CellMark.DIM)
+        }
+    }
+
+    frames += WalkFrame(
+        status = "pi[i] is the length of the longest proper prefix of \"$s\"[0..i] that is also a suffix of it — its " +
+            "longest border. pi[0] is 0 by definition: a string cannot be its own proper prefix.",
+        cells = s.map { CellView(it.toString(), CellMark.IDLE) },
+        aux = piRow(filledUpTo = 0),
+        auxLabel = "pi (longest border per prefix)",
+    )
+
+    var k = 0
+    for (i in 1 until s.length) {
+        val fallbacks = mutableListOf<Int>()
+        while (k > 0 && s[i] != s[k]) {
+            k = pi[k - 1]
+            fallbacks += k
+        }
+        val matched = s[i] == s[k]
+        if (matched) k++
+        pi[i] = k
+        frames += WalkFrame(
+            status = buildString {
+                append("s[$i] = '${s[i]}' against the border candidate s[${if (matched) k - 1 else k}] = '${s[if (matched) k - 1 else k]}'. ")
+                if (fallbacks.isNotEmpty()) {
+                    append(
+                        "Mismatch, so fall back to pi of the border — ${fallbacks.joinToString(" → ")} — instead of " +
+                            "restarting at 0. That fallback is why the whole build stays linear. ",
+                    )
+                }
+                append(
+                    if (matched) "Match: the border extends to length $k, so pi[$i] = $k."
+                    else "No border survives here, so pi[$i] = 0.",
+                )
+            },
+            cells = s.mapIndexed { j, c ->
+                CellView(
+                    c.toString(),
+                    when {
+                        j == i -> CellMark.ACTIVE
+                        j < k -> CellMark.WINDOW
+                        else -> CellMark.IDLE
+                    },
+                )
+            },
+            pointers = mapOf(i to "i") + if (k > 0) mapOf(k - 1 to "border") else emptyMap(),
+            aux = piRow(active = i, filledUpTo = i - 1),
+            auxLabel = "pi (longest border per prefix)",
+            readout = "border length k = $k",
+        )
+    }
+
+    val period = s.length - pi[s.lastIndex]
+    frames += WalkFrame(
+        status = "pi = ${pi.joinToString(", ")}. Candidate period = n − pi[n−1] = ${s.length} − ${pi[s.lastIndex]} = " +
+            "$period, but $period does not divide ${s.length}, so \"$s\" is not a repeated block — the divisibility " +
+            "check is the half of the rule people forget. Run the same table over pattern + '#' + text and every " +
+            "pi[i] = m marks a full occurrence.",
+        cells = s.mapIndexed { j, c ->
+            CellView(c.toString(), if (j < pi[s.lastIndex]) CellMark.RESULT else CellMark.DIM)
+        },
+        aux = pi.map { CellView(it.toString(), CellMark.WINDOW) },
+        auxLabel = "pi (longest border per prefix)",
+        readout = "longest border = ${pi[s.lastIndex]} · period = $period (does not divide ${s.length})",
+    )
+    return frames
+}
+
+private fun fisherYatesFrames(): List<WalkFrame> {
+    val a = mutableListOf("A", "B", "C", "D", "E", "F")
+    val n = a.size
+    // Fixed draws stand in for uniform(i, n-1). A seeded RNG would work too, but the frames have to be
+    // identical every run — SimulationFrameTest and the playback scrubber both replay them.
+    val draws = listOf(3, 1, 5, 4, 5)
+    val frames = mutableListOf<WalkFrame>()
+
+    fun rangeRow(i: Int) = List(n) { j ->
+        if (j >= i) CellView(j.toString(), CellMark.WINDOW) else CellView("·", CellMark.DIM)
+    }
+
+    frames += WalkFrame(
+        status = "Fisher-Yates shuffles in place. At step i the legal draw is any index in [i, ${n - 1}] — the " +
+            "*unprocessed* suffix. Drawing from [0, ${n - 1}] instead gives nⁿ equally likely paths onto n! " +
+            "permutations, which cannot divide evenly, so some orders come out more often than others.",
+        cells = a.map { CellView(it, CellMark.IDLE) },
+        aux = rangeRow(0),
+        auxLabel = "legal draws for i — never [0, n)",
+    )
+
+    draws.forEachIndexed { i, j ->
+        val moved = a[j]
+        val displaced = a[i]
+        a[i] = moved
+        a[j] = displaced
+        frames += WalkFrame(
+            status = "i = $i draws j = $j from [$i, ${n - 1}] and swaps: $moved is now fixed at position $i" +
+                if (i == j) " — drawing itself is a legal outcome, and forbidding it biases the result."
+                else ", $displaced falls back into the suffix.",
+            cells = a.mapIndexed { p, v ->
+                CellView(
+                    v,
+                    when {
+                        p == i -> CellMark.DONE
+                        p == j -> CellMark.ACTIVE
+                        p < i -> CellMark.DONE
+                        else -> CellMark.IDLE
+                    },
+                )
+            },
+            pointers = mapOf(i to "i", j to "j"),
+            aux = rangeRow(i),
+            auxLabel = "legal draws for i — never [0, n)",
+        )
+    }
+
+    frames += WalkFrame(
+        status = "${a.joinToString("")} — one pass, one swap per position, every permutation equally likely. " +
+            "Reservoir sampling is the streaming twin of the same idea: keep k items and replace one with " +
+            "probability k/i as the i-th arrives, and each of the n items ends up kept with probability k/n.",
+        cells = a.map { CellView(it, CellMark.RESULT) },
+        aux = rangeRow(n),
+        auxLabel = "legal draws for i — never [0, n)",
+        readout = "shuffled = ${a.joinToString(" ")}",
+    )
+    return frames
+}
+
+private fun fenwickRangeQueryFrames(): List<WalkFrame> {
+    val a = intArrayOf(3, 1, 4, 1, 5, 9, 2, 6)
+    val n = a.size
+    val tree = IntArray(n + 1)
+    val frames = mutableListOf<WalkFrame>()
+
+    fun add(index: Int, delta: Int): List<Int> {
+        val path = mutableListOf<Int>()
+        var i = index + 1
+        while (i <= n) {
+            tree[i] += delta
+            path += i
+            i += i and -i
+        }
+        return path
+    }
+
+    fun prefixPath(index: Int): List<Int> {
+        val path = mutableListOf<Int>()
+        var i = index + 1
+        while (i > 0) {
+            path += i
+            i -= i and -i
+        }
+        return path
+    }
+
+    fun prefixSum(index: Int) = prefixPath(index).sumOf { tree[it] }
+
+    fun treeRow(marked: Set<Int> = emptySet()) = (1..n).map {
+        CellView(tree[it].toString(), if (it in marked) CellMark.ACTIVE else CellMark.WINDOW)
+    }
+
+    a.indices.forEach { add(it, a[it]) }
+
+    val plainPrefix = IntArray(n)
+    a.indices.forEach { plainPrefix[it] = a[it] + if (it == 0) 0 else plainPrefix[it - 1] }
+
+    frames += WalkFrame(
+        status = "Static prefix sums answer any range in O(1): sum[l..r] = P[r] − P[l−1]. The cost is hidden in the " +
+            "other operation — a single write to a[2] invalidates every prefix from index 2 rightward.",
+        cells = a.map { CellView(it.toString(), CellMark.IDLE) },
+        aux = plainPrefix.map { CellView(it.toString(), CellMark.WINDOW) },
+        auxLabel = "P (inclusive prefix sums)",
+    )
+    frames += WalkFrame(
+        status = "a[2] += 3, and six of the eight prefixes have to be recomputed. One write costs O(n); a thousand " +
+            "interleaved writes and queries cost O(n²). That is the moment prefix sums stop being the answer.",
+        cells = a.mapIndexed { i, v -> CellView(v.toString(), if (i == 2) CellMark.ACTIVE else CellMark.IDLE) },
+        pointers = mapOf(2 to "write"),
+        aux = plainPrefix.mapIndexed { i, v ->
+            CellView(v.toString(), if (i >= 2) CellMark.ACTIVE else CellMark.WINDOW)
+        },
+        auxLabel = "P (inclusive prefix sums) — everything from index 2 is now stale",
+    )
+    frames += WalkFrame(
+        status = "The Fenwick tree stores block aggregates instead. tree[i] covers the (i & −i) elements ending at i: " +
+            "tree[4] holds a[0..3], tree[6] holds a[4..5], tree[8] holds the whole array. No cell depends on more " +
+            "than log n others, which is what makes writes cheap.",
+        cells = a.map { CellView(it.toString(), CellMark.DIM) },
+        aux = treeRow(),
+        auxLabel = "tree[i] = aggregate of the block ending at i (1-indexed)",
+    )
+
+    val updatePath = add(2, 3)
+    a[2] += 3
+    frames += WalkFrame(
+        status = "The same a[2] += 3 as a Fenwick update: start at index 3 (1-indexed) and jump with i += i & −i, " +
+            "hitting ${updatePath.joinToString(" → ")}. Three cells touched instead of six, and the count is log n " +
+            "no matter how long the array gets.",
+        cells = a.mapIndexed { i, v -> CellView(v.toString(), if (i == 2) CellMark.ACTIVE else CellMark.IDLE) },
+        pointers = mapOf(2 to "write"),
+        aux = treeRow(updatePath.toSet()),
+        auxLabel = "tree[i] = aggregate of the block ending at i (1-indexed)",
+        readout = "update path = ${updatePath.joinToString(" → ")}",
+    )
+
+    val queryPath = prefixPath(5)
+    frames += WalkFrame(
+        status = "prefix(5) walks the other way — i −= i & −i — visiting ${queryPath.joinToString(" → ")} and adding " +
+            "those blocks: ${queryPath.joinToString(" + ") { tree[it].toString() }} = ${prefixSum(5)}. Each step " +
+            "strips one set bit, so the walk is as long as the index has bits.",
+        cells = a.mapIndexed { i, v -> CellView(v.toString(), if (i <= 5) CellMark.WINDOW else CellMark.IDLE) },
+        pointers = mapOf(5 to "r"),
+        aux = treeRow(queryPath.toSet()),
+        auxLabel = "tree[i] = aggregate of the block ending at i (1-indexed)",
+        readout = "prefix(5) = ${prefixSum(5)}",
+    )
+
+    val rangeSum = prefixSum(5) - prefixSum(1)
+    frames += WalkFrame(
+        status = "sum[2..5] = prefix(5) − prefix(1) = ${prefixSum(5)} − ${prefixSum(1)} = $rangeSum. Both halves are " +
+            "O(log n), and so was the update — the trade that prefix sums could not make. Sums with point updates " +
+            "want a Fenwick; min, max or gcd, or range updates, want a segment tree.",
+        cells = a.mapIndexed { i, v -> CellView(v.toString(), if (i in 2..5) CellMark.RESULT else CellMark.DIM) },
+        pointers = mapOf(2 to "l", 5 to "r"),
+        aux = treeRow((queryPath + prefixPath(1)).toSet()),
+        auxLabel = "tree[i] = aggregate of the block ending at i (1-indexed)",
+        readout = "sum[2..5] = $rangeSum",
+    )
+    return frames
+}
+
+private fun rollingHashPatternFrames(): List<WalkFrame> {
+    val text = "abracadabra"
+    val pattern = "abra"
+    val base = 31L
+    val mod = 1009L
+    val m = pattern.length
+    val frames = mutableListOf<WalkFrame>()
+
+    fun code(c: Char) = (c - 'a' + 1).toLong()
+    fun hashOf(s: String) = s.fold(0L) { acc, c -> (acc * base + code(c)) % mod }
+
+    val high = (1 until m).fold(1L) { acc, _ -> acc * base % mod }
+    val target = hashOf(pattern)
+    var h = hashOf(text.substring(0, m))
+    var comparisons = 0
+    val hits = mutableListOf<Int>()
+
+    fun patternRow() = pattern.map { CellView(it.toString(), CellMark.DONE) }
+
+    fun textRow(start: Int, mark: CellMark) = text.mapIndexed { i, c ->
+        CellView(c.toString(), if (i in start until start + m) mark else CellMark.IDLE)
+    }
+
+    frames += WalkFrame(
+        status = "Base $base, modulus $mod, a = 1 … z = 26. The pattern hashes to $target once; the point is that " +
+            "every window of the text can then be hashed in O(1) instead of O(m).",
+        cells = text.map { CellView(it.toString(), CellMark.IDLE) },
+        aux = patternRow(),
+        auxLabel = "pattern \"$pattern\" · hash = $target",
+    )
+
+    for (start in 0..text.length - m) {
+        if (start > 0) {
+            val outgoing = text[start - 1]
+            val incoming = text[start + m - 1]
+            val before = h
+            h = ((h - code(outgoing) * high % mod + mod * mod) % mod * base + code(incoming)) % mod
+            frames += WalkFrame(
+                status = "Slide to $start: drop '$outgoing' (weight b^${m - 1} = $high), shift left by one base, add " +
+                    "'$incoming'. $before → $h, three operations regardless of how wide the window is.",
+                cells = textRow(start, CellMark.WINDOW),
+                pointers = mapOf(start to "l", start + m - 1 to "r"),
+                aux = patternRow(),
+                auxLabel = "pattern \"$pattern\" · hash = $target",
+                readout = "h = $h · target = $target",
+            )
+        }
+        if (h == target) {
+            comparisons++
+            val real = text.substring(start, start + m) == pattern
+            if (real) hits += start
+            frames += WalkFrame(
+                status = "Hashes match at $start. That is a *candidate*, not a match — compare the ${m} characters " +
+                    "directly: \"${text.substring(start, start + m)}\" " +
+                    (if (real) "== \"$pattern\", a real occurrence." else "≠ \"$pattern\", a collision. Reporting it unverified is the bug."),
+                cells = textRow(start, if (real) CellMark.RESULT else CellMark.ACTIVE),
+                pointers = mapOf(start to "l", start + m - 1 to "r"),
+                aux = patternRow(),
+                auxLabel = "pattern \"$pattern\" · hash = $target",
+                readout = "verified hits: ${hits.joinToString(", ").ifEmpty { "none yet" }}",
+            )
+        }
+    }
+
+    frames += WalkFrame(
+        status = "Occurrences at ${hits.joinToString(", ")} after $comparisons character comparison(s) instead of " +
+            "${text.length - m + 1}. O(n + m) expected; against an adversary who can see your base, randomise it or " +
+            "hash under two moduli.",
+        cells = text.mapIndexed { i, c ->
+            CellView(c.toString(), if (hits.any { i in it until it + m }) CellMark.RESULT else CellMark.DIM)
+        },
+        aux = patternRow(),
+        auxLabel = "pattern \"$pattern\" · hash = $target",
+        readout = "hits = ${hits.joinToString(", ")}",
+    )
+    return frames
+}
+
+private fun runningBestFrames(): List<WalkFrame> {
+    val a = listOf(-2, 1, -3, 4, -1, 2, 1, -5, 4)
+    val curRow = IntArray(a.size)
+    val frames = mutableListOf<WalkFrame>()
+
+    fun curCells(upTo: Int, active: Int) = curRow.mapIndexed { i, v ->
+        when {
+            i == active -> CellView(v.toString(), CellMark.ACTIVE)
+            i <= upTo -> CellView(v.toString(), CellMark.WINDOW)
+            else -> CellView("·", CellMark.DIM)
+        }
+    }
+
+    var cur = a[0]
+    var best = a[0]
+    var bestStart = 0
+    var bestEnd = 0
+    var start = 0
+    curRow[0] = cur
+
+    frames += WalkFrame(
+        status = "Two scalars carry the whole scan: cur, the best run that *must* end at the current index, and " +
+            "best, the best run seen anywhere. cur starts at a[0] = ${a[0]}.",
+        cells = a.mapIndexed { i, v -> CellView(v.toString(), if (i == 0) CellMark.ACTIVE else CellMark.IDLE) },
+        pointers = mapOf(0 to "i"),
+        aux = curCells(-1, 0),
+        auxLabel = "cur = best run ending here",
+        readout = "cur = $cur · best = $best",
+    )
+
+    for (i in 1 until a.size) {
+        val extend = cur + a[i]
+        val restarted = a[i] > extend
+        cur = maxOf(a[i], extend)
+        if (restarted) start = i
+        curRow[i] = cur
+        val improved = cur > best
+        if (improved) {
+            best = cur
+            bestStart = start
+            bestEnd = i
+        }
+        frames += WalkFrame(
+            status = "a[$i] = ${a[i]}: extending gives $extend, restarting gives ${a[i]}. " +
+                (if (restarted) "The carried prefix has gone negative, so it can only hurt what follows — drop it and start fresh at $i. "
+                else "Extending wins, so the run grows. ") +
+                (if (improved) "cur = $cur beats the old best, so best moves up." else "best stays at $best — the optimum may have ended earlier."),
+            cells = a.mapIndexed { j, v ->
+                CellView(
+                    v.toString(),
+                    when {
+                        j == i -> CellMark.ACTIVE
+                        j in start..i -> CellMark.WINDOW
+                        else -> CellMark.IDLE
+                    },
+                )
+            },
+            pointers = mapOf(i to "i", start to "run"),
+            aux = curCells(i - 1, i),
+            auxLabel = "cur = best run ending here",
+            readout = "cur = $cur · best = $best",
+        )
+    }
+
+    frames += WalkFrame(
+        status = "best = $best, from a[$bestStart..$bestEnd]. One pass, two scalars, no table — and the run that won " +
+            "ended before the array did, which is exactly why best is tracked separately from cur.",
+        cells = a.mapIndexed { j, v ->
+            CellView(v.toString(), if (j in bestStart..bestEnd) CellMark.RESULT else CellMark.DIM)
+        },
+        aux = curRow.map { CellView(it.toString(), CellMark.WINDOW) },
+        auxLabel = "cur = best run ending here",
+        readout = "max subarray sum = $best",
+    )
+
+    val p = listOf(-2, 3, -4)
+    var curMax = p[0]
+    var curMin = p[0]
+    var bestProduct = p[0]
+    val maxRow = IntArray(p.size)
+    val minRow = IntArray(p.size)
+    maxRow[0] = curMax
+    minRow[0] = curMin
+    var minBeforeLast = curMin
+    for (i in 1 until p.size) {
+        if (i == p.lastIndex) minBeforeLast = curMin
+        val candidates = listOf(p[i], curMax * p[i], curMin * p[i])
+        curMax = candidates.maxOrNull()!!
+        curMin = candidates.minOrNull()!!
+        maxRow[i] = curMax
+        minRow[i] = curMin
+        bestProduct = maxOf(bestProduct, curMax)
+    }
+    frames += WalkFrame(
+        status = "The product variant needs one more scalar. On ${p.joinToString(", ")} the running *minimum* reaches " +
+            "$minBeforeLast, and $minBeforeLast × ${p.last()} = $bestProduct is the answer — it comes out of the " +
+            "minimum, not the maximum, because a negative flips the two. Track both or the negatives beat you.",
+        cells = p.map { CellView(it.toString(), CellMark.RESULT) },
+        aux = maxRow.map { CellView(it.toString(), CellMark.WINDOW) },
+        auxLabel = "cur_max ending here (cur_min: ${minRow.joinToString(", ")})",
+        readout = "max product = $bestProduct",
+    )
+    return frames
+}
+
+private fun sweepLineFrames(): List<WalkFrame> {
+    val intervals = listOf(1 to 5, 2 to 7, 4 to 6, 8 to 10, 9 to 12)
+    // Ties: an interval ending at x frees the point before one starting at x claims it, so −1 sorts first.
+    val events = intervals.flatMap { listOf(it.first to 1, it.second to -1) }
+        .sortedWith(compareBy({ it.first }, { it.second }))
+    val frames = mutableListOf<WalkFrame>()
+
+    fun eventLabel(e: Pair<Int, Int>) = "${e.first}${if (e.second > 0) "+" else "−"}"
+
+    frames += WalkFrame(
+        status = "${intervals.size} intervals become ${events.size} endpoints and nothing else: +1 where one opens, " +
+            "−1 where one closes. The intervals themselves are never looked at again.",
+        cells = events.map { CellView(eventLabel(it), CellMark.IDLE) },
+        intervals = intervals.map { IntervalView(it.first, it.second, CellMark.IDLE) },
+    )
+
+    var active = 0
+    var peak = 0
+    var peakAt = events.first().first
+    val activeRow = IntArray(events.size)
+
+    events.forEachIndexed { i, e ->
+        active += e.second
+        activeRow[i] = active
+        if (active > peak) {
+            peak = active
+            peakAt = e.first
+        }
+        frames += WalkFrame(
+            status = "x = ${e.first}: " + (if (e.second > 0) "an interval opens" else "an interval closes") +
+                ", so active ${if (e.second > 0) "+" else "−"} 1 = $active." +
+                if (active == peak && e.second > 0) " That is a new maximum overlap." else "",
+            cells = events.mapIndexed { j, v ->
+                CellView(
+                    eventLabel(v),
+                    when {
+                        j == i -> CellMark.ACTIVE
+                        j < i -> CellMark.DONE
+                        else -> CellMark.IDLE
+                    },
+                )
+            },
+            pointers = mapOf(i to "sweep"),
+            aux = activeRow.mapIndexed { j, v ->
+                if (j <= i) CellView(v.toString(), if (v == peak) CellMark.RESULT else CellMark.WINDOW)
+                else CellView("·", CellMark.DIM)
+            },
+            auxLabel = "active count after each event",
+            intervals = intervals.map {
+                IntervalView(it.first, it.second, if (e.first in it.first until it.second) CellMark.WINDOW else CellMark.IDLE)
+            },
+            readout = "active = $active · peak = $peak at x = $peakAt",
+        )
+    }
+
+    frames += WalkFrame(
+        status = "Maximum overlap $peak, first reached at x = $peakAt — the sort dominates at O(n log n), the sweep " +
+            "itself is one pass. A difference array is the same trick on a fixed index range: d[l] += v, d[r+1] −= v " +
+            "per update, then one prefix sum materialises every value.",
+        cells = events.map { CellView(eventLabel(it), CellMark.DIM) },
+        aux = activeRow.map { CellView(it.toString(), if (it == peak) CellMark.RESULT else CellMark.WINDOW) },
+        auxLabel = "active count after each event",
+        intervals = intervals.map {
+            IntervalView(it.first, it.second, if (peakAt in it.first until it.second) CellMark.RESULT else CellMark.DIM)
+        },
+        readout = "max overlap = $peak at x = $peakAt",
+    )
+    return frames
+}
+
+private fun twoHeapsFrames(): List<WalkFrame> {
+    val stream = listOf(5, 15, 1, 3, 8, 7, 9, 10)
+    val lo = mutableListOf<Int>()   // smaller half, max-heap: root is the largest
+    val hi = mutableListOf<Int>()   // larger half, min-heap: root is the smallest
+    val frames = mutableListOf<WalkFrame>()
+
+    fun median(): Double =
+        if (lo.size > hi.size) lo.max().toDouble() else (lo.max() + hi.min()) / 2.0
+
+    fun show(v: Double) = if (v == v.toLong().toDouble()) v.toLong().toString() else v.toString()
+
+    fun heapRow() = lo.sortedDescending().map { CellView(it.toString(), CellMark.WINDOW) } +
+        hi.sorted().map { CellView(it.toString(), CellMark.DONE) }
+
+    frames += WalkFrame(
+        status = "A running median over a stream. lo is a max-heap of the smaller half, hi a min-heap of the larger " +
+            "half; every value in lo is ≤ every value in hi, so the middle of the data is always a root away.",
+        cells = stream.map { CellView(it.toString(), CellMark.IDLE) },
+        aux = listOf(CellView("empty", CellMark.DIM)),
+        auxLabel = "lo (larger-first) | hi (smaller-first)",
+    )
+
+    stream.forEachIndexed { i, x ->
+        lo += x
+        val promoted = lo.max()
+        lo.remove(promoted)
+        hi += promoted
+        var demoted: Int? = null
+        if (hi.size > lo.size) {
+            demoted = hi.min()
+            hi.remove(demoted)
+            lo += demoted
+        }
+        frames += WalkFrame(
+            status = "Insert $x: push it into lo, then move lo's largest ($promoted) into hi — that single hand-off " +
+                "is what keeps every lo value below every hi value. " +
+                (if (demoted != null) "hi is now the bigger half, so its smallest ($demoted) comes back to lo."
+                else "The sizes are already legal, so nothing comes back.") +
+                " Median = ${show(median())}" +
+                if (lo.size > hi.size) ", read straight off lo's root." else ", the mean of the two roots.",
+            cells = stream.mapIndexed { j, v ->
+                CellView(
+                    v.toString(),
+                    when {
+                        j == i -> CellMark.ACTIVE
+                        j < i -> CellMark.DONE
+                        else -> CellMark.IDLE
+                    },
+                )
+            },
+            pointers = mapOf(i to "x"),
+            aux = heapRow(),
+            auxLabel = "lo (larger-first) | hi (smaller-first) · |lo| = ${lo.size}, |hi| = ${hi.size}",
+            readout = "median = ${show(median())}",
+        )
+    }
+
+    frames += WalkFrame(
+        status = "${stream.size} inserts, each O(log n), and every median was O(1) — both candidates were always " +
+            "roots. Re-sorting after each insert would have been O(n² log n) for the same answers.",
+        cells = stream.map { CellView(it.toString(), CellMark.DIM) },
+        aux = heapRow(),
+        auxLabel = "lo (larger-first) | hi (smaller-first)",
+        readout = "final median = ${show(median())}",
+    )
+    return frames
+}
+
 // ── D6 · Flash Attention ─────────────────────────────────────────────────────
 // The tiled softmax drawn as what it is: a left-to-right scan over key blocks, carrying three
 // numbers. The cells are the blocks, the aux row is the running denominator, and the rescale that
@@ -4585,6 +5417,116 @@ private val walkConfigs = mapOf(
             ResultFill to "Final set",
         ),
         build = ::greedyIntervalsFrames,
+    ),
+    "heap_scheduling_pattern" to WalkConfig(
+        intro = "Meeting rooms: sorted by start, with a min-heap of end times underneath. The heap's size is the " +
+            "answer — watch it grow only when nothing has retired in time.",
+        legend = listOf(
+            ActiveFill to "Starting now",
+            DoneFill to "Room in use",
+            ResultFill to "Final schedule",
+        ),
+        build = ::heapSchedulingFrames,
+    ),
+    "lis_patience_pattern" to WalkConfig(
+        intro = "The tails array doing its work. Most elements overwrite a tail rather than extend it — the row's " +
+            "length only grows when an element beats every chain so far.",
+        legend = listOf(
+            ActiveFill to "Current element",
+            WindowFill to "tails",
+            ResultFill to "Answer",
+        ),
+        build = ::lisTailsFrames,
+    ),
+    "monotonic_deque_pattern" to WalkConfig(
+        intro = "Sliding-window maximum with k = 3. Two rules fire on every element: expire the front, pop the " +
+            "dominated from the back. What is left in front is the answer.",
+        legend = listOf(
+            ActiveFill to "Incoming",
+            WindowFill to "In window / deque",
+            ResultFill to "Window max",
+        ),
+        build = ::windowMaxDequeFrames,
+    ),
+    "palindrome_expansion_pattern" to WalkConfig(
+        intro = "Both centre types tried at every index of \"abbanana\" — the even centres are the ones that find " +
+            "\"abba\", which is why forgetting them is the standard bug.",
+        legend = listOf(
+            ActiveFill to "Centre",
+            WindowFill to "Palindrome here",
+            ResultFill to "Longest so far",
+        ),
+        build = ::palindromeExpansionFrames,
+    ),
+    "prefix_function_pattern" to WalkConfig(
+        intro = "The pi table built one character at a time. The interesting frames are the mismatches, where k " +
+            "falls back to pi[k−1] instead of restarting at zero.",
+        legend = listOf(
+            ActiveFill to "Current index",
+            WindowFill to "Border prefix",
+            ResultFill to "Final border",
+        ),
+        build = ::prefixFunctionFrames,
+    ),
+    "randomized_pattern" to WalkConfig(
+        intro = "Fisher-Yates with the draw range drawn underneath. Every swap picks from [i, n) — the aux row is " +
+            "the legal range, and widening it to [0, n) is exactly the bias people ship.",
+        legend = listOf(
+            ActiveFill to "Drawn index j",
+            DoneFill to "Fixed",
+            WindowFill to "Legal draws",
+        ),
+        build = ::fisherYatesFrames,
+    ),
+    "range_query_pattern" to WalkConfig(
+        intro = "The same array under both structures: first a prefix-sum rebuild after one write, then the Fenwick " +
+            "update and query walks that replace it. i & −i is doing all the work.",
+        legend = listOf(
+            ActiveFill to "On the walk",
+            WindowFill to "Blocks / prefixes",
+            ResultFill to "Queried range",
+        ),
+        build = ::fenwickRangeQueryFrames,
+    ),
+    "rolling_hash_pattern" to WalkConfig(
+        intro = "\"abra\" in \"abracadabra\" with a base-31 hash mod 1009. Each slide is three operations, and every " +
+            "hash hit still gets a character-by-character verification.",
+        legend = listOf(
+            ActiveFill to "Candidate",
+            WindowFill to "Current window",
+            ResultFill to "Verified match",
+        ),
+        build = ::rollingHashPatternFrames,
+    ),
+    "running_best_pattern" to WalkConfig(
+        intro = "Kadane with the \"best ending here\" row exposed. The last frame switches to the product variant, " +
+            "where the running minimum is what produces the answer.",
+        legend = listOf(
+            ActiveFill to "Current element",
+            WindowFill to "Current run",
+            ResultFill to "Best subarray",
+        ),
+        build = ::runningBestFrames,
+    ),
+    "sweep_line_pattern" to WalkConfig(
+        intro = "Five intervals reduced to ten endpoints. The track underneath still shows the intervals, but the " +
+            "sweep never consults them again — only the ±1 events.",
+        legend = listOf(
+            ActiveFill to "Current event",
+            WindowFill to "Active",
+            ResultFill to "Peak overlap",
+        ),
+        build = ::sweepLineFrames,
+    ),
+    "two_heaps_pattern" to WalkConfig(
+        intro = "A running median over eight values. The aux row is both heaps side by side — lo largest-first, hi " +
+            "smallest-first — so the median is always the pair in the middle.",
+        legend = listOf(
+            ActiveFill to "Arriving",
+            WindowFill to "lo (smaller half)",
+            DoneFill to "hi (larger half)",
+        ),
+        build = ::twoHeapsFrames,
     ),
     "quickselect" to WalkConfig(
         intro = "Partition, then recurse into one side only. The comparison count at the end is the argument for " +

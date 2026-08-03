@@ -1008,6 +1008,10 @@ private val gsConfigs = mapOf(
 
 private fun gsConfigFor(topicId: String): GsConfig = gsConfigs[topicId] ?: gsConfigs.getValue("minimax")
 
+// Exposed so PatternCoverageTest can tell a topic that configured this widget from one that only
+// inherits the fallback above.
+internal val gameSearchTopicIds: Set<String> get() = gsConfigs.keys
+
 // ── UI ───────────────────────────────────────────────────────────────────────
 
 @Composable

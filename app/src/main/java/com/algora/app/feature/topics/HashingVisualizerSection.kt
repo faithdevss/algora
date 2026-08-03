@@ -345,6 +345,10 @@ private val hashConfigs = mapOf(
 private fun hashConfigFor(topicId: String): HashConfig =
     hashConfigs[topicId] ?: hashConfigs.getValue("hash_table")
 
+// Exposed so PatternCoverageTest can tell a topic that configured this widget from one that only
+// inherits the fallback above.
+internal val hashingVisualizerTopicIds: Set<String> get() = hashConfigs.keys
+
 @Composable
 fun HashingVisualizerSection(topicId: String) {
     val config = remember(topicId) { hashConfigFor(topicId) }

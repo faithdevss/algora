@@ -2,7 +2,19 @@ package com.algora.app.feature.interviewprep
 
 import com.algora.app.core.data.TopicRegistry
 import com.algora.app.core.data.model.SimulationType
+import com.algora.app.feature.topics.arrayWalkTopicIds
+import com.algora.app.feature.topics.bitBoardTopicIds
 import com.algora.app.feature.topics.content.TopicContentProvider
+import com.algora.app.feature.topics.dpGridTopicIds
+import com.algora.app.feature.topics.gameSearchTopicIds
+import com.algora.app.feature.topics.graphAlgoTopicIds
+import com.algora.app.feature.topics.hashingVisualizerTopicIds
+import com.algora.app.feature.topics.linkedStructureTopicIds
+import com.algora.app.feature.topics.pathfindingTopicIds
+import com.algora.app.feature.topics.recursionTreeTopicIds
+import com.algora.app.feature.topics.searchVisualizerTopicIds
+import com.algora.app.feature.topics.sortingVisualizerTopicIds
+import com.algora.app.feature.topics.treeVisualizerTopicIds
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -28,6 +40,88 @@ class PatternCoverageTest {
             .map { it.id }
             .filter { TopicContentProvider.get(it)?.simulation == SimulationType.NotYetAvailable }
         assertTrue("Pattern topics with no simulation: $coming", coming.isEmpty())
+    }
+
+    // Every simulation widget resolves its content by topic id and silently falls back to another
+    // topic's config when there is none — `walkConfigs[topicId] ?: walkConfigs.getValue("two_pointer")`.
+    // A pattern guide that lands on that fallback ships a lab about a different algorithm entirely
+    // (knapsack playing Fibonacci, patience sorting playing two-pointer), which the NotYetAvailable
+    // check above cannot see. This maps each config-driven widget to the ids it actually knows.
+    private val configuredIds: Map<SimulationType, Set<String>> = mapOf(
+        SimulationType.ArrayWalkPlayer to arrayWalkTopicIds,
+        SimulationType.BitBoardPlayer to bitBoardTopicIds,
+        SimulationType.DpGridVisualizer to dpGridTopicIds,
+        SimulationType.GameSearchPlayer to gameSearchTopicIds,
+        SimulationType.GraphAlgorithmPlayer to graphAlgoTopicIds,
+        SimulationType.HashingVisualizer to hashingVisualizerTopicIds,
+        SimulationType.LinkedStructurePlayer to linkedStructureTopicIds,
+        SimulationType.PathfindingGrid to pathfindingTopicIds,
+        SimulationType.RecursionTreeVisualizer to recursionTreeTopicIds,
+        SimulationType.SearchVisualizer to searchVisualizerTopicIds,
+        SimulationType.SortingVisualizer to sortingVisualizerTopicIds,
+        SimulationType.TreeVisualizer to treeVisualizerTopicIds,
+    )
+
+    // Guides still waiting for their own config, authored batch by batch. The list only shrinks —
+    // `no pending entry already has a config` fails the moment one is written and left here.
+    private val pendingConfigs = setOf(
+        "binary_lifting_pattern",
+        "bit_trie_pattern",
+        "bitmask_state_pattern",
+        "bst_inorder_pattern",
+        "composite_design_pattern",
+        "dag_dp_pattern",
+        "divide_conquer_pattern",
+        "dutch_flag_pattern",
+        "expression_stack_pattern",
+        "game_theory_dp_pattern",
+        "graph_coloring_pattern",
+        "greedy_exchange_pattern",
+        "grid_dp_pattern",
+        "hash_counting_pattern",
+        "interval_dp_pattern",
+        "knapsack_dp_pattern",
+        "matrix_transform_pattern",
+        "meet_in_middle_pattern",
+        "memo_recursion_pattern",
+        "modified_binary_search_pattern",
+        "multi_source_bfs_pattern",
+        "prefix_2d_pattern",
+        "shortest_path_pattern",
+        "state_machine_dp_pattern",
+        "tree_dp_pattern",
+        "trie_prefix_pattern",
+    )
+
+    private fun hasOwnConfig(topicId: String): Boolean {
+        val simulation = TopicContentProvider.get(topicId)?.simulation ?: return false
+        return topicId in configuredIds[simulation].orEmpty()
+    }
+
+    @Test
+    fun `no pattern guide falls back to another topic's simulation`() {
+        val fallbacks = patternTopics
+            .map { it.id }
+            .filterNot { it in pendingConfigs }
+            .filterNot { hasOwnConfig(it) }
+            .map { "$it -> ${TopicContentProvider.get(it)?.simulation}" }
+        assertTrue(
+            "Pattern guides rendering another topic's simulation: $fallbacks",
+            fallbacks.isEmpty(),
+        )
+    }
+
+    @Test
+    fun `no pending entry already has a config`() {
+        val stale = pendingConfigs.filter { hasOwnConfig(it) }
+        assertTrue("Configured but still listed as pending: $stale", stale.isEmpty())
+    }
+
+    @Test
+    fun `every pending entry is a real pattern topic`() {
+        val ids = patternTopics.map { it.id }.toSet()
+        val unknown = pendingConfigs.filterNot { it in ids }
+        assertTrue("Pending ids that are not pattern topics: $unknown", unknown.isEmpty())
     }
 
     @Test

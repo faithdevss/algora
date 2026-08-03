@@ -247,6 +247,10 @@ private val searchConfigs = mapOf(
 private fun searchConfigFor(topicId: String): SearchConfig =
     searchConfigs[topicId] ?: searchConfigs.getValue("binary_search")
 
+// Exposed so PatternCoverageTest can tell a topic that configured this widget from one that only
+// inherits the fallback above.
+internal val searchVisualizerTopicIds: Set<String> get() = searchConfigs.keys
+
 @Composable
 fun SearchVisualizerSection(topicId: String) {
     val config = remember(topicId) { searchConfigFor(topicId) }

@@ -420,6 +420,10 @@ private val sortConfigs = mapOf(
 private fun sortConfigFor(topicId: String): SortConfig =
     sortConfigs[topicId] ?: sortConfigs.getValue("bubble_sort")
 
+// Exposed so PatternCoverageTest can tell a topic that configured this widget from one that only
+// inherits the fallback above.
+internal val sortingVisualizerTopicIds: Set<String> get() = sortConfigs.keys
+
 @Composable
 fun SortingVisualizerSection(topicId: String) {
     val config = remember(topicId) { sortConfigFor(topicId) }

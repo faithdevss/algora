@@ -509,6 +509,10 @@ private val linkConfigs = mapOf(
 private fun linkConfigFor(topicId: String): LinkConfig =
     linkConfigs[topicId] ?: linkConfigs.getValue("doubly_linked_list")
 
+// Exposed so PatternCoverageTest can tell a topic that configured this widget from one that only
+// inherits the fallback above.
+internal val linkedStructureTopicIds: Set<String> get() = linkConfigs.keys
+
 // ── UI ───────────────────────────────────────────────────────────────────────
 
 @Composable
