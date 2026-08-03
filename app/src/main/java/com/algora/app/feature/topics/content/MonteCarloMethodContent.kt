@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,31 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val monteCarloMethodContent = TopicContent(
     topicId = "monte_carlo_method",
+    figure = Figure(
+        caption = "Sixteen samples in the unit square, thirteen of them inside the quarter circle, so " +
+            "π ≈ 4 × 13/16 = 3.25. The estimate converges as 1/√N, which is both the property that " +
+            "matters and the one that disappoints: a hundred times more samples buys one more decimal " +
+            "digit, so six-figure accuracy is out of reach by this route. What makes it worth using " +
+            "anyway is that the rate does not depend on the number of dimensions. Grid-based numerical " +
+            "integration costs exponentially more per dimension added and Monte Carlo costs the same, " +
+            "which is why it is the standard tool for high-dimensional integrals in physics and " +
+            "finance — and why it is a poor choice for the one-dimensional ones a quadrature rule " +
+            "would nail exactly. It is also why the answer is a confidence interval rather than a " +
+            "number, and why a run is only reproducible if the seed is recorded.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("•", "•", "·", "·"),
+                listOf("•", "•", "•", "·"),
+                listOf("•", "•", "•", "•"),
+                listOf("•", "•", "•", "•"),
+            ),
+            marks = listOf(
+                FigureCell(0, 2, FigureTone.Warn),
+                FigureCell(0, 3, FigureTone.Warn),
+                FigureCell(1, 3, FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "The Monte Carlo method estimates a numeric answer by running many random trials and averaging the outcomes — trading exactness for a probabilistic approximation.",
         "It shines when a problem is too complex to solve analytically but easy to sample: the more random draws you take, the tighter the estimate converges.",

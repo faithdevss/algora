@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,45 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val sieveOfEratosthenesContent = TopicContent(
     topicId = "sieve_of_eratosthenes",
+    figure = Figure(
+        caption = "Sieving to 19. Take the smallest unmarked number, cross out its multiples, repeat; " +
+            "whatever survives is prime, because a composite has a factor and gets struck the moment " +
+            "that factor's turn comes. Two details make it efficient rather than merely correct. " +
+            "Marking for a prime p can start at p² — every smaller multiple k·p with k < p was already " +
+            "struck when the prime factors of k were processed — and the outer loop stops once p² > n. " +
+            "Here that means only 2 and 3 ever run, and 5, 7, 11, 13, 17 and 19 are left standing " +
+            "without being examined at all. O(n log log n), close enough to linear that the log log is " +
+            "usually invisible. What ends it is memory rather than time: a plain sieve to 10⁹ is a " +
+            "gigabyte of booleans, so every practical variant attacks space — a bitset, skipping evens, " +
+            "or a segmented sieve running over cache-sized blocks with only the primes below √n.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("2", "3", "4", "5", "6", "7"),
+                listOf("8", "9", "10", "11", "12", "13"),
+                listOf("14", "15", "16", "17", "18", "19"),
+            ),
+            marks = listOf(
+                FigureCell(0, 0, FigureTone.Accent),
+                FigureCell(0, 1, FigureTone.Accent),
+                FigureCell(0, 2, FigureTone.Warn),
+                FigureCell(0, 3, FigureTone.Accent),
+                FigureCell(0, 4, FigureTone.Warn),
+                FigureCell(0, 5, FigureTone.Accent),
+                FigureCell(1, 0, FigureTone.Warn),
+                FigureCell(1, 1, FigureTone.Warn),
+                FigureCell(1, 2, FigureTone.Warn),
+                FigureCell(1, 3, FigureTone.Accent),
+                FigureCell(1, 4, FigureTone.Warn),
+                FigureCell(1, 5, FigureTone.Accent),
+                FigureCell(2, 0, FigureTone.Warn),
+                FigureCell(2, 1, FigureTone.Warn),
+                FigureCell(2, 2, FigureTone.Warn),
+                FigureCell(2, 3, FigureTone.Accent),
+                FigureCell(2, 4, FigureTone.Warn),
+                FigureCell(2, 5, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "The sieve lists every prime below n by elimination rather than by testing. Write out the integers, take the smallest unmarked one, cross out all of its multiples, and repeat. Whatever survives is prime, because a composite has a factor and would have been crossed out when that factor's turn came.",
         "Two details make it efficient rather than merely correct. Marking for a prime p can start at p² instead of 2p, because every smaller multiple k·p with k < p was already struck out when the prime factors of k were processed. And the outer loop only needs to run while p·p ≤ n, since any composite below n has a factor no larger than √n — so sieving to 30 means marking multiples of 2, 3 and 5 only, and 7, 11, 13, 17, 19, 23 and 29 are left standing without ever being examined. The result is O(n log log n) time, which is close enough to linear that the log log term is usually invisible in practice.",

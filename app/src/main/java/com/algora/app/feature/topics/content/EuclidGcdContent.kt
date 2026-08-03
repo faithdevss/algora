@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,25 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val euclidGcdContent = TopicContent(
     topicId = "euclid_gcd",
+    figure = Figure(
+        caption = "gcd(252, 105), one remainder per cell. Each step replaces the pair (a, b) with " +
+            "(b, a mod b), and what makes that safe is stronger than it looks: the two pairs have " +
+            "exactly the same set of common divisors, not merely the same greatest one, because any " +
+            "number dividing a and b also divides a − qb. Remainders strictly decrease, so it " +
+            "terminates, and two successive remainders sum to at most the larger input, which forces " +
+            "the pair to at least halve every two steps — O(log min(a, b)). Lamé sharpens it: never " +
+            "more than five times the decimal digit count of the smaller input, with the worst case " +
+            "being exactly a pair of consecutive Fibonacci numbers. Tracking coefficients alongside the " +
+            "remainders gives Bézout's ax + by = gcd(a, b), and that extension is where modular " +
+            "inverses, the Chinese Remainder Theorem and RSA key generation all come from.",
+        shape = FigureShape.Strip(
+            cells = listOf("252", "105", "42", "21", "0"),
+            bands = listOf(
+                FigureBand(3, 3, "gcd", FigureTone.Accent),
+                FigureBand(4, 4, "stop", FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Euclid's algorithm finds the greatest common divisor of two integers by replacing the larger with its remainder against the smaller, over and over, until one of them is zero. The other is the answer. It appears in the Elements around 300 BC and is the oldest algorithm still in everyday use.",
         "The correctness rests on one identity: gcd(a, b) = gcd(b, a mod b). Any number dividing both a and b also divides a − qb for any q, so the pair (a, b) and the pair (b, a mod b) have exactly the same set of common divisors — not merely the same greatest one. Each step therefore preserves the answer while shrinking the numbers, and since remainders strictly decrease, the process terminates. gcd(252, 105) goes 252, 105 → 105, 42 → 42, 21 → 21, 0, so the answer is 21.",

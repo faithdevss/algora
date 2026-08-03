@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,30 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val ahoCorasickContent = TopicContent(
     topicId = "aho_corasick",
+    figure = Figure(
+        caption = "A trie of he, she and his; the starred nodes are where a pattern ends. Failure links " +
+            "are KMP's prefix function generalised from a string to a trie — each node points at the " +
+            "longest proper suffix of its own string that is also a node, which usually lives in a " +
+            "different branch entirely. They are computed breadth-first, because a node's target is " +
+            "always strictly shallower than the node itself, so processing by depth means the answer is " +
+            "ready when it is needed. The piece that is easy to omit is output links: sitting on the " +
+            "node for she, the automaton has also just matched he, because he is a suffix of she and is " +
+            "itself a pattern. Walk the failure chain and report every terminal on it, or the algorithm " +
+            "finds only the longest match at each position — a plausible-looking, wrong answer. One " +
+            "pass, O(n + m + z), independent of how many patterns there are.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("·", null, FigureTone.Primary),
+                FigureNode("h", 0, FigureTone.Primary),
+                FigureNode("e*", 1, FigureTone.Accent),
+                FigureNode("i", 1, FigureTone.Primary),
+                FigureNode("s*", 3, FigureTone.Accent),
+                FigureNode("s", 0, FigureTone.Primary),
+                FigureNode("h", 5, FigureTone.Primary),
+                FigureNode("e*", 6, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Aho-Corasick searches a text for every pattern in a dictionary at once, in a single pass, in time independent of how many patterns there are. Running KMP k times costs O(k·n); Aho-Corasick costs O(n + m + z), where m is the total length of the dictionary and z the number of matches actually reported. With a thousand patterns that is the difference between a thousand scans and one.",
         "It is KMP generalised from a string to a trie. Build a trie of all the patterns, then give every node a failure link pointing at the longest proper suffix of that node's string which is also a node in the trie — exactly KMP's prefix function, except the fallback target lives in a different branch rather than earlier in the same string. Matching is then a single walk: on each text character, follow the child edge if it exists; if it does not, follow failure links until one does or until you reach the root. The text pointer never moves backwards, which is the same guarantee KMP makes and the same reason the scan is linear.",

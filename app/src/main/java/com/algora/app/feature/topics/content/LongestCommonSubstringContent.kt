@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureArrow
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,33 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val longestCommonSubstringContent = TopicContent(
     topicId = "longest_common_substring",
+    figure = Figure(
+        caption = "abc against bca. This is the LCS table with exactly one clause changed: a mismatch " +
+            "writes zero rather than the better of its neighbours, and that zero is contiguity made " +
+            "mechanical — a run either continues through the diagonal or ends outright. Which is why the " +
+            "answer is the largest value anywhere in the table and not the bottom-right corner. Read " +
+            "the corner here and you get 0; the answer is the 2 marked in the last row, and it spells " +
+            "bc. Reading the corner is the standard mistake and it returns the length of the longest " +
+            "common suffix instead, which is often plausibly non-zero. O(n·m) time, O(min(n, m)) space " +
+            "if only the length is wanted, and a pair of variables tracking where the maximum occurred " +
+            "if the substring itself is.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0", "0", "0", "0"),
+                listOf("0", "0", "0", "1"),
+                listOf("0", "1", "0", "0"),
+                listOf("0", "0", "2", "0"),
+            ),
+            rowHeaders = listOf("ø", "a", "b", "c"),
+            colHeaders = listOf("ø", "b", "c", "a"),
+            marks = listOf(
+                FigureCell(3, 2, FigureTone.Accent),
+                FigureCell(2, 1, FigureTone.Primary),
+                FigureCell(3, 3, FigureTone.Warn),
+            ),
+            arrows = listOf(FigureArrow(2, 1, 3, 2)),
+        ),
+    ),
     whatIsIt = listOf(
         "The longest common substring of two strings is the longest run of characters that appears contiguously in both. The word doing the work is contiguous — it is what separates this problem from longest common subsequence, which allows gaps, and the two answers can differ enormously on the same input.",
         "The table is nearly the LCS table with one clause removed. dp[i][j] is the length of the longest common suffix of the first i characters of one string and the first j of the other. On a character match it is dp[i−1][j−1] + 1; on a mismatch it is zero, not the maximum of its neighbours. That single change is the contiguity requirement made mechanical: a mismatch ends the run rather than carrying the best result so far forward. Because runs can end anywhere, the answer is the largest value anywhere in the table, not the bottom-right corner — reading the corner is the standard mistake, and it silently returns the length of the common suffix instead.",

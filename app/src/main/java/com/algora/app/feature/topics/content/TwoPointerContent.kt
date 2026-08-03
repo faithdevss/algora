@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,29 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val twoPointerContent = TopicContent(
     topicId = "two_pointer",
+    figure = Figure(
+        caption = "Sorted input is the precondition, and the pair sums to the target 10. At every step " +
+            "the comparison decides which pointer moves, and the decision is forced: a sum that is too " +
+            "small can only be fixed by moving the left pointer right, a sum that is too big only by " +
+            "moving the right pointer left. Each move therefore discards an entire row or column of " +
+            "the pair matrix a nested loop would have visited, which is why one linear pass replaces " +
+            "O(n²) and why no memory is needed to remember what was ruled out. The other half of the " +
+            "technique is the same-direction variant — one pointer reading and one writing, at " +
+            "different speeds — which is how in-place removal, deduplication and cycle detection are " +
+            "done, and it needs no sorted input at all.",
+        shape = FigureShape.Strip(
+            cells = listOf("1", "3", "4", "6", "8", "11"),
+            bands = listOf(
+                FigureBand(0, 1, "too small"),
+                FigureBand(2, 3, "sum = 10", FigureTone.Accent),
+                FigureBand(4, 5, "too big", FigureTone.Warn),
+            ),
+            pointers = listOf(
+                FigurePointer(2, "l"),
+                FigurePointer(3, "r"),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "The two-pointer technique scans a sequence with two indices that move under a rule, replacing a nested double loop with a single linear pass.",
         "The pointers either converge from both ends (opposite-direction) or chase each other in one direction (same-direction), depending on the problem.",

@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,24 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val rabinKarpContent = TopicContent(
     topicId = "rabin_karp",
+    figure = Figure(
+        caption = "Text 31415, pattern 141, treated as base-10 numbers mod 13. Rolling the window from " +
+            "314 to 141 costs O(1) and never touches the middle: subtract the outgoing digit's " +
+            "contribution, multiply by the base, add the incoming one, reduce. The pattern hashes to 11 " +
+            "and so does this window, so the characters are compared and the match is confirmed — that " +
+            "confirmation is not optional, because equal hashes can be a collision. A weak modulus, or " +
+            "an adversary who knows it, makes every window collide and drags the cost back to O(n·m), " +
+            "which is why a large random prime is standard. Where the algorithm genuinely beats KMP is " +
+            "multi-pattern search: hash every pattern once, then test each window against a set.",
+        shape = FigureShape.Strip(
+            cells = listOf("3", "1", "4", "1", "5"),
+            bands = listOf(
+                FigureBand(0, 0, "drops out", FigureTone.Warn),
+                FigureBand(1, 3, "window = 141", FigureTone.Accent),
+            ),
+            pointers = listOf(FigurePointer(3, "hash 11")),
+        ),
+    ),
     whatIsIt = listOf(
         "Rabin-Karp compares a pattern against every window of the text by comparing numbers instead of strings: each window gets a hash, and only windows whose hash matches the pattern's are checked character by character.",
         "A rolling hash makes each window's hash cost O(1) to derive from the previous one — remove the outgoing character, shift, add the incoming one — so the whole scan is linear on average.",

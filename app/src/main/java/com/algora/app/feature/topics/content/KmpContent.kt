@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,25 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val kmpContent = TopicContent(
     topicId = "kmp",
+    figure = Figure(
+        caption = "The pattern ababc and its LPS table. lps[i] is the length of the longest proper prefix " +
+            "of the first i+1 characters that is also a suffix of them — so after matching abab and " +
+            "failing on c, j drops to 2 rather than 0, because the ab at the end is the same ab that " +
+            "sits at the front and is therefore already matched. Re-checking it would be wasted work. " +
+            "The consequence is the guarantee: the text pointer never moves backwards, not once, so the " +
+            "scan is O(n) after an O(m) preprocessing pass and the extra memory is the table alone. " +
+            "Falling back to lps[m−1] after a full match rather than resetting is what keeps " +
+            "overlapping occurrences — searching aaaa for aa should report three hits, not two.",
+        shape = FigureShape.Strip(
+            cells = listOf("a", "b", "a", "b", "c"),
+            bands = listOf(
+                FigureBand(0, 1, "prefix"),
+                FigureBand(2, 3, "= suffix", FigureTone.Accent),
+            ),
+            aux = listOf("0", "0", "1", "2", "0"),
+            auxLabel = "lps[i] — how much of what was matched is still usable after a break",
+        ),
+    ),
     whatIsIt = listOf(
         "Knuth-Morris-Pratt finds every occurrence of a pattern inside a text in O(n + m) by never re-reading a text character it has already matched.",
         "The trick is a precomputed prefix table (the LPS array) that answers, for each pattern position, \"if the match breaks here, how much of what I matched is still usable?\" — so the pattern slides forward instead of the text pointer sliding back.",

@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,22 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val longestPalindromicSubstringContent = TopicContent(
     topicId = "longest_palindromic_substring",
+    figure = Figure(
+        caption = "The palindrome here is abba and its centre is not a character — it is the gap between " +
+            "the two b's. That is the whole reason to think in centres rather than endpoints: there are " +
+            "2n − 1 of them, n characters for the odd-length palindromes and n − 1 gaps for the " +
+            "even-length ones, against O(n²) substrings to enumerate. Forgetting the gap centres is the " +
+            "classic bug, and the code that has it reports a as the longest palindrome in abba while " +
+            "passing every odd-length test case anyone writes by hand. Expansion is O(n²) time and O(1) " +
+            "space, which is what makes it preferable to the DP formulation at the same time bound and " +
+            "O(n²) space. Manacher reaches O(n) by seeding each new radius from its mirror inside the " +
+            "rightmost palindrome already found.",
+        shape = FigureShape.Strip(
+            cells = listOf("a", "b", "b", "a", "c"),
+            bands = listOf(FigureBand(0, 3, "abba · even centre", FigureTone.Accent)),
+            pointers = listOf(FigurePointer(2, "gap centre")),
+        ),
+    ),
     whatIsIt = listOf(
         "Given a string, find the longest contiguous run inside it that reads the same forwards and backwards. The brute-force reading of that sentence — enumerate all O(n²) substrings and check each in O(n) — costs O(n³), and the two standard improvements both come from noticing that a palindrome is defined by its centre rather than by its endpoints.",
         "Expand around centre is the one to reach for first. There are 2n − 1 possible centres: n characters, for odd-length palindromes, and n − 1 gaps between them, for even-length ones. From each, walk two pointers outward while the characters agree. That is O(n²) time and — importantly — O(1) extra space, which is what makes it preferable to the dynamic-programming formulation in practice. Forgetting the even-length centres is the classic bug: the code then reports \"a\" as the longest palindrome in \"abba\", and it is a bug that passes every odd-length test case you happen to write.",

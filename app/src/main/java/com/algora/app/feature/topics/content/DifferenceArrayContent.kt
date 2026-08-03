@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,26 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val differenceArrayContent = TopicContent(
     topicId = "difference_array",
+    figure = Figure(
+        caption = "Adding 5 to every element from index 1 to 3 touches two cells, not three: add at the " +
+            "left end, subtract just past the right end, and the final prefix-sum pass turns those two " +
+            "edits into the whole run. k updates therefore cost O(k) rather than O(k · length), with " +
+            "one O(n) reconstruction at the end regardless of how many there were. It is the exact " +
+            "mirror of the prefix sum — that one makes range queries O(1), this one makes range " +
+            "updates O(1) — and the same duality is why a Fenwick tree built over a difference array " +
+            "supports both in O(log n). The catch mirrors too: nothing is answerable until the " +
+            "reconstruction runs, so this is for a batch of updates followed by reads, not for " +
+            "interleaving them. The 2-D version needs four corner edits per rectangle instead of two.",
+        shape = FigureShape.Strip(
+            cells = listOf("0", "5", "0", "0", "−5", "0"),
+            bands = listOf(
+                FigureBand(1, 1, "+5 here", FigureTone.Accent),
+                FigureBand(4, 4, "−5 after", FigureTone.Warn),
+            ),
+            aux = listOf("0", "5", "5", "5", "0", "0"),
+            auxLabel = "prefix sum of the row above — the array the two edits actually produced",
+        ),
+    ),
     whatIsIt = listOf(
         "A difference array applies range updates in O(1) each, deferring the real work until a final prefix-sum pass reconstructs the updated array.",
         "It's the mirror image of prefix sums: prefix sums make range queries cheap, difference arrays make range updates cheap.",

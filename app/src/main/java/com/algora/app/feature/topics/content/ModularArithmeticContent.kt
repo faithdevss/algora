@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,24 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val modularArithmeticContent = TopicContent(
     topicId = "modular_arithmetic",
+    figure = Figure(
+        caption = "Multiplying every residue by 3, mod 7. The result is a permutation of the residues — " +
+            "nothing repeats and nothing is missed — so it hits 1 exactly once, at x = 5, and that is " +
+            "what makes 5 the inverse of 3. Addition, subtraction and multiplication all survive the " +
+            "collapse onto residues intact, which is why reducing at every step is legal and is what " +
+            "keeps a long chain of operations inside a machine word. Division is the exception and the " +
+            "reason the topic exists: an inverse exists exactly when gcd(a, m) = 1, so mod 4 the value " +
+            "2 has none at all, since 2x is always even and can never be 1. Two traps in Kotlin and " +
+            "Java: % takes the sign of the dividend, so −6 % 7 is −6 rather than the mathematical 1 " +
+            "(use Math.floorMod), and a × b can overflow before the reduction runs, so a large modulus " +
+            "needs a wider intermediate type.",
+        shape = FigureShape.Strip(
+            cells = listOf("0", "1", "2", "3", "4", "5", "6"),
+            bands = listOf(FigureBand(5, 5, "3⁻¹ = 5", FigureTone.Accent)),
+            aux = listOf("0", "3", "6", "2", "5", "1", "4"),
+            auxLabel = "3 · x mod 7 — a permutation of the residues, landing on 1 exactly once",
+        ),
+    ),
     whatIsIt = listOf(
         "Modular arithmetic is arithmetic on a clock. Working modulo m, every integer collapses onto one of m residues, and two numbers are treated as the same when they differ by a multiple of m. Twelve-hour time is arithmetic mod 12; a hash bucket index is arithmetic mod the table size.",
         "Addition, subtraction and multiplication all survive the collapse intact — that is the point. Because (a + b) mod m depends only on a mod m and b mod m, you can reduce at every step instead of at the end, which is what keeps a long chain of operations inside a machine word. Mod 7: 17 ≡ 3 and 23 ≡ 2, so 17 + 23 = 40 ≡ 5 and 3 + 2 = 5 agree, and 17 × 23 = 391 ≡ 6 matches 3 × 2 = 6. The property has a name, congruence is compatible with the ring operations, and it is why competitive programming answers are given \"mod 10⁹ + 7\" without loss.",

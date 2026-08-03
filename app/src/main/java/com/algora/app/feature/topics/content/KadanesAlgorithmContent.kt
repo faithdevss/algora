@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,23 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val kadanesAlgorithmContent = TopicContent(
     topicId = "kadanes_algorithm",
+    figure = Figure(
+        caption = "The row underneath is the best subarray ending exactly here, and the whole algorithm " +
+            "is the choice it makes at each step: extend the run, or throw it away and start fresh at " +
+            "the current element. It restarts at the 4, because by then the running total had been " +
+            "dragged below zero and a negative prefix can only hurt whatever follows — that single " +
+            "observation is what collapses an O(n²) scan to one pass. The answer is the largest value " +
+            "the running total ever reached, not the value it ends on; here they coincide, and on most " +
+            "inputs they do not. The all-negative array is the classic bug: initialise the answer to " +
+            "the first element rather than to zero, or the code confidently returns 0 for an array " +
+            "that contains no non-negative entry at all.",
+        shape = FigureShape.Strip(
+            cells = listOf("−2", "1", "−3", "4", "−1", "2", "1"),
+            bands = listOf(FigureBand(3, 6, "best = 6", FigureTone.Accent)),
+            aux = listOf("−2", "1", "−2", "4", "3", "5", "6"),
+            auxLabel = "best run ending here — restarted at index 3, where carrying the prefix would have cost",
+        ),
+    ),
     whatIsIt = listOf(
         "Kadane's algorithm finds the maximum-sum contiguous subarray in a single linear pass, turning an O(n²) or O(n³) brute force into O(n).",
         "Its core insight is a tiny DP: the best subarray ending at position i is either just a[i], or a[i] joined to the best subarray ending at i−1.",

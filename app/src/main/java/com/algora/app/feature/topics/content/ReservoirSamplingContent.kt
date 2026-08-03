@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,23 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val reservoirSamplingContent = TopicContent(
     topicId = "reservoir_sampling",
+    figure = Figure(
+        caption = "One slot, k = 1. The i-th arrival replaces whatever is held with probability 1/i, and " +
+            "the two effects cancel exactly: an early item's chance of surviving falls at precisely the " +
+            "rate a late item's chance of being chosen rises, so every element ends up at 1/n whatever " +
+            "n turns out to be. That is what makes the stream length irrelevant — no count in advance, " +
+            "no second pass, no storing the input, O(k) memory and one pass. The general k is the same " +
+            "statement with k/i in place of 1/i and a random slot chosen for the eviction. Getting the " +
+            "probability wrong in either direction biases the sample towards the head or the tail of " +
+            "the stream, and the failure is invisible on any single run — which is why this is one of " +
+            "the few algorithms worth testing statistically rather than by example.",
+        shape = FigureShape.Strip(
+            cells = listOf("1st", "2nd", "3rd", "4th", "5th"),
+            bands = listOf(FigureBand(0, 4, "each ends at 1/5", FigureTone.Accent)),
+            aux = listOf("1", "1/2", "1/3", "1/4", "1/5"),
+            auxLabel = "chance this arrival takes the slot — shrinking is what keeps it uniform",
+        ),
+    ),
     whatIsIt = listOf(
         "Reservoir sampling draws k items uniformly at random from a stream of unknown, possibly enormous length, using only O(k) memory and a single pass.",
         "The magic is that you never need to know the total count in advance: each new element gets a fair chance to replace one already held, keeping every item equally likely.",

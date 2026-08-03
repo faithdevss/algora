@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,24 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val countSetBitsContent = TopicContent(
     topicId = "count_set_bits",
+    figure = Figure(
+        caption = "156 is 10011100 — four set bits in an eight-bit value — and Kernighan's loop runs " +
+            "four times, each iteration clearing the lowest one. The bit-by-bit loop runs once per " +
+            "position of the *type* instead: 32 iterations for an Int no matter what the value is. " +
+            "That is the entire trade, O(popcount) against O(width), a large win on sparse values and " +
+            "no difference at all on dense ones. Neither is what belongs in production, though: " +
+            "Integer.bitCount compiles to a single POPCNT instruction on any x86-64 or ARM64 chip made " +
+            "in the last fifteen years and beats both loops by an order of magnitude while being " +
+            "clearer. The loops still earn their keep — the n and (n − 1) trick reappears wherever " +
+            "subsets are enumerated, and a precomputed table of counts per byte is still how bits get " +
+            "counted across a large array or on hardware without the instruction.",
+        shape = FigureShape.Strip(
+            cells = listOf("156", "152", "144", "128"),
+            bands = listOf(FigureBand(0, 3, "n = n and (n − 1) until zero", FigureTone.Accent)),
+            aux = listOf("1", "2", "3", "4"),
+            auxLabel = "count after each iteration — four passes, not eight",
+        ),
+    ),
     whatIsIt = listOf(
         "The population count, or popcount, of an integer is how many of its bits are 1. The obvious implementation walks every bit position, tests it, and adds — 32 iterations for an Int no matter what the value is, because the loop is driven by the type's width rather than by the number.",
         "Brian Kernighan's algorithm is driven by the value instead. Repeatedly apply n = n and (n − 1), which clears the lowest set bit each time, and count the iterations until n reaches zero. There is one iteration per set bit and none per empty position, so counting the bits of 156 — that is 10011100 — takes four iterations rather than eight. On sparse values the difference is large and on dense ones there is none, which is exactly the trade: the loop is now O(popcount) instead of O(width).",

@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,29 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val modularExponentiationContent = TopicContent(
     topicId = "modular_exponentiation",
+    figure = Figure(
+        caption = "The same 3¹³, now mod 17, and the answer is 12. Every squaring is reduced " +
+            "immediately — 3, 9, 81 ≡ 13, 169 ≡ 16 — which is legitimate because multiplication " +
+            "commutes with taking remainders, so every intermediate stays below the modulus. Combining " +
+            "the marked powers gives 16 · 13 = 208 ≡ 4, then 4 · 3 = 12. The unreduced 3¹³ is 1594323 " +
+            "and nothing above ever held a number bigger than 208; at cryptographic sizes that " +
+            "difference is between a number with more digits than the universe has atoms and a few " +
+            "dozen cheap multiplications. It also unlocks division: by Fermat, a^(p−2) is a's inverse " +
+            "modulo a prime, computable by exactly this routine and nothing else. Two engineering " +
+            "notes — the intermediate product needs twice the modulus's width, since two values just " +
+            "under m multiply to nearly m², and cryptographic code must run in constant time, because " +
+            "skipping work on zero bits leaks the exponent through timing.",
+        shape = FigureShape.Strip(
+            cells = listOf("3¹", "3²", "3⁴", "3⁸"),
+            bands = listOf(
+                FigureBand(0, 0, "in", FigureTone.Accent),
+                FigureBand(1, 1, "skip", FigureTone.Warn),
+                FigureBand(2, 3, "in", FigureTone.Accent),
+            ),
+            aux = listOf("3", "9", "13", "16"),
+            auxLabel = "each value reduced mod 17 as soon as it is formed",
+        ),
+    ),
     whatIsIt = listOf(
         "Modular exponentiation computes aⁿ mod m without ever forming aⁿ. It is binary exponentiation with one reduction added after every multiplication, and that single addition is what turns an impossible computation into a cheap one — 2^2048 has more digits than there are atoms in the observable universe, while 2^2048 mod m is a few dozen multiplications of numbers no larger than m².",
         "The reduction is legitimate because multiplication commutes with taking remainders: (x·y) mod m depends only on x mod m and y mod m. So every intermediate value can be kept inside 0 … m−1 rather than growing. Following 3¹³ mod 17: 3¹ = 3, 3² = 9, 3⁴ = 9² = 81 ≡ 13, 3⁸ = 13² = 169 ≡ 16. Since 13 = 1101₂, the answer is 3⁸ · 3⁴ · 3¹ = 16 · 13 · 3, and reducing as you go gives 16·13 = 208 ≡ 4, then 4·3 = 12. The unreduced 3¹³ is 1594323, and 1594323 mod 17 is indeed 12 — but nothing above ever held a number larger than 208.",

@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,28 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val xorTricksContent = TopicContent(
     topicId = "xor_tricks",
+    figure = Figure(
+        caption = "Everything follows from x xor x = 0 and x xor 0 = x. Those make XOR its own inverse, " +
+            "and it is commutative and associative besides, so the order of a whole sequence never " +
+            "matters — the two pairs here annihilate each other despite being interleaved rather than " +
+            "adjacent, and the running value returns to the singleton. That is O(n) time and O(1) " +
+            "space, against a hash set's O(n) space or a sort's O(n log n) time. Being self-inverse " +
+            "also gives XOR a prefix array exactly like a prefix sum, with subtraction replaced by XOR " +
+            "itself: the XOR of a range is prefix[r+1] xor prefix[l], two lookups whatever the width. " +
+            "Two classics deserve caution rather than recommendation — the swap without a temporary " +
+            "zeroes the value when both operands are the same location, which happens the moment i == j " +
+            "on an array, and is slower than a temporary on any modern compiler; and the XOR linked " +
+            "list halves memory while breaking garbage collection, ASan and every debugger.",
+        shape = FigureShape.Strip(
+            cells = listOf("4", "1", "2", "1", "2"),
+            bands = listOf(
+                FigureBand(0, 0, "odd one", FigureTone.Accent),
+                FigureBand(1, 4, "two pairs"),
+            ),
+            aux = listOf("4", "5", "7", "6", "4"),
+            auxLabel = "running XOR — it wanders and then lands back on the unpaired value",
+        ),
+    ),
     whatIsIt = listOf(
         "XOR sets a bit where its two operands differ. Everything interesting about it follows from two consequences of that: x xor x = 0, and x xor 0 = x. Together they make XOR its own inverse — applying the same value twice returns you to where you started — and the operation is commutative and associative besides, so the order of a whole sequence of XORs never matters.",
         "The best-known use is finding the element that appears an odd number of times. XOR a list where every value is paired except one, and the pairs annihilate each other regardless of how they are interleaved, leaving the singleton: 4 xor 1 xor 2 xor 1 xor 2 = 4. That is O(n) time and O(1) space, against a hash set's O(n) space or a sort's O(n log n) time. Being its own inverse also gives XOR a prefix array exactly like a prefix sum, with subtraction replaced by XOR itself: the XOR of a range is prefix[r+1] xor prefix[l], two lookups whatever the range width.",

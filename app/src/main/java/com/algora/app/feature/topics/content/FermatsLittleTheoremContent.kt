@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,24 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val fermatsLittleTheoremContent = TopicContent(
     topicId = "fermats_little_theorem",
+    figure = Figure(
+        caption = "p = 7, and a⁶ lands on 1 for every base that is not a multiple of 7. The exponent is " +
+            "p − 1 for a countable reason: multiplying every non-zero residue by a permutes them, so " +
+            "the two lists have the same product, giving a^(p−1) · (p−1)! ≡ (p−1)!, and (p−1)! " +
+            "cancels because none of its factors is divisible by p. Divide once more and you get the " +
+            "form that appears in code — a^(p−2) is a's modular inverse. Read backwards it is a " +
+            "primality test, and an unreliable one: 561 = 3 × 11 × 17 passes for every base coprime to " +
+            "it, because it is squarefree and p − 1 divides 560 for each of its prime factors. Those " +
+            "are Carmichael numbers, there are infinitely many, and trying more bases will never catch " +
+            "one. Miller-Rabin closes the hole by extracting square roots of 1 along the way, since a " +
+            "prime admits only ±1 and a non-trivial root is proof of compositeness.",
+        shape = FigureShape.Strip(
+            cells = listOf("1", "2", "3", "4", "5", "6"),
+            bands = listOf(FigureBand(0, 5, "a⁶ ≡ 1 for every a", FigureTone.Accent)),
+            aux = listOf("1", "1", "1", "1", "1", "1"),
+            auxLabel = "a⁶ mod 7 — 3⁶ is 729, which is 7 × 104 + 1",
+        ),
+    ),
     whatIsIt = listOf(
         "Fermat's little theorem states that for a prime p and any a not divisible by p, a^(p−1) ≡ 1 (mod p). Mod 7 that means 2⁶, 3⁶, 4⁶, 5⁶ and 6⁶ are all congruent to 1 — 3⁶ is 729, which is 7 × 104 + 1. It is a small statement with two large consequences: it is how division works modulo a prime, and it is the seed of every practical primality test.",
         "The proof is a counting argument that explains why the exponent is p − 1 specifically. Multiplying every non-zero residue by a permutes them: the list a·1, a·2, …, a·(p−1) contains no repeats and no zero, so it is the same set as 1, 2, …, p−1 in some order. Multiply each list out and the products must agree, giving a^(p−1)·(p−1)! ≡ (p−1)!. Since (p−1)! is invertible mod p — none of its factors is divisible by p — it cancels, leaving a^(p−1) ≡ 1. Dividing by a once more gives the form that gets used in code: a^(p−2) is a's modular inverse. Mod 7, 3⁵ = 243 ≡ 5, and 3 × 5 = 15 ≡ 1.",

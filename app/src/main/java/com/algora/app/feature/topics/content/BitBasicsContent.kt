@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,27 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val bitBasicsContent = TopicContent(
     topicId = "bit_basics",
+    figure = Figure(
+        caption = "n = 12 is 1100. Subtracting one flips the lowest set bit off and turns every bit " +
+            "below it on, so n and (n − 1) has nothing left to keep there and clears exactly that bit, " +
+            "leaving 1000. Several tests are corollaries of that one identity. A power of two has " +
+            "exactly one set bit, so n and (n − 1) == 0 identifies one in a single instruction — with " +
+            "the guard n > 0, which is mandatory, because zero passes the test and is not a power of " +
+            "two. Repeating the operation until the value reaches zero counts set bits at one iteration " +
+            "per bit, which is Kernighan's algorithm. Its mirror image, n and −n, keeps only the lowest " +
+            "set bit and is what a Fenwick tree walks. The honest caveat is readability: each of these " +
+            "is one instruction and belongs in a hot path, but n % 2 == 0 tells a reader what is meant " +
+            "and n and 1 == 0 does not.",
+        shape = FigureShape.Strip(
+            cells = listOf("1", "1", "0", "0"),
+            bands = listOf(
+                FigureBand(0, 0, "survives"),
+                FigureBand(1, 1, "cleared", FigureTone.Accent),
+            ),
+            aux = listOf("1", "0", "1", "1"),
+            auxLabel = "n − 1 = 1011 — the lowest set bit off, everything below it on",
+        ),
+    ),
     whatIsIt = listOf(
         "An integer is a row of places, each worth a power of two, and bit manipulation is arithmetic performed by naming places rather than by computing values. The operators are the whole vocabulary: & keeps bits set in both operands, | keeps bits set in either, xor keeps bits where they differ, inv flips every bit, and shl / shr slide the whole row left or right.",
         "Three idioms account for most real uses. n and 1 isolates the ones place, which alone decides parity — and unlike n % 2 it is still correct for negative numbers, since Kotlin's % returns −1 for −3 % 2 while (−3) and 1 gives 1. Shifting by k multiplies or divides by 2ᵏ, though shr on a negative number keeps the sign bit and therefore rounds toward negative infinity rather than toward zero, which is not what integer division does. And n and (n − 1) clears the lowest set bit, because subtracting one flips that bit off and turns everything below it on, leaving nothing for the & to keep.",

@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,33 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val polygonAreaContent = TopicContent(
     topicId = "polygon_area",
+    figure = Figure(
+        caption = "Shoelace on these four vertices, taken in order: the signed cross products sum to " +
+            "0 + 12 + 13 + 0 = 25, so the area is 12.5. No triangulation, no decomposition, and no " +
+            "requirement that the polygon be convex. Each term is twice the signed area of the triangle " +
+            "made by the origin and one edge, so the sum sweeps a fan outward from the origin; where " +
+            "the outline doubles back the terms go negative and the cancellation is exact, which is why " +
+            "the origin can sit anywhere at all without changing the answer. The sign is not waste — " +
+            "it is the orientation, positive for counter-clockwise, and that one bit is what " +
+            "point-in-polygon tests, hull direction and normal vectors all want before they start. Two " +
+            "limits: the polygon has to be simple, since a self-intersecting outline returns the " +
+            "difference of the regions rather than their sum, and perimeter needs a square root per " +
+            "edge, making it the more expensive quantity despite looking like the simpler one.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("0,0", 0.12f, 0.88f, FigureTone.Primary),
+                FigureGraphNode("4,0", 0.88f, 0.88f, FigureTone.Primary),
+                FigureGraphNode("4,3", 0.88f, 0.34f, FigureTone.Primary),
+                FigureGraphNode("1,4", 0.26f, 0.10f, FigureTone.Primary),
+            ),
+            edges = listOf(
+                FigureEdge(0, 1, tone = FigureTone.Accent),
+                FigureEdge(1, 2, "12", tone = FigureTone.Accent),
+                FigureEdge(2, 3, "13", tone = FigureTone.Accent),
+                FigureEdge(3, 0, tone = FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "The shoelace formula computes the area of any simple polygon from its vertex list alone — no triangulation, no decomposition into shapes, and no requirement that the polygon be convex. One pass over the vertices, two multiplications each.",
         "The mechanism is a signed sum of cross products. Take consecutive vertices in order and add xᵢ·yᵢ₊₁ − xᵢ₊₁·yᵢ; half the absolute value of that total is the area. Each term is twice the signed area of the triangle formed by the origin and that edge, so the sum sweeps a fan of triangles out from the origin. Where the polygon bulges away from the origin the terms are positive, where it doubles back they are negative, and the cancellation is exact — which is why the origin can sit anywhere, inside the polygon or a mile away, without changing the answer.",

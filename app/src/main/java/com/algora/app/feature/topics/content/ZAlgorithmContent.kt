@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,24 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val zAlgorithmContent = TopicContent(
     topicId = "z_algorithm",
+    figure = Figure(
+        caption = "Z[i] is how far the suffix starting at i still matches the beginning of the string. " +
+            "The band is the window: the prefix-match interval with the furthest right edge found so " +
+            "far. Any index landing inside it has an exact mirror near the front whose Z value is " +
+            "already known, so that value can be copied outright with no character comparisons at all — " +
+            "and only when the copy reaches the window's edge does the algorithm compare anything, with " +
+            "every such comparison pushing the right edge further right. The edge only ever increases " +
+            "and is bounded by n, so the whole array costs O(n). Matching needs no separate machinery: " +
+            "build pattern + separator + text and read off every position where Z equals the pattern " +
+            "length. The separator is load-bearing — omit it and a match spanning the boundary is " +
+            "reported where none exists.",
+        shape = FigureShape.Strip(
+            cells = listOf("a", "a", "b", "a", "a", "b"),
+            bands = listOf(FigureBand(3, 5, "window [l, r]", FigureTone.Accent)),
+            aux = listOf("—", "1", "0", "3", "1", "0"),
+            auxLabel = "Z[i] — prefix-match length starting at i; Z[0] is undefined by convention",
+        ),
+    ),
     whatIsIt = listOf(
         "The Z-array of a string answers one question at every position: how many characters starting here also match the beginning of the string? Z[i] is the length of the longest common prefix of the whole string and the suffix starting at i. Computing the whole array takes one linear pass, and that array turns out to answer a startling number of string questions directly.",
         "The trick that makes it linear is a window [l, r] — the interval with the largest right endpoint that is known to match a prefix of the string. When a new index i falls inside that window, its position has an exact mirror at i − l near the front of the string, and Z[i − l] was computed already. If that mirrored value is small enough to stay inside the window it can be copied outright, with no character comparisons at all. Only when it reaches the window's edge does the algorithm compare characters, and every such comparison pushes r further right. Since r only ever increases and is bounded by n, the total comparison work across the whole array is O(n).",

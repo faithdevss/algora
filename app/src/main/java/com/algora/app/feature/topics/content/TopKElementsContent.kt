@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureStack
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,33 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val topKElementsContent = TopicContent(
     topicId = "top_k_elements",
+    figure = Figure(
+        caption = "Only k elements are ever held. Each arriving value is compared against the weakest of " +
+            "them and either takes its place or is dropped on the spot — and the structure holding them " +
+            "is a *min*-heap even though the question asks for the largest, which is the part that gets " +
+            "written backwards. The root being the smallest of the best three is exactly what makes the " +
+            "comparison O(1). That gives O(n log k) time and O(k) space, against a full sort's " +
+            "O(n log n) and O(n), and it is the only version that works at all when the input is a " +
+            "stream too long to store. Two boundaries: when k approaches n the heap stops helping and " +
+            "sorting wins, and when the whole array is in memory and only the k-th element is wanted, " +
+            "quickselect gets it in O(n) expected time — at the cost of reordering the input.",
+        shape = FigureShape.Stacks(
+            columns = listOf(
+                FigureStack(
+                    label = "heap, k = 3",
+                    entries = listOf("5", "8", "9"),
+                    tone = FigureTone.Accent,
+                    note = "smallest on top — the one an arrival is measured against",
+                ),
+                FigureStack(
+                    label = "dropped",
+                    entries = listOf("4", "2", "1"),
+                    tone = FigureTone.Warn,
+                    note = "lost to the root and never stored",
+                ),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "The Top-K problem asks for the k largest (or smallest, or most frequent) elements of a collection — without paying to fully sort everything.",
         "A size-k heap is the standard tool: keep only the best k seen so far, evicting the weakest as better elements arrive, for O(n log k) time.",

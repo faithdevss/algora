@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,25 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val slidingWindowContent = TopicContent(
     topicId = "sliding_window",
+    figure = Figure(
+        caption = "The window's answer is repaired, not recomputed: one element leaves the left, one " +
+            "joins the right, and the update is O(1) instead of O(k) — which is what turns an O(n·k) " +
+            "scan into a single O(n) pass. The precondition is that the quantity being tracked is " +
+            "incrementally invertible. Sums and counts are, so a running variable suffices. A maximum " +
+            "is not: removing the element that happened to be the maximum tells you nothing about what " +
+            "the new one is, which is exactly why maximum-in-window needs a monotonic deque rather than " +
+            "a variable, and why that problem is a genuinely different exercise despite looking like " +
+            "this one. The variable-size version is the same machinery with the left edge advanced by " +
+            "a condition rather than by a fixed width.",
+        shape = FigureShape.Strip(
+            cells = listOf("2", "1", "5", "1", "3", "2"),
+            bands = listOf(FigureBand(1, 3, "window k=3", FigureTone.Accent)),
+            pointers = listOf(
+                FigurePointer(1, "leaves", FigureTone.Warn),
+                FigurePointer(4, "enters"),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "The sliding window technique maintains a moving subrange over a sequence, updating an answer incrementally as the window slides instead of recomputing it from scratch.",
         "By adding the new element and removing the old one at each step, it turns many O(n·k) or O(n²) scans into a single O(n) pass.",

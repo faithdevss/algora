@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,36 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val subsetsBitmaskContent = TopicContent(
     topicId = "subsets_bitmask",
+    figure = Figure(
+        caption = "Counting from 0 to 2ⁿ − 1 enumerates every subset exactly once — one flat loop, no " +
+            "recursion, no visited set, no duplicate suppression. Bit i means element i is in, and the " +
+            "marked row is 5, which is {a, c}. Set operations then collapse to single instructions: " +
+            "union is |, intersection is and, difference is a and b.inv(), complement is mask xor full, " +
+            "membership is (mask shr i) and 1, and cardinality is a popcount. The step that matters " +
+            "more is that a mask is an ordinary integer and can therefore index an array, which turns " +
+            "the encoding into a dynamic-programming state — Held-Karp's dp[mask][i] is exactly this. " +
+            "The hard limit is the exponent rather than the representation: 2²⁰ masks is about a " +
+            "million and entirely routine, 2⁴⁰ is a trillion and out of reach, and at n = 64 a mask no " +
+            "longer fits in a Long at all.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("·", "·", "·"),
+                listOf("·", "·", "✓"),
+                listOf("·", "✓", "·"),
+                listOf("·", "✓", "✓"),
+                listOf("✓", "·", "·"),
+                listOf("✓", "·", "✓"),
+                listOf("✓", "✓", "·"),
+                listOf("✓", "✓", "✓"),
+            ),
+            rowHeaders = listOf("0", "1", "2", "3", "4", "5", "6", "7"),
+            colHeaders = listOf("c", "b", "a"),
+            marks = listOf(
+                FigureCell(5, 0, FigureTone.Accent),
+                FigureCell(5, 2, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A subset of an n-element set is a yes-or-no answer for each element, which is exactly what an n-bit integer stores. Bit i means \"element i is in\". So the integers 0 through 2ⁿ − 1 enumerate every subset exactly once, in a single flat loop with no recursion, no visited set and no duplicate suppression.",
         "The consequences go beyond enumeration. Set operations become single instructions: union is |, intersection is &, difference is `a and b.inv()`, complement is `mask xor full`, membership is `(mask shr i) and 1`, and cardinality is a popcount. And because a mask is an ordinary integer, it can be used directly as an array index — which is what turns it from an encoding into a dynamic-programming state. Held-Karp's travelling-salesman formulation is exactly this: dp[mask][i] is the best tour visiting the set `mask` and ending at city i, giving O(2ⁿ·n²) instead of O(n!).",

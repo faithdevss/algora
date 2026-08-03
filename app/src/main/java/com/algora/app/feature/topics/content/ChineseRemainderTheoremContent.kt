@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,32 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val chineseRemainderTheoremContent = TopicContent(
     topicId = "chinese_remainder_theorem",
+    figure = Figure(
+        caption = "Sunzi's puzzle: x ≡ 2 (mod 3), 3 (mod 5), 2 (mod 7). With M = 105, each row is " +
+            "M divided by one modulus, and the zeros off the diagonal are the whole construction — " +
+            "35 is divisible by 5 and by 7, so it contributes nothing to those two congruences and " +
+            "only to the first. Scale each row by the inverse of its own diagonal entry and it becomes " +
+            "a basis vector, 1 in its column and 0 elsewhere, so the weighted sum " +
+            "2·35·2 + 3·21·1 + 2·15·1 = 233 ≡ 23 (mod 105) satisfies all three independently. " +
+            "Coprimality carries everything: with moduli 4 and 6 the theorem does not apply, and " +
+            "x ≡ 1 (mod 4) with x ≡ 2 (mod 6) has no solution at all, since the first forces x odd and " +
+            "the second forces it even. Read structurally, CRT is an isomorphism, which is why RSA " +
+            "implementations decrypt mod p and mod q separately and recombine for a fourfold speedup.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("2", "0", "0"),
+                listOf("0", "1", "0"),
+                listOf("0", "0", "1"),
+            ),
+            rowHeaders = listOf("35", "21", "15"),
+            colHeaders = listOf("mod 3", "mod 5", "mod 7"),
+            marks = listOf(
+                FigureCell(0, 0, FigureTone.Accent),
+                FigureCell(1, 1, FigureTone.Accent),
+                FigureCell(2, 2, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "The Chinese Remainder Theorem says that a system of congruences with pairwise coprime moduli always has a solution, and that the solution is unique modulo the product of those moduli. Sunzi's third-century puzzle is the standard statement of it: a number leaves remainder 2 when divided by 3, 3 when divided by 5, and 2 when divided by 7 — what is it? The answer is 23, and every other answer differs from 23 by a multiple of 105.",
         "The construction is direct rather than a search. With M = 3 × 5 × 7 = 105, form Mᵢ = M / mᵢ for each modulus: 35, 21 and 15. Each Mᵢ is divisible by every modulus except its own, so multiplying it by the inverse of Mᵢ modulo mᵢ produces a number that is 1 mod mᵢ and 0 mod all the others — a basis vector, in effect. Here 35 ≡ 2 (mod 3) and 2⁻¹ ≡ 2, while 21 ≡ 1 (mod 5) and 15 ≡ 1 (mod 7), so the sum is 2·35·2 + 3·21·1 + 2·15·1 = 140 + 63 + 30 = 233, and 233 mod 105 = 23. Each term contributes its own remainder to its own modulus and contributes nothing anywhere else.",

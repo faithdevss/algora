@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,31 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val lineIntersectionContent = TopicContent(
     topicId = "line_intersection",
+    figure = Figure(
+        caption = "The tempting approach — compute slopes, solve for the intersection point, check it " +
+            "lies inside both segments — divides by zero the moment a segment is vertical. The robust " +
+            "test never computes a point at all. Take the orientation of the triple (p₁, p₂, q₁) and " +
+            "of (p₁, p₂, q₂): if the two differ, q's endpoints lie on opposite sides of the line " +
+            "through p. Do the same the other way round, and when both pairs straddle, the segments " +
+            "must cross. Four cross products, multiplication and subtraction only, no division and no " +
+            "square roots — exact on integer inputs. The degenerate cases are where implementations " +
+            "actually fail: an orientation of zero means three collinear points, and the answer then " +
+            "turns on a bounding-box containment check rather than a sign. That single branch handles " +
+            "endpoint touches, T-junctions and partial overlaps, all of them legitimate intersections " +
+            "the straddle test alone reports as misses.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("p₁", 0.08f, 0.24f, FigureTone.Primary),
+                FigureGraphNode("p₂", 0.92f, 0.70f, FigureTone.Primary),
+                FigureGraphNode("q₁", 0.24f, 0.86f, FigureTone.Accent),
+                FigureGraphNode("q₂", 0.80f, 0.12f, FigureTone.Accent),
+            ),
+            edges = listOf(
+                FigureEdge(0, 1, tone = FigureTone.Primary),
+                FigureEdge(2, 3, tone = FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Two line segments either cross or they do not, and deciding which is one of the most-used primitives in computational geometry. The temptation is to compute slopes, solve for the intersection point, and check that it lies within both segments — which works until one segment is vertical, and then divides by zero.",
         "The robust formulation never computes an intersection point at all. Take the orientation of the triple (p₁, p₂, q₁) and of (p₁, p₂, q₂): if they differ, then q₁ and q₂ lie on opposite sides of the line through p₁p₂. Do the same for (q₁, q₂, p₁) and (q₁, q₂, p₂). When both pairs straddle, the segments must cross, and the whole test is four cross products — multiplication and subtraction only, no division and no square roots. With integer inputs it is exact.",

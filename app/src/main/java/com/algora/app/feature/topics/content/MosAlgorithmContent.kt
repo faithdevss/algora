@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureSpan
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,26 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val mosAlgorithmContent = TopicContent(
     topicId = "mos_algorithm",
+    figure = Figure(
+        caption = "Four range queries, answered in the numbered order rather than the order they " +
+            "arrived — which is only legal because nothing updates the array in between, and that " +
+            "offline requirement is the technique's whole precondition. Sorting by √n-sized blocks of " +
+            "the left endpoint, then by the right endpoint within a block, is what bounds the pointer " +
+            "movement: the left pointer moves O(√n) per query and the right pointer sweeps forward " +
+            "O(n) per block, giving O((n + q)√n) against the naive O(n·q). The second precondition is " +
+            "that a range's answer can be repaired in O(1) by adding or removing a single element at " +
+            "one end — distinct-value counts and frequency queries qualify, and anything needing a " +
+            "recomputation from scratch does not, no matter how the queries are ordered.",
+        shape = FigureShape.Timeline(
+            spans = listOf(
+                FigureSpan(1, 5, "1st 1–5", FigureTone.Accent),
+                FigureSpan(2, 9, "2nd 2–9", FigureTone.Accent),
+                FigureSpan(3, 7, "3rd 3–7", FigureTone.Primary),
+                FigureSpan(6, 10, "4th 6–10", FigureTone.Primary),
+            ),
+            axisMax = 11,
+        ),
+    ),
     whatIsIt = listOf(
         "Mo's algorithm answers many range queries offline by reordering them so that moving from one query's range to the next requires as few element additions and removals as possible.",
         "It works when there's no update between queries and when a range's answer can be adjusted incrementally by adding or removing one element at an end.",

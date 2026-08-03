@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,39 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val rotatingCalipersContent = TopicContent(
     topicId = "rotating_calipers",
+    figure = Figure(
+        caption = "The two farthest points in a set are both hull vertices and are antipodal — touched " +
+            "by the same pair of parallel supporting lines somewhere in their rotation — and an " +
+            "h-vertex hull has only O(h) antipodal pairs, against the n²/2 pairs brute force would " +
+            "compare. So after the hull is built, two pointers walk it once: advance the second while " +
+            "the triangle area it forms keeps growing, then advance the first. The sweep is O(h) and " +
+            "the hull's O(n log n) dominates. What licenses the single pass is that the support " +
+            "function is unimodal around a convex polygon, so the opposite contact vertex advances " +
+            "monotonically and never backs up — the same argument that licenses two pointers on a " +
+            "sorted array, and the reason a non-convex polygon breaks it immediately rather than " +
+            "gradually. The same machinery is reused unchanged for the minimum-area enclosing " +
+            "rectangle, which always has a side flush with a hull edge, and for the width of a point " +
+            "set.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("A", 0.06f, 0.50f, FigureTone.Accent),
+                FigureGraphNode("B", 0.30f, 0.12f),
+                FigureGraphNode("C", 0.70f, 0.12f),
+                FigureGraphNode("D", 0.96f, 0.50f, FigureTone.Accent),
+                FigureGraphNode("E", 0.70f, 0.88f),
+                FigureGraphNode("F", 0.30f, 0.88f),
+            ),
+            edges = listOf(
+                FigureEdge(0, 1),
+                FigureEdge(1, 2),
+                FigureEdge(2, 3),
+                FigureEdge(3, 4),
+                FigureEdge(4, 5),
+                FigureEdge(5, 0),
+                FigureEdge(0, 3, "diameter", tone = FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Rotating calipers is a technique, not a single algorithm: imagine a pair of parallel lines gripping a convex polygon from opposite sides, then rotating them together through a full turn. The pairs of vertices they touch along the way are the antipodal pairs, and a surprising number of extremal questions are answered by looking at exactly those pairs and nothing else.",
         "The diameter — the greatest distance between any two points in a set — is the canonical example. Brute force compares all n²/2 pairs. But the two farthest points must both be hull vertices, and they must be antipodal, and there are only O(h) antipodal pairs on an h-vertex hull. So after building the hull you walk two pointers around it: advance the second pointer while the triangle area it forms keeps growing, then advance the first. Each pointer travels around the hull once, giving O(h) for the sweep. The hull construction is O(n log n) and dominates.",

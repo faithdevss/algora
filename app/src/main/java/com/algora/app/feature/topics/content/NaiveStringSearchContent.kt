@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,26 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val naiveStringSearchContent = TopicContent(
     topicId = "naive_string_search",
+    figure = Figure(
+        caption = "Searching aaaab for aaab. Three characters agree, the fourth does not, and the shift " +
+            "is one — which throws away everything just learned. The next alignment re-reads the same " +
+            "three a's it already compared, and on a text of one repeated character that repeats for " +
+            "every alignment, which is the O(n·m) worst case in full. On ordinary text it never happens: " +
+            "a mismatch usually lands on the first or second character, the inner loop almost never runs " +
+            "to completion, and the observed cost is close to O(n) with no preprocessing and no extra " +
+            "memory. The three faster algorithms each attack the discarded knowledge from a different " +
+            "side — KMP records it in a prefix table, Boyer-Moore compares right-to-left so a mismatch " +
+            "can justify shifting a whole pattern length, Rabin-Karp replaces the comparison with a hash.",
+        shape = FigureShape.Strip(
+            cells = listOf("a", "a", "a", "a", "b"),
+            bands = listOf(
+                FigureBand(0, 2, "matched"),
+                FigureBand(3, 3, "fails", FigureTone.Warn),
+            ),
+            aux = listOf("a", "a", "a", "b"),
+            auxLabel = "the next alignment, shifted by one — it re-reads three characters it already knows",
+        ),
+    ),
     whatIsIt = listOf(
         "Naive pattern search lines the pattern up against the start of the text, compares left to right, and on any mismatch slides the pattern one position right and starts over. It is four lines of code with no preprocessing and no extra memory, and it is the baseline every other string-matching algorithm is measured against.",
         "On ordinary text it is also perfectly adequate. The reason is that a mismatch usually happens on the first or second character, so the inner loop almost never runs to completion and the observed cost is close to O(n). What the O(n·m) worst case describes is the pathological input: a text of one repeated character and a pattern that is almost the same, where every alignment matches m−1 characters before failing on the last one. Searching \"aaaaaaaaab\" for \"aaab\" does seven alignments of four comparisons each — twenty-eight comparisons for a ten-character text.",

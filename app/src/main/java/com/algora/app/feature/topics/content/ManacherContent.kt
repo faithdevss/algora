@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,23 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val manacherContent = TopicContent(
     topicId = "manacher",
+    figure = Figure(
+        caption = "The string aba with separators interleaved, and the radius found at each centre. " +
+            "Interleaving is what removes the parity problem: every palindrome in the padded string has " +
+            "odd length, so one loop handles both cases, and the radius in the padded string is exactly " +
+            "the palindrome's length in the original — the 3 in the middle is aba. The linear time comes " +
+            "from not starting any radius at zero: inside the rightmost palindrome found so far, a " +
+            "centre's mirror on the left half has already been measured, so the new radius starts at " +
+            "that value clipped to the right edge. It is the Z-algorithm's window argument applied to " +
+            "symmetry rather than to prefixes, and it works for the same reason — the right edge only " +
+            "moves forward, so the total expansion work across the whole string is O(n).",
+        shape = FigureShape.Strip(
+            cells = listOf("#", "a", "#", "b", "#", "a", "#"),
+            bands = listOf(FigureBand(3, 3, "centre", FigureTone.Accent)),
+            aux = listOf("0", "1", "0", "3", "0", "1", "0"),
+            auxLabel = "radius per centre — the maximum, 3, is the palindrome aba",
+        ),
+    ),
     whatIsIt = listOf(
         "Manacher's algorithm finds the longest palindromic substring in O(n) by computing, for every centre, how far the palindrome around it reaches.",
         "The speed comes from reuse: inside an already-known palindrome, a centre's mirror on the left half has the same radius, so the expansion can start from that value instead of from zero.",

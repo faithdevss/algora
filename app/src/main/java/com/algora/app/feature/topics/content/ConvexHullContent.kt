@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,36 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val convexHullContent = TopicContent(
     topicId = "convex_hull",
+    figure = Figure(
+        caption = "The hull is the rubber-band polygon: every other point is strictly inside it, and " +
+            "there is exactly one such polygon for any set. Graham scan gets there by sorting the " +
+            "points by polar angle around the lowest one and then walking that order with a stack, " +
+            "checking the turn made by the last two entries and the new point — a left turn is convex " +
+            "and gets pushed, a right turn means the middle point was a mistake, so pop it and check " +
+            "again. Each point is pushed once and popped at most once, so the scan itself is linear and " +
+            "the O(n log n) is entirely the sort. Jarvis march takes the opposite trade, one linear " +
+            "sweep per hull vertex for O(n·h), which wins outright when the hull is small relative to " +
+            "the input and degrades to O(n²) when it is not. What breaks all of them equally is " +
+            "degeneracy — three collinear points on a hull edge, which every implementation has to " +
+            "decide to keep or discard, and has to decide consistently.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("A", 0.10f, 0.62f, FigureTone.Accent),
+                FigureGraphNode("B", 0.34f, 0.10f, FigureTone.Accent),
+                FigureGraphNode("C", 0.82f, 0.16f, FigureTone.Accent),
+                FigureGraphNode("D", 0.94f, 0.70f, FigureTone.Accent),
+                FigureGraphNode("E", 0.46f, 0.92f, FigureTone.Accent),
+                FigureGraphNode("F", 0.52f, 0.48f),
+            ),
+            edges = listOf(
+                FigureEdge(0, 1, tone = FigureTone.Accent),
+                FigureEdge(1, 2, tone = FigureTone.Accent),
+                FigureEdge(2, 3, tone = FigureTone.Accent),
+                FigureEdge(3, 4, tone = FigureTone.Accent),
+                FigureEdge(4, 0, tone = FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "The convex hull of a point set is the smallest convex polygon containing all of it — the shape a rubber band snaps to when released around a board of pins. Every input point is either a vertex of that polygon or strictly inside it, and there is exactly one such polygon for any set.",
         "Graham scan gets there by sorting. Pick the lowest point, sort the rest by polar angle around it, then walk the sorted list maintaining a stack of the hull so far. At each new point, check the turn the last two stack entries and the new point make: a left turn is convex and the point is pushed, a right turn means the middle point was a mistake, so pop it and re-check. Each point is pushed once and popped at most once, so the scan is linear and the O(n log n) total is entirely the sort's.",

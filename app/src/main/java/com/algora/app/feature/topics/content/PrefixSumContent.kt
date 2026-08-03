@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,24 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val prefixSumContent = TopicContent(
     topicId = "prefix_sum",
+    figure = Figure(
+        caption = "One O(n) pass buys O(1) range sums forever after: the marked range is 9 − 3 = 6, and " +
+            "it would still be two lookups if the range spanned a million elements. The catch is that " +
+            "this is for static data — changing a single element invalidates every prefix after it, so " +
+            "a workload that interleaves updates with queries needs a Fenwick tree, which costs " +
+            "O(log n) for both instead of O(1) and O(n). The exact mirror image is the difference " +
+            "array: this one makes range queries cheap, that one makes range updates cheap, and a " +
+            "Fenwick tree over a difference array supports both. Two extensions come free — the 2-D " +
+            "version answers rectangle sums with four lookups by inclusion-exclusion, and the whole " +
+            "trick works with XOR in place of addition, because what it actually requires is an " +
+            "invertible operation rather than arithmetic.",
+        shape = FigureShape.Strip(
+            cells = listOf("3", "1", "4", "1", "5"),
+            bands = listOf(FigureBand(1, 3, "sum = 6", FigureTone.Accent)),
+            aux = listOf("3", "4", "8", "9", "14"),
+            auxLabel = "prefix[i] = total through i — any range is prefix[r] − prefix[l−1]",
+        ),
+    ),
     whatIsIt = listOf(
         "A prefix sum array precomputes running totals so that the sum of any range can be answered in O(1) by subtracting two entries.",
         "It trades a one-time O(n) preprocessing pass for constant-time range-sum queries — the go-to pattern whenever many range totals are needed on static data.",
