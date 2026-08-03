@@ -1894,7 +1894,322 @@ private fun treeDfsPatternFrames(): List<TreeFrame> {
     return b.frames
 }
 
+// In-order with an explicit stack: the left spine is pushed, the top is always the next key.
+private fun bstInorderPatternFrames(): List<TreeFrame> {
+    val b = TreeBuilder()
+    val n8 = b.add("8", null, 0)
+    val n4 = b.add("4", n8, 0)
+    val n12 = b.add("12", n8, 1)
+    val n2 = b.add("2", n4, 0)
+    val n6 = b.add("6", n4, 1)
+    val n10 = b.add("10", n12, 0)
+    val n14 = b.add("14", n12, 1)
+    val n1 = b.add("1", n2, 0)
+    val n3 = b.add("3", n2, 1)
+    val left = mapOf(n8 to n4, n4 to n2, n12 to n10, n2 to n1)
+    val right = mapOf(n8 to n12, n4 to n6, n12 to n14, n2 to n3)
+
+    val stack = ArrayDeque<Int>()
+    val emitted = mutableListOf<Int>()
+    val k = 4
+
+    b.frame(
+        "In-order on a BST emits its keys in sorted order — that one fact answers k-th smallest, validation, " +
+            "successor and range counting. Done iteratively, it can also stop early.",
+    )
+
+    var cur: Int? = n8
+    while (cur != null || stack.isNotEmpty()) {
+        val spine = mutableListOf<Int>()
+        while (cur != null) {
+            stack.addLast(cur)
+            spine += cur
+            cur = left[cur]
+        }
+        if (spine.isNotEmpty()) {
+            b.frame(
+                "Push the left spine ${spine.joinToString(" → ") { b.labelOf(it) }}. Nothing smaller than the stack " +
+                    "top can still be unvisited, so the top is always the next key in order.",
+                active = spine.toSet(),
+                path = stack.toSet() - spine.toSet(),
+                marked = emitted.toSet(),
+            )
+        }
+        val node = stack.removeLast()
+        emitted += node
+        b.frame(
+            "Pop ${b.labelOf(node)} — key ${emitted.size} of the sorted order. " +
+                (if (right[node] != null) "Now move right to ${b.labelOf(right.getValue(node))} and push its left spine."
+                else "No right child, so the next key is already waiting on the stack.") +
+                if (emitted.size == k) " A k-th-smallest query with k = $k stops right here: O(height + k), and the " +
+                    "right half of the tree is never touched."
+                else "",
+            active = setOf(node),
+            path = stack.toSet(),
+            marked = emitted.toSet() - node,
+        )
+        cur = right[node]
+    }
+
+    b.frame(
+        "${emitted.joinToString(", ") { b.labelOf(it) }} — sorted, from a structure that was never sorted. Every " +
+            "node was pushed and popped exactly once: O(n) time, O(height) space, versus O(n) for a recursive " +
+            "traversal that materialises the whole list.",
+        marked = emitted.toSet(),
+    )
+    return b.frames
+}
+
+// Diameter: what a node returns to its parent is not what the node itself records.
+private fun treeDpPatternFrames(): List<TreeFrame> {
+    val b = TreeBuilder()
+    val tree = PatternTree(b)
+    val down = mutableMapOf<Int, Int>()
+    var best = 0
+    var bestAt = tree.root
+
+    b.frame(
+        "Diameter of this tree, post-order. Each node returns its longest *downward* path; the best path *through* " +
+            "the node combines two children and is recorded, never returned. Mixing those up is the classic bug.",
+    )
+
+    fun walk(id: Int) {
+        tree.childrenOf(id).forEach { walk(it) }
+        val childDowns = tree.childrenOf(id).map { down.getValue(it) }.sortedDescending()
+        val through = 1 + childDowns.take(2).sum()
+        val returned = 1 + (childDowns.firstOrNull() ?: 0)
+        down[id] = returned
+        if (through > best) {
+            best = through
+            bestAt = id
+        }
+        b.relabel(id, "${b.labelOf(id).substringBefore('·')}·↓$returned")
+        b.frame(
+            if (tree.isLeaf(id)) {
+                "Leaf ${b.labelOf(id)}: nothing below, so it returns a downward path of 1 and combines to 1."
+            } else {
+                "${b.labelOf(id)} sees child paths ${childDowns.joinToString(" and ")}. Through it: " +
+                    "1 + ${childDowns.take(2).joinToString(" + ")} = $through nodes — recorded, because a parent " +
+                    "cannot use a path that bends here. Returned upward: 1 + ${childDowns.first()} = $returned."
+            },
+            active = setOf(id),
+            path = tree.childrenOf(id).toSet(),
+            marked = if (through == best) setOf(id) else emptySet(),
+        )
+    }
+
+    walk(tree.root)
+
+    fun deepest(id: Int): List<Int> {
+        val child = tree.childrenOf(id).maxByOrNull { down.getValue(it) } ?: return listOf(id)
+        return listOf(id) + deepest(child)
+    }
+
+    val branches = tree.childrenOf(bestAt).sortedByDescending { down.getValue(it) }.take(2)
+    val diameterPath = (branches.flatMap { deepest(it) } + bestAt).toSet()
+
+    b.frame(
+        "Diameter = $best nodes, bending at ${b.labelOf(bestAt)}. One post-order pass, O(n) time and O(height) " +
+            "stack — and the answer never travelled upward, which is why `best` lives outside the recursion.",
+        marked = diameterPath,
+        active = setOf(bestAt),
+    )
+    return b.frames
+}
+
+// Prefix tree: insert, then the search / startsWith distinction that is the whole point.
+private fun triePrefixPatternFrames(): List<TreeFrame> {
+    val b = TreeBuilder()
+    val root = b.add("·", null, 0)
+    val children = mutableMapOf<Pair<Int, Char>, Int>()
+    val terminal = mutableSetOf<Int>()
+    val prefixCount = mutableMapOf<Int, Int>()
+
+    fun childOf(node: Int, c: Char) = children[node to c]
+
+    fun insert(word: String) {
+        var node = root
+        val path = mutableListOf(root)
+        var created = 0
+        word.forEach { c ->
+            val existing = childOf(node, c)
+            // Siblings are laid out by `order`, so it counts children of this parent — not the depth.
+            val slot = children.keys.count { it.first == node }
+            node = existing ?: b.add(c.toString(), node, slot).also {
+                children[node to c] = it
+                created++
+            }
+            prefixCount[node] = (prefixCount[node] ?: 0) + 1
+            path += node
+        }
+        terminal += node
+        b.relabel(node, "${b.labelOf(node)}●")
+        b.frame(
+            "Insert \"$word\": " + (if (created == 0) "every character already had a node — only the word-end mark is new."
+            else "$created new node(s), the rest shared with words already stored.") +
+                " The ● marks a word end; without it the trie cannot tell a stored word from a passing prefix.",
+            active = setOf(node),
+            path = path.toSet() - node,
+            marked = terminal - node,
+        )
+    }
+
+    b.frame("A trie stores one node per character and one path per word, so words sharing a prefix share nodes.")
+    listOf("app", "apple", "apt", "bat").forEach { insert(it) }
+
+    fun walk(query: String): List<Int>? {
+        var node = root
+        val path = mutableListOf(root)
+        query.forEach { c ->
+            node = childOf(node, c) ?: return null
+            path += node
+        }
+        return path
+    }
+
+    val appPath = walk("app")!!
+    b.frame(
+        "search(\"app\") walks a-p-p and finds ● on the last node — a stored word. Cost is O(3), the length of the " +
+            "query, no matter how many words the trie holds.",
+        active = setOf(appPath.last()),
+        path = appPath.toSet() - appPath.last(),
+        marked = terminal,
+    )
+
+    val applPath = walk("appl")!!
+    b.frame(
+        "search(\"appl\") walks the same way and the path exists — but the last node has no ●, so \"appl\" is not a " +
+            "stored word. startsWith(\"appl\") is true on that same walk. Same traversal, different acceptance test.",
+        active = setOf(applPath.last()),
+        path = applPath.toSet() - applPath.last(),
+        marked = terminal,
+    )
+
+    val apPath = walk("ap")!!
+    b.frame(
+        "A counter per node turns the trie into an index: the \"ap\" node was crossed by " +
+            "${prefixCount.getValue(apPath.last())} insertions, so \"ap\" has that many completions — answered " +
+            "without visiting any of them. Autocomplete then DFSes only what hangs below this node.",
+        active = setOf(apPath.last()),
+        path = apPath.toSet() - apPath.last(),
+        marked = terminal,
+    )
+    return b.frames
+}
+
+// Binary lifting: the jump table built level by level, then spent on a k-th ancestor and an LCA.
+private fun binaryLiftingPatternFrames(): List<TreeFrame> {
+    val b = TreeBuilder()
+    val a = b.add("A", null, 0)
+    val bb = b.add("B", a, 0)
+    val f = b.add("F", a, 1)
+    val c = b.add("C", bb, 0)
+    val g = b.add("G", f, 0)
+    val d = b.add("D", c, 0)
+    val e = b.add("E", d, 0)
+
+    val parent = mapOf(bb to a, f to a, c to bb, g to f, d to c, e to d)
+    val depth = mapOf(a to 0, bb to 1, f to 1, c to 2, g to 2, d to 3, e to 4)
+    val levels = 3
+    // up[j][v] — the 2^j-th ancestor, or null when the jump runs off the root.
+    val up = Array(levels) { mutableMapOf<Int, Int?>() }
+    parent.forEach { (child, p) -> up[0][child] = p }
+    for (j in 1 until levels) {
+        (parent.keys + a).forEach { v -> up[j][v] = up[j - 1][v]?.let { up[j - 1][it] } }
+    }
+
+    fun name(id: Int?) = id?.let { b.labelOf(it) } ?: "root sentinel"
+
+    b.frame(
+        "A rooted tree with depths 0 to ${depth.getValue(e)}. Answering \"the k-th ancestor of E\" by walking up k " +
+            "times is O(k) per query; binary lifting pays O(n log n) once and answers in O(log n) forever after.",
+        marked = setOf(a),
+        path = setOf(e, d, c, bb),
+    )
+    b.frame(
+        "up[0][v] is just the parent — the table's base row, free to fill.",
+        active = setOf(e),
+        path = setOf(d),
+    )
+    b.frame(
+        "up[1][v] = up[0][up[0][v]]: a 2-step is two 1-steps, so the second row is built from the first. " +
+            "up[1][E] = ${name(up[1][e])}.",
+        active = setOf(e),
+        path = setOf(c),
+    )
+    b.frame(
+        "up[2][v] = up[1][up[1][v]] — a 4-step is two 2-steps. up[2][E] = ${name(up[2][e])}. Each row costs one pass " +
+            "over the nodes, and there are log n rows.",
+        active = setOf(e),
+        path = setOf(a),
+    )
+
+    val k = 3
+    val afterTwo = up[1][e]
+    val afterOne = afterTwo?.let { up[0][it] }
+    b.frame(
+        "Query: the ${k}rd ancestor of E. $k in binary is 11, so take the 2-jump and then the 1-jump — never $k " +
+            "single steps. First: E → ${name(afterTwo)}.",
+        active = setOf(e),
+        path = setOfNotNull(afterTwo),
+    )
+    b.frame(
+        "Then the 1-jump: ${name(afterTwo)} → ${name(afterOne)}. Two jumps instead of three steps here; for k in the " +
+            "millions it is still at most log k jumps.",
+        active = setOfNotNull(afterOne),
+        path = setOfNotNull(afterTwo, e),
+        marked = setOfNotNull(afterOne),
+    )
+
+    b.frame(
+        "LCA(E, G) reuses the same table. E is at depth ${depth.getValue(e)}, G at ${depth.getValue(g)} — lift E by " +
+            "the difference (${depth.getValue(e) - depth.getValue(g)}, one 2-jump) to ${name(up[1][e])} so both sit " +
+            "at the same depth.",
+        active = setOf(c, g),
+        path = setOf(e, d),
+    )
+    b.frame(
+        "Now jump both by the largest power whose ancestors still *differ*: up[0][C] = ${name(up[0][c])} and " +
+            "up[0][G] = ${name(up[0][g])} differ, so both move. Stopping while they differ is what keeps the answer " +
+            "one step above.",
+        active = setOf(bb, f),
+        path = setOf(c, g, e, d),
+    )
+    b.frame(
+        "up[0][B] = up[0][F] = A: the ancestors finally agree, so A is the LCA. Distance = depth[E] + depth[G] − " +
+            "2·depth[A] = ${depth.getValue(e)} + ${depth.getValue(g)} − 0 = ${depth.getValue(e) + depth.getValue(g)} " +
+            "edges — the whole path query answered from depths alone.",
+        marked = setOf(a),
+        path = setOf(e, d, c, bb, g, f),
+    )
+    return b.frames
+}
+
 private val treeConfigs = mapOf(
+    "bst_inorder_pattern" to TreeConfig(
+        intro = "Iterative in-order over a nine-key BST. The stack holds a left spine, never the whole tree, and the " +
+            "fourth pop is where a k-th-smallest query would stop.",
+        markedLabel = "Emitted in order",
+        build = ::bstInorderPatternFrames,
+    ),
+    "tree_dp_pattern" to TreeConfig(
+        intro = "Diameter computed post-order, with each node relabelled by the downward path it returns. The number " +
+            "it returns and the number it records are deliberately different.",
+        markedLabel = "Diameter path",
+        build = ::treeDpPatternFrames,
+    ),
+    "trie_prefix_pattern" to TreeConfig(
+        intro = "Four words inserted into one prefix tree, then search versus startsWith on the same walk — the ● " +
+            "flag is the only thing separating them.",
+        markedLabel = "Word end (●)",
+        build = ::triePrefixPatternFrames,
+    ),
+    "binary_lifting_pattern" to TreeConfig(
+        intro = "The jump table built row by row, then spent twice: a 3rd-ancestor query decomposed into 2 + 1, and " +
+            "an LCA that lifts both nodes without ever overshooting.",
+        markedLabel = "Answer",
+        build = ::binaryLiftingPatternFrames,
+    ),
     "tree_bfs_pattern" to TreeConfig(
         intro = "Level-order traversal with the queue size frozen per level. Watch the queue hold two levels at once " +
             "mid-sweep — that is exactly what the frozen size protects against.",
