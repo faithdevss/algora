@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,23 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val kdTreeContent = TopicContent(
     topicId = "kd_tree",
+    figure = Figure(
+        caption = "One dimension per level, cycling: split on x, then y, then x again. A nearest-neighbour " +
+            "search descends to the leaf containing the query, then only crosses back over a split plane " +
+            "if the best distance so far reaches it — that pruning is the entire speed-up, and it decays " +
+            "as dimensions grow, which is why k-d trees stop helping in high dimensions.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("x < 5", null, FigureTone.Accent),
+                FigureNode("y < 4", 0, FigureTone.Primary),
+                FigureNode("y < 6", 0, FigureTone.Muted),
+                FigureNode("(2,1)", 1, FigureTone.Accent),
+                FigureNode("(3,7)", 1, FigureTone.Muted),
+                FigureNode("(8,2)", 2, FigureTone.Muted),
+                FigureNode("(9,9)", 2, FigureTone.Muted),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Space-partitioning trees — k-d trees, quad trees, and octrees — recursively split multi-dimensional space so nearest-neighbor and range queries skip most of the data.",
         "A k-d tree cycles through the dimensions, splitting on one axis at each level; quad trees (2D) and octrees (3D) instead split each region into 4 or 8 equal quadrants.",

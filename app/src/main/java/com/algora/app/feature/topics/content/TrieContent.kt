@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,23 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val trieContent = TopicContent(
     topicId = "trie",
+    figure = Figure(
+        caption = "Cost scales with the *word*, not the dictionary: \"cart\" is found in four steps " +
+            "whether the trie holds ten words or ten million. The price is space — one node per character " +
+            "per distinct prefix — which is why the children are usually a small map rather than a full " +
+            "alphabet-sized array.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("·", null),
+                FigureNode("c", 0, FigureTone.Primary),
+                FigureNode("a", 1, FigureTone.Primary),
+                FigureNode("r", 2, FigureTone.Primary),
+                FigureNode("t●", 3, FigureTone.Accent),
+                FigureNode("d●", 3, FigureTone.Accent),
+                FigureNode("n●", 2, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A trie (prefix tree) stores a set of strings as a tree of characters: each edge is one character, and each root-to-node path spells out a prefix.",
         "Words that share a prefix share the same path, so lookups depend on the length of the word — not on how many words the trie holds.",

@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,30 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val disjointSetContent = TopicContent(
     topicId = "disjoint_set",
+    figure = Figure(
+        caption = "Each component is a tree pointing at its own root, so \"same set?\" is two walks up " +
+            "and a comparison. The two optimisations attack the walk itself: union by rank never hangs " +
+            "a taller tree under a shorter one, and path compression re-points every node it passed " +
+            "straight at the root — after which the amortised cost is inverse-Ackermann, effectively O(1).",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("A", 0.16f, 0.12f, FigureTone.Accent),
+                FigureGraphNode("B", 0.05f, 0.55f, FigureTone.Primary),
+                FigureGraphNode("C", 0.28f, 0.55f, FigureTone.Primary),
+                FigureGraphNode("D", 0.28f, 0.95f, FigureTone.Primary),
+                FigureGraphNode("E", 0.72f, 0.12f, FigureTone.Accent),
+                FigureGraphNode("F", 0.62f, 0.62f, FigureTone.Primary),
+                FigureGraphNode("G", 0.92f, 0.62f, FigureTone.Primary),
+            ),
+            edges = listOf(
+                FigureEdge(1, 0, directed = true),
+                FigureEdge(2, 0, directed = true),
+                FigureEdge(3, 0, directed = true, tone = FigureTone.Accent),
+                FigureEdge(5, 4, directed = true),
+                FigureEdge(6, 4, directed = true),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A disjoint set (union-find) tracks a partition of elements into non-overlapping groups, answering 'are these two in the same group?' and merging groups almost instantly.",
         "Each group is a tree with a representative root; two optimizations — path compression and union by rank — flatten those trees so operations run in near-constant amortized time.",

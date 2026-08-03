@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,23 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val segmentTreeContent = TopicContent(
     topicId = "segment_tree",
+    figure = Figure(
+        caption = "Each node owns a range and stores its aggregate, so any query range decomposes into at " +
+            "most two nodes per level — O(log n) of them, never more. A point update walks the single " +
+            "path from that leaf to the root. Unlike a Fenwick tree it holds any associative operation, " +
+            "min and gcd included, and with lazy propagation it takes range updates too.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("[0,7]", null, FigureTone.Muted),
+                FigureNode("[0,3]", 0, FigureTone.Muted),
+                FigureNode("[4,7]", 0, FigureTone.Accent),
+                FigureNode("[0,1]", 1, FigureTone.Muted),
+                FigureNode("[2,3]", 1, FigureTone.Accent),
+                FigureNode("[4,5]", 2, FigureTone.Primary),
+                FigureNode("[6,7]", 2, FigureTone.Primary),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A segment tree stores aggregate information over array ranges in a binary tree, answering range queries and point/range updates in O(log n).",
         "Each node covers a contiguous segment: leaves are single elements, and each internal node combines its two children — a sum, min, max, or any associative operation.",

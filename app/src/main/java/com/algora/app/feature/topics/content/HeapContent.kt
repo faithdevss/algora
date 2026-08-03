@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,23 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val heapContent = TopicContent(
     topicId = "heap",
+    figure = Figure(
+        caption = "A heap is ordered only *vertically*: every parent beats its children, and siblings are " +
+            "unrelated. That weaker promise is why push and pop are O(log n) while the root stays correct " +
+            "for free — and because the tree is complete, it needs no pointers at all: child indices are " +
+            "2i+1 and 2i+2 in a plain array.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("2 · i0", null, FigureTone.Accent),
+                FigureNode("4 · i1", 0, FigureTone.Primary),
+                FigureNode("3 · i2", 0, FigureTone.Primary),
+                FigureNode("9 · i3", 1),
+                FigureNode("7 · i4", 1),
+                FigureNode("5 · i5", 2),
+                FigureNode("8 · i6", 2),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A heap is a complete binary tree that maintains the heap property: in a min-heap every parent is ≤ its children, so the smallest element is always at the root (a max-heap keeps the largest).",
         "Because the tree is complete, it packs perfectly into an array — a node at index i finds its children at 2i+1 and 2i+2, so no pointers are needed.",

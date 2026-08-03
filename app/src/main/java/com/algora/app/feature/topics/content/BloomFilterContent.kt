@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,22 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val bloomFilterContent = TopicContent(
     topicId = "bloom_filter",
+    figure = Figure(
+        caption = "k hashes set k bits per insert, and a query reports \"present\" only if all k are " +
+            "already set. That asymmetry is the deal: a *no* is certain, a *yes* is a probability — bits " +
+            "set by other keys can collide into a false positive. Nothing can be deleted either, because " +
+            "clearing a bit would erase whatever else set it.",
+        shape = FigureShape.Strip(
+            cells = listOf("0", "1", "0", "1", "0", "0", "1", "0"),
+            bands = listOf(
+                FigureBand(1, 1, "h1", FigureTone.Accent),
+                FigureBand(3, 3, "h2", FigureTone.Accent),
+                FigureBand(6, 6, "h3", FigureTone.Accent),
+            ),
+            aux = listOf("—", "cat", "—", "cat", "—", "—", "cat", "—"),
+            auxLabel = "\"cat\" set these three; a later key testing the same three reads as present",
+        ),
+    ),
     whatIsIt = listOf(
         "A Bloom filter is a space-efficient probabilistic set that tests membership with one guarantee: 'definitely not present' is always correct, but 'possibly present' may be a false positive.",
         "It stores no elements — just a bit array flipped by several hash functions — so it uses a tiny fraction of the memory a real set would, at the cost of a tunable error rate and no deletions.",

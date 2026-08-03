@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,22 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val lruCacheContent = TopicContent(
     topicId = "lru_cache",
+    figure = Figure(
+        caption = "Recency is an *order*, and a hash map has none — so the cache is two structures kept " +
+            "in sync: the map finds a node in O(1), the doubly linked list says which end to evict. Every " +
+            "hit moves its node to the head, so the tail is always the least recently used and eviction " +
+            "never searches for anything.",
+        shape = FigureShape.Strip(
+            cells = listOf("D", "A", "C", "B"),
+            bands = listOf(
+                FigureBand(0, 0, "MRU", FigureTone.Accent),
+                FigureBand(3, 3, "evict", FigureTone.Warn),
+            ),
+            pointers = listOf(FigurePointer(2, "get(C)")),
+            aux = listOf("C→", "D→", "A→", "B→"),
+            auxLabel = "map: key → node handle, so the list edit is O(1) too",
+        ),
+    ),
     whatIsIt = listOf(
         "An LRU (least-recently-used) cache holds a fixed number of entries and, when full, evicts the one that hasn't been touched for the longest time.",
         "The classic design pairs a hash map with a doubly linked list, giving O(1) get and put: the map finds a node instantly, the list tracks recency order.",

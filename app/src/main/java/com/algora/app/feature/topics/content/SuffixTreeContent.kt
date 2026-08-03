@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,18 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val suffixTreeContent = TopicContent(
     topicId = "suffix_tree",
+    figure = Figure(
+        caption = "Sort every suffix of the text once, and substring search becomes binary search over " +
+            "that order — O(m log n) with two arrays instead of a tree of nodes and edges. The companion " +
+            "LCP array records how much each neighbouring pair shares, which is what turns the array back " +
+            "into the suffix tree's answers: longest repeated substring is simply its maximum.",
+        shape = FigureShape.Strip(
+            cells = listOf("5", "3", "1", "0", "4", "2"),
+            bands = listOf(FigureBand(1, 2, "share \"ana\"", FigureTone.Accent)),
+            aux = listOf("—", "0", "3", "1", "0", "2"),
+            auxLabel = "LCP with the previous suffix — its maximum, 3, is the longest repeat",
+        ),
+    ),
     whatIsIt = listOf(
         "A suffix tree is a compressed trie of every suffix of a string, enabling substring search and many string queries in time proportional to the pattern, not the text.",
         "A suffix array is its space-lean cousin — a sorted list of suffix start positions — that trades a little query speed for far less memory, which is why it's used more in practice.",

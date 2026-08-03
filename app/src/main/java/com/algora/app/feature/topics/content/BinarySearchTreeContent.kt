@@ -2,6 +2,10 @@ package com.algora.app.feature.topics.content
 
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -10,6 +14,24 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val binarySearchTreeContent = TopicContent(
     topicId = "binary_search_tree",
+    figure = Figure(
+        caption = "The invariant is about whole subtrees, not neighbours: everything left of a node is " +
+            "smaller, everything right is larger. That is what lets a search discard half the tree per " +
+            "step — O(height), which is O(log n) only while the tree stays balanced. Insert 1,2,3,4,5 in " +
+            "order and it degenerates into a linked list with O(n) lookups.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("8", null, FigureTone.Accent),
+                FigureNode("3", 0, FigureTone.Accent),
+                FigureNode("12", 0, FigureTone.Muted),
+                FigureNode("1", 1, FigureTone.Muted),
+                FigureNode("6", 1, FigureTone.Accent),
+                FigureNode("10", 2, FigureTone.Muted),
+                FigureNode("14", 2, FigureTone.Muted),
+                FigureNode("4", 4, FigureTone.Primary),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A binary search tree (BST) is a binary tree where every node's left subtree holds smaller values and its right subtree holds larger values.",
         "That ordering invariant is what turns a tree shape into a fast search structure — at each node you know which side to descend into.",

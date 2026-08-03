@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,20 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val bTreeContent = TopicContent(
     topicId = "b_tree",
+    figure = Figure(
+        caption = "Built for storage that reads in *pages*, not words: one node holds many keys, so a " +
+            "million records sit three or four levels deep instead of twenty. Each level costs one disk " +
+            "read, and that count — not the comparison count — is what the design minimises. B+ trees go " +
+            "further and keep all values in the leaves, chained for range scans.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("30 | 60", null, FigureTone.Accent),
+                FigureNode("10|20", 0, FigureTone.Primary),
+                FigureNode("40|50", 0, FigureTone.Primary),
+                FigureNode("70|80", 0, FigureTone.Primary),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A B-tree is a balanced multi-way search tree where each node holds many keys and has many children, keeping the tree short and wide to minimize slow disk reads.",
         "Its B+ variant stores all data in the leaves and links them in a list, making it the backbone of databases and filesystems where each node maps to a disk block.",

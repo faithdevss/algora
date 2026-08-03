@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,26 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val skipListContent = TopicContent(
     topicId = "skip_list",
+    figure = Figure(
+        caption = "A sorted linked list with express lanes: each node is promoted to the next level with " +
+            "probability ½, so the top lane skips about half the nodes, the one below a quarter, and a " +
+            "search drops down whenever the next hop overshoots. Expected O(log n) with no rotations and " +
+            "no rebalancing — the balance is probabilistic rather than maintained.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("1", "—", "—", "—", "—", "9"),
+                listOf("1", "—", "4", "—", "—", "9"),
+                listOf("1", "3", "4", "6", "7", "9"),
+            ),
+            rowHeaders = listOf("L2", "L1", "L0"),
+            marks = listOf(
+                FigureCell(0, 0, FigureTone.Accent),
+                FigureCell(1, 2, FigureTone.Accent),
+                FigureCell(2, 3, FigureTone.Primary),
+                FigureCell(2, 4, FigureTone.Primary),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A skip list is a sorted linked list with extra 'express lane' layers that let searches skip over many nodes, giving O(log n) expected search, insert, and delete.",
         "Each node is randomly promoted to higher levels, so the structure balances itself probabilistically — no rotations, far simpler than a balanced tree.",

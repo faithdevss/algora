@@ -319,6 +319,7 @@ private fun GraphFigure(shape: FigureShape.Graph) {
     val toneFor = FigureTone.entries.associateWith { toneColor(it) }
     val nodeStyle = TextStyle(color = onSurface, fontSize = 10.sp, fontWeight = FontWeight.Bold)
     val edgeStyle = TextStyle(color = muted, fontSize = 9.sp, fontWeight = FontWeight.Medium)
+    val widestNode = shape.nodes.maxOf { textMeasurer.measure(it.label, nodeStyle).size.width }
 
     Canvas(modifier = Modifier.fillMaxWidth().height(132.dp)) {
         val inset = 22f
@@ -400,10 +401,18 @@ private fun TreeFigure(shape: FigureShape.Tree) {
     }
     val slots = leaves.size.coerceAtLeast(1)
 
+    val nodeStyle = TextStyle(fontSize = 9.sp, fontWeight = FontWeight.Bold)
+    val widestLabel = shape.nodes.maxOf { textMeasurer.measure(it.label, nodeStyle).size.width }
+
     Canvas(modifier = Modifier.fillMaxWidth().height(34.dp * depth + 8.dp)) {
         val rowHeight = size.height / depth
         val slotWidth = size.width / slots
-        val radius = minOf(rowHeight * 0.30f, slotWidth * 0.42f)
+        // Wide enough for the longest label — a B-tree node reads "30 | 60", and a circle sized from
+        // the row height alone leaves that text hanging outside it.
+        val radius = minOf(
+            maxOf(rowHeight * 0.30f, widestLabel / 2f + 7f),
+            slotWidth * 0.46f,
+        )
 
         fun centreOf(index: Int) = Offset(
             (slotOf.getValue(index) + 0.5f) * slotWidth,
@@ -420,11 +429,7 @@ private fun TreeFigure(shape: FigureShape.Tree) {
             drawCircle(tone, radius = radius, center = centre, style = Stroke(width = 1.6f))
             val layout = textMeasurer.measure(
                 node.label,
-                TextStyle(
-                    color = if (node.tone == FigureTone.Muted) onSurface else tone,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                ),
+                nodeStyle.copy(color = if (node.tone == FigureTone.Muted) onSurface else tone),
             )
             drawText(
                 layout,

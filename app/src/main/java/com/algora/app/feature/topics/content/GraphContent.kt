@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,29 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val graphContent = TopicContent(
     topicId = "graph",
+    figure = Figure(
+        caption = "Nodes and edges, and nothing else is promised — no root, no order, cycles allowed. The " +
+            "representation is the real decision: an adjacency list costs O(V + E) space and lists a " +
+            "node's neighbours instantly, while a matrix costs O(V²) but answers \"is there an edge\" in " +
+            "O(1). Dense graphs favour the matrix; almost everything else favours the list.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("A", 0.08f, 0.22f, FigureTone.Primary),
+                FigureGraphNode("B", 0.40f, 0.05f, FigureTone.Primary),
+                FigureGraphNode("C", 0.38f, 0.85f, FigureTone.Primary),
+                FigureGraphNode("D", 0.72f, 0.40f, FigureTone.Accent),
+                FigureGraphNode("E", 0.97f, 0.85f, FigureTone.Primary),
+            ),
+            edges = listOf(
+                FigureEdge(0, 1),
+                FigureEdge(0, 2),
+                FigureEdge(1, 3, tone = FigureTone.Accent),
+                FigureEdge(2, 3, tone = FigureTone.Accent),
+                FigureEdge(3, 4),
+                FigureEdge(2, 4),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A graph is a set of nodes (vertices) connected by edges, which may be directed or undirected and weighted or unweighted.",
         "Think of a city's road map: intersections are vertices, roads are edges, and one-way streets are directed edges.",

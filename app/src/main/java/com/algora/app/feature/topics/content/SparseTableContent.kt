@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,25 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val sparseTableContent = TopicContent(
     topicId = "sparse_table",
+    figure = Figure(
+        caption = "Precompute the answer for every power-of-two window, then any range is covered by two " +
+            "of them — overlapping in the middle, which is fine because min and max do not care about " +
+            "double counting. O(n log n) to build, O(1) per query, and nothing can ever be updated: the " +
+            "overlap trick is exactly what a sum could not use.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("3", "1", "4", "1", "5", "9"),
+                listOf("1", "1", "1", "1", "5", "—"),
+                listOf("1", "1", "1", "1", "—", "—"),
+            ),
+            rowHeaders = listOf("len 1", "len 2", "len 4"),
+            colHeaders = listOf("i0", "i1", "i2", "i3", "i4", "i5"),
+            marks = listOf(
+                FigureCell(2, 1, FigureTone.Accent),
+                FigureCell(2, 2, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A sparse table precomputes the answer for every interval whose length is a power of two, so a range query is resolved by combining just two of them.",
         "It only works for idempotent operations — min, max, gcd, bitwise and/or — because the two intervals overlap and the overlap must not be double-counted. In exchange it beats a segment tree on queries: O(1) instead of O(log n), at the cost of being read-only.",

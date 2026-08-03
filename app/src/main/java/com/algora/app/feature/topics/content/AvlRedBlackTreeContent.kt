@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,19 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val avlRedBlackTreeContent = TopicContent(
     topicId = "avl_red_black_tree",
+    figure = Figure(
+        caption = "Both trees buy the same thing — a height bound that survives adversarial input — and " +
+            "pay differently. AVL keeps heights within 1 and stays shorter (≈1.44 log n), so lookups win; " +
+            "red-black tolerates a longer path (≤2 log n) and rebalances less, so writes win. Inserting " +
+            "1, 2, 3 into an unbalanced BST gives a chain; a single rotation makes it this.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("2", null, FigureTone.Accent),
+                FigureNode("1", 0, FigureTone.Primary),
+                FigureNode("3", 0, FigureTone.Primary),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "AVL and red-black trees are self-balancing binary search trees: they rearrange themselves during inserts and deletes so their height stays O(log n), preventing the degenerate chains a plain BST can become.",
         "AVL trees keep stricter balance (faster lookups), while red-black trees balance more loosely (faster updates) — the tradeoff behind why each is chosen where it is.",

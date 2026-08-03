@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,28 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val graphVariantsContent = TopicContent(
     topicId = "graph_variants",
+    figure = Figure(
+        caption = "The same node set answers different questions depending on four independent choices, " +
+            "and each one changes which algorithm is even legal: direction decides whether a cycle check " +
+            "needs colours or a visited set, weights decide BFS versus Dijkstra, negative weights rule " +
+            "Dijkstra out entirely, and density decides list versus matrix.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("yes", "no"),
+                listOf("yes", "no"),
+                listOf("yes", "no"),
+                listOf("dense", "sparse"),
+            ),
+            rowHeaders = listOf("directed", "weighted", "negative", "density"),
+            colHeaders = listOf("then", "else"),
+            marks = listOf(
+                FigureCell(0, 0, FigureTone.Primary),
+                FigureCell(1, 0, FigureTone.Primary),
+                FigureCell(2, 0, FigureTone.Warn),
+                FigureCell(3, 0, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Graphs come in many flavors — directed vs undirected, weighted vs unweighted, and multigraphs that allow parallel edges — and the variant dictates which algorithms and representations apply.",
         "The two core representations, adjacency list and adjacency matrix, trade space for lookup speed, and the right choice depends on whether the graph is sparse or dense.",

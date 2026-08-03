@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,22 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val treeContent = TopicContent(
     topicId = "tree",
+    figure = Figure(
+        caption = "One parent per node and no cycles, which is the whole definition — and it forces the " +
+            "edge count to be exactly n − 1. Everything else is vocabulary: depth counts down from the " +
+            "root, height counts up from the deepest leaf, and a node's subtree is a tree in its own right.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("A", null, FigureTone.Accent),
+                FigureNode("B", 0, FigureTone.Primary),
+                FigureNode("C", 0, FigureTone.Primary),
+                FigureNode("D", 1),
+                FigureNode("E", 1),
+                FigureNode("F", 2),
+                FigureNode("G", 4),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A tree is a hierarchical structure of nodes: one root at the top, and every other node linked to exactly one parent, forming branches down to leaves.",
         "Trees have no cycles — there is exactly one path between any two nodes — which is what separates a tree from a general graph.",
