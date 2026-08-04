@@ -11,3 +11,8 @@ build/
 *.aab
 
 /certificates
+
+# Signing keys live in the repo directory but never in git.
+/keystore
+*.jks
+*.keystore
