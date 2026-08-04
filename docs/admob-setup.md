@@ -4,7 +4,7 @@ Ad ids are **not** committed. The build reads them at configuration time and inj
 only ever contains Google's public test ids as a fallback.
 
 Rewarded video is the app's only ad surface — it appears when a free user chooses to unlock a
-premium topic for 24 hours (`core/ads/`, `feature/premium/`). There are no banners or interstitials.
+premium topic for 6 hours (`core/ads/`, `feature/premium/`). There are no banners or interstitials.
 
 ---
 
@@ -94,6 +94,7 @@ A release built with that line still in the log is a release that ships test ads
 
 ## Related
 
+- `docs/release-signing.md` — the keystore, read through the same lookup order as these ids
 - `docs/store/listing.md` — Play listing copy and the rest of the pre-upload checklist
 - Play billing ids (the lifetime premium purchase) are still debug stubs too — see `core/billing/`.
   They are **not** covered by this file yet.

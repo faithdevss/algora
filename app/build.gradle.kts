@@ -38,11 +38,13 @@ val localProperties = Properties().apply {
     if (file.exists()) file.inputStream().use { load(it) }
 }
 
-fun adMobId(propertyKey: String, environmentKey: String, fallback: String): String =
+fun configValue(propertyKey: String, environmentKey: String): String? =
     localProperties.getProperty(propertyKey)
         ?: providers.gradleProperty(propertyKey).orNull
         ?: System.getenv(environmentKey)
-        ?: fallback
+
+fun adMobId(propertyKey: String, environmentKey: String, fallback: String): String =
+    configValue(propertyKey, environmentKey) ?: fallback
 
 val admobAppId = adMobId("admob.appId", "ADMOB_APP_ID", testAdMobAppId)
 val admobRewardedUnitId = adMobId("admob.rewardedUnitId", "ADMOB_REWARDED_UNIT_ID", testAdMobRewardedUnitId)
@@ -52,6 +54,34 @@ if (admobAppId == testAdMobAppId || admobRewardedUnitId == testAdMobRewardedUnit
         "AdMob: using Google test ids for release builds — set admob.appId and " +
             "admob.rewardedUnitId in local.properties before uploading (docs/admob-setup.md).",
     )
+}
+
+// --- Release signing -------------------------------------------------------------------------
+// Same lookup order as the ad ids, so the keystore password never reaches git: local.properties on
+// a workstation, -P properties or environment secrets on CI. When nothing is configured the release
+// build still runs and simply produces an unsigned artifact — a clean checkout must be buildable
+// without anyone's keystore. See docs/release-signing.md.
+val keystorePath = configValue("signing.storeFile", "ALGORA_STORE_FILE")
+val keystoreFile = keystorePath?.let { rootProject.file(it) }?.takeIf { it.isFile }
+val keystorePassword = configValue("signing.storePassword", "ALGORA_STORE_PASSWORD")
+val releaseKeyAlias = configValue("signing.keyAlias", "ALGORA_KEY_ALIAS")
+val releaseKeyPassword = configValue("signing.keyPassword", "ALGORA_KEY_PASSWORD") ?: keystorePassword
+val releaseSigningConfigured = keystoreFile != null &&
+    keystorePassword != null &&
+    releaseKeyAlias != null &&
+    releaseKeyPassword != null
+
+if (!releaseSigningConfigured) {
+    // A path that points nowhere is worth its own line: it is otherwise indistinguishable from
+    // having configured nothing, and the build would silently emit an unsigned artifact.
+    if (keystorePath != null && keystoreFile == null) {
+        logger.lifecycle("Signing: keystore not found at $keystorePath — release will be unsigned.")
+    } else {
+        logger.lifecycle(
+            "Signing: no release keystore configured — release artifacts will be unsigned " +
+                "(docs/release-signing.md).",
+        )
+    }
 }
 
 android {
@@ -74,8 +104,23 @@ android {
         buildConfigField("String", "ADMOB_REWARDED_UNIT_ID", "\"$testAdMobRewardedUnitId\"")
     }
 
+    signingConfigs {
+        if (releaseSigningConfigured) {
+            create("release") {
+                storeFile = keystoreFile
+                storePassword = keystorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
+            // Null when nothing is configured, which leaves the artifact unsigned instead of
+            // failing the build.
+            signingConfig = signingConfigs.findByName("release")
+
             // R8 in release only: debug stays unshrunk so stack traces and the Compose tooling
             // keep working. Everything reflective in the app comes from libraries that ship their
             // own consumer rules (WorkManager, Billing, Play Ads, DataStore); proguard-rules.pro
