@@ -29,10 +29,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,13 +45,11 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.algora.app.core.ui.theme.SimColors
 import kotlin.math.hypot
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 private val demoNodes = listOf("A", "B", "C", "D", "E", "F")
 
@@ -91,14 +89,18 @@ private fun pathAlpha(walks: Int): Float = when (walks) {
     else -> 1f
 }
 
-private fun pathWidth(walks: Int): Float = when (walks) {
-    1 -> 5f
-    2 -> 6.5f
-    3 -> 8f
-    else -> 9.5f
+// Widths are in dp, not raw canvas pixels: a fixed 3.5px stroke renders as a ~1dp hairline on a
+// 3x-density screen, which is what made the edges nearly invisible on device.
+private fun pathWidth(walks: Int): Dp = when (walks) {
+    1 -> 2.5.dp
+    2 -> 3.dp
+    3 -> 3.5.dp
+    else -> 4.dp
 }
 
-private const val IDLE_EDGE_WIDTH = 3.5f
+private val IdleEdgeWidth = 2.dp
+private val NodeRingWidth = 2.dp
+private val CurrentNodeRingWidth = 3.dp
 
 private data class GraphSnapshot(
     val nodeState: Map<String, NodeState>,
@@ -221,50 +223,60 @@ private fun traversalsFor(topicId: String): List<Traversal> = when (topicId) {
     else -> Traversal.entries
 }
 
+/** Snapshot of the graph + choice of algorithm at the moment Play was pressed. [runId] forces a
+ *  fresh [PlaybackState] even if the same algorithm is re-run against an unchanged graph. */
+private data class GraphRunRequest(
+    val kind: Traversal,
+    val nodes: List<String>,
+    val edges: List<Pair<String, String>>,
+    val startNode: String,
+    val runId: Int,
+)
+
 @Composable
 fun GraphSimulationSection(topicId: String) {
     val traversals = remember(topicId) { traversalsFor(topicId) }
     var nodes by remember { mutableStateOf(demoNodes) }
     var edges by remember { mutableStateOf(demoEdges) }
-    var nodeState by remember { mutableStateOf(nodes.associateWith { NodeState.IDLE }) }
-    var edgeWalks by remember { mutableStateOf(emptyMap<EdgeKey, Int>()) }
-    var activeEdge by remember { mutableStateOf<EdgeKey?>(null) }
-    var status by remember { mutableStateOf("Idle") }
+    var idleStatus by remember { mutableStateOf("Idle") }
     var fromNode by remember { mutableStateOf(nodes.first()) }
     var toNode by remember { mutableStateOf(nodes[1]) }
     var startNode by remember { mutableStateOf(nodes.first()) }
-    var traversalJob by remember { mutableStateOf<Job?>(null) }
-    val scope = rememberCoroutineScope()
-
-    fun cancelTraversal() {
-        traversalJob?.cancel()
-        traversalJob = null
-    }
+    var runRequest by remember { mutableStateOf<GraphRunRequest?>(null) }
+    var runCounter by remember { mutableStateOf(0) }
 
     fun resetGraph(newStatus: String) {
-        nodeState = nodes.associateWith { NodeState.IDLE }
-        edgeWalks = emptyMap()
-        activeEdge = null
-        status = newStatus
+        runRequest = null
+        idleStatus = newStatus
     }
 
     fun runTraversal(kind: Traversal) {
-        cancelTraversal()
-        val adjacency = buildAdjacency(nodes, edges)
-        val snapshots = when (kind) {
-            Traversal.BFS -> bfsSnapshots(nodes, adjacency, startNode)
-            Traversal.DFS -> dfsSnapshots(nodes, adjacency, startNode)
-        }
-        traversalJob = scope.launch {
-            for (snapshot in snapshots) {
-                nodeState = snapshot.nodeState
-                edgeWalks = snapshot.edgeWalks
-                activeEdge = snapshot.activeEdge
-                status = snapshot.status
-                delay(TRAVERSAL_STEP_MS)
-            }
-        }
+        runCounter++
+        runRequest = GraphRunRequest(kind, nodes, edges, startNode, runCounter)
     }
+
+    // Snapshots are a pure function of the request, recomputed only when a new run starts —
+    // editing the graph mid-run doesn't retroactively change a walk already in flight.
+    val snapshots = remember(runRequest) {
+        runRequest?.let { req ->
+            val adjacency = buildAdjacency(req.nodes, req.edges)
+            when (req.kind) {
+                Traversal.BFS -> bfsSnapshots(req.nodes, adjacency, req.startNode)
+                Traversal.DFS -> dfsSnapshots(req.nodes, adjacency, req.startNode)
+            }
+        } ?: emptyList()
+    }
+    val playback = runRequest?.let { req ->
+        rememberPlaybackState(key = req, stepCount = snapshots.size, initialSpeedMs = TRAVERSAL_STEP_MS.toFloat())
+    }
+    // PlaybackState always starts paused; a freshly launched run should autoplay immediately.
+    LaunchedEffect(runRequest) { playback?.playing = true }
+
+    val current = playback?.let { snapshots.getOrNull(it.index) }
+    val nodeState = current?.nodeState ?: nodes.associateWith { NodeState.IDLE }
+    val edgeWalks = current?.edgeWalks ?: emptyMap()
+    val activeEdge = current?.activeEdge
+    val status = current?.status ?: idleStatus
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -329,13 +341,12 @@ fun GraphSimulationSection(topicId: String) {
 
             Button(
                 onClick = {
-                    cancelTraversal()
                     if (nodes.size < MAX_NODES) {
                         val nextLetter = ('A' + nodes.size).toString()
                         nodes = nodes + nextLetter
                         resetGraph("Idle")
                     } else {
-                        status = "Graph is full ($MAX_NODES max)"
+                        resetGraph("Graph is full ($MAX_NODES max)")
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = SimColors.Blue, contentColor = Color.White),
@@ -349,7 +360,6 @@ fun GraphSimulationSection(topicId: String) {
                 Box(modifier = Modifier.width(9.dp))
                 Button(
                     onClick = {
-                        cancelTraversal()
                         val linkStatus = when {
                             fromNode == toNode -> "Pick two different nodes"
                             edges.any { (a, b) -> (a == fromNode && b == toNode) || (a == toNode && b == fromNode) } -> "Edge exists"
@@ -395,11 +405,12 @@ fun GraphSimulationSection(topicId: String) {
                     contentDescription = "Reset",
                     color = SimColors.Grey,
                     modifier = Modifier.weight(0.7f),
-                    onClick = {
-                        cancelTraversal()
-                        resetGraph("Idle")
-                    },
+                    onClick = { resetGraph("Idle") },
                 )
+            }
+
+            if (playback != null) {
+                PlaybackTransport(state = playback)
             }
         }
     }
@@ -529,13 +540,19 @@ private fun GraphCanvas(
 
                 val key = edgeKey(a, b)
                 val walks = edgeWalks[key] ?: 0
-                drawLine(color = EdgeIdleColor, start = start, end = end, strokeWidth = IDLE_EDGE_WIDTH, cap = StrokeCap.Round)
+                drawLine(
+                    color = EdgeIdleColor,
+                    start = start,
+                    end = end,
+                    strokeWidth = IdleEdgeWidth.toPx(),
+                    cap = StrokeCap.Round,
+                )
                 if (walks > 0) {
                     drawLine(
                         color = PathColor.copy(alpha = pathAlpha(walks)),
                         start = start,
                         end = end,
-                        strokeWidth = pathWidth(walks),
+                        strokeWidth = pathWidth(walks).toPx(),
                         cap = StrokeCap.Round,
                     )
                 }
@@ -544,7 +561,7 @@ private fun GraphCanvas(
                         color = ActiveEdgeColor,
                         start = start,
                         end = end,
-                        strokeWidth = pathWidth(walks) + 2f,
+                        strokeWidth = (pathWidth(walks) + 1.dp).toPx(),
                         cap = StrokeCap.Round,
                     )
                 }
@@ -562,7 +579,13 @@ private fun GraphCanvas(
                     color = color,
                     radius = radius,
                     center = center,
-                    style = Stroke(width = if (state == NodeState.CURRENT) 5f else 3.5f),
+                    style = Stroke(
+                        width = if (state == NodeState.CURRENT) {
+                            CurrentNodeRingWidth.toPx()
+                        } else {
+                            NodeRingWidth.toPx()
+                        },
+                    ),
                 )
 
                 val layout = textMeasurer.measure(id, labelStyle)

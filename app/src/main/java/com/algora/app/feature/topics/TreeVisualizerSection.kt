@@ -25,6 +25,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -2469,13 +2470,16 @@ private fun TreeCanvas(frame: TreeFrame) {
             .padding(6.dp),
     ) {
         Canvas(modifier = Modifier.fillMaxWidth().height(220.dp)) {
-            val padX = 30f
-            val padY = 26f
+            // All of these are dp, not raw canvas pixels: as constants in pixels the whole layout
+            // shrank by the screen density, so on a 3x device a 56px row gap was a ~19dp step and
+            // the tree huddled in the top third of a 220dp canvas.
+            val padX = 12.dp.toPx()
+            val padY = 10.dp.toPx()
             fun px(x: Float) = padX + (x + 0.5f) / leafCount * (size.width - 2 * padX)
             // Fixed row spacing (capped so deep trees still fit) rather than stretching to the
             // canvas height — otherwise a 2-level frame and a 4-level frame of the same tree would
             // render at wildly different scales as nodes get inserted.
-            val rowGap = if (maxDepth == 0) 0f else minOf(56f, (size.height - 2 * padY) / maxDepth)
+            val rowGap = if (maxDepth == 0) 0f else minOf(64.dp.toPx(), (size.height - 2 * padY) / maxDepth)
             fun py(depth: Int) = if (maxDepth == 0) size.height / 2f else padY + depth * rowGap
 
             frame.nodes.forEach { node ->
@@ -2484,7 +2488,9 @@ private fun TreeCanvas(frame: TreeFrame) {
                     Color(0xFFCBD0DA),
                     Offset(px(xById.getValue(parent.id)), py(depthById.getValue(parent.id))),
                     Offset(px(xById.getValue(node.id)), py(depthById.getValue(node.id))),
-                    strokeWidth = 2f,
+                    // In dp, not raw pixels: a fixed 3.5px edge is a ~1dp hairline on a 3x screen.
+                    strokeWidth = 3.dp.toPx(),
+                    cap = StrokeCap.Round,
                 )
             }
 
@@ -2496,14 +2502,19 @@ private fun TreeCanvas(frame: TreeFrame) {
                 val to = byId[link.to] ?: return@forEach
                 val start = Offset(px(xById.getValue(from.id)), py(depthById.getValue(from.id)))
                 val end = Offset(px(xById.getValue(to.id)), py(depthById.getValue(to.id)))
-                val control = Offset((start.x + end.x) / 2f, minOf(start.y, end.y) - 34f)
+                val control = Offset((start.x + end.x) / 2f, minOf(start.y, end.y) - 14.dp.toPx())
                 drawPath(
                     path = Path().apply {
                         moveTo(start.x, start.y)
                         quadraticTo(control.x, control.y, end.x, end.y)
                     },
                     color = LinkColor,
-                    style = Stroke(width = 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(7f, 6f))),
+                    style = Stroke(
+                        width = 1.5.dp.toPx(),
+                        pathEffect = PathEffect.dashPathEffect(
+                            floatArrayOf(3.dp.toPx(), 2.5.dp.toPx()),
+                        ),
+                    ),
                 )
             }
 
@@ -2517,13 +2528,13 @@ private fun TreeCanvas(frame: TreeFrame) {
                 }
                 val layout = textMeasurer.measure(node.label, labelStyle)
                 // Multi-key B-tree nodes need a wider pill than a single digit does.
-                val boxWidth = (layout.size.width + 18f).coerceAtLeast(30f)
-                val boxHeight = layout.size.height + 12f
+                val boxWidth = (layout.size.width + 12.dp.toPx()).coerceAtLeast(26.dp.toPx())
+                val boxHeight = layout.size.height + 8.dp.toPx()
                 drawRoundRect(
                     color = color,
                     topLeft = Offset(center.x - boxWidth / 2f, center.y - boxHeight / 2f),
                     size = Size(boxWidth, boxHeight),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(9f, 9f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(6.dp.toPx(), 6.dp.toPx()),
                 )
                 drawText(
                     layout,
