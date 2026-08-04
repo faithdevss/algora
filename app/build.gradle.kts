@@ -5,10 +5,9 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-// Release line. Bump these by hand when the release is actually a new line; the patch number and
-// the version code come from git so nobody has to remember to bump anything per build.
-val versionMajor = 0
-val versionMinor = 1
+// Release line. Bump by hand only when the release is genuinely a new line; minor and patch come
+// from git so nobody has to remember to bump anything per build.
+val versionMajor = 1
 
 // Commit count on the current branch — monotonic, so every build off a later commit gets a higher
 // version code, which is exactly what Play requires. Falls back to 1 when there is no git history
@@ -19,6 +18,11 @@ val gitCommitCount: Int = runCatching {
         isIgnoreExitValue = true
     }.standardOutput.asText.get().trim().toInt()
 }.getOrDefault(1)
+
+// Every 100 commits rolls into the minor number, so the patch number never runs past 99 and the
+// version reads like a normal semver string: 127 commits -> 1.1.27.
+val versionMinor = gitCommitCount / 100
+val versionPatch = gitCommitCount % 100
 
 // --- AdMob ids -------------------------------------------------------------------------------
 // Google's public test ids. Debug always uses these, and release falls back to them when no real
@@ -59,7 +63,7 @@ android {
         minSdk = 26
         targetSdk = 37
         versionCode = gitCommitCount
-        versionName = "$versionMajor.$versionMinor.$gitCommitCount"
+        versionName = "$versionMajor.$versionMinor.$versionPatch"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
