@@ -122,7 +122,7 @@ Settings.
 PREMIUM
 Algora is free to use, with a large part of the library open. Premium is a single lifetime purchase
 — no subscription — that unlocks every remaining topic, lab and analysis tool and removes ads. Any
-locked topic can also be opened for 24 hours by watching a rewarded ad, if you would rather not pay.
+locked topic can also be opened for 6 hours by watching a rewarded ad, if you would rather not pay.
 ```
 
 ---

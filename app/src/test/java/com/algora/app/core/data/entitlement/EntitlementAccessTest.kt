@@ -47,11 +47,11 @@ class EntitlementAccessTest {
 
         assertEquals(
             TopicAccess.AdUnlocked(expiry),
-            accessOf(true, premiumOwned = false, unlocks = unlocks, topicId = "master_theorem", now = now + 23 * hour),
+            accessOf(true, premiumOwned = false, unlocks = unlocks, topicId = "master_theorem", now = now + 5 * hour),
         )
         assertEquals(
             TopicAccess.Locked,
-            accessOf(true, premiumOwned = false, unlocks = unlocks, topicId = "master_theorem", now = now + 25 * hour),
+            accessOf(true, premiumOwned = false, unlocks = unlocks, topicId = "master_theorem", now = now + 7 * hour),
         )
     }
 
@@ -74,7 +74,7 @@ class EntitlementAccessTest {
     }
 
     @Test
-    fun grantAdUnlock_makesTopicReadableFor24h() = runTest {
+    fun grantAdUnlock_makesTopicReadableFor6h() = runTest {
         val repository = newRepository()
 
         repository.grantAdUnlock("master_theorem")
@@ -82,7 +82,7 @@ class EntitlementAccessTest {
         val unlocks = repository.adUnlocks.first()
         val expiry = unlocks.getValue("master_theorem")
         val remaining = expiry - System.currentTimeMillis()
-        assertTrue("expected ~24h left, got ${remaining}ms", remaining > 23 * hour && remaining <= AD_UNLOCK_DURATION_MS)
+        assertTrue("expected ~6h left, got ${remaining}ms", remaining > 5 * hour && remaining <= AD_UNLOCK_DURATION_MS)
         assertEquals(
             TopicAccess.AdUnlocked(expiry),
             repository.accessFor("master_theorem", isPremiumTopic = true).first(),

@@ -15,7 +15,7 @@ sealed interface TopicAccess {
     data object Locked : TopicAccess
 }
 
-const val AD_UNLOCK_DURATION_MS = 24L * 60 * 60 * 1000
+const val AD_UNLOCK_DURATION_MS = 6L * 60 * 60 * 1000
 
 // Pure resolution used by both the repository and its unit test. `unlocks` maps topicId → expiry.
 fun accessOf(
