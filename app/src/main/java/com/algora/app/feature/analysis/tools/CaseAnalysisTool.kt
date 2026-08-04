@@ -87,7 +87,10 @@ fun CaseAnalysisTool(defaultMode: CaseMode) {
             Slider(value = n, onValueChange = { n = it }, valueRange = 4f..32f, steps = 27)
         }
 
-        val comparisons = comparisonsFor(mode, nInt)
+        // Sort once per n, not once per frame — the panel below shows all three cases anyway, and a
+        // slider drag would otherwise re-run four sorts on every recomposition.
+        val counts = remember(nInt) { CaseMode.entries.associateWith { comparisonsFor(it, nInt) } }
+        val comparisons = counts.getValue(mode)
         Column(
             modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -126,7 +129,7 @@ fun CaseAnalysisTool(defaultMode: CaseMode) {
         )
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             CaseMode.entries.forEach { option ->
-                val count = comparisonsFor(option, nInt)
+                val count = counts.getValue(option)
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = option.accent.copy(alpha = if (option == mode) 0.16f else 0.07f),

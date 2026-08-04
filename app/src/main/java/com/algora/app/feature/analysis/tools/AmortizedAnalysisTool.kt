@@ -24,6 +24,7 @@ import com.algora.app.feature.analysis.tools.common.AnalysisToolCard
 import com.algora.app.feature.analysis.tools.common.Bar
 import com.algora.app.feature.analysis.tools.common.InstrumentedAlgos
 import com.algora.app.feature.analysis.tools.common.MiniBarChart
+import java.util.Locale
 
 @Composable
 fun AmortizedAnalysisTool() {
@@ -66,7 +67,7 @@ fun AmortizedAnalysisTool() {
             StatBlock(label = "Total cost", value = total.toString(), modifier = Modifier.weight(1f))
             StatBlock(
                 label = "Amortized / push",
-                value = String.format("%.2f", amortized),
+                value = String.format(Locale.US, "%.2f", amortized),
                 modifier = Modifier.weight(1f),
             )
         }

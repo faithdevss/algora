@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.algora.app.core.ui.theme.SimColors
 import com.algora.app.core.ui.theme.SpaceGrotesk
 import com.algora.app.feature.analysis.tools.common.AnalysisToolCard
+import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.ln
 
@@ -41,7 +42,7 @@ private val presets = listOf(
 // Polynomial term for an exponent: n^0 → "1", n^1 → "n", else "n^k".
 private fun poly(exp: Double): String {
     val rounded = Math.round(exp).toDouble()
-    val label = if (abs(exp - rounded) < 1e-9) rounded.toInt().toString() else String.format("%.2f", exp)
+    val label = if (abs(exp - rounded) < 1e-9) rounded.toInt().toString() else String.format(Locale.US, "%.2f", exp)
     return when (label) {
         "0" -> "1"
         "1" -> "n"
@@ -92,7 +93,7 @@ fun MasterTheoremTool() {
         ) {
             Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    "log_b(a) = ${String.format("%.3f", logBA)}   vs   d = $d",
+                    "log_b(a) = ${String.format(Locale.US, "%.3f", logBA)}   vs   d = $d",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

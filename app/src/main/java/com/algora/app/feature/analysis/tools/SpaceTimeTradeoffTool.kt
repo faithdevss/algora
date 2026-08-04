@@ -29,9 +29,12 @@ fun SpaceTimeTradeoffTool() {
     val nInt = n.toInt()
 
     // Absent target → both approaches run their full worst case, exposing the tradeoff cleanly.
-    val array = IntArray(nInt) { it }
-    val bruteOps = InstrumentedAlgos.twoSumBrute(array, -1)
-    val (hashOps, hashMem) = InstrumentedAlgos.twoSumHash(array, -1)
+    // Keyed on n so a slider drag doesn't re-run the O(n²) pass on every frame.
+    val (bruteOps, hashOps, hashMem) = remember(nInt) {
+        val array = IntArray(nInt) { it }
+        val (ops, mem) = InstrumentedAlgos.twoSumHash(array, -1)
+        Triple(InstrumentedAlgos.twoSumBrute(array, -1), ops, mem)
+    }
 
     AnalysisToolCard(
         intro = "Two ways to solve two-sum. Brute force checks every pair — O(n²) time, O(1) extra " +

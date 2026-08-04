@@ -63,9 +63,12 @@ fun InputGeneratorTool() {
     var n by remember { mutableStateOf(12f) }
     val nInt = n.toInt()
 
-    val array = generate(dist, nInt)
-    // Sort a copy so the preview keeps showing the generated (unsorted) input.
-    val comparisons = InstrumentedAlgos.insertionSort(array.copyOf())
+    // Generate + sort once per (shape, n) rather than on every recomposition.
+    val (array, comparisons) = remember(dist, nInt) {
+        val generated = generate(dist, nInt)
+        // Sort a copy so the preview keeps showing the generated (unsorted) input.
+        generated to InstrumentedAlgos.insertionSort(generated.copyOf())
+    }
 
     AnalysisToolCard(
         intro = "Generate inputs of a chosen size and shape, then feed them to a real insertion sort. " +

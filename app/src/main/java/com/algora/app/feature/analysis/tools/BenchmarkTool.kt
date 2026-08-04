@@ -30,6 +30,7 @@ import com.algora.app.feature.analysis.tools.common.MiniBarChart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 enum class BenchVariant(val intro: String) {
     BENCHMARK(
@@ -50,7 +51,10 @@ enum class BenchVariant(val intro: String) {
 
 private data class BenchPoint(val n: Int, val micros: Double)
 
-private val benchSizes = listOf(500, 1000, 1500, 2000, 2500)
+// Sizes double, so the quadratic story is legible: every step should land near 4× the previous
+// time, and the predicted column diverges visibly across a 16× span. Linear steps would show a
+// ratio column that falls away from 4× — the opposite of the lesson.
+private val benchSizes = listOf(250, 500, 1000, 2000, 4000)
 
 // Real timing: warmup run, then average several trials on reverse-sorted input (insertion sort's
 // worst case). Runs off the main thread — the caller launches it on Dispatchers.Default.
@@ -180,4 +184,4 @@ private fun TableRow(left: String, right: String) {
     }
 }
 
-private fun format(v: Double): String = String.format("%.1f", v)
+private fun format(v: Double): String = String.format(Locale.US, "%.1f", v)

@@ -78,8 +78,11 @@ fun CostProfilerTool() {
             Slider(value = maxN, onValueChange = { maxN = it }, valueRange = 8f..64f, steps = 6)
         }
 
-        val step = (maxNInt / 8).coerceAtLeast(1)
-        val points = (step..maxNInt step step).map { it to profile(algo, it) }
+        // Eight real runs per sweep — keyed so dragging the slider doesn't redo them every frame.
+        val points = remember(algo, maxNInt) {
+            val step = (maxNInt / 8).coerceAtLeast(1)
+            (step..maxNInt step step).map { it to profile(algo, it) }
+        }
 
         Box(
             modifier = Modifier

@@ -97,11 +97,11 @@ object InstrumentedAlgos {
     // O(n) two-sum — returns ops (lookups+inserts) and the peak size of the seen-set (extra memory).
     fun twoSumHash(arr: IntArray, target: Int): Pair<Int, Int> {
         var ops = 0
-        val seen = HashMap<Int, Int>()
+        val seen = HashSet<Int>()
         for (value in arr) {
             ops++
-            if (seen.containsKey(target - value)) return ops to seen.size
-            seen[value] = 1
+            if (target - value in seen) return ops to seen.size
+            seen += value
         }
         return ops to seen.size
     }

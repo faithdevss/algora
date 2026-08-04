@@ -7,11 +7,16 @@ import kotlin.math.ln
 // MiniLineChart. Colors follow the app's simulation palette (blue/green/amber/violet/red).
 class Curve(val label: String, val color: Color, val fn: (Double) -> Double)
 
+// Base-2, matching how the rest of the app teaches logarithmic work (binary search halves the
+// range, so n = 16 costs 4). The tools print these values as live "≈ x ops" legends, so the base
+// has to agree with OperationCounterTool's real measured counts — a natural log would read 3.
+private fun log2(n: Double): Double = ln(n) / ln(2.0)
+
 // The five complexity classes shown throughout the app.
 val complexityCurves = listOf(
     Curve("O(1)", Color(0xFF3B82F6)) { 1.0 },
-    Curve("O(log n)", Color(0xFF10B981)) { n -> ln(n + 1) },
+    Curve("O(log n)", Color(0xFF10B981)) { n -> log2(n) },
     Curve("O(n)", Color(0xFFF59E0B)) { n -> n },
-    Curve("O(n log n)", Color(0xFF8B5CF6)) { n -> n * ln(n + 1) },
+    Curve("O(n log n)", Color(0xFF8B5CF6)) { n -> n * log2(n) },
     Curve("O(n²)", Color(0xFFEF4444)) { n -> n * n },
 )

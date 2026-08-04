@@ -10,8 +10,15 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.algora.app.core.ui.theme.IBMPlexMono
+import kotlin.math.ceil
 import kotlin.math.ln
 
 // Line chart over n = 1..maxN for a set of curves. logScale keeps steep curves (e.g. O(n²)) from
@@ -66,7 +73,9 @@ fun MiniLineChart(
 class Bar(val label: String, val value: Double, val color: Color)
 
 // Vertical bar chart. logScale is available for cost data spanning several orders of magnitude
-// (e.g. amortized resize spikes). Heights normalize to the tallest bar.
+// (e.g. amortized resize spikes). Heights normalize to the tallest bar. Every bar's label is drawn
+// under the axis; when the labels are wider than their slots only every k-th one is drawn, so a
+// crowded chart thins out instead of overlapping into mush.
 @Composable
 fun MiniBarChart(
     bars: List<Bar>,
@@ -74,6 +83,11 @@ fun MiniBarChart(
     logScale: Boolean = false,
     height: Dp = 180.dp,
 ) {
+    val textMeasurer = rememberTextMeasurer()
+    val axisColor = MaterialTheme.colorScheme.outline
+    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val labelStyle = TextStyle(fontFamily = IBMPlexMono, fontSize = 10.sp, textAlign = TextAlign.Center)
+
     Canvas(modifier = modifier.fillMaxWidth().height(height)) {
         if (bars.isEmpty()) return@Canvas
         val maxValue = bars.maxOf { it.value }.coerceAtLeast(1.0)
@@ -82,17 +96,36 @@ fun MiniBarChart(
         val slot = (size.width - 2 * padding) / bars.size
         val barWidth = slot * 0.6f
 
+        val labels = bars.map { textMeasurer.measure(it.label, labelStyle) }
+        val labelHeight = labels.maxOf { it.size.height }.toFloat()
+        // Bars sit above the axis; the label strip is carved out of the bottom of the canvas.
+        val axisY = size.height - padding - labelHeight - 4f
+        val plotHeight = axisY - padding
+
+        drawLine(axisColor, Offset(padding, axisY), Offset(size.width - padding, axisY), strokeWidth = 2f)
+
+        val widest = labels.maxOf { it.size.width }.toFloat()
+        val stride = ceil((widest + 6f) / slot).toInt().coerceAtLeast(1)
+
         bars.forEachIndexed { index, bar ->
             val normalized = if (logScale) (ln(bar.value + 1) / logMax).toFloat()
             else (bar.value / maxValue).toFloat()
-            val barHeight = normalized.coerceIn(0f, 1f) * (size.height - 2 * padding)
+            val barHeight = normalized.coerceIn(0f, 1f) * plotHeight
             val left = padding + index * slot + (slot - barWidth) / 2f
-            val top = size.height - padding - barHeight
             drawRect(
                 color = bar.color,
-                topLeft = Offset(left, top),
+                topLeft = Offset(left, axisY - barHeight),
                 size = androidx.compose.ui.geometry.Size(barWidth, barHeight),
             )
+
+            if (index % stride == 0) {
+                val layout = labels[index]
+                drawText(
+                    layout,
+                    color = labelColor,
+                    topLeft = Offset(padding + index * slot + (slot - layout.size.width) / 2f, axisY + 4f),
+                )
+            }
         }
     }
 }
