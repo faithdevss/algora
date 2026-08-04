@@ -1,7 +1,6 @@
 package com.algora.app.feature.topics
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,8 +8,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,11 +25,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.algora.app.core.ui.theme.SimColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -87,17 +86,17 @@ fun StackSimulationSection() {
                 )
             }
 
-            OutlinedTextField(
+            SimNumberField(
                 value = valueInput,
                 onValueChange = { valueInput = it.filter(Char::isDigit) },
-                label = { Text("Value") },
+                label = "Value",
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
             )
 
-            SimButtonRow(
+            SimOpRow(
                 modifier = Modifier.padding(top = 4.dp),
-                buttons = listOf(
-                    Triple("Push", SimColors.Blue) {
+                ops = listOf(
+                    SimOp("Push", Icons.Filled.Add, SimColors.Blue) {
                         peekedIndex = null
                         val v = valueInput.toIntOrNull()
                         when {
@@ -109,7 +108,7 @@ fun StackSimulationSection() {
                             }
                         }
                     },
-                    Triple("Pop", SimColors.Red) {
+                    SimOp("Pop", Icons.Filled.Remove, SimColors.Red) {
                         peekedIndex = null
                         if (items.isEmpty()) {
                             statusMessage = "Stack is empty"
@@ -120,10 +119,10 @@ fun StackSimulationSection() {
                     },
                 ),
             )
-            SimButtonRow(
+            SimOpRow(
                 modifier = Modifier.padding(top = 8.dp),
-                buttons = listOf(
-                    Triple("Peek", SimColors.Amber) {
+                ops = listOf(
+                    SimOp("Peek", Icons.Filled.Visibility, SimColors.Amber) {
                         if (items.isEmpty()) {
                             statusMessage = "Stack is empty"
                         } else {
@@ -136,7 +135,7 @@ fun StackSimulationSection() {
                             }
                         }
                     },
-                    Triple("Reset", SimColors.Grey) {
+                    SimOp("", Icons.Filled.Refresh, SimColors.Grey, weight = 0.55f, contentDescription = "Reset") {
                         peekedIndex = null
                         items.clear()
                         items.addAll(initialItems)
@@ -150,21 +149,10 @@ fun StackSimulationSection() {
 
 @Composable
 private fun StackBox(value: Int, isPeeked: Boolean) {
-    Box(
-        modifier = Modifier
-            .size(width = 120.dp, height = 44.dp)
-            .background(
-                if (isPeeked) SimColors.Amber else SimColors.Violet,
-                RoundedCornerShape(12.dp),
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = value.toString(),
-            color = Color.White,
-            fontWeight = FontWeight.Bold,
-            fontSize = 16.sp,
-            textAlign = TextAlign.Center,
-        )
-    }
+    SimValueChip(
+        value = value.toString(),
+        chip = if (isPeeked) ChipAmber else ChipViolet,
+        width = 120.dp,
+        height = 44.dp,
+    )
 }

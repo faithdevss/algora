@@ -3,6 +3,7 @@ package com.algora.app.feature.topics
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,10 +13,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FirstPage
+import androidx.compose.material.icons.filled.LastPage
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -31,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -64,6 +71,13 @@ private val cellGap = 8.dp
 
 // What the currently marked slot is doing — drives the cell's accent color.
 private enum class Mark { Cursor, Move, Write }
+
+// Filled cells are the shared value chips drawn on a Canvas rather than as composables, so they use
+// the SimChip palette directly: a used slot is legible at a glance and matches the other widgets.
+private val SlotFilled = ChipViolet
+private val SlotCursor = ChipAmber
+private val SlotMove = ChipBlue
+private val SlotWrite = ChipGreen
 
 @Composable
 fun ArraySimulationSection() {
@@ -265,24 +279,24 @@ fun ArraySimulationSection() {
                 )
             }
 
-            Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                OutlinedTextField(
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                SimNumberField(
                     value = valueInput,
                     // Keep a single leading minus so negative values are expressible.
                     onValueChange = { input ->
                         val sign = if (input.startsWith("-")) "-" else ""
                         valueInput = sign + input.filter(Char::isDigit)
                     },
-                    label = { Text("Value") },
-                    singleLine = true,
+                    label = "Value",
                     modifier = Modifier.weight(1f),
                 )
-                Box(modifier = Modifier.width(8.dp))
-                OutlinedTextField(
+                SimNumberField(
                     value = indexInput,
                     onValueChange = { indexInput = it.filter(Char::isDigit) },
-                    label = { Text("Index") },
-                    singleLine = true,
+                    label = "Index",
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -290,31 +304,33 @@ fun ArraySimulationSection() {
             // Two tiers: what a raw fixed array can do by itself, and what a dynamic array
             // (ArrayList) layers on top of it by shifting elements around.
             OpGroupLabel("Array primitives")
-            ArrayButtonRow(
-                enabled = !busy,
-                buttons = listOf(
-                    Triple("Access At", SimColors.Green) { onAccess() },
-                    Triple("Search", SimColors.Amber) { onSearch() },
+            SimOpRow(
+                modifier = Modifier.padding(top = 8.dp),
+                ops = listOf(
+                    SimOp("Access At", Icons.Filled.MyLocation, SimColors.Green, enabled = !busy) { onAccess() },
+                    SimOp("Search", Icons.Filled.Search, SimColors.Amber, enabled = !busy) { onSearch() },
                 ),
             )
             OpGroupLabel("Dynamic array ops — built on shifting")
-            ArrayButtonRow(
-                enabled = !busy,
-                buttons = listOf(
-                    Triple("Insert Head", SimColors.Blue) {
+            SimOpRow(
+                modifier = Modifier.padding(top = 8.dp),
+                ops = listOf(
+                    SimOp("Insert Head", Icons.Filled.FirstPage, SimColors.Blue, enabled = !busy) {
                         val v = parsedValue()
                         if (v == null) { statusMessage = "Enter a value first"; costMessage = "" } else launchOp { insertAt(0, v) }
                     },
-                    Triple("Insert Tail", SimColors.Blue) {
+                    SimOp("Insert Tail", Icons.Filled.LastPage, SimColors.Blue, enabled = !busy) {
                         val v = parsedValue()
                         if (v == null) { statusMessage = "Enter a value first"; costMessage = "" } else launchOp { insertAt(size, v) }
                     },
                 ),
             )
-            ArrayButtonRow(
-                enabled = !busy,
-                buttons = listOf(
-                    Triple("Insert At", SimColors.Violet) {
+            // Reset rides along as an icon-only button instead of claiming a fourth full-width row —
+            // six stacked pills read as a wall of equally important actions, which they are not.
+            SimOpRow(
+                modifier = Modifier.padding(top = 8.dp),
+                ops = listOf(
+                    SimOp("Insert At", Icons.Filled.Add, SimColors.Violet, enabled = !busy) {
                         val v = parsedValue()
                         val i = parsedIndex()
                         when {
@@ -323,13 +339,8 @@ fun ArraySimulationSection() {
                             else -> launchOp { insertAt(i, v) }
                         }
                     },
-                    Triple("Delete At", SimColors.Red) { onDelete() },
-                ),
-            )
-            ArrayButtonRow(
-                enabled = true,
-                buttons = listOf(
-                    Triple("Reset", SimColors.Grey) {
+                    SimOp("Delete At", Icons.Filled.Delete, SimColors.Red, enabled = !busy) { onDelete() },
+                    SimOp("", Icons.Filled.Refresh, SimColors.Grey, weight = 0.55f, contentDescription = "Reset") {
                         job?.cancel()
                         busy = false
                         slots.clear()
@@ -366,34 +377,13 @@ private fun OpGroupLabel(text: String) {
 }
 
 @Composable
-private fun ArrayButtonRow(buttons: List<Triple<String, Color, () -> Unit>>, enabled: Boolean) {
-    Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-        buttons.forEachIndexed { index, (label, color, onClick) ->
-            if (index > 0) Box(modifier = Modifier.width(8.dp))
-            Button(
-                onClick = onClick,
-                enabled = enabled,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = color,
-                    contentColor = Color.White,
-                    disabledContainerColor = color.copy(alpha = 0.35f),
-                    disabledContentColor = Color.White.copy(alpha = 0.6f),
-                ),
-                modifier = Modifier.weight(1f),
-            ) { Text(label) }
-        }
-    }
-}
-
-@Composable
 private fun ArrayCanvas(slots: List<Int?>, size: Int, markIndex: Int?, markKind: Mark) {
     val textMeasurer = rememberTextMeasurer()
     val cellFill = MaterialTheme.colorScheme.surface
     val cellBorder = MaterialTheme.colorScheme.outline
-    val valueTextColor = MaterialTheme.colorScheme.onSurface
     val indexTextColor = MaterialTheme.colorScheme.onSurfaceVariant
 
-    val valueStyle = TextStyle(fontFamily = IBMPlexMono, fontWeight = FontWeight.Medium, fontSize = 18.sp, textAlign = TextAlign.Center)
+    val valueStyle = TextStyle(fontFamily = IBMPlexMono, fontWeight = FontWeight.Bold, fontSize = 18.sp, textAlign = TextAlign.Center)
     val indexStyle = TextStyle(fontFamily = IBMPlexMono, fontWeight = FontWeight.Normal, fontSize = 12.sp, textAlign = TextAlign.Center)
 
     val capacity = slots.size
@@ -415,36 +405,65 @@ private fun ArrayCanvas(slots: List<Int?>, size: Int, markIndex: Int?, markKind:
             val inUse = index < size
             val accent = if (index == markIndex) {
                 when (markKind) {
-                    Mark.Cursor -> SimColors.Amber
-                    Mark.Move -> SimColors.Violet
-                    Mark.Write -> SimColors.Green
+                    Mark.Cursor -> SlotCursor
+                    Mark.Move -> SlotMove
+                    Mark.Write -> SlotWrite
                 }
             } else {
                 null
             }
 
-            drawRoundRect(
-                color = accent?.copy(alpha = 0.22f) ?: cellFill,
-                topLeft = Offset(left, 0f),
-                size = Size(cellPx, cellPx),
-                cornerRadius = corner,
-            )
-            drawRoundRect(
-                color = accent ?: if (inUse) cellBorder else cellBorder.copy(alpha = 0.5f),
-                topLeft = Offset(left, 0f),
-                size = Size(cellPx, cellPx),
-                cornerRadius = corner,
-                style = Stroke(
-                    width = if (accent != null) 4f else 2f,
-                    pathEffect = if (inUse || accent != null) null else dashed,
-                ),
-            )
+            // A slot holding a value gets the same solid gradient chip the linked-list nodes use, so
+            // "in use" reads from the fill itself instead of from a border that differs from an
+            // empty slot's only by alpha.
+            val gradient = when {
+                accent != null -> accent
+                inUse -> SlotFilled
+                else -> null
+            }
+
+            if (gradient == null) {
+                drawRoundRect(
+                    color = cellFill,
+                    topLeft = Offset(left, 0f),
+                    size = Size(cellPx, cellPx),
+                    cornerRadius = corner,
+                )
+                drawRoundRect(
+                    color = cellBorder.copy(alpha = 0.5f),
+                    topLeft = Offset(left, 0f),
+                    size = Size(cellPx, cellPx),
+                    cornerRadius = corner,
+                    style = Stroke(width = 2f, pathEffect = dashed),
+                )
+            } else {
+                drawRoundRect(
+                    brush = Brush.verticalGradient(
+                        listOf(gradient.top, gradient.bottom),
+                        startY = 0f,
+                        endY = cellPx,
+                    ),
+                    topLeft = Offset(left, 0f),
+                    size = Size(cellPx, cellPx),
+                    cornerRadius = corner,
+                )
+                // Marked slots keep a bright rim so the cursor is findable in a row of filled chips.
+                if (accent != null) {
+                    drawRoundRect(
+                        color = Color.White,
+                        topLeft = Offset(left, 0f),
+                        size = Size(cellPx, cellPx),
+                        cornerRadius = corner,
+                        style = Stroke(width = 4f),
+                    )
+                }
+            }
 
             if (value != null) {
                 val valueLayout = textMeasurer.measure(value.toString(), valueStyle)
                 drawText(
                     valueLayout,
-                    color = valueTextColor,
+                    color = Color.White,
                     topLeft = Offset(left + (cellPx - valueLayout.size.width) / 2f, (cellPx - valueLayout.size.height) / 2f),
                 )
             }

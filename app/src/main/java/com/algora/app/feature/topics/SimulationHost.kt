@@ -27,7 +27,7 @@ internal fun SimulationHost(topicId: String, type: SimulationType) {
         SimulationType.LinkedListVisualizer -> LinkedListSimulationSection()
         SimulationType.StackVisualizer -> StackSimulationSection()
         SimulationType.QueueVisualizer -> QueueSimulationSection()
-        SimulationType.GraphVisualizer -> GraphSimulationSection()
+        SimulationType.GraphVisualizer -> GraphSimulationSection(topicId)
         SimulationType.GraphAlgorithmPlayer -> GraphAlgorithmSection(topicId)
         SimulationType.ArrayWalkPlayer -> ArrayWalkSection(topicId)
         SimulationType.PointCloudPlayer -> PointCloudSection(topicId)
