@@ -76,7 +76,16 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 in release only: debug stays unshrunk so stack traces and the Compose tooling
+            // keep working. Everything reflective in the app comes from libraries that ship their
+            // own consumer rules (WorkManager, Billing, Play Ads, DataStore); proguard-rules.pro
+            // holds the few app-level keeps on top of that.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
 
             manifestPlaceholders["admobAppId"] = admobAppId
             buildConfigField("String", "ADMOB_REWARDED_UNIT_ID", "\"$admobRewardedUnitId\"")
