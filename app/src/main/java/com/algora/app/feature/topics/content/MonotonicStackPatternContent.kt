@@ -88,6 +88,6 @@ internal val monotonicStackPatternContent = TopicContent(
     crossLinks = listOf(
         CrossLink("stack", "Stack (Data Structures)"),
         CrossLink("deque", "Deque (Data Structures)"),
-        CrossLink("faang_set", "Practice: FAANG Set"),
+        CrossLink("stacks_queues_quiz", "Practice: Stacks & Queues Quiz"),
     ),
 )

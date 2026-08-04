@@ -85,6 +85,6 @@ internal val cyclicSortPatternContent = TopicContent(
     crossLinks = listOf(
         CrossLink("counting_sort", "Counting Sort (Algorithms)"),
         CrossLink("two_pointer_pattern", "Two Pointer Pattern"),
-        CrossLink("timed_mock_interview", "Practice: Timed Mock Interview"),
+        CrossLink("arrays_strings_quiz", "Practice: Arrays & Strings Quiz"),
     ),
 )

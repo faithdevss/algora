@@ -12,7 +12,6 @@ internal val optimizersTrainingQuiz = Quiz(
     id = "optimizers_training_quiz",
     title = "Optimizers & Training",
     description = "Momentum, adaptive rates, schedules and the losses they minimize.",
-    timeLimitSeconds = AI_TIME_LIMIT,
     questions = listOf(
         QuizQuestion(
             prompt = "Momentum in SGD helps mainly by:",
@@ -111,7 +110,6 @@ internal val activationFunctionsQuiz = Quiz(
     id = "activation_functions_quiz",
     title = "Activation Functions",
     description = "ReLU, sigmoid, GELU and the saturation, dead-unit trade-offs.",
-    timeLimitSeconds = AI_TIME_LIMIT,
     questions = listOf(
         QuizQuestion(
             prompt = "Sigmoid's derivative is at most 0.25, which means:",

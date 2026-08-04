@@ -12,7 +12,6 @@ internal val unsupervisedLearningQuiz = Quiz(
     id = "unsupervised_learning_quiz",
     title = "Unsupervised Learning",
     description = "Clustering assumptions, cluster counts and dimensionality reduction.",
-    timeLimitSeconds = AI_TIME_LIMIT,
     questions = listOf(
         QuizQuestion(
             prompt = "k-means implicitly assumes clusters that are:",
@@ -111,7 +110,6 @@ internal val computerVisionQuiz = Quiz(
     id = "computer_vision_quiz",
     title = "Computer Vision",
     description = "Convolutions, receptive fields, detection and segmentation.",
-    timeLimitSeconds = AI_TIME_LIMIT,
     questions = listOf(
         QuizQuestion(
             prompt = "A convolutional layer beats a fully connected one on images mainly because:",
@@ -205,7 +203,6 @@ internal val dataPreprocessingQuiz = Quiz(
     id = "data_preprocessing_quiz",
     title = "Data Preprocessing",
     description = "Imputation, encoding, scaling, imbalance and leakage.",
-    timeLimitSeconds = AI_TIME_LIMIT,
     questions = listOf(
         QuizQuestion(
             prompt = "Fitting the scaler on the full dataset before splitting into train and test causes:",
@@ -305,8 +302,7 @@ internal val dataPreprocessingQuiz = Quiz(
 internal val mlEngineerSet = Quiz(
     id = "ml_engineer_set",
     title = "ML Engineer Set",
-    description = "Curated ML-engineer screen questions — modelling plus production reality.",
-    timeLimitSeconds = 300,
+    description = "ML-engineer screen questions — modelling plus production reality.",
     questions = listOf(
         QuizQuestion(
             prompt = "A fraud model scores 99.5% accuracy on data where 0.5% of transactions are fraud. The right reaction is:",
@@ -320,7 +316,6 @@ internal val mlEngineerSet = Quiz(
             patternTag = "Evaluation",
             difficulty = Difficulty.BEGINNER,
             explanation = "Predicting 'not fraud' always scores 99.5%. Under heavy imbalance the minority class needs precision/recall, and PR-AUC discriminates better than ROC-AUC.",
-            companyTag = "ML Engineer",
             linkedTopicId = "precision_recall",
             linkedTopicLabel = "Precision & Recall",
         ),
@@ -336,7 +331,6 @@ internal val mlEngineerSet = Quiz(
             patternTag = "Production",
             difficulty = Difficulty.ADVANCED,
             explanation = "The classic causes are features computed differently online than offline, and an offline split that leaked future information. Both inflate offline scores without any real gain.",
-            companyTag = "ML Engineer",
             linkedTopicId = "model_evaluation",
             linkedTopicLabel = "Model Evaluation",
         ),
@@ -352,7 +346,6 @@ internal val mlEngineerSet = Quiz(
             patternTag = "Validation",
             difficulty = Difficulty.INTERMEDIATE,
             explanation = "Random folds let the model see future points while predicting the past — leakage that random splits hide. Rolling-origin (walk-forward) validation mirrors deployment.",
-            companyTag = "ML Engineer",
             linkedTopicId = "arima",
             linkedTopicLabel = "ARIMA",
         ),
@@ -368,7 +361,6 @@ internal val mlEngineerSet = Quiz(
             patternTag = "Model Choice",
             difficulty = Difficulty.INTERMEDIATE,
             explanation = "Boosted trees are scale-invariant, need no encoding of monotone relationships and fit sharp thresholds from thousands of rows — where a net would need far more data and tuning.",
-            companyTag = "ML Engineer",
             linkedTopicId = "xgboost",
             linkedTopicLabel = "XGBoost",
         ),
@@ -384,7 +376,6 @@ internal val mlEngineerSet = Quiz(
             patternTag = "Serving",
             difficulty = Difficulty.ADVANCED,
             explanation = "Both shrink inference cost: quantisation lowers numeric precision, distillation trains a small model on the large one's outputs. Caching and batching help too — training-time knobs do not.",
-            companyTag = "ML Engineer",
             linkedTopicId = "transfer_learning",
             linkedTopicLabel = "Transfer Learning",
         ),
@@ -400,7 +391,6 @@ internal val mlEngineerSet = Quiz(
             patternTag = "Monitoring",
             difficulty = Difficulty.ADVANCED,
             explanation = "Data drift is a change in P(x); concept drift is a change in P(y|x) and needs labels to see. Watching inputs and prediction distributions buys warning time while labels lag.",
-            companyTag = "ML Engineer",
             linkedTopicId = "outlier_detection",
             linkedTopicLabel = "Outlier Detection",
         ),

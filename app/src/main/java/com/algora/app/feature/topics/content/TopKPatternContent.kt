@@ -82,6 +82,6 @@ internal val topKPatternContent = TopicContent(
     crossLinks = listOf(
         CrossLink("top_k_elements", "Top-K Elements (Algorithms)"),
         CrossLink("heap", "Heap / Priority Queue"),
-        CrossLink("faang_set", "Practice: FAANG Set"),
+        CrossLink("faang_set", "Practice: Big Tech Set"),
     ),
 )

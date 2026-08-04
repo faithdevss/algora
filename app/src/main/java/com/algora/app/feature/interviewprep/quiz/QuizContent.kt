@@ -5,8 +5,7 @@ import com.algora.app.core.data.model.Difficulty
 internal val timedMockInterview = Quiz(
     id = "timed_mock_interview",
     title = "Timed Mock Interview",
-    description = "Six mixed-pattern questions under a five-minute clock. Pick the best approach for each.",
-    timeLimitSeconds = 300,
+    description = "Mixed-pattern questions across the core interview toolkit. Pick the best approach for each.",
     questions = listOf(
         QuizQuestion(
             prompt = "Longest substring without repeating characters — the optimal approach is:",
@@ -96,11 +95,12 @@ internal val timedMockInterview = Quiz(
     ),
 )
 
-internal val faangSet = Quiz(
+// Id stays faang_set: attempt history is keyed by it, and the acronym named five specific
+// companies while the set tags none of them.
+internal val bigTechSet = Quiz(
     id = "faang_set",
-    title = "FAANG Set",
-    description = "Five company-tagged favourites. Identify the canonical technique for each.",
-    timeLimitSeconds = 420,
+    title = "Big Tech Set",
+    description = "Big-tech-style favourites. Identify the canonical technique for each.",
     questions = listOf(
         QuizQuestion(
             prompt = "Clone an undirected graph given a node reference:",
@@ -114,7 +114,6 @@ internal val faangSet = Quiz(
             patternTag = "Graph Traversal",
             difficulty = Difficulty.INTERMEDIATE,
             explanation = "Traverse once, creating a copy on first visit and wiring neighbours through the visited map to avoid infinite loops on cycles.",
-            companyTag = "Google",
             linkedTopicId = "bfs",
             linkedTopicLabel = "Breadth-First Search",
         ),
@@ -130,7 +129,6 @@ internal val faangSet = Quiz(
             patternTag = "Sliding Window",
             difficulty = Difficulty.ADVANCED,
             explanation = "Grow the window until it covers T, then shrink from the left while it still covers T, tracking the smallest. O(|S| + |T|).",
-            companyTag = "Meta",
             linkedTopicId = "sliding_window",
             linkedTopicLabel = "Sliding Window",
         ),
@@ -146,7 +144,6 @@ internal val faangSet = Quiz(
             patternTag = "Top-K / Heap",
             difficulty = Difficulty.INTERMEDIATE,
             explanation = "A size-K max-heap gives O(n log K); Quickselect gives O(n) average. A full sort is O(n log n) — more work than needed.",
-            companyTag = "Amazon",
             linkedTopicId = "top_k_elements",
             linkedTopicLabel = "Top-K Elements",
         ),
@@ -162,7 +159,6 @@ internal val faangSet = Quiz(
             patternTag = "Binary Search",
             difficulty = Difficulty.ADVANCED,
             explanation = "At each step one half is sorted; decide whether the target lies in it and recurse there, keeping O(log n).",
-            companyTag = "Google",
             linkedTopicId = "binary_search",
             linkedTopicLabel = "Binary Search",
         ),
@@ -178,7 +174,6 @@ internal val faangSet = Quiz(
             patternTag = "Two Pointer",
             difficulty = Difficulty.INTERMEDIATE,
             explanation = "Start at both ends; the area is bounded by the shorter wall, so moving it inward is the only way the area can grow. O(n).",
-            companyTag = "Meta",
             linkedTopicId = "two_pointer",
             linkedTopicLabel = "Two Pointer Technique",
         ),
@@ -188,8 +183,7 @@ internal val faangSet = Quiz(
 internal val startupSet = Quiz(
     id = "startup_set",
     title = "Startup Set",
-    description = "Five practical questions in the style of fast-moving product companies.",
-    timeLimitSeconds = 420,
+    description = "Practical questions in the style of fast-moving product companies.",
     questions = listOf(
         QuizQuestion(
             prompt = "Design a cache with O(1) get and put that evicts the least-recently-used entry:",
@@ -203,7 +197,6 @@ internal val startupSet = Quiz(
             patternTag = "Design",
             difficulty = Difficulty.INTERMEDIATE,
             explanation = "The map gives O(1) lookup; the doubly linked list moves a touched node to the front and drops the tail on eviction, both O(1).",
-            companyTag = "Stripe",
             linkedTopicId = "lru_cache",
             linkedTopicLabel = "LRU Cache",
         ),
@@ -219,7 +212,6 @@ internal val startupSet = Quiz(
             patternTag = "Hashing",
             difficulty = Difficulty.BEGINNER,
             explanation = "The set answers 'seen before?' in O(1); append to the ordered list only on first sight. O(n) time.",
-            companyTag = "Airbnb",
             linkedTopicId = "hash_table",
             linkedTopicLabel = "Hash Table",
         ),
@@ -235,25 +227,23 @@ internal val startupSet = Quiz(
             patternTag = "Top-K / Heap",
             difficulty = Difficulty.INTERMEDIATE,
             explanation = "Keep only K elements; the heap root is the Kth largest. Push/pop is O(log K). A max-heap would need K pops to answer.",
-            companyTag = "DoorDash",
             linkedTopicId = "top_k_elements",
             linkedTopicLabel = "Top-K Elements",
         ),
         QuizQuestion(
-            prompt = "Detect whether a singly linked list contains a cycle in O(1) space:",
+            prompt = "Serve type-ahead suggestions for every prefix of a search box, over a fixed vocabulary:",
             options = listOf(
-                "Floyd's fast & slow pointers",
-                "A hash set of visited nodes",
-                "Reverse and compare halves",
-                "Count nodes twice",
+                "A trie, with the top completions cached at each node",
+                "A hash set of the whole vocabulary",
+                "Binary search the sorted vocabulary on each keystroke",
+                "A max-heap keyed by word frequency",
             ),
             correctIndex = 0,
-            patternTag = "Fast & Slow Pointers",
+            patternTag = "Trie / Prefix Search",
             difficulty = Difficulty.INTERMEDIATE,
-            explanation = "Two pointers at different speeds meet inside any cycle. The hash-set approach works but costs O(n) extra space.",
-            companyTag = "Notion",
-            linkedTopicId = "singly_linked_list",
-            linkedTopicLabel = "Singly Linked List",
+            explanation = "A hash set answers 'is this a word?' but cannot enumerate by prefix. Walking the trie costs O(prefix length), and caching each node's best completions makes the suggestion list a single read.",
+            linkedTopicId = "trie",
+            linkedTopicLabel = "Trie (Prefix Tree)",
         ),
         QuizQuestion(
             prompt = "Maximum profit from a single buy then sell over a price series:",
@@ -267,7 +257,6 @@ internal val startupSet = Quiz(
             patternTag = "Dynamic Programming",
             difficulty = Difficulty.BEGINNER,
             explanation = "Track the lowest price seen and the best profit against it in a single O(n) sweep — the same running-best idea as Kadane.",
-            companyTag = "Databricks",
             linkedTopicId = "kadanes_algorithm",
             linkedTopicLabel = "Kadane's Algorithm",
         ),
@@ -277,8 +266,7 @@ internal val startupSet = Quiz(
 internal val financeTradingSet = Quiz(
     id = "finance_trading_set",
     title = "Finance / Trading Set",
-    description = "Five questions with the latency- and math-heavy flavour of quant and trading interviews.",
-    timeLimitSeconds = 420,
+    description = "Latency- and math-heavy questions in the flavour of quant and trading interviews.",
     questions = listOf(
         QuizQuestion(
             prompt = "Report the running median of a live price stream:",
@@ -292,25 +280,23 @@ internal val financeTradingSet = Quiz(
             patternTag = "Top-K / Heap",
             difficulty = Difficulty.ADVANCED,
             explanation = "Balance the two heaps so their tops straddle the median; each insert is O(log n) and the median is O(1).",
-            companyTag = "Two Sigma",
             linkedTopicId = "heap",
             linkedTopicLabel = "Heap (Priority Queue)",
         ),
         QuizQuestion(
-            prompt = "Largest total P&L over any contiguous window of trades:",
+            prompt = "Report the highest price in the trailing k ticks, updated on every tick:",
             options = listOf(
-                "Kadane's algorithm",
-                "All-pairs prefix sums",
-                "Sort then take the suffix",
-                "Depth-first search",
+                "A monotonic deque of indices, dropping any tick a newer higher one dominates",
+                "A max-heap of the last k prices",
+                "Rescan the k-tick window on each tick",
+                "A running maximum that resets when the window slides",
             ),
             correctIndex = 0,
-            patternTag = "Dynamic Programming",
-            difficulty = Difficulty.INTERMEDIATE,
-            explanation = "Keep a running best-ending-here sum, resetting when it goes negative. O(n) time, O(1) space.",
-            companyTag = "Jane Street",
-            linkedTopicId = "kadanes_algorithm",
-            linkedTopicLabel = "Kadane's Algorithm",
+            patternTag = "Monotonic Deque",
+            difficulty = Difficulty.ADVANCED,
+            explanation = "Each index is pushed and popped once, so the whole stream costs O(n) with the answer at the deque's front. A heap is O(n log k) and needs lazy deletion; a running max cannot recover when the tick holding the maximum leaves the window.",
+            linkedTopicId = "deque",
+            linkedTopicLabel = "Deque",
         ),
         QuizQuestion(
             prompt = "Compute a^n for a large integer n as fast as possible:",
@@ -324,7 +310,6 @@ internal val financeTradingSet = Quiz(
             patternTag = "Divide & Conquer",
             difficulty = Difficulty.INTERMEDIATE,
             explanation = "Square the base and halve the exponent each step: a^n = (a^(n/2))². O(log n) multiplications.",
-            companyTag = "Jump Trading",
         ),
         QuizQuestion(
             prompt = "Count the number of ways to make an amount from unlimited denominations:",
@@ -338,7 +323,6 @@ internal val financeTradingSet = Quiz(
             patternTag = "Dynamic Programming",
             difficulty = Difficulty.ADVANCED,
             explanation = "Looping coins outer and amounts inner counts combinations without double-counting orderings. Greedy answers the min-coins variant, not the count.",
-            companyTag = "Citadel",
             linkedTopicId = "coin_change",
             linkedTopicLabel = "Coin Change",
         ),
@@ -354,7 +338,6 @@ internal val financeTradingSet = Quiz(
             patternTag = "Binary Search",
             difficulty = Difficulty.BEGINNER,
             explanation = "Lower-bound binary search returns the first index whose value is ≥ the target — the insertion point — in O(log n).",
-            companyTag = "HRT",
             linkedTopicId = "binary_search",
             linkedTopicLabel = "Binary Search",
         ),

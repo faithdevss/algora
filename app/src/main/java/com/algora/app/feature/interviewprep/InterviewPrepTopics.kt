@@ -15,7 +15,7 @@ private fun topic(id: String, name: String, category: Category, tagline: String,
 )
 
 private val patterns = InterviewPrepCategories.patterns
-private val companySets = InterviewPrepCategories.companySets
+private val interviewStyles = InterviewPrepCategories.interviewStyles
 private val mock = InterviewPrepCategories.mock
 private val topicQuizzes = InterviewPrepCategories.topicQuizzes
 private val aiInterview = InterviewPrepCategories.aiInterview
@@ -80,11 +80,12 @@ private val patternTopics = listOf(
     topic("prefix_2d_pattern", "2D Prefix Sums", patterns, "Any submatrix sum in four lookups.", isPremium = true),
 )
 
-private val companySetTopics = listOf(
-    topic("faang_set", "FAANG Set", companySets, "Curated question set from large tech companies.", isPremium = true),
-    topic("startup_set", "Startup Set", companySets, "Curated question set from startup-style interviews.", isPremium = true),
-    topic("finance_trading_set", "Finance / Trading Set", companySets, "Curated question set from finance and trading firms.", isPremium = true),
-    topic("ml_engineer_set", "ML Engineer Set", companySets, "Curated ML-engineer screen — modelling plus production reality.", isPremium = true),
+// Taglines describe the *style* a set is written in, never its provenance: these are authored
+// questions, not transcripts, and "from <company>" would claim a sourcing that does not exist.
+private val interviewStyleTopics = listOf(
+    topic("faang_set", "Big Tech Set", interviewStyles, "Written in the style of a big-tech screen — graphs, windows, heaps, binary search.", isPremium = true),
+    topic("startup_set", "Startup Set", interviewStyles, "Written in the style of a product-company screen — design, hashing, streams.", isPremium = true),
+    topic("finance_trading_set", "Finance / Trading Set", interviewStyles, "Written in the style of a quant-desk screen — latency, math, order books.", isPremium = true),
 )
 
 private val mockTopics = listOf(
@@ -121,14 +122,17 @@ private val quizTopics = listOf(
     topic("activation_functions_quiz", "Activation Functions Quiz", topicQuizzes, "ReLU, sigmoid, GELU and the saturation, dead-unit trade-offs."),
 )
 
-// AI-mode interview rounds, mirroring the DSA mock + system-design pair.
+// AI-mode interview rounds, mirroring the DSA mock + system-design pair. The ML Engineer set sits
+// here rather than under Company Sets: it is scoped by role, not by an interview house style, and
+// its neighbours are the other two ML rounds.
 private val aiInterviewTopics = listOf(
     topic("ai_ml_mock_interview", "AI/ML Mock Interview", aiInterview, "Mixed ML, DL, NLP and RL questions under a clock."),
+    topic("ml_engineer_set", "ML Engineer Set", aiInterview, "An ML-engineer screen — modelling plus production reality.", isPremium = true),
     topic("ml_system_design_primer", "ML System Design Primer", aiInterview, "Framing, data, serving, drift and retraining.", isPremium = true),
 )
 
 object InterviewPrepTopics {
-    val topics: List<Topic> = patternTopics + companySetTopics + mockTopics + quizTopics + aiInterviewTopics
+    val topics: List<Topic> = patternTopics + interviewStyleTopics + mockTopics + quizTopics + aiInterviewTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }

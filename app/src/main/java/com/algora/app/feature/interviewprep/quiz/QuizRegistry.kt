@@ -5,7 +5,7 @@ package com.algora.app.feature.interviewprep.quiz
 object QuizRegistry {
     private val quizzes: Map<String, Quiz> = mapOf(
         "timed_mock_interview" to timedMockInterview,
-        "faang_set" to faangSet,
+        "faang_set" to bigTechSet,
         "startup_set" to startupSet,
         "finance_trading_set" to financeTradingSet,
         "ml_engineer_set" to mlEngineerSet,

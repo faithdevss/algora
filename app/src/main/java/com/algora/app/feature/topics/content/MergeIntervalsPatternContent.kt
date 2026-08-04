@@ -81,6 +81,6 @@ internal val mergeIntervalsPatternContent = TopicContent(
     ),
     crossLinks = listOf(
         CrossLink("merge_sort", "Merge Sort (Algorithms)"),
-        CrossLink("timed_mock_interview", "Practice: Timed Mock Interview"),
+        CrossLink("dp_greedy_quiz", "Practice: DP & Greedy Quiz"),
     ),
 )

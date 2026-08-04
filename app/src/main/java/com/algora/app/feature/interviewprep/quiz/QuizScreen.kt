@@ -89,7 +89,7 @@ fun QuizScreen(
     // A fresh attempt rebuilds all per-run state (answers, index, timer, phase).
     key(attempt) {
         QuizRunner(
-            quiz = running,
+            source = running,
             priorAttempts = if (isFullQuiz) history.filter { it.atEpochSec != recordedAt } else emptyList(),
             onBack = onBack,
             onTopicClick = onTopicClick,
@@ -115,7 +115,7 @@ fun QuizScreen(
 
 @Composable
 private fun QuizRunner(
-    quiz: Quiz,
+    source: Quiz,
     priorAttempts: List<QuizAttempt>,
     onBack: () -> Unit,
     onTopicClick: (String) -> Unit,
@@ -123,6 +123,11 @@ private fun QuizRunner(
     onRetry: () -> Unit,
     onRetryWrong: (List<Int>) -> Unit,
 ) {
+    // Shuffled once per run (QuizScreen's key(attempt) rebuilds this composable for a fresh attempt),
+    // so paging back to an earlier question finds the options where the learner left them. Question
+    // order is untouched: wrongIndices and missedOnly both index into the source set.
+    val quiz = remember(source) { source.withShuffledOptions() }
+
     val answers: SnapshotStateList<Int?> = remember { List<Int?>(quiz.questions.size) { null }.toMutableStateList() }
     var index by remember { mutableIntStateOf(0) }
     var remaining by remember { mutableIntStateOf(quiz.timeLimitSeconds) }
@@ -190,7 +195,6 @@ private fun QuizRunner(
 
             Row(modifier = Modifier.padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TagChip(question.patternTag, MaterialTheme.colorScheme.primary)
-                question.companyTag?.let { TagChip(it, Color(0xFF3B82F6)) }
                 DifficultyChip(question.difficulty)
             }
 
@@ -478,18 +482,15 @@ private fun QuizHeaderStatic(title: String, onBack: () -> Unit) {
     }
 }
 
-// A derived quiz holding only the questions this run got wrong. The time budget shrinks with it (a
-// floor of one minute, so a single missed question is not a 6-second scramble), and the id is
-// suffixed so nothing can mistake a subset run for a real attempt at the full set.
-private fun missedOnly(quiz: Quiz, wrongIndices: List<Int>): Quiz {
-    val perQuestion = if (quiz.questions.isEmpty()) 60 else quiz.timeLimitSeconds / quiz.questions.size
-    return quiz.copy(
-        id = "${quiz.id}_missed",
-        title = "${quiz.title} · missed",
-        timeLimitSeconds = (perQuestion * wrongIndices.size).coerceAtLeast(60),
-        questions = wrongIndices.mapNotNull { quiz.questions.getOrNull(it) },
-    )
-}
+// A derived quiz holding only the questions this run got wrong. The time budget shrinks with it —
+// Quiz derives the limit from the question count, so a shorter list is a shorter clock with no
+// arithmetic here — and the id is suffixed so nothing can mistake a subset run for a real attempt at
+// the full set.
+private fun missedOnly(quiz: Quiz, wrongIndices: List<Int>): Quiz = quiz.copy(
+    id = "${quiz.id}_missed",
+    title = "${quiz.title} · missed",
+    questions = wrongIndices.mapNotNull { quiz.questions.getOrNull(it) },
+)
 
 private fun formatTime(seconds: Int): String {
     val s = seconds.coerceAtLeast(0)

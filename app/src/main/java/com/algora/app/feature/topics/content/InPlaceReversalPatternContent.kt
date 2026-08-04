@@ -88,6 +88,6 @@ internal val inPlaceReversalPatternContent = TopicContent(
     crossLinks = listOf(
         CrossLink("singly_linked_list", "Singly Linked List (Data Structures)"),
         CrossLink("fast_slow_pointers", "Fast & Slow Pointers"),
-        CrossLink("faang_set", "Practice: FAANG Set"),
+        CrossLink("linked_lists_quiz", "Practice: Linked Lists Quiz"),
     ),
 )

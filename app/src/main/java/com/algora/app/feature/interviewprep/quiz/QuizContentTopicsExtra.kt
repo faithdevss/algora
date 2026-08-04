@@ -4,16 +4,13 @@ import com.algora.app.core.data.model.Difficulty
 
 // Second batch of DSA subject quizzes, covering the areas the first batch left out: recursion and
 // backtracking, bit manipulation, string matching, and number theory. Same six-question,
-// four-minute shape as QuizContentTopics.kt, and every question links back to the topic that
+// shape as QuizContentTopics.kt, and every question links back to the topic that
 // explains it.
-
-private const val SUBJECT_TIME_LIMIT = 240
 
 internal val recursionBacktrackingQuiz = Quiz(
     id = "recursion_backtracking_quiz",
     title = "Recursion & Backtracking",
     description = "Base cases, call-stack cost, pruning and un-choosing.",
-    timeLimitSeconds = SUBJECT_TIME_LIMIT,
     questions = listOf(
         QuizQuestion(
             prompt = "A recursion that never reaches its base case fails with:",
@@ -107,7 +104,6 @@ internal val bitManipulationQuiz = Quiz(
     id = "bit_manipulation_quiz",
     title = "Bit Manipulation",
     description = "Masks, XOR pairing, low-bit tricks and bitmask states.",
-    timeLimitSeconds = SUBJECT_TIME_LIMIT,
     questions = listOf(
         QuizQuestion(
             prompt = "x & (x - 1) evaluates to:",
@@ -196,7 +192,6 @@ internal val stringMatchingQuiz = Quiz(
     id = "string_matching_quiz",
     title = "String Matching",
     description = "Prefix functions, rolling hashes, palindromes and tries.",
-    timeLimitSeconds = SUBJECT_TIME_LIMIT,
     questions = listOf(
         QuizQuestion(
             prompt = "Naive substring search of a pattern of length m in text of length n is worst-case:",
@@ -290,7 +285,6 @@ internal val mathNumberTheoryQuiz = Quiz(
     id = "math_number_theory_quiz",
     title = "Math & Number Theory",
     description = "GCD, modular arithmetic, fast power and primes.",
-    timeLimitSeconds = SUBJECT_TIME_LIMIT,
     questions = listOf(
         QuizQuestion(
             prompt = "The Euclidean algorithm computes gcd(a, b) in:",

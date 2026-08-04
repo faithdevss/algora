@@ -103,6 +103,6 @@ internal val topologicalSortPatternContent = TopicContent(
     crossLinks = listOf(
         CrossLink("topological_sort", "Topological Sort (Algorithms)"),
         CrossLink("bfs", "Breadth-First Search (Algorithms)"),
-        CrossLink("faang_set", "Practice: FAANG Set"),
+        CrossLink("graphs_quiz", "Practice: Graphs Quiz"),
     ),
 )

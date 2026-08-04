@@ -92,6 +92,6 @@ internal val binarySearchAnswerContent = TopicContent(
     crossLinks = listOf(
         CrossLink("binary_search", "Binary Search (Algorithms)"),
         CrossLink("exponential_search", "Exponential Search (Algorithms)"),
-        CrossLink("faang_set", "Practice: FAANG Set"),
+        CrossLink("sorting_searching_quiz", "Practice: Sorting & Searching Quiz"),
     ),
 )

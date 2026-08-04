@@ -2,7 +2,7 @@ package com.algora.app.feature.interviewprep.quiz
 
 import com.algora.app.core.data.model.Difficulty
 
-// AI-mode subject quizzes. Same six-question, four-minute shape as the DSA subject quizzes; every
+// AI-mode subject quizzes. Same shape as the DSA subject quizzes; every
 // question links back into the ML / DL / NLP / RL taxonomy.
 
 private const val AI_TIME_LIMIT = 240
@@ -11,7 +11,6 @@ internal val mlFoundationsQuiz = Quiz(
     id = "ml_foundations_quiz",
     title = "ML Foundations",
     description = "Bias/variance, loss functions and evaluation.",
-    timeLimitSeconds = AI_TIME_LIMIT,
     questions = listOf(
         QuizQuestion(
             prompt = "A model with low training error and high test error is:",
@@ -100,7 +99,6 @@ internal val deepLearningQuiz = Quiz(
     id = "deep_learning_quiz",
     title = "Deep Learning",
     description = "Backpropagation, activations and regularisation.",
-    timeLimitSeconds = AI_TIME_LIMIT,
     questions = listOf(
         QuizQuestion(
             prompt = "Backpropagation computes gradients by:",
@@ -194,7 +192,6 @@ internal val nlpRlQuiz = Quiz(
     id = "nlp_rl_quiz",
     title = "NLP & RL",
     description = "Embeddings, attention, rewards and policies.",
-    timeLimitSeconds = AI_TIME_LIMIT,
     questions = listOf(
         QuizQuestion(
             prompt = "Word embeddings improve on one-hot encoding because they:",
@@ -288,7 +285,6 @@ internal val transformersLlmQuiz = Quiz(
     id = "transformers_llm_quiz",
     title = "Transformers & LLMs",
     description = "Attention cost, positional information, pretraining and decoding.",
-    timeLimitSeconds = AI_TIME_LIMIT,
     questions = listOf(
         QuizQuestion(
             prompt = "Self-attention over a sequence of length n costs:",
@@ -377,7 +373,6 @@ internal val rlAlgorithmsQuiz = Quiz(
     id = "rl_algorithms_quiz",
     title = "RL Algorithms",
     description = "Value versus policy methods, stability tricks and exploration.",
-    timeLimitSeconds = AI_TIME_LIMIT,
     questions = listOf(
         QuizQuestion(
             prompt = "The difference between Q-learning and SARSA is that SARSA's target uses:",
@@ -476,8 +471,7 @@ internal val rlAlgorithmsQuiz = Quiz(
 internal val aiMockInterview = Quiz(
     id = "ai_ml_mock_interview",
     title = "AI/ML Mock Interview",
-    description = "Six mixed ML, DL, NLP and RL questions under a five-minute clock.",
-    timeLimitSeconds = 300,
+    description = "Mixed ML, DL, NLP and RL questions under one clock.",
     questions = listOf(
         QuizQuestion(
             prompt = "A model scores 0.99 training accuracy and 0.62 on validation. The first thing to try is:",

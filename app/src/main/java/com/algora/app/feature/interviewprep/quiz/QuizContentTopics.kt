@@ -2,17 +2,14 @@ package com.algora.app.feature.interviewprep.quiz
 
 import com.algora.app.core.data.model.Difficulty
 
-// Subject quizzes: one per area, six questions each on a four-minute clock. Unlike the mixed mock
+// Subject quizzes: one per area. Unlike the mixed mock
 // and company sets, every question here drills the same area, and each links back to the topic that
 // explains it so a wrong answer turns into a reading target.
-
-private const val SUBJECT_TIME_LIMIT = 240
 
 internal val arraysStringsQuiz = Quiz(
     id = "arrays_strings_quiz",
     title = "Arrays & Strings",
     description = "Indexing, shifting, windows and in-place edits.",
-    timeLimitSeconds = SUBJECT_TIME_LIMIT,
     questions = listOf(
         QuizQuestion(
             prompt = "Inserting at the front of an array of n elements costs:",
@@ -84,6 +81,21 @@ internal val arraysStringsQuiz = Quiz(
             linkedTopicId = "prefix_sum",
             linkedTopicLabel = "Prefix Sum",
         ),
+        QuizQuestion(
+            prompt = "An array holds each of 1..n once except that one value is missing and one is duplicated. Finding both in O(n) time and O(1) extra space uses:",
+            options = listOf(
+                "Cyclic sort — swap each value to index value − 1, then scan for the mismatch",
+                "A hash set of everything seen so far",
+                "Sorting the array, then scanning for the gap",
+                "Binary search over the value range",
+            ),
+            correctIndex = 0,
+            patternTag = "Cyclic Sort",
+            difficulty = Difficulty.INTERMEDIATE,
+            explanation = "Because the values are exactly the index range, the array can be its own hash table: keep swapping until each slot holds its own value. The one index still holding the wrong value names both the duplicate and the missing number. The hash set is O(n) space and sorting is O(n log n).",
+            linkedTopicId = "cyclic_sort_pattern",
+            linkedTopicLabel = "Cyclic Sort",
+        ),
     ),
 )
 
@@ -91,7 +103,6 @@ internal val linkedListsQuiz = Quiz(
     id = "linked_lists_quiz",
     title = "Linked Lists",
     description = "Pointer rewiring, cycles and traversal costs.",
-    timeLimitSeconds = SUBJECT_TIME_LIMIT,
     questions = listOf(
         QuizQuestion(
             prompt = "Accessing the kth element of a singly linked list costs:",
@@ -170,7 +181,6 @@ internal val stacksQueuesQuiz = Quiz(
     id = "stacks_queues_quiz",
     title = "Stacks & Queues",
     description = "LIFO, FIFO, monotonic stacks and deques.",
-    timeLimitSeconds = SUBJECT_TIME_LIMIT,
     questions = listOf(
         QuizQuestion(
             prompt = "Checking balanced brackets requires a stack because:",
@@ -259,7 +269,6 @@ internal val treesBstQuiz = Quiz(
     id = "trees_bst_quiz",
     title = "Trees & BST",
     description = "Traversal orders, balance and the BST invariant.",
-    timeLimitSeconds = SUBJECT_TIME_LIMIT,
     questions = listOf(
         QuizQuestion(
             prompt = "In-order traversal of a valid BST produces values in:",
@@ -333,7 +342,6 @@ internal val graphsQuiz = Quiz(
     id = "graphs_quiz",
     title = "Graphs",
     description = "Representations, BFS/DFS and shortest paths.",
-    timeLimitSeconds = SUBJECT_TIME_LIMIT,
     questions = listOf(
         QuizQuestion(
             prompt = "For a sparse graph, an adjacency list beats an adjacency matrix mainly in:",
@@ -412,7 +420,6 @@ internal val sortingSearchingQuiz = Quiz(
     id = "sorting_searching_quiz",
     title = "Sorting & Searching",
     description = "Stability, pivots and logarithmic search.",
-    timeLimitSeconds = SUBJECT_TIME_LIMIT,
     questions = listOf(
         QuizQuestion(
             prompt = "A stable sort guarantees that:",
@@ -501,7 +508,6 @@ internal val hashingHeapsQuiz = Quiz(
     id = "hashing_heaps_quiz",
     title = "Hashing & Heaps",
     description = "Collisions, load factor and priority queues.",
-    timeLimitSeconds = SUBJECT_TIME_LIMIT,
     questions = listOf(
         QuizQuestion(
             prompt = "Hash map lookup is O(1) on average but O(n) in the worst case because:",
@@ -580,7 +586,6 @@ internal val dpGreedyQuiz = Quiz(
     id = "dp_greedy_quiz",
     title = "DP & Greedy",
     description = "States, recurrences and when greedy is provably safe.",
-    timeLimitSeconds = SUBJECT_TIME_LIMIT,
     questions = listOf(
         QuizQuestion(
             prompt = "Dynamic programming applies when a problem has:",
@@ -667,6 +672,21 @@ internal val dpGreedyQuiz = Quiz(
             linkedTopicId = "longest_common_subsequence",
             linkedTopicLabel = "Longest Common Subsequence",
         ),
+        QuizQuestion(
+            prompt = "To merge every overlapping interval in a list of [start, end] pairs, sort by start and then:",
+            options = listOf(
+                "Extend the last kept interval's end whenever the next start is ≤ that end",
+                "Drop any interval whose start is inside the previous one",
+                "Sort by end instead and keep the earliest finisher",
+                "Compare every interval against every other",
+            ),
+            correctIndex = 0,
+            patternTag = "Merge Intervals",
+            difficulty = Difficulty.INTERMEDIATE,
+            explanation = "Sorting by start means anything overlapping the current interval comes next, so one pass suffices: extend the end on overlap, otherwise start a new interval. O(n log n) for the sort, O(n) after. Sorting by end is the *scheduling* greedy — it maximises how many intervals fit, a different question.",
+            linkedTopicId = "merge_intervals_pattern",
+            linkedTopicLabel = "Merge Intervals",
+        ),
     ),
 )
 
@@ -674,7 +694,6 @@ internal val complexityQuiz = Quiz(
     id = "complexity_quiz",
     title = "Complexity Analysis",
     description = "Big-O, amortized cost and space trade-offs.",
-    timeLimitSeconds = SUBJECT_TIME_LIMIT,
     questions = listOf(
         QuizQuestion(
             prompt = "O(2n² + 100n + 5000) simplifies to:",

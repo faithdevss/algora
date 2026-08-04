@@ -99,12 +99,12 @@ fun pickQuestions(
     return picked
 }
 
-// The sampled questions as a runnable Quiz. 45s per question matches the pace of the authored sets
-// (a 10-question set gets 8 minutes), and the title says what it is on the results screen.
+// The sampled questions as a runnable Quiz. The clock comes from Quiz itself — the drill runs at the
+// same seconds-per-question as every authored set — and the title says what it is on the results
+// screen.
 fun DailyDrill.asQuiz(): Quiz = Quiz(
     id = DAILY_DRILL_QUIZ_ID,
     title = "Daily drill",
     description = "Mixed questions, weighted towards what you have missed before.",
-    timeLimitSeconds = questions.size * 45,
     questions = questions.map { it.question },
 )

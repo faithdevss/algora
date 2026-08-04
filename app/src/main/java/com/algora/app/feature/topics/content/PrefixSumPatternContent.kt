@@ -81,6 +81,6 @@ internal val prefixSumPatternContent = TopicContent(
     crossLinks = listOf(
         CrossLink("prefix_sum", "Prefix Sum (Algorithms)"),
         CrossLink("difference_array", "Difference Array (Algorithms)"),
-        CrossLink("timed_mock_interview", "Practice: Timed Mock Interview"),
+        CrossLink("arrays_strings_quiz", "Practice: Arrays & Strings Quiz"),
     ),
 )
