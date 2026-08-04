@@ -13,6 +13,7 @@ internal val advancedPatterns = listOf(
         blurb = "Prefix tables, rolling hashes and palindromic radii — scanning text without ever backing up.",
         accentColor = 0xFF8B5CF6,
         topicId = "kmp",
+        isPremium = true,
     ),
     ProblemPattern(
         id = "graph_advanced",
@@ -20,6 +21,7 @@ internal val advancedPatterns = listOf(
         blurb = "Ordering a DAG, saturating a network, and finding the edges a graph cannot afford to lose.",
         accentColor = 0xFF3B82F6,
         topicId = "topological_sort",
+        isPremium = true,
     ),
     ProblemPattern(
         id = "state_compression",
@@ -27,6 +29,7 @@ internal val advancedPatterns = listOf(
         blurb = "When the DP state is a set or a subtree rather than an index.",
         accentColor = 0xFFEC4899,
         topicId = "bitmask_dp",
+        isPremium = true,
     ),
     ProblemPattern(
         id = "model_metrics",
@@ -34,6 +37,7 @@ internal val advancedPatterns = listOf(
         blurb = "Scoring a classifier honestly, and combining weak models into a strong one.",
         accentColor = 0xFF6366F1,
         topicId = "model_evaluation",
+        isPremium = true,
     ),
 )
 

@@ -27,6 +27,7 @@ internal val interviewPatterns = listOf(
         blurb = "Different speeds over the same path — cycles, midpoints, and duplicates.",
         accentColor = 0xFF16A34A,
         topicId = "fast_slow_pointers",
+        isPremium = true,
     ),
     ProblemPattern(
         id = "merge_intervals",
@@ -34,6 +35,7 @@ internal val interviewPatterns = listOf(
         blurb = "Sort by start, then decide overlap versus gap in one sweep.",
         accentColor = 0xFFF59E0B,
         topicId = "merge_intervals_pattern",
+        isPremium = true,
     ),
     ProblemPattern(
         id = "top_k",
@@ -41,6 +43,7 @@ internal val interviewPatterns = listOf(
         blurb = "A size-k heap keeps the best k without sorting everything.",
         accentColor = 0xFFEF4444,
         topicId = "top_k_pattern",
+        isPremium = true,
     ),
 )
 

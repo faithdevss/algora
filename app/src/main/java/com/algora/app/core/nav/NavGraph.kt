@@ -95,6 +95,7 @@ fun NavGraph(
             ProblemListScreen(
                 onProblemClick = { problemId -> navController.navigate(ProblemDetailRoute.route(problemId)) },
                 onBack = goBack,
+                onGoPremium = { navController.navigate(PremiumRoute.ROUTE) },
             )
         }
 
@@ -103,7 +104,12 @@ fun NavGraph(
             arguments = listOf(navArgument(ProblemDetailRoute.ARG) { type = NavType.StringType }),
         ) { backStackEntry ->
             val problemId = backStackEntry.arguments?.getString(ProblemDetailRoute.ARG).orEmpty()
-            ProblemDetailScreen(problemId = problemId, onBack = goBack, onOpenTopic = openTopic)
+            ProblemDetailScreen(
+                problemId = problemId,
+                onBack = goBack,
+                onOpenTopic = openTopic,
+                onGoPremium = { navController.navigate(PremiumRoute.ROUTE) },
+            )
         }
 
         composable(SettingsRoute.ROUTE) {

@@ -12,6 +12,7 @@ internal val structurePatterns = listOf(
         blurb = "Rewiring next-pointers in place — reversal, weaving and offset walks.",
         accentColor = 0xFF06B6D4,
         topicId = "singly_linked_list",
+        isPremium = true,
     ),
     ProblemPattern(
         id = "trees_bst",
@@ -19,6 +20,7 @@ internal val structurePatterns = listOf(
         blurb = "Recursive structure plus the ordering invariant that makes a BST searchable.",
         accentColor = 0xFF84CC16,
         topicId = "binary_search_tree",
+        isPremium = true,
     ),
     ProblemPattern(
         id = "greedy",
@@ -26,6 +28,7 @@ internal val structurePatterns = listOf(
         blurb = "Commit to the locally best choice — when an exchange argument proves it safe.",
         accentColor = 0xFFD946EF,
         topicId = "fractional_knapsack",
+        isPremium = true,
     ),
 )
 

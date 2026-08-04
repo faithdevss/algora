@@ -37,6 +37,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.algora.app.core.data.entitlement.EntitlementRepository
+import com.algora.app.core.data.entitlement.entitlementDataStore
 import com.algora.app.core.data.model.Difficulty
 import com.algora.app.core.data.progress.ProgressRepository
 import com.algora.app.core.data.progress.progressDataStore
@@ -48,10 +50,18 @@ import com.algora.app.core.ui.components.DifficultyBadge
 // 100+ problems over 23 patterns is too long to scan flat, so groups collapse and a search field
 // plus difficulty/unsolved chips narrow the bank before it is opened.
 @Composable
-fun ProblemListScreen(onProblemClick: (String) -> Unit, onBack: () -> Unit, modifier: Modifier = Modifier) {
+fun ProblemListScreen(
+    onProblemClick: (String) -> Unit,
+    onBack: () -> Unit,
+    onGoPremium: () -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
     val context = LocalContext.current
     val repository = remember { ProgressRepository(context.progressDataStore) }
     val solvedIds by repository.solvedProblemIds.collectAsState(initial = emptySet())
+    val entitlements = remember { EntitlementRepository(context.entitlementDataStore) }
+    val isPremium by entitlements.isPremium.collectAsState(initial = false)
+    val adUnlocks by entitlements.adUnlocks.collectAsState(initial = emptyMap())
 
     val total = remember { ProblemRegistry.all.size }
     val solvedCount = solvedIds.count { ProblemRegistry.get(it) != null }
@@ -121,9 +131,10 @@ fun ProblemListScreen(onProblemClick: (String) -> Unit, onBack: () -> Unit, modi
         }
 
         groups.forEach { (pattern, problems) ->
+            val isLocked = pattern.isPremium && !isPremium && pattern.id !in adUnlocks
             // A narrowed bank shows its hits directly — hiding them behind a tap would defeat the
-            // filter that just produced them.
-            val isOpen = filters.isActive || pattern.id in expanded
+            // filter that just produced them. Locked groups never auto-open, filter match or not.
+            val isOpen = !isLocked && (filters.isActive || pattern.id in expanded)
             item(key = "header_${pattern.id}") {
                 AccordionHeader(
                     title = pattern.name,
@@ -131,9 +142,14 @@ fun ProblemListScreen(onProblemClick: (String) -> Unit, onBack: () -> Unit, modi
                     subtitle = "${problems.count { it.id in solvedIds }} solved",
                     accentColor = pattern.accentColor,
                     isExpanded = isOpen,
+                    locked = isLocked,
                     modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
                     onClick = {
-                        expanded = if (pattern.id in expanded) expanded - pattern.id else expanded + pattern.id
+                        if (isLocked) {
+                            onGoPremium()
+                        } else {
+                            expanded = if (pattern.id in expanded) expanded - pattern.id else expanded + pattern.id
+                        }
                     },
                 )
             }

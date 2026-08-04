@@ -40,23 +40,34 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.algora.app.core.data.entitlement.EntitlementRepository
+import com.algora.app.core.data.entitlement.TopicAccess
+import com.algora.app.core.data.entitlement.entitlementDataStore
 import com.algora.app.core.data.model.CodeBlock
+import com.algora.app.core.data.model.Topic
 import com.algora.app.core.data.progress.ProgressRepository
 import com.algora.app.core.data.progress.progressDataStore
 import com.algora.app.core.ui.components.DifficultyBadge
 import com.algora.app.core.ui.theme.IBMPlexMono
 import com.algora.app.core.ui.theme.SpaceGrotesk
+import com.algora.app.feature.premium.LockedTopicBody
 import com.algora.app.feature.topics.CodeBlockCard
+import com.algora.app.feature.topics.DetailHeader
 import kotlinx.coroutines.launch
 
 // One problem's workspace. Everything past the prompt is revealed on demand — hints one at a time,
 // then the approach, then the solution — so a learner can take the smallest nudge that unblocks them
 // instead of being shown the answer by scrolling.
+//
+// Pattern-level paywall gate, mirroring TopicDetailScreen: the list screen already hides locked
+// patterns behind a lock icon, but this is the real enforcement point for any route that lands here
+// directly (deep link, search, bookmarks) without passing through that list first.
 @Composable
 fun ProblemDetailScreen(
     problemId: String,
     onBack: () -> Unit,
     onOpenTopic: (String) -> Unit,
+    onGoPremium: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val problem = remember(problemId) { ProblemRegistry.get(problemId) }
@@ -65,14 +76,42 @@ fun ProblemDetailScreen(
         return
     }
 
+    val pattern = remember(problem) { ProblemRegistry.pattern(problem.patternId) }
     val context = LocalContext.current
+    val entitlements = remember { EntitlementRepository(context.entitlementDataStore) }
+    val access by entitlements
+        .accessFor(pattern?.id ?: problem.patternId, pattern?.isPremium == true)
+        .collectAsState(initial = null)
+
+    val resolved = access ?: return   // one frame of nothing while DataStore answers
+
+    if (pattern != null && resolved is TopicAccess.Locked) {
+        val lockedTopic = remember(pattern) {
+            Topic(
+                id = pattern.id,
+                name = pattern.name,
+                categoryId = "",
+                tagline = pattern.blurb,
+                description = pattern.blurb,
+                iconName = "",
+                accentColor = pattern.accentColor,
+                isPremium = true,
+            )
+        }
+        Column(modifier = modifier.fillMaxSize()) {
+            DetailHeader(title = pattern.name, onBack = onBack)
+            LockedTopicBody(topic = lockedTopic, onGoPremium = onGoPremium)
+        }
+        return
+    }
+
     val repository = remember { ProgressRepository(context.progressDataStore) }
     val solvedIds by repository.solvedProblemIds.collectAsState(initial = emptySet())
     val scope = rememberCoroutineScope()
     val solved = problem.id in solvedIds
 
-    val accent = remember(problem) { Color(ProblemRegistry.pattern(problem.patternId)?.accentColor ?: 0xFF3B82F6) }
-    val patternName = remember(problem) { ProblemRegistry.pattern(problem.patternId)?.name ?: problem.patternId }
+    val accent = remember(problem) { Color(pattern?.accentColor ?: 0xFF3B82F6) }
+    val patternName = remember(problem) { pattern?.name ?: problem.patternId }
 
     var hintsShown by remember(problemId) { mutableIntStateOf(0) }
     var approachShown by remember(problemId) { mutableStateOf(false) }
@@ -150,7 +189,7 @@ fun ProblemDetailScreen(
                         modifier = Modifier.padding(bottom = 10.dp),
                     )
                     problem.prerequisites.forEach { prereq ->
-                        PrereqRow(prereq = prereq, accent = accent, onClick = { onOpenTopic(prereq.topicId) })
+                        PrereqRow(prereq = prereq, onClick = { onOpenTopic(prereq.topicId) })
                     }
                 }
             }
@@ -280,7 +319,7 @@ private fun SectionCard(title: String, accent: Color, content: @Composable () ->
             Text(
                 title.uppercase(),
                 style = MaterialTheme.typography.labelSmall,
-                color = accent,
+                color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 9.dp),
             )
@@ -290,22 +329,22 @@ private fun SectionCard(title: String, accent: Color, content: @Composable () ->
 }
 
 @Composable
-private fun PrereqRow(prereq: ProblemPrereq, accent: Color, onClick: () -> Unit) {
+private fun PrereqRow(prereq: ProblemPrereq, onClick: () -> Unit) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 8.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
-        color = accent.copy(alpha = 0.07f),
-        border = BorderStroke(1.dp, accent.copy(alpha = 0.28f)),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(prereq.label, style = MaterialTheme.typography.bodyLarge, color = accent)
+                Text(prereq.label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
                 Text(
                     prereq.why,
                     style = MaterialTheme.typography.bodyMedium,
@@ -316,7 +355,7 @@ private fun PrereqRow(prereq: ProblemPrereq, accent: Color, onClick: () -> Unit)
             Icon(
                 Icons.Filled.ChevronRight,
                 contentDescription = null,
-                tint = accent,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(17.dp),
             )
         }

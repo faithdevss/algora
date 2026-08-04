@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
@@ -45,12 +46,17 @@ fun AccordionHeader(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
+    // Premium group the user hasn't unlocked. Reads like TopicRow's lock treatment: dimmed strip,
+    // lock icon instead of the expand chevron. onClick still fires — the caller decides what a tap
+    // on a locked header does (usually route to the paywall instead of expanding).
+    locked: Boolean = false,
 ) {
     val accent = Color(accentColor)
     val chevronRotation by animateFloatAsState(if (isExpanded) 180f else 0f, label = "accordionChevron")
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .alpha(if (locked) 0.72f else 1f)
             .clip(RoundedCornerShape(12.dp))
             .background(accent.copy(alpha = if (isExpanded) 0.13f else 0.06f))
             .clickable(onClick = onClick)
@@ -86,11 +92,15 @@ fun AccordionHeader(
                 color = accent,
             )
         }
-        Icon(
-            Icons.Filled.ExpandMore,
-            contentDescription = if (isExpanded) "Collapse" else "Expand",
-            tint = accent.copy(alpha = 0.85f),
-            modifier = Modifier.size(17.dp).rotate(chevronRotation),
-        )
+        if (locked) {
+            AdUnlockableLockIcon(size = 17.dp)
+        } else {
+            Icon(
+                Icons.Filled.ExpandMore,
+                contentDescription = if (isExpanded) "Collapse" else "Expand",
+                tint = accent.copy(alpha = 0.85f),
+                modifier = Modifier.size(17.dp).rotate(chevronRotation),
+            )
+        }
     }
 }

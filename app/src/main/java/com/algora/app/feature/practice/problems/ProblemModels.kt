@@ -40,4 +40,5 @@ data class ProblemPattern(
     val blurb: String,
     val accentColor: Long,
     val topicId: String,
+    val isPremium: Boolean = false,
 )

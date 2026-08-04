@@ -13,6 +13,7 @@ internal val corePatterns = listOf(
         blurb = "Halve the search space each step — over an index range, or over the answer itself.",
         accentColor = 0xFF0EA5E9,
         topicId = "binary_search",
+        isPremium = true,
     ),
     ProblemPattern(
         id = "prefix_sum",
@@ -20,6 +21,7 @@ internal val corePatterns = listOf(
         blurb = "Precompute cumulative totals so any range answer becomes one subtraction.",
         accentColor = 0xFF14B8A6,
         topicId = "prefix_sum",
+        isPremium = true,
     ),
     ProblemPattern(
         id = "hashing",
@@ -27,6 +29,7 @@ internal val corePatterns = listOf(
         blurb = "Trade memory for time: a map turns a nested scan into a single pass.",
         accentColor = 0xFFA855F7,
         topicId = "hash_table",
+        isPremium = true,
     ),
     ProblemPattern(
         id = "monotonic_stack",
@@ -34,6 +37,7 @@ internal val corePatterns = listOf(
         blurb = "A stack that stays sorted answers \"next greater\" and \"span\" questions in one pass.",
         accentColor = 0xFFF97316,
         topicId = "stack",
+        isPremium = true,
     ),
     ProblemPattern(
         id = "traversal",
@@ -41,6 +45,7 @@ internal val corePatterns = listOf(
         blurb = "DFS goes deep with recursion, BFS goes wide with a queue — same graph, different order.",
         accentColor = 0xFF22C55E,
         topicId = "bfs",
+        isPremium = true,
     ),
     ProblemPattern(
         id = "dynamic_programming",
@@ -48,6 +53,7 @@ internal val corePatterns = listOf(
         blurb = "Define a state, write its recurrence, then fill it once instead of recomputing.",
         accentColor = 0xFF6366F1,
         topicId = "fibonacci_dp",
+        isPremium = true,
     ),
     ProblemPattern(
         id = "backtracking",
@@ -55,6 +61,7 @@ internal val corePatterns = listOf(
         blurb = "Build a candidate, recurse, then undo the last choice and try the next.",
         accentColor = 0xFFEC4899,
         topicId = "n_queens",
+        isPremium = true,
     ),
 )
 
