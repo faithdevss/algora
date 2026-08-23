@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,25 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val logLossContent = TopicContent(
     topicId = "log_loss",
+    figure = Figure(
+        caption = "The same model's scores pushed toward 0 and 1 by a monotone transform — the " +
+            "ranking is untouched, so AUC stays at 0.9692 and every threshold metric on this page's " +
+            "siblings reports no change at all. The two proper scoring rules do notice, and they " +
+            "disagree about how much: log loss rises 0.1750 → 0.2876, up 64%, while Brier rises " +
+            "0.0437 → 0.0556, up 27%. The axis top is 0.30, so the height difference between the " +
+            "pairs is also the point — Brier squares the error and log loss takes its logarithm, " +
+            "which is unbounded as p → 0. Choosing between them is choosing how expensive a " +
+            "confident mistake should be.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("log", 0.583f, FigureTone.Primary),
+                FigureBar("log′", 0.959f, FigureTone.Warn),
+                FigureBar("Brier", 0.146f, FigureTone.Primary),
+                FigureBar("Brier′", 0.185f, FigureTone.Accent),
+            ),
+            yLabel = "loss  (0 → 0.30)",
+        ),
+    ),
     whatIsIt = listOf(
         "Log loss reads the probability a model states, not the label it would produce past a threshold — which is what separates it from every metric in this category built on a confusion matrix. It is the negative log-likelihood of the true labels under the model's own stated probabilities: -1/n Σ [y·ln(p) + (1-y)·ln(1-p)]. On the lab's 1,000 predictions it averages 0.1750.",
         "That average hides how unevenly the penalty falls. The single worst prediction — the model said 0.109 for a case that was actually positive — contributes 2.214 to the sum, against a mean per-example contribution of 0.1750. One confidently wrong call costs about 13× an average one, because -ln(p) grows without bound as p → 0 while a merely mediocre call near p = 0.5 costs only about -ln(0.5) ≈ 0.69.",

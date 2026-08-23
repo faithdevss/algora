@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,40 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val rocCurveContent = TopicContent(
     topicId = "roc_curve",
+    figure = Figure(
+        caption = "The lab's three measured operating points, joined — which is what an ROC curve " +
+            "is, a piecewise-linear path between the points distinct thresholds produce. t = 0.5 " +
+            "sits at (0.000, 0.398): no false alarms and 60% of the positives missed, which is the " +
+            "corner a confusion matrix reports from without saying it is a corner. Dropping to " +
+            "t = 0.2 buys 0.454 more recall for 0.093 false-positive rate; the last 0.148 of recall " +
+            "then costs 0.263 more, nearly four times the rate the previous stretch cost. The bend " +
+            "between those two segments is the diminishing return, and the dashed diagonal is what " +
+            "a model with no signal draws.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "no skill",
+                    listOf(FigurePoint(0f, 0f), FigurePoint(1f, 1f)),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "the lab's model",
+                    listOf(
+                        FigurePoint(0f, 0f), FigurePoint(0f, 0.398f), FigurePoint(0.093f, 0.852f),
+                        FigurePoint(0.356f, 1f), FigurePoint(1f, 1f),
+                    ),
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0f, 0.398f, "t = 0.5"),
+                FigurePoint(0.093f, 0.852f, "t = 0.2"),
+                FigurePoint(0.356f, 1f, "t = 0.1", FigureTone.Warn),
+            ),
+            xLabel = "false positive rate",
+            yLabel = "true positive rate",
+        ),
+    ),
     whatIsIt = listOf(
         "The ROC curve plots true positive rate (recall) against false positive rate at every threshold a score can produce, instead of the one a confusion matrix freezes. It is the same lab model from Confusion Matrix, read at every cut point at once rather than at 0.5.",
         "On the lab's 1,000 cases, sweeping the threshold traces: t = 0.5 sits at (FPR 0.000, TPR 0.398) — no false alarms, but most positives missed. t = 0.2 is (FPR 0.093, TPR 0.852) — a large recall gain for a small cost. t = 0.1 is (FPR 0.356, TPR 1.000) — the last 15 points of recall cost nearly four times the false-alarm rate that bought the previous 45. The curve's bend is exactly this diminishing return, drawn instead of computed by hand.",

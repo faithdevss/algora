@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,27 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val cohensKappaContent = TopicContent(
     topicId = "cohens_kappa",
+    figure = Figure(
+        caption = "The same model at two thresholds, with the four cells that produce both verdicts. " +
+            "At t = 0.9 it predicts negative 1,000 times out of 1,000 — the top row is a model that " +
+            "does nothing — and accuracy still reads 0.912, because 912 of the cases are negative. " +
+            "Kappa reads 0.000: the marginals say chance agreement is already 0.912, so there is " +
+            "nothing left to credit. At t = 0.5 the model finds 35 of the 88 positives with no false " +
+            "alarms, accuracy moves 3.5 points to 0.947, and kappa moves 0.546 — the outlined cells " +
+            "are where those two metrics disagree about how much happened.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0", "0", "88", "912", "0.912", "0.000"),
+                listOf("35", "0", "53", "912", "0.947", "0.546"),
+            ),
+            rowHeaders = listOf("t=0.9", "t=0.5"),
+            colHeaders = listOf("TP", "FP", "FN", "TN", "acc", "κ"),
+            marks = listOf(
+                FigureCell(0, 5, FigureTone.Warn),
+                FigureCell(1, 5),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Cohen's kappa corrects accuracy for the agreement chance alone would produce, given how imbalanced the classes are: κ = (observed − expected) / (1 − expected), where expected comes from the row and column marginals of the confusion matrix rather than from the diagonal.",
         "The lab's model at t = 0.9 predicts negative for every one of the 1,000 cases — tp 0, fp 0, fn 88, tn 912. Accuracy is 0.912, which sounds like a strong model. But 0.912 is also exactly the majority-class baseline: predicting \"negative\" for everyone, with no model at all, scores the same. Kappa knows this: it comes out to 0.000, correctly reporting zero agreement beyond what the base rate hands you for free.",

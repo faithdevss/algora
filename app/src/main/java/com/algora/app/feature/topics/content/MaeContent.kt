@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,28 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val maeContent = TopicContent(
     topicId = "mae",
+    figure = Figure(
+        caption = "Two fits of the same 44 points, each scored under both metrics and against the " +
+            "data's true slope of 1.4. Every cell is won by the fit that was trained for it: the " +
+            "least-absolute-deviations line takes MAE 1.894 against 2.601, the least-squares line " +
+            "takes MSE 18.482 against 21.765, and neither takes both. The slope column says why — " +
+            "four of the 44 points are contaminated, squaring their residuals drags the " +
+            "least-squares slope to 1.861, and weighing residuals by plain magnitude leaves the LAD " +
+            "slope at 1.434. MAE is not a gentler report of the same fit; it is a different line.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("2.601", "18.482", "1.861"),
+                listOf("1.894", "21.765", "1.434"),
+            ),
+            rowHeaders = listOf("least sq", "LAD"),
+            colHeaders = listOf("MAE", "MSE", "slope"),
+            marks = listOf(
+                FigureCell(1, 0),
+                FigureCell(0, 1),
+                FigureCell(1, 2, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "MAE is 1/n Σ|y − ŷ| — same units as MSE's square root, but a genuinely different objective, not a gentler write-up of the same one. Fitting a line to minimize MAE (least absolute deviations) produces a different line than fitting to minimize MSE (least squares), and the lab's data shows both fits, side by side, on the same 44 points.",
         "The least-squares fit has slope 1.861 and MAE 2.601. The least-absolute-deviations fit — trained specifically to minimize MAE — has slope 1.434, far closer to the data's true slope of 1.4, and MAE 1.894, genuinely lower. But that fit's own MSE is 21.765, worse than the least-squares fit's 18.482. Each line wins under the metric it was built for and loses under the other's.",

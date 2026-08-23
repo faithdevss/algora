@@ -68,6 +68,9 @@ class AiFigureCoverageTest {
         "dbscan", "gmm", "hierarchical_clustering", "mean_shift", "spectral_clustering", "k_medians",
         // A17 — dimensionality reduction, linear and manifold.
         "pca", "ica", "tsne", "umap", "lle", "factor_analysis",
+        // M1 — Phase 13's first must-have batch: the classification metrics, each a quantity
+        // read against a threshold. See docs/plan/phase-13-must-have-figures.md.
+        "roc_curve", "f1_score", "log_loss", "cohens_kappa", "mae",
     )
 
     @Test
@@ -85,6 +88,6 @@ class AiFigureCoverageTest {
     @Test
     fun `the pilot is the size the phase was scoped against`() {
         // Keeps the batch table in docs/plan/phase-12-ai-figures.md verifiable rather than folklore.
-        assertEquals(108, pilotFigures.size)
+        assertEquals(113, pilotFigures.size)
     }
 }

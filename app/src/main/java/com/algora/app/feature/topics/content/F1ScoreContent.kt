@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,45 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val f1ScoreContent = TopicContent(
     topicId = "f1_score",
+    figure = Figure(
+        caption = "Both means of precision and recall, with precision held at the lab's 1.000 and " +
+            "recall swept. The arithmetic mean cannot fall below 0.5 no matter how bad recall gets " +
+            "— perfect precision alone carries it — while the harmonic mean is pulled all the way " +
+            "down to 0 with the weaker argument. At the lab's recall of 0.398 the gap is the page's " +
+            "two numbers exactly: 0.699 against 0.569. The harmonic mean is not a stricter version " +
+            "of the arithmetic one, it is the mean that refuses to let one good number stand in for " +
+            "two, and the whole reason F1 is defined the way it is lives in the distance between " +
+            "these curves.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "arithmetic",
+                    listOf(
+                        FigurePoint(0f, 0.5f), FigurePoint(0.2f, 0.6f), FigurePoint(0.4f, 0.7f),
+                        FigurePoint(0.6f, 0.8f), FigurePoint(0.8f, 0.9f), FigurePoint(1f, 1f),
+                    ),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "harmonic (F1)",
+                    listOf(
+                        FigurePoint(0f, 0f), FigurePoint(0.1f, 0.182f), FigurePoint(0.2f, 0.333f),
+                        FigurePoint(0.3f, 0.462f), FigurePoint(0.4f, 0.571f),
+                        FigurePoint(0.5f, 0.667f), FigurePoint(0.6f, 0.750f),
+                        FigurePoint(0.7f, 0.824f), FigurePoint(0.8f, 0.889f),
+                        FigurePoint(0.9f, 0.947f), FigurePoint(1f, 1f),
+                    ),
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.398f, 0.699f, "0.699", FigureTone.Muted),
+                FigurePoint(0.398f, 0.569f, "0.569"),
+            ),
+            xLabel = "recall  (precision = 1.000)",
+            yLabel = "mean",
+        ),
+    ),
     whatIsIt = listOf(
         "F1 is the harmonic mean of precision and recall: 2PR / (P + R). The harmonic part is the whole design. An arithmetic mean lets a model score 0.5 by being perfect at one and hopeless at the other; the harmonic mean is dragged towards the smaller of the two, so both have to be decent. On the lab's matrix at t = 0.5 — precision 1.000, recall 0.398 — the arithmetic mean is 0.699 and F1 is 0.569.",
         "Like everything built on a confusion matrix, F1 depends on the threshold, and the default is rarely the best one. Sweeping every threshold on the same score vector, F1 peaks at t = 0.34 with 0.776 against 0.569 at t = 0.5. Nothing about the model changed — 0.5 was simply the wrong place to cut it, and a report quoting F1 at the default is quoting a number the model can beat by 20 points for free.",

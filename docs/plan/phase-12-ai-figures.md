@@ -1,7 +1,7 @@
 # Phase 12 — Figures for AI topics (pilot)
 
 Status: **Pilot shipped, free tier closed, premium extension in progress.** 108 of 325 AI topics
-carry a figure — the A1–A5 pilot plus A6–A17. **The remaining 217 are not all getting one:**
+carry a figure — the A1–A5 pilot plus A6–A17, and Phase 13's M1 takes it to 113. **The remaining 217 are not all getting one:**
 `phase-12-figure-scope.md` measures every one of them and splits them 143 build / 58 content-first /
 16 never, with A18 onward ordered there. (The "323" this line carried through A17 was an undercount —
 two topics whose `topic(` call spans lines differently were missed by the tally; 325 is the measured

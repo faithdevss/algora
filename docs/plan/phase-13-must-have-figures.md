@@ -1,8 +1,7 @@
 # Phase 13 — The figures that must exist
 
-Status: **Planned.** 41 topics in 8 batches (M1–M8). Everything else in
-`phase-12-figure-scope.md`'s Tier A becomes optional and stays unbuilt unless a page proves it needs
-one.
+Status: **In progress — M1 shipped, 5 of 41.** Everything else in `phase-12-figure-scope.md`'s
+Tier A becomes optional and stays unbuilt unless a page proves it needs one.
 
 Depends on: Phase 12's figure layer, which is finished as a *capability* — nine shapes, a renderer
 that has survived an emulator pass, and 108 topics already drawn. Nothing in this phase needs new
@@ -39,8 +38,12 @@ Each line says what the figure has to show. If a batch's figures cannot be made 
 other, the batch is cut rather than shipped — that rule already retired six activation curves and a
 second dendrogram in Phase 12's scope pass.
 
-**M1 — Classification metrics** (5). Every one is a quantity read against a threshold, which is the
-case `Plot` was added for.
+**M1 — Classification metrics** (5) — **shipped.** Every one is a quantity read against a threshold,
+which is the case `Plot` was added for. All five pages share one lab (1,000 cases, 88 positive, 912
+negative), so the batch could be checked against itself: κ = 0.546 and MCC = 0.613 were recomputed
+from the four cells before the figure was written, and both match the page. `log_loss` deliberately
+does *not* redraw the −ln p curve `cross_entropy_loss` already carries — it draws the distortion test
+instead, where AUC does not move and the two scoring rules disagree by 64% against 27%.
 
 | Topic | The figure has to show |
 |---|---|
