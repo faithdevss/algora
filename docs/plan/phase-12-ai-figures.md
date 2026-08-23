@@ -1,8 +1,11 @@
 # Phase 12 — Figures for AI topics (pilot)
 
-Status: **Pilot shipped, free tier closed, premium extension in progress.** 108 of 323 AI topics
-carry a figure — the A1–A5 pilot plus A6–A17. The remaining 215 continue in the same batch size —
-see *What the pilot was for* below.
+Status: **Pilot shipped, free tier closed, premium extension in progress.** 108 of 325 AI topics
+carry a figure — the A1–A5 pilot plus A6–A17. **The remaining 217 are not all getting one:**
+`phase-12-figure-scope.md` measures every one of them and splits them 143 build / 58 content-first /
+16 never, with A18 onward ordered there. (The "323" this line carried through A17 was an undercount —
+two topics whose `topic(` call spans lines differently were missed by the tally; 325 is the measured
+number, and `AiTaxonomyCoverageTest` is what enforces the section lists themselves.)
 
 Depends on: the figure layer (`core/data/model/Figure.kt`, `feature/topics/FigureCard.kt`,
 `FigureShapeTest`) and Phase 11, which took it to 122/122 Data Structures and Algorithms topics.
@@ -28,7 +31,7 @@ were, and they are exactly the three it named.
 |---|---|---|
 | Interview Prep — Patterns | 57 | 57 |
 | Data Structures + Algorithms | 122 | 122 |
-| ML / DL / NLP / RL | 323 unique (356 entries, 33 cross-listed) | **108** (all free-tier topics, plus A13–A17) |
+| ML / DL / NLP / RL | 325 unique (356 entries, 33 cross-listed) | **108** (all free-tier topics, plus A13–A17) |
 
 ## New shapes
 
@@ -109,6 +112,12 @@ Two things the pilot showed that a plan could not have:
 - **And the guards still could not see the one real defect.** Horizontal `LayerStack` at five blocks
   rendered "discriminator" as "discri / minat / or" and left the row a ragged staircase of four
   different heights. Every unit test passed. See Verification.
+
+**Scope, before cost:** `phase-12-figure-scope.md` is the list the remaining batches build from, and
+its finding is that 74 of the 217 remaining topics should not get a figure now or at all. That
+document was written after A17, which means A13–A17 were built on the wrong assumption — that every
+topic eventually gets one. No figure already shipped is wrong because of it; what it changes is what
+comes next.
 
 **Cost, for planning the full phase:** roughly 4–8 topics per commit, with the constraint being how
 much of each page's prose has to be read before its figure is honest — not the spec, which is 15–40
@@ -206,6 +215,10 @@ perplexity's k = 0.01 optimum ended up on the axes as measured rather than appro
 
 ## Non-goals
 
-- **The remaining 215 (premium) AI topics.** Plan against the cost note above.
+- **The 58 Tier-B topics**, until their pages are deepened — see `phase-12-figure-scope.md`. A figure
+  over 300 characters of prose is the figure becoming the page, and there are no measured numbers on
+  those pages for it to follow.
+- **The 16 Tier-C topics**, permanently. Environments, product rosters and figures a neighbouring
+  topic already draws.
 - **Phase 11's F8 sweep.** Skipped by decision; `feat/dsa-figures` still ends at F7.
 - **Replacing any simulation.** Figures sit above the steps; the labs are untouched.
