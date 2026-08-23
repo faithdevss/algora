@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,44 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val xgboostContent = TopicContent(
     topicId = "xgboost",
+    figure = Figure(
+        caption = "w* = −G/(H+λ) for the page's two leaves, as λ runs from 0 to 20; the axis top is " +
+            "w = 1.5. λ = 0 gives the unpenalized Newton step — 1.5 for the leaf with G = −6, H = 4 " +
+            "— and λ = 1 already pulls it to 1.2. The shape is the part worth reading: λ sits in the " +
+            "denominator beside H, so a leaf backed by little curvature is damped hardest. The " +
+            "second leaf holds a tenth as much gradient and by λ = 5 has been shrunk to 0.086, " +
+            "effectively switched off, while the confident leaf still carries 0.667. Its split does " +
+            "not survive either — gain −0.513 against the first split's +0.478 at γ = 0.5.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "G = −6, H = 4",
+                    listOf(
+                        FigurePoint(0f, 1f), FigurePoint(0.025f, 0.889f), FigurePoint(0.05f, 0.800f),
+                        FigurePoint(0.1f, 0.667f), FigurePoint(0.15f, 0.571f),
+                        FigurePoint(0.25f, 0.444f), FigurePoint(0.5f, 0.286f),
+                        FigurePoint(1f, 0.167f),
+                    ),
+                ),
+                FigureSeries(
+                    "G = −0.6, H = 2",
+                    listOf(
+                        FigurePoint(0f, 0.200f), FigurePoint(0.025f, 0.160f),
+                        FigurePoint(0.05f, 0.133f), FigurePoint(0.1f, 0.100f),
+                        FigurePoint(0.15f, 0.080f), FigurePoint(0.25f, 0.057f),
+                        FigurePoint(0.5f, 0.033f), FigurePoint(1f, 0.018f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0f, 1f, "λ=0: 1.5"),
+                FigurePoint(0.05f, 0.800f, "λ=1: 1.2"),
+            ),
+            xLabel = "λ  (0 → 20)",
+            yLabel = "leaf value w*",
+        ),
+    ),
     whatIsIt = listOf(
         "XGBoost is gradient boosting rewritten as an explicit regularized optimization problem. Plain GBM fits each new tree to the negative gradient of the loss — a first-order approximation. XGBoost takes the second-order Taylor expansion instead, so every node carries two sums: G, the gradients of the rows reaching it, and H, their second derivatives.",
         "That extra term buys a closed form. The optimal value of a leaf is −G/(H+λ) — a Newton step, exact rather than found by line search — and the gain of a candidate split follows directly from the same expansion. The objective also carries explicit penalties that plain GBM has no analogue for: λ shrinks leaf values toward zero, and γ charges a fixed toll per split, so a split whose improvement is smaller than γ has negative gain and is not taken.",

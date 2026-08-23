@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,53 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val gradientBoostingContent = TopicContent(
     topicId = "gradient_boosting",
+    figure = Figure(
+        caption = "The loop actually run: depth-1 stumps fitted to residuals on 60 points, ν = 0.1. " +
+            "F starts as the flat mean and each round adds one shrunken step, so the approximation " +
+            "is visibly a staircase converging on the target — RMSE 0.258 after one round, 0.147 " +
+            "after ten, 0.044 after a hundred. Nothing here is fitting the labels; every tree after " +
+            "the first is fitted to what the ensemble still gets wrong, and shrinkage is why a " +
+            "hundred small corrections beat ten large ones.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "y",
+                    listOf(
+                        FigurePoint(0f, 0.500f), FigurePoint(0.119f, 0.771f),
+                        FigurePoint(0.237f, 0.899f), FigurePoint(0.373f, 0.787f),
+                        FigurePoint(0.492f, 0.521f), FigurePoint(0.610f, 0.245f),
+                        FigurePoint(0.746f, 0.100f), FigurePoint(0.864f, 0.199f),
+                        FigurePoint(1f, 0.500f),
+                    ),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "F after 10",
+                    listOf(
+                        FigurePoint(0f, 0.666f), FigurePoint(0.119f, 0.666f),
+                        FigurePoint(0.237f, 0.666f), FigurePoint(0.373f, 0.666f),
+                        FigurePoint(0.492f, 0.535f), FigurePoint(0.610f, 0.331f),
+                        FigurePoint(0.746f, 0.331f), FigurePoint(0.864f, 0.331f),
+                        FigurePoint(1f, 0.331f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+                FigureSeries(
+                    "F after 100",
+                    listOf(
+                        FigurePoint(0f, 0.588f), FigurePoint(0.119f, 0.786f),
+                        FigurePoint(0.237f, 0.816f), FigurePoint(0.373f, 0.785f),
+                        FigurePoint(0.492f, 0.525f), FigurePoint(0.610f, 0.244f),
+                        FigurePoint(0.746f, 0.182f), FigurePoint(0.864f, 0.186f),
+                        FigurePoint(1f, 0.407f),
+                    ),
+                ),
+            ),
+            xLabel = "x",
+            yLabel = "y",
+        ),
+    ),
     whatIsIt = listOf(
         "Gradient boosting builds an ensemble one weak learner at a time, each new tree trained to correct what the ensemble so far still gets wrong.",
         "The \"gradient\" is literal: the target each new tree fits is the negative gradient of the loss with respect to the current prediction. For squared error that is exactly the residual, which is why the algorithm is usually first explained as \"fit the errors\". XGBoost, LightGBM and CatBoost are engineering refinements of this loop.",

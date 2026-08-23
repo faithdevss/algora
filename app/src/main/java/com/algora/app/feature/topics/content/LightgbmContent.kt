@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,26 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val lightgbmContent = TopicContent(
     topicId = "lightgbm",
+    figure = Figure(
+        caption = "The gain each node would realize if it were split next, and a budget of three " +
+            "splits. Level-wise has to finish the depth before descending, so after the root it " +
+            "spends one on 4.0 and one on 0.3 — total 4.3. Leaf-wise picks the best leaf anywhere: " +
+            "4.0, then 2.1 rather than 0.3 — total 6.1, 42% more for the identical three splits and " +
+            "four leaves. The cost is the shape it leaves behind: one branch three deep and one " +
+            "branch untouched, which is why `num_leaves` and `min_data_in_leaf` are the controls " +
+            "here and `max_depth` alone will not hold it back.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("root", null, FigureTone.Accent),
+                FigureNode("4.0", 0, FigureTone.Accent),
+                FigureNode("0.3", 0, FigureTone.Warn),
+                FigureNode("2.1", 1, FigureTone.Accent),
+                FigureNode("1.8", 1),
+                FigureNode("0.2", 2),
+                FigureNode("0.1", 2),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "LightGBM optimizes the same objective as XGBoost and changes two things about how trees are built. Both changes are about speed, and one of them also changes the shape of the resulting model.",
         "The first is leaf-wise growth. XGBoost grows level-wise — every node at a depth is split before descending — which keeps trees balanced and spends effort on nodes with little left to gain. LightGBM instead splits whichever leaf anywhere in the tree offers the largest gain, so for the same number of leaves it reaches lower loss but produces deep, asymmetric trees. That is why `num_leaves` and `min_data_in_leaf` are the parameters that matter here, and why `max_depth` alone will not stop it overfitting a small dataset.",

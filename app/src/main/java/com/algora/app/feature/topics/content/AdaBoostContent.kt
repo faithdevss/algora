@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,38 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val adaBoostContent = TopicContent(
     topicId = "adaboost",
+    figure = Figure(
+        caption = "α = ½ln((1−ε)/ε) against a learner's weighted error, with the axis centred on " +
+            "α = 0. The curve is steep at the ends and nearly flat in the middle: a stump at 10% " +
+            "error earns 1.10, one at 45% earns 0.10 — a tenth as loud — and one at exactly 50% " +
+            "earns zero, which is the algorithm refusing to listen to a coin flip. Past 0.5 the " +
+            "weight goes negative, so a learner that is reliably wrong is inverted and used anyway; " +
+            "at ε = 0.9 its vote is worth exactly as much as a 10%-error learner's, pointed the " +
+            "other way.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "α",
+                    listOf(
+                        FigurePoint(0.05f, 0.991f), FigurePoint(0.1f, 0.866f),
+                        FigurePoint(0.2f, 0.731f), FigurePoint(0.3f, 0.641f),
+                        FigurePoint(0.4f, 0.568f), FigurePoint(0.45f, 0.533f),
+                        FigurePoint(0.5f, 0.5f), FigurePoint(0.55f, 0.467f),
+                        FigurePoint(0.6f, 0.432f), FigurePoint(0.7f, 0.359f),
+                        FigurePoint(0.8f, 0.269f), FigurePoint(0.9f, 0.134f),
+                        FigurePoint(0.95f, 0.009f),
+                    ),
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.1f, 0.866f, "1.10"),
+                FigurePoint(0.5f, 0.5f, "0 — silent"),
+                FigurePoint(0.9f, 0.134f, "−1.10", FigureTone.Warn),
+            ),
+            xLabel = "weighted error ε",
+            yLabel = "α  (0 at mid-axis)",
+        ),
+    ),
     whatIsIt = listOf(
         "AdaBoost trains weak learners in sequence, each one on a re-weighted version of the data. Points the previous round got wrong have their weight increased, so the next learner is effectively fitting a different dataset — one concentrated on the hard cases.",
         "Two weightings are at work and they are easy to conflate. Sample weights decide what each learner sees. Learner weights — the α values — decide how loudly each one votes in the final prediction, and α = ½ln((1−ε)/ε) makes that vote a function of measured error: a stump at 10% error gets α ≈ 1.10, one at 45% gets α ≈ 0.10, and one at exactly 50% gets α = 0, which is the algorithm declining to listen to a coin flip. A learner *worse* than chance gets a negative α, meaning its prediction is inverted and still used.",

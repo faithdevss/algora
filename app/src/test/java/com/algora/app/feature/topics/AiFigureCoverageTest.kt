@@ -62,6 +62,8 @@ class AiFigureCoverageTest {
         "logistic_regression", "knn", "svm", "svm_rbf", "nu_svc", "lda", "qda", "passive_aggressive",
         // A14 — ensembles that average rather than boost.
         "bagging", "random_forest", "extra_trees", "voting", "stacking", "isolation_forest",
+        // A15 — boosting, from the original algorithm to the three production libraries.
+        "adaboost", "gradient_boosting", "xgboost", "lightgbm", "catboost",
     )
 
     @Test
@@ -79,6 +81,6 @@ class AiFigureCoverageTest {
     @Test
     fun `the pilot is the size the phase was scoped against`() {
         // Keeps the batch table in docs/plan/phase-12-ai-figures.md verifiable rather than folklore.
-        assertEquals(91, pilotFigures.size)
+        assertEquals(96, pilotFigures.size)
     }
 }
