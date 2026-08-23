@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,35 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val ldaContent = TopicContent(
     topicId = "lda",
+    figure = Figure(
+        caption = "The page's code block runs a symmetric Σ, where w happens to land on the line " +
+            "between the means and the point is easy to miss. Make it asymmetric — Σ = [[1, 0.9], " +
+            "[0.9, 4]] with μ₁ − μ₀ = (2, 2) — and w = Σ⁻¹(μ₁ − μ₀) = (1.94, 0.06), which points " +
+            "1.8° above the x₁ axis while the means are 45° apart: a 43.2° rotation. x₂ has four " +
+            "times the variance and is 0.9-correlated with x₁, so almost none of the separation " +
+            "actually lives along it, and the inverse covariance is what knows that.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "μ₁ − μ₀  (45°)",
+                    listOf(FigurePoint(0.15f, 0.15f), FigurePoint(0.85f, 0.85f)),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "Σ⁻¹(μ₁ − μ₀)  (1.8°)",
+                    listOf(FigurePoint(0.15f, 0.15f), FigurePoint(0.85f, 0.172f)),
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.15f, 0.15f, "μ₀", FigureTone.Muted),
+                FigurePoint(0.85f, 0.85f, "μ₁", FigureTone.Muted),
+                FigurePoint(0.85f, 0.172f, "w"),
+            ),
+            xLabel = "x₁",
+            yLabel = "x₂",
+        ),
+    ),
     whatIsIt = listOf(
         "Linear Discriminant Analysis models each class as a Gaussian and classifies by asking which class density is higher at a point. Its one strong assumption is that every class shares the same covariance matrix — the clouds may sit in different places, but they must have the same shape and orientation.",
         "That assumption is what makes it linear, and the algebra is worth following once. Comparing two log-densities means subtracting them, and each contains a quadratic term −½xᵀΣ⁻¹x. When Σ is shared, those terms are identical and cancel exactly, leaving only terms linear in x. So the decision boundary is a hyperplane — not because anyone imposed linearity, but because it fell out of a shared covariance.",

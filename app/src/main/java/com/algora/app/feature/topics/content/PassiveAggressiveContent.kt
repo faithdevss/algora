@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,50 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val passiveAggressiveContent = TopicContent(
     topicId = "passive_aggressive",
+    figure = Figure(
+        caption = "τ against hinge loss for one example with ‖x‖² = 4 and C = 0.25; the axis top is " +
+            "τ = 0.75. All three variants agree at ℓ = 0 — that is the passive half, and it is not a " +
+            "small step but no step. They part company on how far the aggressive half is allowed to " +
+            "go: unbounded τ = ℓ/‖x‖² rises forever, so one mislabelled point at ℓ = 3 moves the " +
+            "weights 0.75, three times PA-I's cap. PA-I clips flat at C once ℓ passes 1; PA-II never " +
+            "clips but permanently runs at ‖x‖²/(‖x‖² + 1/2C) = ⅔ of the unbounded slope.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "unbounded",
+                    listOf(
+                        FigurePoint(0f, 0f), FigurePoint(0.167f, 0.167f), FigurePoint(0.333f, 0.333f),
+                        FigurePoint(0.5f, 0.5f), FigurePoint(0.667f, 0.667f),
+                        FigurePoint(0.833f, 0.833f), FigurePoint(1f, 1f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+                FigureSeries(
+                    "PA-I",
+                    listOf(
+                        FigurePoint(0f, 0f), FigurePoint(0.167f, 0.167f), FigurePoint(0.333f, 0.333f),
+                        FigurePoint(0.5f, 0.333f), FigurePoint(0.667f, 0.333f),
+                        FigurePoint(0.833f, 0.333f), FigurePoint(1f, 0.333f),
+                    ),
+                ),
+                FigureSeries(
+                    "PA-II",
+                    listOf(
+                        FigurePoint(0f, 0f), FigurePoint(0.167f, 0.111f), FigurePoint(0.333f, 0.222f),
+                        FigurePoint(0.5f, 0.333f), FigurePoint(0.667f, 0.444f),
+                        FigurePoint(0.833f, 0.556f), FigurePoint(1f, 0.667f),
+                    ),
+                    tone = FigureTone.Muted,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.333f, 0.333f, "τ = C"),
+                FigurePoint(1f, 1f, "τ = 0.75", FigureTone.Warn),
+            ),
+            xLabel = "hinge loss ℓ  (0 to 3)",
+            yLabel = "τ",
+        ),
+    ),
     whatIsIt = listOf(
         "Passive-Aggressive is an online classifier whose name is a literal description of its update rule. On an example it already classifies correctly with enough margin, it is passive: the weights do not move at all. On an example it gets wrong, it is aggressive: the weights move exactly as far as needed to classify that example correctly with margin 1, and no further.",
         "Both halves come from one constrained optimization. Each step asks for the smallest change to the current weights that satisfies the hinge constraint on the current example — minimize ‖w − wₜ‖² subject to loss = 0. That has a closed-form solution, τ = loss/‖x‖², so there is no learning rate to tune. Contrast this with the perceptron, which moves a fixed amount on every mistake regardless of how badly it missed, and with SGD, whose step size is a schedule you have to choose.",

@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,33 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val knnContent = TopicContent(
     topicId = "knn",
+    figure = Figure(
+        caption = "One query, one fixed dataset, and the answer flips on k alone. The five nearest " +
+            "points sit at distances 0.11, 0.13, 0.18, 0.25 and 0.25, and their labels arrive in the " +
+            "order B, B, A, A, A — so k = 3 votes B two to one and k = 5 votes A three to two. " +
+            "Nothing was trained between the two answers; k is not a tuning detail on top of the " +
+            "model, it is the model. The two unlinked points are outside both neighbourhoods and " +
+            "have no say at all.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("?", 0.50f, 0.52f, FigureTone.Accent),
+                FigureGraphNode("B", 0.58f, 0.60f, FigureTone.Primary),
+                FigureGraphNode("B", 0.42f, 0.62f, FigureTone.Primary),
+                FigureGraphNode("A", 0.50f, 0.34f, FigureTone.Warn),
+                FigureGraphNode("A", 0.26f, 0.60f, FigureTone.Warn),
+                FigureGraphNode("A", 0.74f, 0.44f, FigureTone.Warn),
+                FigureGraphNode("B", 0.30f, 0.24f, FigureTone.Muted),
+                FigureGraphNode("A", 0.78f, 0.76f, FigureTone.Muted),
+            ),
+            edges = listOf(
+                FigureEdge(0, 1, "0.11", tone = FigureTone.Primary),
+                FigureEdge(0, 2, "0.13", tone = FigureTone.Primary),
+                FigureEdge(0, 3, "0.18", tone = FigureTone.Warn),
+                FigureEdge(0, 4, "0.25", tone = FigureTone.Warn),
+                FigureEdge(0, 5, "0.25", tone = FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "k-Nearest Neighbors classifies a new point by a majority vote of its k closest training examples — no model is trained, the data is the model.",
         "It's the archetypal lazy learner: all the work happens at query time, computing distances to stored points.",

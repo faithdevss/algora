@@ -58,6 +58,8 @@ class AiFigureCoverageTest {
         // A12 — the last of the free tier: three DL, four ML.
         "neural_style_transfer", "segmentation_types", "siamese_networks",
         "apriori", "moving_average", "multi_armed_bandit", "svd",
+        // A13 — the first premium batch: linear and kernel classifiers, and the two discriminants.
+        "logistic_regression", "knn", "svm", "svm_rbf", "nu_svc", "lda", "qda", "passive_aggressive",
     )
 
     @Test
@@ -75,6 +77,6 @@ class AiFigureCoverageTest {
     @Test
     fun `the pilot is the size the phase was scoped against`() {
         // Keeps the batch table in docs/plan/phase-12-ai-figures.md verifiable rather than folklore.
-        assertEquals(77, pilotFigures.size)
+        assertEquals(85, pilotFigures.size)
     }
 }

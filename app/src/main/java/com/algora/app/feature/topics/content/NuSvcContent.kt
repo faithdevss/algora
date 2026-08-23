@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,35 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val nuSvcContent = TopicContent(
     topicId = "nu_svc",
+    figure = Figure(
+        caption = "ν reads like a free choice in (0,1], and on balanced data it is. The curve is the " +
+            "feasibility cap 2·min(n₊,n₋)/n as the positive class goes from 5% to 95% of the sample: " +
+            "at a 50/50 split the whole range is available, at 90/10 everything above ν = 0.2 has no " +
+            "solution at all, and at 95/5 the ceiling is 0.1. The cap collapses exactly where the " +
+            "parameter is most tempting — skewed data is where you would want to assert a 30% noise " +
+            "rate, and that is precisely the fit that will not converge.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "max feasible ν",
+                    listOf(
+                        FigurePoint(0.05f, 0.10f), FigurePoint(0.10f, 0.20f),
+                        FigurePoint(0.20f, 0.40f), FigurePoint(0.30f, 0.60f),
+                        FigurePoint(0.40f, 0.80f), FigurePoint(0.50f, 1.00f),
+                        FigurePoint(0.60f, 0.80f), FigurePoint(0.70f, 0.60f),
+                        FigurePoint(0.80f, 0.40f), FigurePoint(0.90f, 0.20f),
+                        FigurePoint(0.95f, 0.10f),
+                    ),
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.50f, 1.00f, "all of (0,1]"),
+                FigurePoint(0.10f, 0.20f, "ν ≤ 0.2", FigureTone.Warn),
+            ),
+            xLabel = "positive-class fraction",
+            yLabel = "ν ceiling",
+        ),
+    ),
     whatIsIt = listOf(
         "The standard SVM's C is an awkward hyperparameter: it runs from 0 to infinity, its useful range shifts with the data's scale and size, and no value of it corresponds to any quantity you care about. You find it by grid search because there is nothing else to do.",
         "ν-SVC reparameterizes the same problem so the knob means something. ν lives in (0,1] and satisfies a two-sided bound: the fraction of margin errors is at most ν, and the fraction of support vectors is at least ν. Set ν = 0.1 and you have asserted that no more than 10% of training points may violate the margin, and at least 10% will be support vectors. That is a specification, not a search result.",

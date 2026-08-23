@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,53 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val svmRbfContent = TopicContent(
     topicId = "svm_rbf",
+    figure = Figure(
+        caption = "K(x, x′) = exp(−γ‖x − x′‖²) at three γ, over distances 0 to 3. γ is not a " +
+            "strength dial, it is a radius: a point stops voting once K falls to about 0.05, which " +
+            "happens at distance 0.77 for γ = 5 and 1.73 for γ = 1. Raising γ 50× shrinks that " +
+            "radius by √50 ≈ 7×. At γ = 0.1 the kernel is still 0.41 at distance 3 — every point " +
+            "influences every other, and the fit behaves almost linearly; at γ = 5 the influence is " +
+            "gone within one unit, so the boundary becomes islands drawn around individual training " +
+            "points. That is the same curve explaining both failure modes.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "γ = 0.1",
+                    listOf(
+                        FigurePoint(0f, 1f), FigurePoint(0.125f, 0.986f), FigurePoint(0.25f, 0.945f),
+                        FigurePoint(0.375f, 0.881f), FigurePoint(0.5f, 0.799f),
+                        FigurePoint(0.625f, 0.704f), FigurePoint(0.75f, 0.603f),
+                        FigurePoint(0.875f, 0.502f), FigurePoint(1f, 0.407f),
+                    ),
+                    tone = FigureTone.Muted,
+                ),
+                FigureSeries(
+                    "γ = 1",
+                    listOf(
+                        FigurePoint(0f, 1f), FigurePoint(0.125f, 0.869f), FigurePoint(0.25f, 0.570f),
+                        FigurePoint(0.375f, 0.282f), FigurePoint(0.5f, 0.105f),
+                        FigurePoint(0.625f, 0.030f), FigurePoint(0.75f, 0.006f),
+                        FigurePoint(0.875f, 0.001f), FigurePoint(1f, 0f),
+                    ),
+                ),
+                FigureSeries(
+                    "γ = 5",
+                    listOf(
+                        FigurePoint(0f, 1f), FigurePoint(0.125f, 0.495f), FigurePoint(0.25f, 0.060f),
+                        FigurePoint(0.375f, 0.002f), FigurePoint(0.5f, 0f),
+                        FigurePoint(0.75f, 0f), FigurePoint(1f, 0f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.258f, 0.05f, "0.77"),
+                FigurePoint(0.577f, 0.05f, "1.73"),
+            ),
+            xLabel = "‖x − x′‖  (0 to 3)",
+            yLabel = "K(x, x′)",
+        ),
+    ),
     whatIsIt = listOf(
         "A linear SVM can only draw a hyperplane, which is useless on data like two concentric rings. The fix is to map the points into a higher-dimensional space where they *are* linearly separable, and draw the hyperplane there — its preimage back in the original space is a curve.",
         "The kernel trick is that you never build that space. Written in its dual form, the SVM touches the data only through inner products xᵢᵀxⱼ, so replacing every inner product with a kernel function K(xᵢ,xⱼ) is enough to fit in the mapped space without ever computing a mapped coordinate. For the RBF kernel that space is infinite-dimensional, and the computation stays an O(n²) pass over pairs of points.",

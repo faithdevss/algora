@@ -3,6 +3,9 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +14,34 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val qdaContent = TopicContent(
     topicId = "qda",
+    figure = Figure(
+        caption = "Two classes with the same mean and different spreads — σ₀ = 0.6 inside σ₁ = 1.5 — " +
+            "over the square from −2.4 to 2.4. P(class 1) is 0.138 at the origin and 1.000 at every " +
+            "corner, and the densities are equal on the circle r = 0.886: a closed boundary. The " +
+            "outlined block is the region QDA assigns to the tight class. LDA cannot draw this at " +
+            "all — pooling one covariance forces the −½xᵀΣ⁻¹x terms to cancel, and every boundary it " +
+            "can express is a straight line, which here would have to cut the ring somewhere and be " +
+            "wrong on the rest.",
+        shape = FigureShape.Heatmap(
+            values = listOf(
+                listOf(1.000f, 1.000f, 0.996f, 0.993f, 0.996f, 1.000f, 1.000f),
+                listOf(1.000f, 0.984f, 0.870f, 0.760f, 0.870f, 0.984f, 1.000f),
+                listOf(0.996f, 0.870f, 0.416f, 0.252f, 0.416f, 0.870f, 0.996f),
+                listOf(0.993f, 0.760f, 0.252f, 0.138f, 0.252f, 0.760f, 0.993f),
+                listOf(0.996f, 0.870f, 0.416f, 0.252f, 0.416f, 0.870f, 0.996f),
+                listOf(1.000f, 0.984f, 0.870f, 0.760f, 0.870f, 0.984f, 1.000f),
+                listOf(1.000f, 1.000f, 0.996f, 0.993f, 0.996f, 1.000f, 1.000f),
+            ),
+            rowLabels = listOf("2.4", "1.6", "0.8", "0", "−0.8", "−1.6", "−2.4"),
+            colLabels = listOf("−2.4", "−1.6", "−0.8", "0", "0.8", "1.6", "2.4"),
+            marks = listOf(
+                FigureCell(2, 2), FigureCell(2, 3), FigureCell(2, 4),
+                FigureCell(3, 2), FigureCell(3, 3), FigureCell(3, 4),
+                FigureCell(4, 2), FigureCell(4, 3), FigureCell(4, 4),
+            ),
+            legend = "1.0 = certain the broad class; outlined = assigned to the tight one",
+        ),
+    ),
     whatIsIt = listOf(
         "QDA is LDA with one assumption removed: each class gets its own covariance matrix instead of sharing a pooled one. Everything else is identical — still Gaussian per class, still classify by the higher density.",
         "Removing the shared covariance changes the boundary's type. In LDA the quadratic terms −½xᵀΣ⁻¹x cancel when the two log-densities are subtracted, because they are the same term. With Σ₀ ≠ Σ₁ they do not cancel, and what survives is quadratic in x — so the boundary becomes a conic: an ellipse, parabola or hyperbola depending on the two shapes. One class tightly clustered inside a broader one produces a closed elliptical boundary that no linear model can express.",

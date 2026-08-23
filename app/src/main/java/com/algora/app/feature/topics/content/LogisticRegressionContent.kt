@@ -3,6 +3,9 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +14,32 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val logisticRegressionContent = TopicContent(
     topicId = "logistic_regression",
+    figure = Figure(
+        caption = "P(class = 1) = σ(4x₁ + 4x₂ − 4) over the unit square. The outlined cells are the " +
+            "ones where the linear score is exactly zero — they lie on a straight line, x₁ + x₂ = 1, " +
+            "because z is linear and σ is monotone, so the boundary can only ever be a hyperplane. " +
+            "What is not straight is the confidence: 0.018 in the bottom-left corner, 0.982 in the " +
+            "top-right, and 0.31 one grid step off the line. That graded field is what separates this " +
+            "from a bare line — the model reports how far from the boundary a point sits, in " +
+            "probability, not just which side it fell on.",
+        shape = FigureShape.Heatmap(
+            values = listOf(
+                listOf(0.500f, 0.690f, 0.832f, 0.917f, 0.961f, 0.982f),
+                listOf(0.310f, 0.500f, 0.690f, 0.832f, 0.917f, 0.961f),
+                listOf(0.168f, 0.310f, 0.500f, 0.690f, 0.832f, 0.917f),
+                listOf(0.083f, 0.168f, 0.310f, 0.500f, 0.690f, 0.832f),
+                listOf(0.039f, 0.083f, 0.168f, 0.310f, 0.500f, 0.690f),
+                listOf(0.018f, 0.039f, 0.083f, 0.168f, 0.310f, 0.500f),
+            ),
+            rowLabels = listOf("1.0", "0.8", "0.6", "0.4", "0.2", "0.0"),
+            colLabels = listOf("0.0", "0.2", "0.4", "0.6", "0.8", "1.0"),
+            marks = listOf(
+                FigureCell(0, 0), FigureCell(1, 1), FigureCell(2, 2),
+                FigureCell(3, 3), FigureCell(4, 4), FigureCell(5, 5),
+            ),
+            legend = "x₂ down the side, x₁ along the top; 1.0 = certain class 1",
+        ),
+    ),
     whatIsIt = listOf(
         "Logistic regression predicts the probability that an input belongs to a class by passing a linear score through the sigmoid function, squashing it into the 0–1 range.",
         "Despite the name it's a classifier: it draws a linear decision boundary and outputs calibrated probabilities rather than a raw line.",

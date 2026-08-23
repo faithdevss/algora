@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,43 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val svmContent = TopicContent(
     topicId = "svm",
+    figure = Figure(
+        caption = "The solid line is w·x + b = 0 with w = (5.56, 5.56) and b = −5; the dashed lines " +
+            "are where that score reaches ±1. Their perpendicular separation is 2/‖w‖ = 0.255, and " +
+            "maximizing it is the entire objective. Three points touch the dashed lines — those are " +
+            "the support vectors, and the fit depends only on them. The two muted points can be " +
+            "dragged anywhere on their own side of the margin without moving the boundary a " +
+            "millimetre, which is why a trained SVM can discard them.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "w·x + b = 0",
+                    listOf(FigurePoint(0.05f, 0.85f), FigurePoint(0.85f, 0.05f)),
+                ),
+                FigureSeries(
+                    "= +1",
+                    listOf(FigurePoint(0.08f, 1.0f), FigurePoint(1.0f, 0.08f)),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "= −1",
+                    listOf(FigurePoint(0.0f, 0.72f), FigurePoint(0.72f, 0.0f)),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.30f, 0.78f, "sv"),
+                FigurePoint(0.62f, 0.46f, "sv"),
+                FigurePoint(0.24f, 0.48f, "sv"),
+                FigurePoint(0.86f, 0.90f, "ignored", FigureTone.Muted),
+                FigurePoint(0.12f, 0.15f, "ignored", FigureTone.Muted),
+            ),
+            xLabel = "x₁",
+            yLabel = "x₂",
+        ),
+    ),
     whatIsIt = listOf(
         "A support vector machine (SVM) classifies by finding the hyperplane that separates classes with the widest possible margin — the biggest gap to the nearest points of each class.",
         "The kernel trick lets it draw non-linear boundaries by implicitly mapping data into a higher-dimensional space where a linear separator exists.",
