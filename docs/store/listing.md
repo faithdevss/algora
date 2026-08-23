@@ -132,10 +132,9 @@ locked topic can also be opened for 6 hours by watching a rewarded ad, if you wo
 Max 500 characters.
 
 ```
-• Practice problems now follow the same free/Premium split as the rest of the library, unlockable
-  with a rewarded ad
-• Rewarded-ad unlock window shortened from 24 to 6 hours
-• Fixed tree and graph lab canvases rendering at the wrong size on some devices
+• New: earn a streak freeze by watching a rewarded ad — miss a day without losing your streak
+• 20 more AI topics (regression, data preprocessing, model evaluation) now have a figure at a glance
+• Fixed stale "24h" label on the ad-unlock button — it's always been a 6-hour unlock
 ```
 
 ---
