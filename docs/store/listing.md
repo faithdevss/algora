@@ -1,9 +1,9 @@
 # Play Store listing — Algora
 
 Copy-paste source for the Play Console listing, plus an inventory of the graphics in this folder.
-Every number quoted below is read out of the registries at build time (versionName `0.1.122`), not
+Every number quoted below is read out of the registries at build time (versionName `1.1.41`), not
 estimated: 504 authored topics each with a runnable lab, 102 practice problems, 29 timed quizzes
-(171 questions), and 2,414 flashcards.
+(173 questions), and 2,414 flashcards.
 
 **Re-check the counts before every upload.** They come from `TopicContentProvider.all`,
 `TopicContentProvider.runnableSimulations`, `ProblemRegistry.all`, `QuizRegistry.all` and
@@ -132,9 +132,14 @@ locked topic can also be opened for 6 hours by watching a rewarded ad, if you wo
 Max 500 characters.
 
 ```
-• New: earn a streak freeze by watching a rewarded ad — miss a day without losing your streak
-• 20 more AI topics (regression, data preprocessing, model evaluation) now have a figure at a glance
-• Fixed stale "24h" label on the ad-unlock button — it's always been a 6-hour unlock
+First release.
+
+• 504 topics across DSA and AI, each with an interactive lab
+• 102 pattern-grouped practice problems with hints and worked solutions
+• 29 timed quizzes (173 questions) and 2,414 SM-2 scheduled flashcards
+• Streak freezes: miss a day without losing your streak
+• A progress dashboard with per-day activity and milestones
+• Fully offline — no account, no server
 ```
 
 ---
@@ -229,11 +234,11 @@ at a time and leave it up long enough to read, or the result means nothing.
 
 Open items that are not copy problems but will block or damage the release:
 
-- **Ad and billing ids are still fakes.** Phase 8 shipped billing and rewarded ads against debug
-  stubs (`docs/plan/ROADMAP.md`). AdMob ids are now configured out of git — put the real pair in
-  `local.properties` per `docs/admob-setup.md`; a release built without them ships Google's test
-  ads and earns nothing. The Play Console product id for the lifetime purchase is still hardcoded
-  and has to be swapped in before upload, or the paywall will not work in production.
+- **AdMob ids are real.** `local.properties` carries a live `admob.appId`/`admob.rewardedUnitId`
+  pair, and `assembleRelease`/`bundleRelease` fail loudly if either falls back to Google's test id
+  — confirmed at time of writing. Still outstanding: the Play Console in-app product must exist
+  with id `algora_premium_lifetime` (`core/billing/PremiumBilling.kt`) before the paywall can
+  complete a real purchase — that's a Play Console entry, not a code change.
 - **Data safety form.** The app itself collects nothing — progress lives in local DataStore, there
   is no account and no network call of our own. The ads SDK does collect data, so the form must
   declare whatever AdMob's current disclosure requires once the real ids are in. Neither the study
@@ -247,10 +252,11 @@ Open items that are not copy problems but will block or damage the release:
 - **In-app review is offered at 15% track completion**, once per install, from the Progress screen.
   Play policy forbids incentivising, filtering or repeatedly prompting for ratings — none of which
   the implementation does, and the code must stay that way (`core/playreview/AppReviewPrompt.kt`).
-- **Support email and privacy policy URL** are mandatory fields and are not written anywhere in the
-  repo yet.
+- **Privacy policy URL is still the one open blocker for this submission.** `docs/privacy-policy.md`
+  exists but isn't hosted anywhere public — Play Console will not accept a listing without a live
+  URL in that field. Support email is set (`hafsasultana0106@gmail.com`, see Store presence above).
 - **Version numbers are derived, not typed.** `versionCode` is the commit count on the branch being
-  built and `versionName` is `major.minor.<commit count>` (`app/build.gradle.kts`) — currently 80 /
-  `0.1.80`. Nothing to bump per build; raise `versionMajor` / `versionMinor` only when the release
+  built and `versionName` is `major.minor.<commit count>` (`app/build.gradle.kts`) — currently 141 /
+  `1.1.41`. Nothing to bump per build; raise `versionMajor` / `versionMinor` only when the release
   is a genuinely new line. Build from a git checkout with full history, or the fallback pins the
   code to 1 and Play will reject the second upload.
