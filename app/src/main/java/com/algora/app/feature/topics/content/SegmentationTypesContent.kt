@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,39 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val segmentationTypesContent = TopicContent(
     topicId = "segmentation_types",
+    figure = Figure(
+        caption = "Two sheep touching — the case that separates the two tasks. A semantic head has " +
+            "one channel per class and none per object, so every lit cell here is the same label " +
+            "and the whole thing is one connected region: no output it can produce would split " +
+            "them. The instance map assigns the two colours. That is why the metrics are not " +
+            "comparable either — the lab's semantic prediction drops the sheep's bottom row and " +
+            "still scores 0.917 mean IoU, a good result, while merging two sheep into one costs " +
+            "instance segmentation a false negative outright under mask AP. If the application " +
+            "counts, grasps or tracks objects, a semantic map cannot answer it however accurate " +
+            "it is. Panoptic segmentation is the task that demands both at once.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("S", "S", "·", "·", "S", "S"),
+                listOf("S", "S", "S", "S", "S", "S"),
+                listOf("S", "S", "S", "S", "S", "S"),
+                listOf("S", "·", "·", "·", "·", "S"),
+            ),
+            marks = listOf(
+                FigureCell(0, 0, FigureTone.Primary), FigureCell(0, 1, FigureTone.Primary),
+                FigureCell(1, 0, FigureTone.Primary), FigureCell(1, 1, FigureTone.Primary),
+                FigureCell(1, 2, FigureTone.Primary),
+                FigureCell(2, 0, FigureTone.Primary), FigureCell(2, 1, FigureTone.Primary),
+                FigureCell(2, 2, FigureTone.Primary),
+                FigureCell(3, 0, FigureTone.Primary),
+                FigureCell(0, 4, FigureTone.Accent), FigureCell(0, 5, FigureTone.Accent),
+                FigureCell(1, 3, FigureTone.Accent), FigureCell(1, 4, FigureTone.Accent),
+                FigureCell(1, 5, FigureTone.Accent),
+                FigureCell(2, 3, FigureTone.Accent), FigureCell(2, 4, FigureTone.Accent),
+                FigureCell(2, 5, FigureTone.Accent),
+                FigureCell(3, 5, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Four tasks sit on the same photograph and answer different questions. Classification: what is in this image. Detection: where, as boxes. Semantic segmentation: a class label for every pixel. Instance segmentation: a class label for every pixel *and* which object each pixel belongs to. The words are used loosely in conversation and mean precisely different things in a spec, a dataset and a metric.",
         "The distinction is not academic, and it shows up the moment two objects of the same class touch. In the simulation two sheep standing shoulder to shoulder are, semantically, one connected region of 54 pixels — there is no label that could separate them, because a semantic output has one channel per class and none per object. The instance map on the same picture reports three objects. If your application counts things, picks one thing up, or tracks a thing across frames, a semantic map cannot answer it no matter how accurate it is.",

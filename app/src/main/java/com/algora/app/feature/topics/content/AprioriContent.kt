@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,37 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val aprioriContent = TopicContent(
     topicId = "apriori",
+    figure = Figure(
+        caption = "The lattice Apriori refuses to search. With d items there are 2ᵈ subsets, so a " +
+            "hundred products give more candidates than there are atoms in the observable " +
+            "universe. One observation makes it tractable: an itemset cannot appear in more " +
+            "baskets by demanding more things, so if {C} is infrequent then {A,C}, {B,C} and " +
+            "{A,B,C} are too — discarded before a single basket is read, which is the entire " +
+            "algorithm. What survives level by level is the left spine: {A}, {B}, {A,B}. The trap " +
+            "is one level further on, when itemsets become rules — the lab finds a rule with 75% " +
+            "confidence whose lift is 0.83, meaning the antecedent makes the consequent *less* " +
+            "likely and confidence alone reports it as a strong finding.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("A", 0.10f, 0.06f, FigureTone.Primary),
+                FigureGraphNode("B", 0.50f, 0.06f, FigureTone.Primary),
+                FigureGraphNode("C", 0.90f, 0.06f, FigureTone.Warn),
+                FigureGraphNode("AB", 0.10f, 0.52f, FigureTone.Primary),
+                FigureGraphNode("AC", 0.50f, 0.52f, FigureTone.Warn),
+                FigureGraphNode("BC", 0.90f, 0.52f, FigureTone.Warn),
+                FigureGraphNode("ABC", 0.50f, 0.96f, FigureTone.Warn),
+            ),
+            edges = listOf(
+                FigureEdge(0, 3, directed = true, tone = FigureTone.Primary),
+                FigureEdge(1, 3, directed = true, tone = FigureTone.Primary),
+                FigureEdge(0, 4, directed = true, tone = FigureTone.Warn),
+                FigureEdge(2, 4, directed = true, tone = FigureTone.Warn),
+                FigureEdge(1, 5, directed = true, tone = FigureTone.Warn),
+                FigureEdge(2, 5, directed = true, tone = FigureTone.Warn),
+                FigureEdge(3, 6, directed = true, tone = FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Association rule mining asks which things co-occur in a collection of sets — baskets in a shop, pages in a session, symptoms in a chart. The obstacle is arithmetic: with d items there are 2ᵈ possible itemsets, so a hundred products give more subsets than there are atoms in the observable universe. No amount of engineering scans that space.",
         "Apriori's contribution is a single observation that makes the space searchable. If an itemset is infrequent, every superset of it is infrequent too — you cannot appear in more baskets by demanding more things. So the search can proceed level by level, and any candidate with an infrequent subset is discarded before a single basket is read. That is the Apriori property, sometimes called downward closure, and it is the whole algorithm; everything else is bookkeeping.",

@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,27 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val multiArmedBanditContent = TopicContent(
     topicId = "multi_armed_bandit",
+    figure = Figure(
+        caption = "The four arms the lab pulls, and the only thing a strategy is trying to find: " +
+            "arm 4 pays 0.72 and every pull spent elsewhere is regret. Pulling at random for all " +
+            "200 pulls lands on it 25.5% of the time — indistinguishable from the 25% of using no " +
+            "information whatsoever, which is the floor every method in this category is measured " +
+            "against. Its opposite is pure greedy: sample each arm once, commit forever to " +
+            "whichever looked best, and never collect the evidence that would overturn one unlucky " +
+            "sample. Epsilon-greedy, UCB and Thompson sampling are all ways of standing between " +
+            "those two failures — spending just enough of the budget on the shaded arms to make " +
+            "the rest of it pay.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("arm 1", 0.30f, FigureTone.Muted),
+                FigureBar("arm 2", 0.55f, FigureTone.Muted),
+                FigureBar("arm 3", 0.45f, FigureTone.Muted),
+                FigureBar("arm 4", 0.72f, FigureTone.Accent),
+            ),
+            yLabel = "true win rate (unknown to the agent)",
+            xLabel = "200 pulls to find the one on the right",
+        ),
+    ),
     whatIsIt = listOf(
         "The multi-armed bandit is the simplest possible version of the explore-exploit problem: several arms (slot machines, ad variants, treatment options), each with a fixed but unknown probability of paying out, and a fixed budget of pulls. Every pull teaches you a little about one arm and costs you the chance to have pulled a different one instead — there is no way to learn without spending some of the budget on options that might be worse. Every strategy this app covers separately — epsilon-greedy, UCB, Thompson sampling, pure greedy, Boltzmann exploration — is an answer to exactly this one problem, each with a different rule for which arm to pull next given what has been observed so far.",
         "This topic runs the problem's own worst-case baseline: pick an arm completely at random, every single pull, using no estimate of anything. Over 200 pulls across four arms (true win rates 0.30, 0.55, 0.45 and 0.72), pure random selection lands on the best arm 25.5% of the time — indistinguishable, within sampling noise, from the 25% a coin-flip-per-arm would give with zero information used at all. That is the floor every real strategy in this category is measured against.",

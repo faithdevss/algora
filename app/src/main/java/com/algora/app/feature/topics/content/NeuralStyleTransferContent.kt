@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,26 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val neuralStyleTransferContent = TopicContent(
     topicId = "neural_style_transfer",
+    figure = Figure(
+        caption = "Why the method transfers brushwork and never composition, in one row. A Gram " +
+            "matrix sums over spatial positions, so permuting those positions leaves it " +
+            "bit-for-bit unchanged — the second row is the first one shuffled, and the style loss " +
+            "between them is 1.5×10⁻³², floating-point zero, while the content loss on the same " +
+            "pair is 0.163. That is an equality, not an approximation: style as this algorithm " +
+            "defines it is a claim about which features co-occur and contains no claim about " +
+            "where. It is also not compression — VGG-19's conv4_1 map holds 401,408 values against " +
+            "the Gram's 131,328 unique entries, a ratio of 3.06. What matters is that an enormous " +
+            "set of different images share one Gram, and the optimiser picks whichever also fits " +
+            "the content loss.",
+        shape = FigureShape.Strip(
+            cells = listOf("p₁", "p₂", "p₃", "p₄", "p₅", "p₆"),
+            bands = listOf(
+                FigureBand(0, 5, "feature columns, one per spatial position", FigureTone.Primary),
+            ),
+            aux = listOf("p₄", "p₁", "p₆", "p₂", "p₅", "p₃"),
+            auxLabel = "any permutation — same Gram, style loss 1.5×10⁻³²",
+        ),
+    ),
     whatIsIt = listOf(
         "Neural style transfer predates every generative model in this section and trains no network at all. The weights are a frozen, pretrained VGG; what gets optimized is the image itself, pixel by pixel, by gradient descent on two losses. The content loss compares the image's feature map at one layer against the content photograph's. The style loss compares Gram matrices at five layers against the painting's. Run a few hundred steps and the pixels settle into something that has the photograph's layout and the painting's texture. The whole method rests on one definition, and the definition is far sharper than its usual description.",
         "A Gram matrix is G = F Fᵀ, where F is a feature map flattened to channels × positions. Entry G[i][j] is the sum over every spatial position of channel i times channel j — how strongly two features co-occur, added up across the image. The sum is the crucial part. Because it runs over positions, permuting those positions leaves G bit-for-bit unchanged. This is not a good approximation or a useful simplification; it is an equality. Take a real feature map, shuffle its spatial columns into a completely different arrangement, and the style loss between the original and the shuffle is 1.5×10⁻³², which is floating-point zero. The content loss between the same two is 0.163. Style, as this algorithm defines it, is a statement about which features occur together and contains no statement whatsoever about where.",

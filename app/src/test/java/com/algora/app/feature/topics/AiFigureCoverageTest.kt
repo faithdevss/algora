@@ -55,6 +55,9 @@ class AiFigureCoverageTest {
         "early_stopping", "data_augmentation",
         // A11 — free-tier NLP: the encoder, the two metrics, prompting and transfer.
         "bert", "perplexity", "prompt_engineering", "wer", "transfer_learning",
+        // A12 — the last of the free tier: three DL, four ML.
+        "neural_style_transfer", "segmentation_types", "siamese_networks",
+        "apriori", "moving_average", "multi_armed_bandit", "svd",
     )
 
     @Test
@@ -72,6 +75,6 @@ class AiFigureCoverageTest {
     @Test
     fun `the pilot is the size the phase was scoped against`() {
         // Keeps the batch table in docs/plan/phase-12-ai-figures.md verifiable rather than folklore.
-        assertEquals(70, pilotFigures.size)
+        assertEquals(77, pilotFigures.size)
     }
 }

@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,49 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val movingAverageContent = TopicContent(
     topicId = "moving_average",
+    figure = Figure(
+        caption = "A 12-point series and its own trailing 3-point mean, with the averages actually " +
+            "computed rather than drawn: 0.41, 0.66, 0.35 → 0.473, and so on. Every property of " +
+            "the method is visible in that one row. The smoothed line is calmer, because averaging " +
+            "w independent noise terms divides their variance by w. It starts two points late, " +
+            "because the first w−1 positions have no window. And it lags, by exactly (w−1)/2 = 1 " +
+            "period here, because a trailing window's centre of mass sits in the past — every peak " +
+            "on the smoothed line arrives one step after the peak it is smoothing. A centred " +
+            "window removes the lag and needs future values to do it, which is why it can describe " +
+            "history and never forecast.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "raw",
+                    listOf(
+                        FigurePoint(0f, 0.52f), FigurePoint(0.0909f, 0.78f),
+                        FigurePoint(0.1818f, 0.41f), FigurePoint(0.2727f, 0.66f),
+                        FigurePoint(0.3636f, 0.35f), FigurePoint(0.4545f, 0.72f),
+                        FigurePoint(0.5455f, 0.48f), FigurePoint(0.6364f, 0.85f),
+                        FigurePoint(0.7273f, 0.55f), FigurePoint(0.8182f, 0.90f),
+                        FigurePoint(0.9091f, 0.62f), FigurePoint(1f, 0.95f),
+                    ),
+                    FigureTone.Muted,
+                ),
+                FigureSeries(
+                    "trailing mean, w=3",
+                    listOf(
+                        FigurePoint(0.1818f, 0.570f), FigurePoint(0.2727f, 0.617f),
+                        FigurePoint(0.3636f, 0.473f), FigurePoint(0.4545f, 0.577f),
+                        FigurePoint(0.5455f, 0.517f), FigurePoint(0.6364f, 0.683f),
+                        FigurePoint(0.7273f, 0.627f), FigurePoint(0.8182f, 0.767f),
+                        FigurePoint(0.9091f, 0.690f), FigurePoint(1f, 0.823f),
+                    ),
+                    FigureTone.Primary,
+                ),
+            ),
+            xLabel = "period (12 observations)",
+            yLabel = "value",
+            markers = listOf(
+                FigurePoint(0.1818f, 0.570f, "first value: w−1 late", FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A moving average replaces each observation with the mean of a window around it. It is the first thing anyone does to a noisy series and it is worth understanding precisely, because almost every later method is a refinement of it: exponential smoothing is a moving average with geometrically decaying weights, and the MA terms in ARIMA are a moving average of past *errors* rather than of past values.",
         "Everything about it is one trade. Averaging w points reduces the variance of independent noise by a factor of w, so a wider window gives a smoother line. But a trailing window's centre of mass sits (w−1)/2 periods in the past, so the smoothed line lags the series by exactly that much — and the first w−1 points have no value at all. The simulation makes both sides measurable: widening the window drops the month-to-month roughness sharply while the lag readout climbs in step.",

@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureLayer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,25 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val svdContent = TopicContent(
     topicId = "svd",
+    figure = Figure(
+        caption = "Read as a map, every matrix — square or not, invertible or not, full rank or " +
+            "not — is these three steps and nothing else: rotate, stretch along the axes, rotate " +
+            "again. The factorization exists unconditionally, which is why so many methods turn " +
+            "out to be it in disguise: PCA is the SVD of a centred data matrix, least squares " +
+            "through the pseudo-inverse is the SVD with zero singular values dropped, LSA is the " +
+            "SVD of a term-document matrix, and the condition number is σ₁/σₙ, read straight off " +
+            "the middle block. Truncating that middle block to its k largest entries gives the " +
+            "best rank-k approximation that exists in Frobenius norm (Eckart–Young), and the error " +
+            "left over is exactly the norm of the singular values thrown away.",
+        shape = FigureShape.LayerStack(
+            layers = listOf(
+                FigureLayer("Vᵀ", "rotate", FigureTone.Muted),
+                FigureLayer("Σ", "stretch: σ₁ ≥ … ≥ σₙ ≥ 0", FigureTone.Accent),
+                FigureLayer("U", "rotate", FigureTone.Muted),
+            ),
+            horizontal = true,
+        ),
+    ),
     whatIsIt = listOf(
         "Every matrix — square or not, invertible or not, full rank or not — factors as X = UΣVᵀ. The right singular vectors V are an orthonormal basis for the input space, the left singular vectors U are one for the output space, and Σ is diagonal and non-negative. Read as a map, it says any linear transformation is a rotation, then an axis-aligned stretch, then another rotation. There is nothing else it can be.",
         "That unconditional existence is why the SVD sits underneath so much else. PCA is the SVD of a centred data matrix. Least squares through the pseudo-inverse is the SVD with the zero singular values dropped. Latent semantic analysis is the SVD of a term-document matrix, and the matrix-completion recommenders of the 2000s are its truncated form fitted with missing entries. The condition number of a matrix is σ₁/σₙ. Learn the factorization once and a dozen apparently separate techniques become the same technique.",

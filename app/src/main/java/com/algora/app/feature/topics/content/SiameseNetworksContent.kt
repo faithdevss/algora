@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,26 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val siameseNetworksContent = TopicContent(
     topicId = "siamese_networks",
+    figure = Figure(
+        caption = "One-shot accuracy on a class the network never trained on, same data both " +
+            "times. The dataset is built so the failure is unambiguous: three features carry the " +
+            "class signal and a fourth carries five times their variance in pure class-irrelevant " +
+            "noise. A nearest-neighbour vote in raw feature space gets 0.65, dragged around by " +
+            "that nuisance dimension, which dominates any Euclidean distance no matter what the " +
+            "informative features say. An embedding trained with a contrastive loss on three of " +
+            "the four classes — never told which dimension was noise, only shown which pairs " +
+            "matched — reaches 1.00 on the held-out fourth. Suppressing that dimension is a " +
+            "property of the transform, not of any class, which is exactly why it carries over to " +
+            "a class it never saw.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("raw features", 0.65f, FigureTone.Warn),
+                FigureBar("learned embedding", 1.00f, FigureTone.Accent),
+            ),
+            yLabel = "one-shot accuracy, held-out class",
+            xLabel = "what the nearest-neighbour vote runs on",
+        ),
+    ),
     whatIsIt = listOf(
         "A Siamese network trains one embedding function on pairs of examples rather than training a classifier on individual labels — the same weights process both halves of every pair, and a contrastive loss pulls same-class pairs' embeddings together and pushes different-class pairs apart by at least a margin. The point of doing this rather than ordinary classification is what it buys at test time: a new class the network never trained on can be recognized from a single example, because the network was never asked to memorize a fixed list of classes — only to learn a distance that behaves correctly on pairs, which is a property that can transfer to classes it has never seen.",
         "Measured on data built to make the failure mode concrete: three features carry class information and a fourth carries five times their variance in pure, class-irrelevant noise. Classifying a query by its nearest raw-feature neighbor gets 65% right, dragged around by the nuisance dimension that dominates any raw Euclidean distance regardless of what the informative features say. An embedding trained with a contrastive loss on three of the four classes — never told which dimension was noise, only shown which pairs matched and which did not — reaches 100% one-shot accuracy on a fourth class it never trained on at all.",
