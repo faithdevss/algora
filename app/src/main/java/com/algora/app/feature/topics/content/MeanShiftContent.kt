@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,35 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val meanShiftContent = TopicContent(
     topicId = "mean_shift",
+    figure = Figure(
+        caption = "Mean shift run for real on 80 one-dimensional points drawn as three groups around " +
+            "0.20, 0.35 and 0.75, with the bandwidth swept from 0.02 to 0.40; the axis top is 11 " +
+            "clusters. The count falls 11, 10, 5, 3, 3, 2, 2, 2, 1 — the truth is recovered only in " +
+            "the narrow window around h = 0.06 to 0.08, where the two nearby groups are still " +
+            "resolved and the far one has not yet merged. Below it every small fluctuation in the " +
+            "density estimate becomes its own mode; above it the estimate smooths into one hill. " +
+            "\"No k required\" is accurate and is not the same as no choice required.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "clusters found",
+                    listOf(
+                        FigurePoint(0.05f, 1f), FigurePoint(0.075f, 0.909f),
+                        FigurePoint(0.1f, 0.455f), FigurePoint(0.15f, 0.273f),
+                        FigurePoint(0.2f, 0.273f), FigurePoint(0.3f, 0.182f),
+                        FigurePoint(0.4f, 0.182f), FigurePoint(0.6f, 0.182f),
+                        FigurePoint(1f, 0.091f),
+                    ),
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.15f, 0.273f, "h=0.06 → 3"),
+                FigurePoint(1f, 0.091f, "h=0.4 → 1", FigureTone.Warn),
+            ),
+            xLabel = "bandwidth h  (0 → 0.4)",
+            yLabel = "clusters  (0 → 11)",
+        ),
+    ),
     whatIsIt = listOf(
         "Mean shift treats the data as samples from an underlying density and looks for that density's peaks. Every point is a seed that repeatedly moves to the kernel-weighted mean of its neighbours, and since a neighbourhood's weighted mean always sits toward its denser side, each seed climbs uphill without any gradient ever being computed.",
         "Seeds that arrive at the same peak form a cluster, so the number of clusters is discovered rather than specified. That makes it genuinely different from k-means, which cannot tell you k, and it also produces arbitrarily-shaped clusters because nothing constrains the basin of attraction of a mode to be convex or round.",

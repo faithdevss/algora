@@ -64,6 +64,8 @@ class AiFigureCoverageTest {
         "bagging", "random_forest", "extra_trees", "voting", "stacking", "isolation_forest",
         // A15 — boosting, from the original algorithm to the three production libraries.
         "adaboost", "gradient_boosting", "xgboost", "lightgbm", "catboost",
+        // A16 — clustering beyond k-means: density, mixtures, linkage, modes and spectra.
+        "dbscan", "gmm", "hierarchical_clustering", "mean_shift", "spectral_clustering", "k_medians",
     )
 
     @Test
@@ -81,6 +83,6 @@ class AiFigureCoverageTest {
     @Test
     fun `the pilot is the size the phase was scoped against`() {
         // Keeps the batch table in docs/plan/phase-12-ai-figures.md verifiable rather than folklore.
-        assertEquals(96, pilotFigures.size)
+        assertEquals(102, pilotFigures.size)
     }
 }

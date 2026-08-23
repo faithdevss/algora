@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,42 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val kMediansContent = TopicContent(
     topicId = "k_medians",
+    figure = Figure(
+        caption = "Five points at 0.20, 0.24, 0.28, 0.32 and 0.36, plus one that is dragged from " +
+            "0.4 out to 3.0; the axis top is 0.8. The mean follows it the whole way — 0.30 to 0.733 " +
+            "— because squared error charges by distance, so the further out the point goes the more " +
+            "it is worth moving the centre toward it. The median never leaves 0.30, because it only " +
+            "counts how many points sit on each side and the answer to that never changed. " +
+            "Breakdown point 50% against 0%: half the data can be corrupted before a median moves " +
+            "at all, and one point is enough to take a mean anywhere you like.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "mean (k-means)",
+                    listOf(
+                        FigurePoint(0.133f, 0.375f), FigurePoint(0.2f, 0.417f),
+                        FigurePoint(0.267f, 0.458f), FigurePoint(0.333f, 0.500f),
+                        FigurePoint(0.5f, 0.604f), FigurePoint(0.667f, 0.708f),
+                        FigurePoint(1f, 0.917f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+                FigureSeries(
+                    "median (k-medians)",
+                    listOf(
+                        FigurePoint(0.133f, 0.375f), FigurePoint(0.333f, 0.375f),
+                        FigurePoint(0.667f, 0.375f), FigurePoint(1f, 0.375f),
+                    ),
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(1f, 0.917f, "0.733", FigureTone.Warn),
+                FigurePoint(1f, 0.375f, "0.300"),
+            ),
+            xLabel = "outlier position  (0.4 → 3.0)",
+            yLabel = "centre  (0 → 0.8)",
+        ),
+    ),
     whatIsIt = listOf(
         "K-medians runs the identical alternating loop as k-means — assign every point to a centre, recompute the centres, repeat — and changes only two things. Distance becomes Manhattan rather than squared Euclidean, and the centre becomes the per-coordinate median rather than the mean.",
         "Those two changes are the same change viewed twice. The mean is the value minimizing squared error and the median is the value minimizing absolute error, so choosing L1 as the distance forces the median as the centre. The consequence is robustness: doubling how far an outlier sits moves a mean proportionally and moves a median not at all, because a median only counts how many points are on each side, not how far away they are.",

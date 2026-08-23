@@ -1,7 +1,7 @@
 # Phase 12 — Figures for AI topics (pilot)
 
-Status: **Pilot shipped, free tier closed, premium extension in progress.** 96 of 323 AI topics
-carry a figure — the A1–A5 pilot plus A6–A15. The remaining 227 continue in the same batch size —
+Status: **Pilot shipped, free tier closed, premium extension in progress.** 102 of 323 AI topics
+carry a figure — the A1–A5 pilot plus A6–A16. The remaining 221 continue in the same batch size —
 see *What the pilot was for* below.
 
 Depends on: the figure layer (`core/data/model/Figure.kt`, `feature/topics/FigureCard.kt`,
@@ -28,7 +28,7 @@ were, and they are exactly the three it named.
 |---|---|---|
 | Interview Prep — Patterns | 57 | 57 |
 | Data Structures + Algorithms | 122 | 122 |
-| ML / DL / NLP / RL | 323 unique (356 entries, 33 cross-listed) | **96** (all free-tier topics, plus A13–A15) |
+| ML / DL / NLP / RL | 323 unique (356 entries, 33 cross-listed) | **102** (all free-tier topics, plus A13–A16) |
 
 ## New shapes
 
@@ -72,6 +72,7 @@ meant. Cells are square — an attention matrix drawn as a rectangle loses its d
 | A13 | First premium batch — ML classification | `logistic_regression`, `knn`, `svm`, `svm_rbf`, `nu_svc`, `lda`, `qda`, `passive_aggressive` |
 | A14 | Premium — ensembles that average | `bagging`, `random_forest`, `extra_trees`, `voting`, `stacking`, `isolation_forest` |
 | A15 | Premium — boosting | `adaboost`, `gradient_boosting`, `xgboost`, `lightgbm`, `catboost` |
+| A16 | Premium — clustering beyond k-means | `dbscan`, `gmm`, `hierarchical_clustering`, `mean_shift`, `spectral_clustering`, `k_medians` |
 
 Each batch's shape work landed in the same commit as its first figures — a shape with no caller is
 unreviewable.
@@ -83,7 +84,7 @@ unreviewable.
 - `feature/topics/FigureCard.kt` — `PlotFigure`, `LayerStackFigure`, `HeatmapFigure`, three `when`
   branches. Also dropped a dead `widestNode` local left in `GraphFigure` by F2.
 - `feature/topics/content/*.kt` — 30 files gained a `figure = Figure(…)` argument after `topicId`.
-  A6–A15 added 66 more the same way; no renderer change since A4.
+  A6–A16 added 72 more the same way; no renderer change since A4.
 - `feature/topics/FigureShapeTest.kt` — three conformance tests; the enumeration already covered
   ML/DL/NLP/RL, so no wiring changed.
 - `feature/topics/AiFigureCoverageTest.kt` — new.
@@ -116,7 +117,7 @@ lines. A shape-only batch (A1, A3, A4) costs about one extra hour for renderer p
 
 Per batch: `./gradlew :app:testDebugUnitTest` (`FigureShapeTest`, `AiFigureCoverageTest`,
 `DsaFigureCoverageTest`, `FigureCoverageTest`, `ContentCoverageTest`) then `./gradlew assembleDebug`.
-Both green for A1–A15.
+Both green for A1–A16.
 
 **Emulator pass — partial, and it earned its keep.** Nine of the 30 pages walked on a 1080×2400
 emulator, chosen to hit every shape at its densest: MLP and CNNs (vertical `LayerStack` at three and
@@ -133,15 +134,27 @@ Two risks named above turned out not to be real: the heatmap ramp is legible at 
 both themes, and the plot's axis labels do not crowd at three series.
 
 **Still outstanding:** the other 21 pilot pages, light mode for six of the nine walked, and all of
-A9–A15. The riskiest cells there, in the order worth checking: `knn`'s graph, which hangs five
+A9–A16. The riskiest cells there, in the order worth checking: `knn`'s graph, which hangs five
 labelled edges off one node — the densest edge labelling in the app, and the only cell in A13 no unit
 test can size; the `mdp` and `apriori` graphs, whose hand-placed nodes push to y = 0.04/0.96;
-`qda`'s 7×7 heatmap at 182dp with nine outlined cells; `extra_trees`' seven-cell strip, the first to
+`hierarchical_clustering`'s dendrogram, the largest tree in the app at eleven nodes and six leaves —
+every earlier one stopped at nine, and the radius is capped by slot width, so six leaves is where a
+label starts to outgrow its circle; `qda`'s 7×7 heatmap at 182dp with nine outlined cells; `extra_trees`' seven-cell strip, the first to
 carry a full-width aux row of five-character numbers; `catboost`'s 3×6 grid, whose six four-character
 cells plus row headers are the narrowest columns any grid has asked for; `policy`'s heatmap row
 labels, which get 16%
 of the card's width at 9sp; `conv_layers`' 7×7 grid, the tallest in the app at 210dp; and `bert`'s
 six-cell strip, where "[MASK]" has to fit a sixth of the width at labelMedium.
+
+**A16 ran four of six algorithms outright.** Mean shift, single-linkage agglomeration, the DBSCAN
+core/border/noise labelling and the graph Laplacian's spectrum were all executed in NumPy rather than
+described — which is where the figures earned something the prose had not said. The bandwidth sweep
+came out 11, 10, 5, 3, 3, 2, 2, 2, 1, so the window that recovers the true three clusters is two
+values wide out of nine, a far narrower target than "sensitive to bandwidth" suggests. GMM's
+responsibility curves were the opposite correction: the band where neither component exceeds 80% is
+6% of the range, so "soft clustering" is hard almost everywhere, and the figure says which 6% it is
+not. The 4-NN moons graph is the one figure that came out cleaner than expected — exactly two zero
+eigenvalues, so the count is readable off the spectrum before any clustering runs.
 
 **A15 closed the ensemble block, and two of its five figures are the page's own code output.**
 `lightgbm` draws the level-wise-versus-leaf-wise example the page states in ASCII — 4.3 against 6.1
@@ -181,6 +194,6 @@ perplexity's k = 0.01 optimum ended up on the axes as measured rather than appro
 
 ## Non-goals
 
-- **The remaining 227 (premium) AI topics.** Plan against the cost note above.
+- **The remaining 221 (premium) AI topics.** Plan against the cost note above.
 - **Phase 11's F8 sweep.** Skipped by decision; `feat/dsa-figures` still ends at F7.
 - **Replacing any simulation.** Figures sit above the steps; the labs are untouched.

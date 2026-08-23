@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,42 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val dbscanContent = TopicContent(
     topicId = "dbscan",
+    figure = Figure(
+        caption = "Ten points at ε = 0.22 with minPts = 4, counting the point itself. Seven have " +
+            "four neighbours inside the radius and are core; two have three and two, so they are " +
+            "border points — not dense enough to grow a cluster, but close enough to a core point to " +
+            "join one. The tenth has nothing within 0.22 of it and is noise, which is a label DBSCAN " +
+            "produces rather than an error state. Note what fixes the two clusters: not a count, not " +
+            "a shape, only which points can be chained together through core points.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("c", 0.18f, 0.72f, FigureTone.Primary),
+                FigureGraphNode("c", 0.30f, 0.78f, FigureTone.Primary),
+                FigureGraphNode("c", 0.26f, 0.60f, FigureTone.Primary),
+                FigureGraphNode("b", 0.14f, 0.86f, FigureTone.Accent),
+                FigureGraphNode("b", 0.46f, 0.62f, FigureTone.Accent),
+                FigureGraphNode("c", 0.70f, 0.34f, FigureTone.Primary),
+                FigureGraphNode("c", 0.82f, 0.40f, FigureTone.Primary),
+                FigureGraphNode("c", 0.76f, 0.22f, FigureTone.Primary),
+                FigureGraphNode("c", 0.88f, 0.28f, FigureTone.Primary),
+                FigureGraphNode("n", 0.50f, 0.10f, FigureTone.Warn),
+            ),
+            edges = listOf(
+                FigureEdge(0, 1, tone = FigureTone.Primary),
+                FigureEdge(0, 2, tone = FigureTone.Primary),
+                FigureEdge(1, 2, tone = FigureTone.Primary),
+                FigureEdge(0, 3, tone = FigureTone.Accent),
+                FigureEdge(1, 3, tone = FigureTone.Accent),
+                FigureEdge(2, 4, tone = FigureTone.Accent),
+                FigureEdge(5, 6, tone = FigureTone.Primary),
+                FigureEdge(5, 7, tone = FigureTone.Primary),
+                FigureEdge(5, 8, tone = FigureTone.Primary),
+                FigureEdge(6, 7, tone = FigureTone.Primary),
+                FigureEdge(6, 8, tone = FigureTone.Primary),
+                FigureEdge(7, 8, tone = FigureTone.Primary),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "DBSCAN clusters points by density: it groups together points packed closely and labels points in sparse regions as noise.",
         "Unlike K-Means it needs no preset cluster count, finds arbitrarily shaped clusters, and explicitly identifies outliers.",

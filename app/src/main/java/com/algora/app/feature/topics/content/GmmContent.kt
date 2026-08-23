@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,57 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val gmmContent = TopicContent(
     topicId = "gmm",
+    figure = Figure(
+        caption = "Responsibilities for a one-dimensional mixture of N(0.35, 0.08²) and " +
+            "N(0.70, 0.10²) at equal weights, against the hard assignment k-means would make. The " +
+            "posteriors cross 0.5 at x = 0.511, and the band where neither component holds more than " +
+            "80% is 0.479 to 0.541 — 6% of the range. That is the honest version of \"soft " +
+            "clustering\": almost everywhere the responsibility is effectively 0 or 1, and the value " +
+            "of having it is knowing exactly which points are the ambiguous ones. The hard cut also " +
+            "lands somewhere else entirely, at the midpoint 0.525, because it has no way to account " +
+            "for the right component being the wider of the two.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "γ₁",
+                    listOf(
+                        FigurePoint(0f, 1f), FigurePoint(0.3f, 1f), FigurePoint(0.4f, 0.989f),
+                        FigurePoint(0.45f, 0.929f), FigurePoint(0.475f, 0.823f),
+                        FigurePoint(0.5f, 0.614f), FigurePoint(0.51f, 0.507f),
+                        FigurePoint(0.525f, 0.346f), FigurePoint(0.55f, 0.145f),
+                        FigurePoint(0.575f, 0.050f), FigurePoint(0.6f, 0.015f),
+                        FigurePoint(0.7f, 0f), FigurePoint(1f, 0f),
+                    ),
+                ),
+                FigureSeries(
+                    "γ₂",
+                    listOf(
+                        FigurePoint(0f, 0f), FigurePoint(0.3f, 0f), FigurePoint(0.4f, 0.011f),
+                        FigurePoint(0.45f, 0.071f), FigurePoint(0.475f, 0.177f),
+                        FigurePoint(0.5f, 0.386f), FigurePoint(0.51f, 0.493f),
+                        FigurePoint(0.525f, 0.654f), FigurePoint(0.55f, 0.855f),
+                        FigurePoint(0.575f, 0.950f), FigurePoint(0.6f, 0.985f),
+                        FigurePoint(0.7f, 1f), FigurePoint(1f, 1f),
+                    ),
+                    tone = FigureTone.Accent,
+                ),
+                FigureSeries(
+                    "k-means",
+                    listOf(
+                        FigurePoint(0f, 1f), FigurePoint(0.525f, 1f),
+                        FigurePoint(0.525f, 0f), FigurePoint(1f, 0f),
+                    ),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.51f, 0.507f, "γ = 0.5"),
+            ),
+            xLabel = "x",
+            yLabel = "responsibility",
+        ),
+    ),
     whatIsIt = listOf(
         "A Gaussian mixture model treats the data as drawn from several Gaussians and fits them by expectation-maximization. Each point gets a *responsibility* toward every component rather than a single label — soft clustering — and each component carries a full covariance matrix, so it can be elongated and tilted rather than round.",
         "That covariance is the concrete advantage over k-means, and the relationship between the two is exact rather than analogous. Force every covariance to be spherical and equal, and drive the responsibilities to hard 0/1 assignments, and EM reduces to Lloyd's algorithm precisely. k-means is a special case of this model, which is why it insists on circular clusters — it has no parameter capable of expressing anything else.",

@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,33 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val spectralClusteringContent = TopicContent(
     topicId = "spectral_clustering",
+    figure = Figure(
+        caption = "The Laplacian spectrum of a 4-nearest-neighbour graph over 60 two-moons points, " +
+            "first six eigenvalues, axis top 0.254. Two of them are exactly zero, and that is the " +
+            "diagnostic: the multiplicity of the zero eigenvalue equals the number of connected " +
+            "components, so the graph itself has already answered how many clusters there are before " +
+            "any clustering runs. λ₃ = 0.060 and λ₄ = 0.064 sit low, then the spectrum jumps to " +
+            "0.239 — a gap you can read k from. Nothing about the moons' shape appears anywhere in " +
+            "this; connectivity replaced geometry two steps ago.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "λᵢ",
+                    listOf(
+                        FigurePoint(0f, 0f), FigurePoint(0.2f, 0f), FigurePoint(0.4f, 0.237f),
+                        FigurePoint(0.6f, 0.252f), FigurePoint(0.8f, 0.943f),
+                        FigurePoint(1f, 1f),
+                    ),
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.2f, 0f, "λ₁ = λ₂ = 0"),
+                FigurePoint(0.8f, 0.943f, "the gap", FigureTone.Warn),
+            ),
+            xLabel = "i  (1 → 6)",
+            yLabel = "λ  (0 → 0.254)",
+        ),
+    ),
     whatIsIt = listOf(
         "Spectral clustering changes the question from \"which points are close together\" to \"which points are connected\". Build a similarity graph over the data, then partition that graph by cutting as few strong edges as possible — and the clusters that fall out need not be compact, convex or anything else.",
         "Two interleaved crescents make the difference concrete. Each crescent's own centroid sits closer to parts of the other crescent than to its own tips, so k-means cannot possibly separate them: its boundaries are perpendicular bisectors between centres, and no such line splits the moons correctly. But in the similarity graph the two crescents are two components joined by almost nothing, and cutting them apart is easy.",
