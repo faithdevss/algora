@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,25 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val pcaContent = TopicContent(
     topicId = "pca",
+    figure = Figure(
+        caption = "Explained variance per component for six features that were generated from two " +
+            "latent factors plus per-feature noise. The first two components hold 71.0% and 23.0% — " +
+            "94.0% together — and the remaining four hold 2.4%, 1.4%, 1.2% and 1.1%, which is the " +
+            "noise floor and nothing else. The elbow is the whole reason a scree plot is drawn: the " +
+            "data was six-dimensional and is honestly two-dimensional, and the drop from 23% to 2.4% " +
+            "says so far more clearly than any variance threshold picked in advance.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("PC1", 0.710f, FigureTone.Primary),
+                FigureBar("PC2", 0.230f, FigureTone.Primary),
+                FigureBar("PC3", 0.024f, FigureTone.Muted),
+                FigureBar("PC4", 0.014f, FigureTone.Muted),
+                FigureBar("PC5", 0.012f, FigureTone.Muted),
+                FigureBar("PC6", 0.011f, FigureTone.Muted),
+            ),
+            yLabel = "explained variance",
+        ),
+    ),
     whatIsIt = listOf(
         "Principal Component Analysis (PCA) reduces the dimensionality of data by projecting it onto the directions of greatest variance — the principal components.",
         "Those components are orthogonal axes ordered by how much variance they capture, so keeping the top few retains most of the information in far fewer dimensions.",

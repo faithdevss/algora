@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,44 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val lleContent = TopicContent(
     topicId = "lle",
+    figure = Figure(
+        caption = "A 120-point folded curve in the plane, with k swept from 3 to 26. Purity is the " +
+            "share of each point's k neighbours that are genuinely nearby *along* the curve; the " +
+            "short-circuit count is the number of neighbour links that jump between folds, " +
+            "normalised against its maximum of 676. Both are flat until k = 6 and then go in " +
+            "opposite directions — one link at k = 8, ten at k = 10, and 142 at k = 14, by which " +
+            "point purity has fallen to 0.89 and the weights are describing a shortcut through empty " +
+            "space rather than the surface. Nothing about the embedding warns you: the eigenproblem " +
+            "solves exactly as cleanly on a short-circuited graph as on a good one.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "neighbourhood purity",
+                    listOf(
+                        FigurePoint(0f, 1f), FigurePoint(0.043f, 1f), FigurePoint(0.087f, 1f),
+                        FigurePoint(0.130f, 1f), FigurePoint(0.217f, 0.999f),
+                        FigurePoint(0.304f, 0.988f), FigurePoint(0.478f, 0.889f),
+                        FigurePoint(0.739f, 0.750f), FigurePoint(1f, 0.664f),
+                    ),
+                ),
+                FigureSeries(
+                    "short circuits",
+                    listOf(
+                        FigurePoint(0f, 0f), FigurePoint(0.130f, 0f), FigurePoint(0.217f, 0.001f),
+                        FigurePoint(0.304f, 0.015f), FigurePoint(0.478f, 0.210f),
+                        FigurePoint(0.739f, 0.607f), FigurePoint(1f, 1f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.130f, 0f, "k=6: none"),
+                FigurePoint(0.478f, 0.210f, "k=14: 142", FigureTone.Warn),
+            ),
+            xLabel = "k  (3 → 26)",
+            yLabel = "purity / links",
+        ),
+    ),
     whatIsIt = listOf(
         "Locally Linear Embedding rests on one observation: a curved surface is flat if you look at a small enough piece of it. So although the data as a whole is not linear, each point *is* approximately a linear combination of its few nearest neighbours — and the coefficients of that combination describe the local geometry without reference to any coordinate system.",
         "That last part is what makes the method work. The reconstruction weights are constrained to sum to one, which makes them invariant to translating, rotating and rescaling the patch they were computed in. They therefore describe the patch's shape rather than its position, and the same weights remain meaningful in a completely different space. LLE finds low-dimensional coordinates in which each point is still reconstructed by its neighbours using those same weights — which turns out to be an eigenvector problem, solvable in closed form with no gradient descent, no learning rate and no random restarts.",

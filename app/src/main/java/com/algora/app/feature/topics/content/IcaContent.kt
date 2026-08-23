@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,44 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val icaContent = TopicContent(
     topicId = "ica",
+    figure = Figure(
+        caption = "Two uniform sources mixed by a non-orthogonal matrix, whitened, then projected " +
+            "along every direction from 0° to 180°; the curve is |excess kurtosis|, distance from " +
+            "Gaussian, with the axis top at 1.25. The peaks at 82.5° and 172.5° reach 1.19 and 1.21 " +
+            "— the sources' own kurtoses are 1.19 and 1.21 — so maximising non-Gaussianity lands " +
+            "exactly on them. The troughs at 37.5° and 127.5° fall to 0.61: those directions are " +
+            "sums of both sources and the central limit theorem has pulled them halfway to a " +
+            "Gaussian. The whole method is reading this curve's maxima, and it is also why Gaussian " +
+            "sources are impossible — the curve would be flat and every direction equally good.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "|excess kurtosis|",
+                    listOf(
+                        FigurePoint(0f, 0.914f), FigurePoint(0.042f, 0.813f),
+                        FigurePoint(0.083f, 0.690f), FigurePoint(0.125f, 0.576f),
+                        FigurePoint(0.167f, 0.503f), FigurePoint(0.208f, 0.490f),
+                        FigurePoint(0.25f, 0.539f), FigurePoint(0.292f, 0.637f),
+                        FigurePoint(0.333f, 0.758f), FigurePoint(0.375f, 0.870f),
+                        FigurePoint(0.417f, 0.941f), FigurePoint(0.458f, 0.953f),
+                        FigurePoint(0.5f, 0.903f), FigurePoint(0.542f, 0.804f),
+                        FigurePoint(0.583f, 0.683f), FigurePoint(0.625f, 0.572f),
+                        FigurePoint(0.667f, 0.503f), FigurePoint(0.708f, 0.492f),
+                        FigurePoint(0.75f, 0.544f), FigurePoint(0.792f, 0.646f),
+                        FigurePoint(0.833f, 0.769f), FigurePoint(0.875f, 0.881f),
+                        FigurePoint(0.917f, 0.953f), FigurePoint(0.958f, 0.965f),
+                        FigurePoint(1f, 0.914f),
+                    ),
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.458f, 0.953f, "a source"),
+                FigurePoint(0.208f, 0.490f, "a mixture", FigureTone.Warn),
+            ),
+            xLabel = "projection angle  (0° → 180°)",
+            yLabel = "|κ|  (0 → 1.25)",
+        ),
+    ),
     whatIsIt = listOf(
         "Independent Component Analysis answers a different question from PCA, and the difference is not a matter of degree. PCA asks which directions carry the most variance, and its answer is an orthogonal basis because that is what maximising variance under an orthogonality constraint produces. ICA asks which directions carry statistically independent signals — and there is no reason those should be at right angles to each other.",
         "The canonical setting is the cocktail party: several microphones each pick up a different linear mixture of several speakers, and the task is to recover the speakers. Written as X = AS, with S the sources and A an unknown mixing matrix, ICA estimates an unmixing matrix W ≈ A⁻¹ without ever seeing S or A. PCA cannot do this even in principle: the mixing directions are generally not orthogonal, and PCA's are orthogonal by construction, so the true answer is not in the set of answers PCA can return.",

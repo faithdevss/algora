@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,45 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val umapContent = TopicContent(
     topicId = "umap",
+    figure = Figure(
+        caption = "Two neighbourhoods twelve times apart in density, each solved the way UMAP solves " +
+            "them: ρ is the nearest-neighbour distance and σ is found so the weights sum to " +
+            "log₂8 = 3. The dense point's nearest neighbour sits at 0.05 and the sparse point's at " +
+            "0.60, and both leave with weight exactly 1 — the curve is flat until ρ, then decays on " +
+            "the point's own scale, σ = 0.056 against 0.310. That is the whole density-robustness " +
+            "claim in one picture: a global bandwidth would either cut the sparse point off from " +
+            "everything or fuse the dense one into a blob, and the ρ subtraction guarantees that " +
+            "neither region can be stranded.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "dense (ρ = 0.05)",
+                    listOf(
+                        FigurePoint(0f, 1f), FigurePoint(0.031f, 1f), FigurePoint(0.063f, 0.409f),
+                        FigurePoint(0.125f, 0.068f), FigurePoint(0.188f, 0.011f),
+                        FigurePoint(0.25f, 0.002f), FigurePoint(0.375f, 0f), FigurePoint(1f, 0f),
+                    ),
+                ),
+                FigureSeries(
+                    "sparse (ρ = 0.60)",
+                    listOf(
+                        FigurePoint(0f, 1f), FigurePoint(0.375f, 1f), FigurePoint(0.438f, 0.725f),
+                        FigurePoint(0.5f, 0.525f), FigurePoint(0.563f, 0.380f),
+                        FigurePoint(0.625f, 0.276f), FigurePoint(0.688f, 0.200f),
+                        FigurePoint(0.75f, 0.145f), FigurePoint(0.875f, 0.076f),
+                        FigurePoint(1f, 0.040f),
+                    ),
+                    tone = FigureTone.Accent,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.031f, 1f, "σ = 0.056"),
+                FigurePoint(0.375f, 1f, "σ = 0.310", FigureTone.Accent),
+            ),
+            xLabel = "distance  (0 → 1.6)",
+            yLabel = "edge weight",
+        ),
+    ),
     whatIsIt = listOf(
         "UMAP builds a weighted k-nearest-neighbour graph over the data and then lays that graph out in two dimensions with attraction along its edges and repulsion everywhere else. The published derivation is in the language of Riemannian geometry and fuzzy simplicial sets; the algorithm that falls out of it is a graph construction followed by a force-directed layout, and it is worth holding both descriptions at once — the theory explains the choices, and the implementation is what runs.",
         "Two details in the graph construction carry most of the practical difference from t-SNE. Each point's distance to its *nearest* neighbour, ρᵢ, is subtracted before the exponential, so every point is joined to something with weight 1 and no point can be stranded by a change in local density. And the two directed edge weights are combined as a + b − ab — a union rather than an average — so an edge survives if either endpoint counts the other as a neighbour. Those two choices are what keep the graph connected across regions of very different density, which is the situation that makes t-SNE's per-point σ do all the work.",

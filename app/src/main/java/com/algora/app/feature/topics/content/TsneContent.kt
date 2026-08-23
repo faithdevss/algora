@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,49 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val tsneContent = TopicContent(
     topicId = "tsne",
+    figure = Figure(
+        caption = "The crowding fix, drawn as the two kernels themselves: the Gaussian used in the " +
+            "original space against the Student-t with one degree of freedom used in the map. They " +
+            "agree closely to about d = 1 and then separate without limit — at d = 3 the t-kernel is " +
+            "9× the Gaussian, at d = 4 it is 175×, at d = 6 it is over a million. A pair of " +
+            "moderately-distant points can therefore be placed far apart in the map for almost no " +
+            "penalty, which is what makes room in two dimensions for distances that came from two " +
+            "hundred. It is also the reason gaps between clusters cannot be read: the kernel is " +
+            "specifically built so that large map distances cost nothing.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "Gaussian",
+                    listOf(
+                        FigurePoint(0f, 1f), FigurePoint(0.083f, 0.883f),
+                        FigurePoint(0.167f, 0.607f), FigurePoint(0.25f, 0.325f),
+                        FigurePoint(0.333f, 0.135f), FigurePoint(0.417f, 0.044f),
+                        FigurePoint(0.5f, 0.011f), FigurePoint(0.583f, 0.002f),
+                        FigurePoint(0.667f, 0f), FigurePoint(1f, 0f),
+                    ),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "Student-t, ν = 1",
+                    listOf(
+                        FigurePoint(0f, 1f), FigurePoint(0.083f, 0.800f),
+                        FigurePoint(0.167f, 0.500f), FigurePoint(0.25f, 0.308f),
+                        FigurePoint(0.333f, 0.200f), FigurePoint(0.417f, 0.138f),
+                        FigurePoint(0.5f, 0.100f), FigurePoint(0.583f, 0.075f),
+                        FigurePoint(0.667f, 0.059f), FigurePoint(0.833f, 0.038f),
+                        FigurePoint(1f, 0.027f),
+                    ),
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.5f, 0.100f, "9× here"),
+                FigurePoint(0.667f, 0.059f, "175× here", FigureTone.Warn),
+            ),
+            xLabel = "distance  (0 → 6)",
+            yLabel = "affinity",
+        ),
+    ),
     whatIsIt = listOf(
         "t-SNE gives up on preserving distances and preserves neighbourhoods instead. It converts distances in the original space into probabilities — pⱼ|ᵢ is how likely point i would be to pick j as its neighbour — builds the same kind of distribution in the two-dimensional map, and then moves the map's points around until the two distributions agree, minimising KL(P‖Q) by gradient descent.",
         "Two design choices do the real work. The Gaussian width σᵢ is solved separately for each point by binary search, so that every neighbourhood has the same entropy — that is what perplexity controls, and it is why a dense cluster and a sparse one are treated even-handedly. And the map-space distribution uses a Student-t with one degree of freedom rather than a Gaussian. Its heavy tail lets moderately-distant points sit far apart in the map at little cost, which is the fix for the crowding problem: there is simply not enough room in two dimensions for everything that was mutually distant in two hundred.",

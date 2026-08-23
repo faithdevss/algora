@@ -66,6 +66,8 @@ class AiFigureCoverageTest {
         "adaboost", "gradient_boosting", "xgboost", "lightgbm", "catboost",
         // A16 — clustering beyond k-means: density, mixtures, linkage, modes and spectra.
         "dbscan", "gmm", "hierarchical_clustering", "mean_shift", "spectral_clustering", "k_medians",
+        // A17 — dimensionality reduction, linear and manifold.
+        "pca", "ica", "tsne", "umap", "lle", "factor_analysis",
     )
 
     @Test
@@ -83,6 +85,6 @@ class AiFigureCoverageTest {
     @Test
     fun `the pilot is the size the phase was scoped against`() {
         // Keeps the batch table in docs/plan/phase-12-ai-figures.md verifiable rather than folklore.
-        assertEquals(102, pilotFigures.size)
+        assertEquals(108, pilotFigures.size)
     }
 }

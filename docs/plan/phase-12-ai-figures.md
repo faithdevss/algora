@@ -1,7 +1,7 @@
 # Phase 12 — Figures for AI topics (pilot)
 
-Status: **Pilot shipped, free tier closed, premium extension in progress.** 102 of 323 AI topics
-carry a figure — the A1–A5 pilot plus A6–A16. The remaining 221 continue in the same batch size —
+Status: **Pilot shipped, free tier closed, premium extension in progress.** 108 of 323 AI topics
+carry a figure — the A1–A5 pilot plus A6–A17. The remaining 215 continue in the same batch size —
 see *What the pilot was for* below.
 
 Depends on: the figure layer (`core/data/model/Figure.kt`, `feature/topics/FigureCard.kt`,
@@ -28,7 +28,7 @@ were, and they are exactly the three it named.
 |---|---|---|
 | Interview Prep — Patterns | 57 | 57 |
 | Data Structures + Algorithms | 122 | 122 |
-| ML / DL / NLP / RL | 323 unique (356 entries, 33 cross-listed) | **102** (all free-tier topics, plus A13–A16) |
+| ML / DL / NLP / RL | 323 unique (356 entries, 33 cross-listed) | **108** (all free-tier topics, plus A13–A17) |
 
 ## New shapes
 
@@ -73,6 +73,7 @@ meant. Cells are square — an attention matrix drawn as a rectangle loses its d
 | A14 | Premium — ensembles that average | `bagging`, `random_forest`, `extra_trees`, `voting`, `stacking`, `isolation_forest` |
 | A15 | Premium — boosting | `adaboost`, `gradient_boosting`, `xgboost`, `lightgbm`, `catboost` |
 | A16 | Premium — clustering beyond k-means | `dbscan`, `gmm`, `hierarchical_clustering`, `mean_shift`, `spectral_clustering`, `k_medians` |
+| A17 | Premium — dimensionality reduction | `pca`, `ica`, `tsne`, `umap`, `lle`, `factor_analysis` |
 
 Each batch's shape work landed in the same commit as its first figures — a shape with no caller is
 unreviewable.
@@ -84,7 +85,7 @@ unreviewable.
 - `feature/topics/FigureCard.kt` — `PlotFigure`, `LayerStackFigure`, `HeatmapFigure`, three `when`
   branches. Also dropped a dead `widestNode` local left in `GraphFigure` by F2.
 - `feature/topics/content/*.kt` — 30 files gained a `figure = Figure(…)` argument after `topicId`.
-  A6–A16 added 72 more the same way; no renderer change since A4.
+  A6–A17 added 78 more the same way; no renderer change since A4.
 - `feature/topics/FigureShapeTest.kt` — three conformance tests; the enumeration already covered
   ML/DL/NLP/RL, so no wiring changed.
 - `feature/topics/AiFigureCoverageTest.kt` — new.
@@ -117,7 +118,7 @@ lines. A shape-only batch (A1, A3, A4) costs about one extra hour for renderer p
 
 Per batch: `./gradlew :app:testDebugUnitTest` (`FigureShapeTest`, `AiFigureCoverageTest`,
 `DsaFigureCoverageTest`, `FigureCoverageTest`, `ContentCoverageTest`) then `./gradlew assembleDebug`.
-Both green for A1–A16.
+Both green for A1–A17.
 
 **Emulator pass — partial, and it earned its keep.** Nine of the 30 pages walked on a 1080×2400
 emulator, chosen to hit every shape at its densest: MLP and CNNs (vertical `LayerStack` at three and
@@ -134,7 +135,7 @@ Two risks named above turned out not to be real: the heatmap ramp is legible at 
 both themes, and the plot's axis labels do not crowd at three series.
 
 **Still outstanding:** the other 21 pilot pages, light mode for six of the nine walked, and all of
-A9–A16. The riskiest cells there, in the order worth checking: `knn`'s graph, which hangs five
+A9–A17. The riskiest cells there, in the order worth checking: `knn`'s graph, which hangs five
 labelled edges off one node — the densest edge labelling in the app, and the only cell in A13 no unit
 test can size; the `mdp` and `apriori` graphs, whose hand-placed nodes push to y = 0.04/0.96;
 `hierarchical_clustering`'s dendrogram, the largest tree in the app at eleven nodes and six leaves —
@@ -145,6 +146,17 @@ cells plus row headers are the narrowest columns any grid has asked for; `policy
 labels, which get 16%
 of the card's width at 9sp; `conv_layers`' 7×7 grid, the tallest in the app at 210dp; and `bert`'s
 six-cell strip, where "[MASK]" has to fit a sixth of the width at labelMedium.
+
+**A17's figures are mechanisms, not outputs — deliberately.** Every page in this batch produces a
+scatter plot when it runs, and a scatter plot of a t-SNE map is the one thing the t-SNE page already
+warns against reading. So each figure draws the machinery instead: the two kernels whose ratio is 9×
+at d = 3 and 175× at d = 4, UMAP's two ρ-anchored weight curves at σ = 0.056 and σ = 0.310, and ICA's
+kurtosis sweep, whose peaks at 82.5° and 172.5° hit 1.19 and 1.21 against source kurtoses of 1.19 and
+1.21 — the unmixing lands on the sources to two decimal places, computed rather than claimed. `lle`
+needed a substitution: its embedding quality against k came out non-monotone (an eigenvector
+degeneracy in one dimension, not a property of the method), so the figure plots neighbourhood purity
+and short-circuit count instead, both clean and both the actual failure mode. `factor_analysis`
+reuses `catboost`'s narrow-grid shape to put PCA and FA side by side on the same six variables.
 
 **A16 ran four of six algorithms outright.** Mean shift, single-linkage agglomeration, the DBSCAN
 core/border/noise labelling and the graph Laplacian's spectrum were all executed in NumPy rather than
@@ -194,6 +206,6 @@ perplexity's k = 0.01 optimum ended up on the axes as measured rather than appro
 
 ## Non-goals
 
-- **The remaining 221 (premium) AI topics.** Plan against the cost note above.
+- **The remaining 215 (premium) AI topics.** Plan against the cost note above.
 - **Phase 11's F8 sweep.** Skipped by decision; `feat/dsa-figures` still ends at F7.
 - **Replacing any simulation.** Figures sit above the steps; the labs are untouched.

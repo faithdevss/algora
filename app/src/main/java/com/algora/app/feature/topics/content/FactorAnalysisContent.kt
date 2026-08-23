@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,31 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val factorAnalysisContent = TopicContent(
     topicId = "factor_analysis",
+    figure = Figure(
+        caption = "Six variables generated from one common factor with loadings 0.85 down to 0.25, " +
+            "then fitted both ways. PCA's squared first-component loading and factor analysis's " +
+            "communality answer the same question — how much of this variable is shared — and " +
+            "disagree most exactly where it matters. For v5 and v6, the two variables that are " +
+            "mostly private noise, PCA claims 0.18 and 0.11 of shared variance where the factor " +
+            "model finds 0.11 and 0.06, and reports uniquenesses of 0.89 and 0.94. PCA has no term " +
+            "in which to put that noise, so it distributes it across the components instead; the " +
+            "bottom row is the diagnostic PCA structurally cannot produce.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0.76", "0.73", "0.68", "0.61", "0.18", "0.11"),
+                listOf("0.74", "0.68", "0.59", "0.49", "0.11", "0.06"),
+                listOf("0.26", "0.32", "0.41", "0.51", "0.89", "0.94"),
+            ),
+            rowHeaders = listOf("PCA", "h²", "ψ"),
+            colHeaders = listOf("v1", "v2", "v3", "v4", "v5", "v6"),
+            marks = listOf(
+                FigureCell(0, 4, FigureTone.Warn),
+                FigureCell(0, 5, FigureTone.Warn),
+                FigureCell(2, 4),
+                FigureCell(2, 5),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Factor analysis and PCA are routinely used interchangeably and are not the same thing. PCA is a transformation: it rewrites the data in a new basis and makes no claim about how the data came to be. Factor analysis is a generative model — it asserts that each observed variable is a weighted sum of a few unobserved common factors plus a noise term private to that variable, x = Λf + ε, and then estimates Λ and the noise variances from the data.",
         "That private noise term is the whole difference, and it is not cosmetic. PCA has no ε, so its first component must account for every variable's total variance, including the part that is pure measurement error and shared with nothing. Factor analysis is allowed to say \"most of variable 2 is its own noise\" and set that variable's uniqueness high, leaving the factor to describe only what the variables genuinely have in common. Put another way: PCA explains variance, factor analysis explains covariance.",
