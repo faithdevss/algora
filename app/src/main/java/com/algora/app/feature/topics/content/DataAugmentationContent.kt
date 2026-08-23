@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,26 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val dataAugmentationContent = TopicContent(
     topicId = "data_augmentation",
+    figure = Figure(
+        caption = "Same classifier, same noisy test poses, same shapes — only the training set " +
+            "differs. A nearest-centroid model shown one canonical pose scores 0.67, barely off " +
+            "the 0.50 a coin gets on two classes, because its centroid *is* that pose: a rotated " +
+            "copy of the right shape can sit further away than the wrong shape's canonical pose. " +
+            "Train on the four rotations and the reflection and the same model reaches 0.95, " +
+            "because averaging five oriented copies moves the centroid onto the pixels that stay " +
+            "lit across every pose. Nothing about the model changed. A model is invariant only to " +
+            "transformations it has seen vary — which makes an augmentation list a claim about " +
+            "which symmetries the deployment data actually has.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("chance", 0.50f, FigureTone.Muted),
+                FigureBar("1 pose", 0.67f, FigureTone.Warn),
+                FigureBar("5 poses", 0.95f, FigureTone.Accent),
+            ),
+            yLabel = "test accuracy",
+            xLabel = "what the classifier was trained on",
+        ),
+    ),
     whatIsIt = listOf(
         "Data augmentation trains on transformed copies of the same examples — rotated, flipped, cropped, noised — so the model meets more of the variation it will face at inference than the raw training set alone contains. The usual justification is \"it helps generalization,\" which is true but vague enough to hide what is actually failing without it. Measured directly: a nearest-centroid classifier trained on a single canonical pose of two simple shapes gets 67% of noisy test poses right — barely better than guessing across the five orientations it is tested on. Train the same classifier on the shape's four rotations and its reflection instead of the one pose, and accuracy on the identical noisy test set reaches 95%. Nothing about the model changed; only what it was shown did.",
         "The failure mode is exactly what the centroid's geometry predicts. A nearest-centroid classifier's centroid, trained on one pose, is that pose — there is only one example to average. Distance to a rotated or flipped version of the same shape is large, often larger than the distance to the wrong shape's canonical pose, so the classifier is not weak at recognizing the shape; it is precisely calibrated to recognize one orientation of it and nothing else. Averaging five oriented copies moves the centroid to the shape's rotation- and reflection-invariant \"core\" — the pixels that stay lit across every pose — which is far closer to every test variant than either single-pose centroid was.",

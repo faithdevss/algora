@@ -50,6 +50,9 @@ class AiFigureCoverageTest {
         "pos_tagging", "stemming", "stop_words", "text_cleaning",
         // A9 — free-tier RL foundations, on LayerStack, Strip, Heatmap, Graph and Tree.
         "agent_environment", "state_action_reward", "policy", "mdp", "bellman_equation",
+        // A10 — free-tier deep learning foundations and CNN mechanics.
+        "biological_neuron", "perceptron", "conv_layers", "pooling_layers",
+        "early_stopping", "data_augmentation",
     )
 
     @Test
@@ -67,6 +70,6 @@ class AiFigureCoverageTest {
     @Test
     fun `the pilot is the size the phase was scoped against`() {
         // Keeps the batch table in docs/plan/phase-12-ai-figures.md verifiable rather than folklore.
-        assertEquals(59, pilotFigures.size)
+        assertEquals(65, pilotFigures.size)
     }
 }

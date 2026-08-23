@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,35 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val convLayersContent = TopicContent(
     topicId = "conv_layers",
+    figure = Figure(
+        caption = "The same nine weights, at two of the twenty-five positions they visit. On the " +
+            "flat patch the dot product is nothing; straddling the edge it fires — the layer " +
+            "detects its feature wherever the feature is, which is translation equivariance and " +
+            "not something anyone coded. The saving is the other half: 10 parameters for this " +
+            "kernel against 1,250 for a dense layer producing the same 25 outputs, 125× more, each " +
+            "one bolted to a single pixel position. Each output still sees only 3×3, so context is " +
+            "bought by stacking rather than by widening — three of these layers reach 7×7 of the " +
+            "original image (3 → 5 → 7) while parameters grow with k².",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0", "0", "0", "0", "9", "9", "9"),
+                listOf("0", "0", "0", "0", "9", "9", "9"),
+                listOf("0", "0", "0", "0", "9", "9", "9"),
+                listOf("0", "0", "0", "0", "9", "9", "9"),
+                listOf("0", "0", "0", "0", "9", "9", "9"),
+                listOf("0", "0", "0", "0", "9", "9", "9"),
+                listOf("0", "0", "0", "0", "9", "9", "9"),
+            ),
+            marks = listOf(
+                FigureCell(0, 0, FigureTone.Primary), FigureCell(0, 1, FigureTone.Primary), FigureCell(0, 2, FigureTone.Primary),
+                FigureCell(1, 0, FigureTone.Primary), FigureCell(1, 1, FigureTone.Primary), FigureCell(1, 2, FigureTone.Primary),
+                FigureCell(2, 0, FigureTone.Primary), FigureCell(2, 1, FigureTone.Primary), FigureCell(2, 2, FigureTone.Primary),
+                FigureCell(4, 2, FigureTone.Accent), FigureCell(4, 3, FigureTone.Accent), FigureCell(4, 4, FigureTone.Accent),
+                FigureCell(5, 2, FigureTone.Accent), FigureCell(5, 3, FigureTone.Accent), FigureCell(5, 4, FigureTone.Accent),
+                FigureCell(6, 2, FigureTone.Accent), FigureCell(6, 3, FigureTone.Accent), FigureCell(6, 4, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A convolution layer is a small window of weights slid over the whole input, computing one dot product per position. That single design decision replaces two assumptions a dense layer makes and that images do not satisfy: that every input position deserves its own weight, and that the meaning of a pixel depends on where it is. A cat in the top-left corner and the same cat in the bottom-right should produce the same features, and a dense layer has no way to know that without seeing both.",
         "The saving is stark and easy to measure. In the simulation a 3×3 kernel over a 7×7 patch produces a 5×5 feature map with 10 parameters; a dense layer producing those same 25 outputs holds 1,250 — 125× more — and every one of them is bound to one pixel position. The kernel is not just smaller, it is *reused*: the same nine weights are applied at all 25 positions, which is why the layer detects its feature wherever the feature happens to be. That property is translation **equivariance** — shift the input, and the feature map shifts with it.",

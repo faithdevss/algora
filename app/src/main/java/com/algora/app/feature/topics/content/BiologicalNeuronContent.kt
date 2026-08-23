@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,44 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val biologicalNeuronContent = TopicContent(
     topicId = "biological_neuron",
+    figure = Figure(
+        caption = "The f–I curve the lab measures, not a drawn one: firing rate against input " +
+            "current, with rate divided by 220 Hz and current by 80 units to fit the axes. Nothing " +
+            "in the leaky integrate-and-fire code puts a rectifier there. Below 15 units the leak " +
+            "cancels the input and the membrane settles short of −55 mV forever — 0 Hz at 14, 30 Hz " +
+            "at 16. Above it the rate climbs and then bends, because the 2 ms refractory period " +
+            "caps how fast spikes can follow one another: 54 Hz at 20 units, but only 212 Hz at 80. " +
+            "ReLU is the rectifying half of this shape and sigmoid the saturating half — the " +
+            "abstraction had a source. What it discarded is not on the plot: time, spike timing, " +
+            "and any mechanism a synapse could use to run backpropagation.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "firing rate",
+                    listOf(
+                        FigurePoint(0f, 0f),
+                        FigurePoint(0.125f, 0f),
+                        FigurePoint(0.1875f, 0f),
+                        FigurePoint(0.20f, 0.136f),
+                        FigurePoint(0.225f, 0.200f),
+                        FigurePoint(0.25f, 0.245f),
+                        FigurePoint(0.3125f, 0.345f),
+                        FigurePoint(0.375f, 0.427f),
+                        FigurePoint(0.50f, 0.573f),
+                        FigurePoint(0.75f, 0.800f),
+                        FigurePoint(1f, 0.964f),
+                    ),
+                    FigureTone.Primary,
+                ),
+            ),
+            xLabel = "input current I (0–80 units)",
+            yLabel = "rate",
+            markers = listOf(
+                FigurePoint(0.1875f, 0f, "rheobase = 15", FigureTone.Warn),
+                FigurePoint(1f, 0.964f, "212 Hz — refractory cap", FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A neuron collects electrical input through its dendrites, integrates it across its cell body, and — if the accumulated membrane potential crosses about −55 mV — fires an action potential down its axon to the synapses of the next cells. The pulse is all-or-nothing: it is the same size every time, so a neuron cannot signal \"a bit\" by firing a smaller spike. What varies is *when* and *how often*.",
         "The simplest model anyone actually uses is leaky integrate-and-fire, and this topic's simulation runs it: τ dV/dt = −(V − V_rest) + RI, with a threshold, a reset and a refractory period. Two things fall out that no one designed in. Below a critical current — the rheobase, exactly 15 units in the lab's parameterisation — the leak balances the input and the cell never fires at all, however long you wait. Above it, the firing rate rises and then bends over as the refractory period starts limiting how fast spikes can follow one another. Sweep the current and plot the rate and you get the f–I curve: flat, then rising, then saturating.",

@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,31 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val poolingLayersContent = TopicContent(
     topicId = "pooling_layers",
+    figure = Figure(
+        caption = "2×2 max pooling over a 4×4 map: four blocks, four survivors — 6, 4, 7, 9 — and " +
+            "twelve values gone. What leaves with them is *where inside the block* the winner sat, " +
+            "which is the whole mechanism: the output says the feature was present in this " +
+            "quadrant, not where. That buys less than the usual claim. Shifting a bright square by " +
+            "one pixel changes the raw map by 100% of its own magnitude and the pooled map by 50%; " +
+            "at a two-pixel shift it is 175% against 100%. Pooling halves sensitivity to a small " +
+            "shift, it does not remove it, and the advantage is gone once the shift exceeds the " +
+            "window. Average pooling would report how much of the feature was there instead — which " +
+            "is why global average pooling, not max, is what replaced the fully-connected head.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("1", "3", "2", "4"),
+                listOf("5", "6", "1", "2"),
+                listOf("7", "2", "9", "1"),
+                listOf("3", "4", "5", "8"),
+            ),
+            marks = listOf(
+                FigureCell(1, 1, FigureTone.Accent),
+                FigureCell(0, 3, FigureTone.Accent),
+                FigureCell(2, 0, FigureTone.Accent),
+                FigureCell(2, 2, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Pooling summarises a small neighbourhood of a feature map with a single number — the maximum, or the average — and slides that window with a stride equal to its size, so the map shrinks. It has no parameters and nothing to learn. Its job is to reduce how much spatial detail the next layer carries, which cuts memory and compute and, at the same time, grows the receptive field faster than convolution alone.",
         "Max and average answer different questions. Max pooling keeps the strongest response in the block and discards *where inside the block* it occurred, which reads as \"was this feature present here?\". Average pooling reports how much of the feature was present, diluting a single strong response among its neighbours. Max won for detection-style features and average survives in one specific and important place: global average pooling over the final map, which replaced the fully-connected head and deleted the majority of a network's parameters.",

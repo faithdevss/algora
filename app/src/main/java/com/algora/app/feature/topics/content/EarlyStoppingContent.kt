@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,62 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val earlyStoppingContent = TopicContent(
     topicId = "early_stopping",
+    figure = Figure(
+        caption = "One 4,000-step run of the lab's degree-9 fit, all three curves on one scale " +
+            "(MSE ÷ 0.025) against a log step axis, because everything worth seeing happens in the " +
+            "first 3% of training. Training loss falls the entire way — 0.01254 at step 20 to " +
+            "0.01012 at step 4,000 — while true risk, measured against the clean function nobody " +
+            "gets to see during training, bottoms out at step 100 and then climbs 37% above its " +
+            "floor by the end. That divergence is overfitting, and it is the only place it is " +
+            "visible. Validation loss is the proxy you actually have: its own minimum lands at " +
+            "step 120, close to true risk's 100, and then it jitters within 0.3% of that minimum " +
+            "for the remaining 3,880 steps. The bet early stopping makes is that a noisy estimate " +
+            "of roughly the right place beats a clean training curve's promise that more is better.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "validation",
+                    listOf(
+                        FigurePoint(0.361f, 0.935f), FigurePoint(0.445f, 0.861f),
+                        FigurePoint(0.494f, 0.836f), FigurePoint(0.555f, 0.825f),
+                        FigurePoint(0.577f, 0.824f), FigurePoint(0.639f, 0.827f),
+                        FigurePoint(0.722f, 0.830f), FigurePoint(0.806f, 0.832f),
+                        FigurePoint(0.890f, 0.830f), FigurePoint(1f, 0.827f),
+                    ),
+                    FigureTone.Primary,
+                ),
+                FigureSeries(
+                    "training",
+                    listOf(
+                        FigurePoint(0.361f, 0.502f), FigurePoint(0.445f, 0.463f),
+                        FigurePoint(0.494f, 0.452f), FigurePoint(0.555f, 0.446f),
+                        FigurePoint(0.577f, 0.444f), FigurePoint(0.639f, 0.440f),
+                        FigurePoint(0.722f, 0.434f), FigurePoint(0.806f, 0.424f),
+                        FigurePoint(0.890f, 0.414f), FigurePoint(1f, 0.405f),
+                    ),
+                    FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "true risk",
+                    listOf(
+                        FigurePoint(0.361f, 0.257f), FigurePoint(0.445f, 0.206f),
+                        FigurePoint(0.494f, 0.191f), FigurePoint(0.555f, 0.186f),
+                        FigurePoint(0.577f, 0.187f), FigurePoint(0.639f, 0.191f),
+                        FigurePoint(0.722f, 0.199f), FigurePoint(0.806f, 0.210f),
+                        FigurePoint(0.890f, 0.226f), FigurePoint(1f, 0.256f),
+                    ),
+                    FigureTone.Warn,
+                ),
+            ),
+            xLabel = "training step, log scale (20 → 4,000)",
+            yLabel = "MSE",
+            markers = listOf(
+                FigurePoint(0.577f, 0.824f, "val min, step 120", FigureTone.Accent),
+                FigurePoint(0.555f, 0.186f, "true min, step 100", FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Early stopping halts training at the point a held-out validation set says to, rather than running to a fixed epoch count. The usual picture is a clean U: validation loss falls, bottoms out, then rises as the model starts fitting noise the validation set does not share. Fit here for real — a degree-9 polynomial trained by gradient descent on 20 noisy points, watched against a 20-point validation set and scored, separately, against the noise-free function underneath both — the picture is messier and more informative than the textbook curve. Validation loss reaches its minimum at step 120 of a 4,000-step run, then wanders within about 0.3% of that minimum for the rest of training: it neither collapses nor recovers cleanly, it jitters, because 20 points is a small and noisy sample of the true generalization error.",
         "The true-risk curve — error against the clean function the training and validation noise were both added to, which no real deployment ever gets to measure directly but which is exactly what early stopping is trying to protect — tells a cleaner story: it falls from step 20 to a true minimum at step 100, then climbs monotonically for the rest of the run, ending 37% higher at step 4,000 than at its floor. Training loss, over the same stretch, keeps falling the entire time (0.0111 at step 120 down to 0.0101 at step 4,000) — the model is still improving on the data it can see while getting worse on the function that data was drawn from. That divergence, not any single number, is overfitting.",
