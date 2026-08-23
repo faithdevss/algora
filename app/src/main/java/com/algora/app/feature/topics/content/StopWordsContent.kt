@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,23 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val stopWordsContent = TopicContent(
     topicId = "stop_words",
+    figure = Figure(
+        caption = "NLTK's list removes 30 of 51 tokens (58.8%) on the lab's corpus, but it removes by " +
+            "frequency, not by meaning — \"not\" is on it. \"The movie was not good at all\" and " +
+            "\"the movie was good\" both filter down to {movie, good}: an identical bag of words for " +
+            "opposite reviews. TF-IDF's continuous down-weighting (idf(the) = 0.18 vs idf(movie) = " +
+            "1.10) reaches the same saving without deleting the negation that decides the label.",
+        shape = FigureShape.Strip(
+            cells = listOf("the", "movie", "was", "not", "good", "at", "all"),
+            bands = listOf(
+                FigureBand(0, 0, "stopword", FigureTone.Muted),
+                FigureBand(2, 2, "stopword", FigureTone.Muted),
+                FigureBand(3, 3, "the trap", FigureTone.Warn),
+                FigureBand(5, 5, "stopword", FigureTone.Muted),
+                FigureBand(6, 6, "stopword", FigureTone.Muted),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Stop word removal deletes the highest-frequency words in a language — the, is, of, and, to — before anything downstream sees the text. They follow Zipf's law: the top 100 English words are roughly half of all running text, and they appear in nearly every document, so under a bag-of-words model they cost storage and contribute almost nothing to telling one document from another. On the six-review corpus in the lab, NLTK's list removes 30 of 51 tokens and takes the vocabulary from 37 types to 19.",
         "That is a real saving for the systems the technique was invented for. A 1970s inverted index could not afford a postings list containing every document; dropping 40–50% of tokens halved the index and made the common case fast. The same argument still holds for topic models, where high-frequency function words otherwise dominate every topic, and for keyword search, where a query term matching every document ranks nothing.",

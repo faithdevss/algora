@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,23 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val stemmingContent = TopicContent(
     topicId = "stemming",
+    figure = Figure(
+        caption = "\"Running\", \"runner\" and \"runs\" all fall to \"run\" — the vocabulary shrinks and " +
+            "every form now shares one bucket of evidence. \"Easily\" survives as \"easili\", not a " +
+            "real word, because the rules strip by pattern with no dictionary to check against. And " +
+            "\"university\" over-stems to \"univers\", the same stem \"universe\" would also produce — " +
+            "the collision the rules cannot see.",
+        shape = FigureShape.Strip(
+            cells = listOf("running", "runner", "runs", "easily", "university"),
+            bands = listOf(FigureBand(0, 2, "one stem")),
+            pointers = listOf(
+                FigurePointer(3, "not a word", FigureTone.Warn),
+                FigurePointer(4, "over-stem", FigureTone.Warn),
+            ),
+            aux = listOf("run", "run", "run", "easili", "univers"),
+            auxLabel = "Porter stems",
+        ),
+    ),
     whatIsIt = listOf(
         "Stemming crudely chops word endings to reduce related forms to a common root, so 'running', 'runner', and 'runs' collapse toward 'run'.",
         "The Porter stemmer is the classic: a fast set of suffix-stripping rules that ignores meaning, producing a stem that may not even be a real word.",

@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,24 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val textCleaningContent = TopicContent(
     topicId = "text_cleaning",
+    figure = Figure(
+        caption = "Eight stages take the lab's corpus from 35 vocabulary types to 29, and the pilot " +
+            "cells show why that number is not a pure win. \"Café\" folds to \"cafe\" and \"12%\" " +
+            "becomes a placeholder — both merges pay for themselves. But lowercasing runs the same " +
+            "pass over \"US\" and \"us\": two senses become one type, silently, in the step that " +
+            "helped everywhere else.",
+        shape = FigureShape.Strip(
+            cells = listOf("Café", "12%", "Apple's", "US", "us"),
+            bands = listOf(
+                FigureBand(0, 0, "accent fold"),
+                FigureBand(1, 1, "placeholder"),
+                FigureBand(3, 4, "US≠us gone", FigureTone.Warn),
+            ),
+            pointers = listOf(FigurePointer(2, "helps")),
+            aux = listOf("cafe", "<num>", "apple", "us", "us"),
+            auxLabel = "after cleaning — the last two now collide",
+        ),
+    ),
     whatIsIt = listOf(
         "Cleaning is everything done to a string before it is split into tokens: Unicode normalisation, case folding, URL and number placeholders, punctuation handling, accent folding and whitespace collapse. Each stage exists to merge spellings that mean the same thing, because a model that counts words treats \"Apple's\", \"Apple's\" (curly apostrophe) and \"apple\" as three unrelated types with a third of the evidence each. On the lab's four-document corpus the pipeline takes the vocabulary from 35 types to 29.",
         "The order is not arbitrary. Unicode normalisation comes first, before anything compares or measures a string, because NFKC is what makes the curly apostrophe and the ASCII one the same character. Placeholder substitution (URLs, numbers, e-mails) comes before punctuation stripping, or the URL is shredded into fragments that will never be seen again. Whitespace collapse comes last, so splitting on spaces is safe from that point on. Get the order wrong and later stages operate on text earlier ones were supposed to have fixed.",

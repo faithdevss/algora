@@ -46,6 +46,8 @@ class AiFigureCoverageTest {
         // A7 — data preprocessing & model evaluation, free-tier priority: Plot except confusion_matrix (Grid).
         "missing_value_imputation", "label_encoding", "one_hot_encoding", "min_max_normalization",
         "confusion_matrix", "accuracy", "precision_recall", "rmse",
+        // A8 — free-tier NLP preprocessing, on the existing Strip shape.
+        "pos_tagging", "stemming", "stop_words", "text_cleaning",
     )
 
     @Test
@@ -63,6 +65,6 @@ class AiFigureCoverageTest {
     @Test
     fun `the pilot is the size the phase was scoped against`() {
         // Keeps the batch table in docs/plan/phase-12-ai-figures.md verifiable rather than folklore.
-        assertEquals(50, pilotFigures.size)
+        assertEquals(54, pilotFigures.size)
     }
 }

@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,20 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val posTaggingContent = TopicContent(
     topicId = "pos_tagging",
+    figure = Figure(
+        caption = "\"They man a boat\" — the baseline tags every occurrence of \"man\" NN, its most " +
+            "frequent training tag, and gets this one wrong. The HMM tags the same sentence 14/14 " +
+            "against the baseline's 12/14 because it reads \"man\" in context: a pronoun is followed " +
+            "by a verb far more often than not, so PRP shifts the next tag to VBP. Nothing about the " +
+            "string \"man\" decided that — only its neighbours did.",
+        shape = FigureShape.Strip(
+            cells = listOf("they", "man", "a", "boat"),
+            bands = listOf(FigureBand(0, 1, "PRP→verb")),
+            pointers = listOf(FigurePointer(1, "not NN here", FigureTone.Warn)),
+            aux = listOf("PRP", "VBP", "DT", "NN"),
+            auxLabel = "HMM tags, 14/14 — the sequence decides \"man\"",
+        ),
+    ),
     whatIsIt = listOf(
         "Part-of-speech tagging assigns every token its syntactic category — noun, verb, determiner, adjective — from a fixed tagset. The Penn Treebank set has 45 tags, which is more granular than school grammar: NN, NNS, NNP and NNPS are all nouns, and VB, VBD, VBG, VBN, VBP and VBZ are all verbs, because the distinctions carry information a parser needs. It is the first task in almost every classical pipeline, and everything downstream — chunking, parsing, lexicon sentiment — reads its output rather than the words.",
         "The task exists because words are ambiguous in context, not in isolation. \"Man\" is a noun in \"the old man chased a cat\" and a verb in \"they man a boat\", and nothing about the string decides which. On the lab's mini treebank only one type of 24 is ambiguous, which understates the problem badly: on the Brown corpus around 11% of *types* are ambiguous but roughly 40% of *tokens* are, because the ambiguous words are the frequent ones. Any evaluation that reports type-level statistics is measuring the easy half.",

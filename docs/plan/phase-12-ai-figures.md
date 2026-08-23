@@ -1,8 +1,8 @@
 # Phase 12 — Figures for AI topics (pilot)
 
-Status: **Pilot shipped, extension in progress.** 50 of 323 AI topics carry a figure — the A1–A5
-pilot plus A6–A7, batched by free-tier priority from here on (see *Batches* below). The remaining
-~273 continue in the same batch size — see *What the pilot was for* below.
+Status: **Pilot shipped, extension in progress.** 54 of 323 AI topics carry a figure — the A1–A5
+pilot plus A6–A8, batched by free-tier priority from here on (see *Batches* below). The remaining
+~269 continue in the same batch size — see *What the pilot was for* below.
 Depends on: the figure layer (`core/data/model/Figure.kt`, `feature/topics/FigureCard.kt`,
 `FigureShapeTest`) and Phase 11, which took it to 122/122 Data Structures and Algorithms topics.
 
@@ -23,7 +23,7 @@ were, and they are exactly the three it named.
 |---|---|---|
 | Interview Prep — Patterns | 57 | 57 |
 | Data Structures + Algorithms | 122 | 122 |
-| ML / DL / NLP / RL | 323 unique (356 entries, 33 cross-listed) | **50** |
+| ML / DL / NLP / RL | 323 unique (356 entries, 33 cross-listed) | **54** |
 
 ## New shapes
 
@@ -59,6 +59,7 @@ meant. Cells are square — an attention matrix drawn as a rectangle loses its d
 | A5 | The existing six shapes, on AI content | `tokenization` (Strip), `decision_trees` (Tree), `kmeans` (Graph), `q_learning` (Grid) |
 | A6 | `Plot` — regression | `linear_regression`, `polynomial_regression`, `ridge_regression`, `lasso_regression`, `elasticnet_regression`, `stepwise_regression`, `robust_regression`, `quantile_regression`, `bayesian_ridge`, `poisson_regression`, `isotonic_regression`, `lars` |
 | A7 | Free-tier priority — data preprocessing & model evaluation, `Plot` + `Grid` | `missing_value_imputation`, `label_encoding`, `one_hot_encoding`, `min_max_normalization`, `confusion_matrix` (Grid), `accuracy`, `precision_recall`, `rmse` |
+| A8 | Free-tier priority — NLP preprocessing, on the existing `Strip` shape | `pos_tagging`, `stemming`, `stop_words`, `text_cleaning` |
 
 Each batch's shape work landed in the same commit as its first figures — a shape with no caller is
 unreviewable.
