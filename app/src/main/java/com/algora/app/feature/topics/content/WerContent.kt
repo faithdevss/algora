@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,27 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val werContent = TopicContent(
     topicId = "wer",
+    figure = Figure(
+        caption = "Three transcripts of the same nine-word reference, scored by the metric that is " +
+            "supposed to rank them. Dropping three function words leaves the meaning intact and " +
+            "costs 0.333. Deleting the single word \"not\" reverses what was said and costs 0.111 — " +
+            "three times better, because every word costs 1. Add two substituted articles to that " +
+            "reversed hypothesis and it carries 2 substitutions plus 1 deletion: the same 3 errors " +
+            "over the same 9-word denominator, an identical 0.333, and one of the two says the " +
+            "opposite of the truth. Off this axis entirely is the stuck decoder that emits 17 " +
+            "spurious words against a 9-word reference — 1.889, because insertions are counted " +
+            "against a denominator that excludes them, which is why \"accuracy = 1 − WER\" reports " +
+            "−88.9% there. This is what the definition measures, not a tuning problem.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("3 words dropped", 0.333f, FigureTone.Muted),
+                FigureBar("\"not\" dropped", 0.111f, FigureTone.Warn),
+                FigureBar("reversed + 2 subs", 0.333f, FigureTone.Warn),
+            ),
+            yLabel = "WER = (S+D+I)/N",
+            xLabel = "same reference, three hypotheses",
+        ),
+    ),
     whatIsIt = listOf(
         "Word error rate is the word-level edit distance between a transcript and its reference, divided by the reference length: **(S + D + I) / N**. It is the standard score for speech recognition, and every one of its problems follows from two decisions baked into that formula — that all three error types cost exactly 1, and that the denominator counts the reference only.",
         "**WER has no upper bound.** Insertions are counted against a denominator that does not include them, so a decoder that gets stuck and emits 17 spurious words against a 9-word reference scores **1.889 — 188.9%**. Any tool reporting \"accuracy = 1 − WER\" produces −88.9% here, which is not a quantity. WER is an error rate, and rates above 1 are ordinary rather than a bug.",

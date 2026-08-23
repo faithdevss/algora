@@ -53,6 +53,8 @@ class AiFigureCoverageTest {
         // A10 — free-tier deep learning foundations and CNN mechanics.
         "biological_neuron", "perceptron", "conv_layers", "pooling_layers",
         "early_stopping", "data_augmentation",
+        // A11 — free-tier NLP: the encoder, the two metrics, prompting and transfer.
+        "bert", "perplexity", "prompt_engineering", "wer", "transfer_learning",
     )
 
     @Test
@@ -70,6 +72,6 @@ class AiFigureCoverageTest {
     @Test
     fun `the pilot is the size the phase was scoped against`() {
         // Keeps the batch table in docs/plan/phase-12-ai-figures.md verifiable rather than folklore.
-        assertEquals(65, pilotFigures.size)
+        assertEquals(70, pilotFigures.size)
     }
 }

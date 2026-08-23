@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,27 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val bertContent = TopicContent(
     topicId = "bert",
+    figure = Figure(
+        caption = "The 80/10/10 rule, with three positions selected so all three treatments are " +
+            "visible — the real rate is 15%, which on the lab's 64-token corpus is 10 targets " +
+            "against a causal objective's 64, the same forward pass for 6.4× less signal. What it " +
+            "buys is context: 5.44 tokens per prediction against 2.72, because there is no causal " +
+            "mask and every position reads both directions. The split exists to patch a countable " +
+            "mismatch — [MASK] covers 12% of input positions in pre-training and 0% afterwards, so " +
+            "a model that keyed off it would learn a feature that disappears on the day it is " +
+            "used. All three positions are scored, which is why an unmasked token cannot be fully " +
+            "trusted either. Summed from its own config, BERT-base is 109,482,240 parameters.",
+        shape = FigureShape.Strip(
+            cells = listOf("the", "[MASK]", "sat", "banana", "the", "mat"),
+            bands = listOf(
+                FigureBand(1, 1, "80% mask", FigureTone.Primary),
+                FigureBand(3, 3, "10% rand", FigureTone.Warn),
+                FigureBand(5, 5, "10% kept", FigureTone.Accent),
+            ),
+            aux = listOf("", "cat", "", "on", "", "mat"),
+            auxLabel = "scored target — the kept token counts too",
+        ),
+    ),
     whatIsIt = listOf(
         "BERT is a transformer encoder trained by filling in blanks. Fifteen percent of the positions in each sequence are selected, corrupted, and predicted from everything around them — no causal mask anywhere, so every position sees every other one. That is only possible because BERT is never asked to continue text, only to reconstruct it, and it is the reason BERT cannot generate: there is no next-token objective anywhere in the model.",
         "The trade that objective makes is countable, and both sides of it are worth having in mind. On the lab's corpus a causal objective turns all 64 tokens into training targets; masking at 15% turns 10 of them into targets — the same forward pass for 6.4× less signal. In exchange each prediction gets twice the context: averaged over the corpus, a causal prediction sees 2.72 tokens and a masked one 5.44, because it can read to the right as well as the left. Fewer, richer predictions, which is why BERT-style models need more passes over their data than their parameter count suggests.",

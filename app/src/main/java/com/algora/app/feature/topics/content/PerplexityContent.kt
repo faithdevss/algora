@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,45 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val perplexityContent = TopicContent(
     topicId = "perplexity",
+    figure = Figure(
+        caption = "The add-k sweep over both test sentences, scored against the ceiling a model " +
+            "that learned nothing would hit — uniform over 19 words is perplexity exactly 19, so " +
+            "1.0 here is \"knows nothing\". On \"the cat sat on the rug\", whose bigrams were all " +
+            "attested, smoothing only takes mass away from events that happened: the curve is " +
+            "monotone the wrong way, 2.371 at k=0.001 up to 8.229 at k=1, so add-1 costs 3.47× and " +
+            "the unsmoothed model is better still at 2.358. Swap in \"a cat swam in the bowl\" and " +
+            "the unsmoothed model reports infinity — not a bad score, a claim that the sentence is " +
+            "impossible — and only then does an interior optimum appear, at k=0.01. Whether " +
+            "smoothing helps is a property of the test set, not of the smoother.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "all bigrams attested",
+                    listOf(
+                        FigurePoint(0f, 0.125f), FigurePoint(0.303f, 0.131f),
+                        FigurePoint(0.606f, 0.180f), FigurePoint(0.818f, 0.322f),
+                        FigurePoint(0.909f, 0.433f), FigurePoint(1f, 0.568f),
+                    ),
+                    FigureTone.Primary,
+                ),
+                FigureSeries(
+                    "one unseen bigram",
+                    listOf(
+                        FigurePoint(0f, 0.324f), FigurePoint(0.303f, 0.253f),
+                        FigurePoint(0.606f, 0.295f), FigurePoint(0.818f, 0.481f),
+                        FigurePoint(0.909f, 0.604f), FigurePoint(1f, 0.727f),
+                    ),
+                    FigureTone.Warn,
+                ),
+            ),
+            xLabel = "add-k, log scale (0.001 → 2)",
+            yLabel = "PPL ÷ 19",
+            markers = listOf(
+                FigurePoint(0.303f, 0.253f, "optimum, k=0.01", FigureTone.Accent),
+                FigurePoint(0f, 0.125f, "less k is better", FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Perplexity is the only metric in this category that needs no reference answer — just a model and some text. Score every token by how surprised the model was to see it, average the surprisal, exponentiate, and read the result as a branching factor: perplexity 8.229 means the model was as uncertain as one choosing uniformly among 8.2 words at each step.",
         "That reading gives it a ceiling worth knowing. A model that has learned nothing and spreads probability evenly over the lab's 19-word vocabulary has perplexity exactly 19 — the vocabulary size. The trained bigram model's 8.229 is therefore a claim that corpus statistics cut the effective choice by **2.3×**, and nothing more than that.",

@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureLayer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,23 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val transferLearningContent = TopicContent(
     topicId = "transfer_learning",
+    figure = Figure(
+        caption = "What actually gets reused, and what does not. The early blocks hold edges, " +
+            "textures and syntax — structure the original labels did not decide — so they are " +
+            "kept, usually frozen for the first pass so a randomly-initialised head cannot push " +
+            "large gradients back through them. The later blocks are the ones that specialised to " +
+            "the source task, so they are the candidates for fine-tuning at a reduced learning " +
+            "rate. The head is thrown away outright: its output dimension is the old label set. " +
+            "Only the last block carries the new task's labels, which is why a few thousand " +
+            "examples are enough where training the same network from scratch on them is not.",
+        shape = FigureShape.LayerStack(
+            layers = listOf(
+                FigureLayer("early blocks", "frozen — edges, textures, syntax", FigureTone.Muted),
+                FigureLayer("later blocks", "fine-tuned at a lower learning rate", FigureTone.Primary),
+                FigureLayer("new head", "random init, trained on the new labels", FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Transfer learning reuses a network already trained on a large dataset and adapts it to a new task, instead of training from random initialization.",
         "It works because early layers learn generic structure — edges, textures, syntax — that is not specific to the original labels. Replacing only the final head and training that on a few thousand examples routinely beats a from-scratch model trained on the same small dataset.",

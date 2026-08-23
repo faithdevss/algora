@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,48 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val promptEngineeringContent = TopicContent(
     topicId = "prompt_engineering",
+    figure = Figure(
+        caption = "Elimination, counted. Five rules in the lab fit the task description, so " +
+            "zero-shot the answer for \"kayak\" is their vote: k 0.40, a 0.40, and the correct y " +
+            "0.20 — the right rule is outnumbered, and the model's best guess is a tie between two " +
+            "wrong ones. Feeding the demonstration pool in the order a person would reach for it " +
+            "kills one rule at a time and takes four examples to determine the task. One " +
+            "well-chosen demonstration does it immediately: \"level\" is consistent with the middle-" +
+            "letter rule and with nothing else, and 12 of the 15 possible pairs are identifying. " +
+            "An instruction is not on this plot because it is not data — it removes three rules " +
+            "before any example arrives, which is worth three demonstrations of the careless kind.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "pool order",
+                    listOf(
+                        FigurePoint(0f, 1f), FigurePoint(0.1667f, 0.8f),
+                        FigurePoint(0.3333f, 0.6f), FigurePoint(0.5f, 0.4f),
+                        FigurePoint(0.6667f, 0.2f), FigurePoint(0.8333f, 0.2f),
+                        FigurePoint(1f, 0.2f),
+                    ),
+                    FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "\"level\" first",
+                    listOf(
+                        FigurePoint(0f, 1f), FigurePoint(0.1667f, 0.2f),
+                        FigurePoint(0.3333f, 0.2f), FigurePoint(0.5f, 0.2f),
+                        FigurePoint(0.6667f, 0.2f), FigurePoint(0.8333f, 0.2f),
+                        FigurePoint(1f, 0.2f),
+                    ),
+                    FigureTone.Primary,
+                ),
+            ),
+            xLabel = "demonstrations given (0 → 6)",
+            yLabel = "rules alive ÷ 5",
+            markers = listOf(
+                FigurePoint(0.1667f, 0.2f, "determined after 1", FigureTone.Accent),
+                FigurePoint(0.6667f, 0.2f, "…or after 4", FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A prompt is an induction problem. You describe a task, and the model has to pick one rule out of every rule consistent with what you said — the instruction narrows that space, each demonstration narrows it further, and the answer you get is whichever rule survived. Zero-shot means asking the model to guess your rule from the description alone. Few-shot means handing it evidence. Neither is magic, and both are doing the same thing: eliminating hypotheses.",
         "Framing it that way makes the practical advice fall out instead of having to be memorised. Demonstrations are worth exactly the hypotheses they kill, which is why a carefully chosen pair can beat a careless five, and why adding examples that all agree with each other buys nothing. An instruction is not data at all — it is a prior, putting zero mass on rules you have ruled out before any example is seen. The famous prompt-engineering results (few-shot beats zero-shot, example selection matters, order effects exist) are all statements about the shape of that hypothesis space.",
