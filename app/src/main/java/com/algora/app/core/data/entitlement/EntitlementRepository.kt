@@ -26,7 +26,7 @@ class EntitlementRepository(private val dataStore: DataStore<Preferences>) {
             accessOf(isPremiumTopic, premium, unlocks, topicId, System.currentTimeMillis())
         }
 
-    // Grants (or extends) 24h access to one topic after a completed rewarded ad, pruning expired
+    // Grants (or extends) 6h access to one topic after a completed rewarded ad, pruning expired
     // entries in the same write.
     suspend fun grantAdUnlock(topicId: String) {
         val now = System.currentTimeMillis()

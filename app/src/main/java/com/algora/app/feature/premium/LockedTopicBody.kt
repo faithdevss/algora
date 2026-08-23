@@ -51,7 +51,7 @@ import com.algora.app.core.ui.theme.SpaceGrotesk
 import kotlinx.coroutines.launch
 
 // The paywall shown in place of a premium topic's content. Two ways past it: buy premium once, or
-// watch a rewarded ad for 24h access to this one topic. Granting the unlock flips the access flow
+// watch a rewarded ad for 6h access to this one topic. Granting the unlock flips the access flow
 // TopicDetailScreen observes, so the real content swaps in without any navigation.
 @Composable
 fun LockedTopicBody(topic: Topic, onGoPremium: () -> Unit, modifier: Modifier = Modifier) {
@@ -154,7 +154,7 @@ fun LockedTopicBody(topic: Topic, onGoPremium: () -> Unit, modifier: Modifier = 
             }
             Spacer(modifier = Modifier.size(10.dp))
             Text(
-                "Watch ad · 24h access",
+                "Watch ad · 6h access",
                 fontFamily = SpaceGrotesk,
                 fontWeight = FontWeight.Bold,
                 fontSize = 15.sp,

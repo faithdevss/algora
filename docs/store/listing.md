@@ -132,14 +132,10 @@ locked topic can also be opened for 6 hours by watching a rewarded ad, if you wo
 Max 500 characters.
 
 ```
-First release.
-
-• 504 topics across DSA and AI, each with an interactive lab
-• 102 pattern-grouped practice problems with hints and worked solutions
-• 29 timed quizzes and SM-2 scheduled flashcards, including curated interview decks
-• 20 pattern guides, 20 behavioural prompts and two system design primers
-• A progress dashboard with per-day activity and milestones
-• Fully offline — no account, no server
+• Practice problems now follow the same free/Premium split as the rest of the library, unlockable
+  with a rewarded ad
+• Rewarded-ad unlock window shortened from 24 to 6 hours
+• Fixed tree and graph lab canvases rendering at the wrong size on some devices
 ```
 
 ---

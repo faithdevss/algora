@@ -21,10 +21,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AcUnit
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -34,7 +38,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -47,9 +54,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.algora.app.core.ads.AdsProvider
 import com.algora.app.core.data.model.Topic
 import com.algora.app.core.data.progress.ProgressRepository
 import com.algora.app.core.data.progress.progressDataStore
+import com.algora.app.core.data.settings.MAX_STREAK_FREEZES
 import com.algora.app.core.data.settings.SettingsRepository
 import com.algora.app.core.data.settings.settingsDataStore
 import com.algora.app.core.nav.AppMode
@@ -58,6 +67,7 @@ import com.algora.app.core.nav.Screen
 import com.algora.app.core.playreview.AppReviewPrompt
 import com.algora.app.core.ui.components.resolveIcon
 import com.algora.app.core.ui.theme.SpaceGrotesk
+import kotlinx.coroutines.launch
 import com.algora.app.feature.algorithms.AlgorithmsTopics
 import com.algora.app.feature.analysis.AnalysisTopics
 import com.algora.app.feature.datastructures.DataStructuresTopics
@@ -195,6 +205,7 @@ fun ProgressScreen(
                 activeDays = activeDays,
                 completionsByDay = completionsByDay,
                 streak = streak.coerceAtLeast(1),
+                settings = settings,
             )
         }
 
@@ -405,7 +416,12 @@ private fun OverallRing(pct: Int) {
 // Mon–Sun. A cell shows the topics finished that day (real completion dates); a day that was opened
 // without finishing anything gets a tinted check, an untouched day stays hollow, today is ringed.
 @Composable
-private fun WeekCard(activeDays: Set<Long>, completionsByDay: Map<Long, Int>, streak: Int) {
+private fun WeekCard(
+    activeDays: Set<Long>,
+    completionsByDay: Map<Long, Int>,
+    streak: Int,
+    settings: SettingsRepository,
+) {
     val today = remember { System.currentTimeMillis() / 86_400_000L }
     val weekStart = today - mondayIndex(today)
     val accent = MaterialTheme.colorScheme.primary
@@ -505,6 +521,83 @@ private fun WeekCard(activeDays: Set<Long>, completionsByDay: Map<Long, Int>, st
                         )
                     }
                 }
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 14.dp)
+                    .height(1.dp)
+                    .background(MaterialTheme.colorScheme.outline),
+            )
+            StreakFreezeRow(settings = settings, modifier = Modifier.padding(top = 12.dp))
+        }
+    }
+}
+
+// A missed day would otherwise reset the streak counter above to 1; watching an ad here banks a
+// freeze that recordActivityToday() spends automatically on the next single-day gap. Self-contained
+// like LockedTopicBody's ad row — owns its own Activity/ads/scope rather than threading them through
+// ProgressScreen.
+@Composable
+private fun StreakFreezeRow(settings: SettingsRepository, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val activity = LocalActivity.current
+    val ads = remember { AdsProvider.get(context) }
+    val scope = rememberCoroutineScope()
+    val freezes by settings.streakFreezes.collectAsState(initial = 0)
+    val adReady by ads.isReady.collectAsState()
+    var awaitingAd by remember { mutableStateOf(false) }
+    val full = freezes >= MAX_STREAK_FREEZES
+
+    LaunchedEffect(Unit) { ads.preload(context) }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(enabled = activity != null && !awaitingAd && !full) {
+                val host = activity ?: return@clickable
+                awaitingAd = true
+                ads.show(
+                    activity = host,
+                    onReward = {
+                        awaitingAd = false
+                        scope.launch { settings.addStreakFreeze() }
+                    },
+                    onFailed = { awaitingAd = false },
+                )
+            },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Filled.AcUnit,
+            contentDescription = null,
+            tint = Color(0xFF38BDF8),
+            modifier = Modifier.size(15.dp),
+        )
+        Spacer(modifier = Modifier.size(6.dp))
+        Text(
+            "$freezes/$MAX_STREAK_FREEZES streak freezes",
+            fontSize = 12.5.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f),
+        )
+        when {
+            awaitingAd -> CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+            full -> Text("Full", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            else -> Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.PlayCircle,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = if (adReady) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.size(4.dp))
+                Text(
+                    "Watch ad",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (adReady) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

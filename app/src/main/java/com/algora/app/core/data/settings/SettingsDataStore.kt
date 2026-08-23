@@ -46,4 +46,10 @@ object SettingsKeys {
     val REMINDERS_ENABLED = booleanPreferencesKey("study_reminders_enabled")
     val LAST_REMINDER_DAY = longPreferencesKey("last_reminder_epoch_day")
     val NOTIF_PERMISSION_ASKED = booleanPreferencesKey("notification_permission_asked")
+    // Banked streak freezes, earned by watching a rewarded ad. Spent automatically on a one-day gap
+    // so a single missed day doesn't reset the streak counter.
+    val STREAK_FREEZES = intPreferencesKey("streak_freezes")
 }
+
+/** A user can never bank more freezes than this, so the reward stays worth watching an ad for. */
+const val MAX_STREAK_FREEZES = 2

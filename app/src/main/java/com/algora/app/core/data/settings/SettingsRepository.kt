@@ -62,6 +62,17 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     val streak: Flow<Int> =
         dataStore.data.map { prefs -> prefs[SettingsKeys.STREAK_COUNT] ?: 0 }
 
+    val streakFreezes: Flow<Int> =
+        dataStore.data.map { prefs -> prefs[SettingsKeys.STREAK_FREEZES] ?: 0 }
+
+    // Earned by watching a rewarded ad; capped so the reward stays scarce.
+    suspend fun addStreakFreeze() {
+        dataStore.edit { prefs ->
+            val current = prefs[SettingsKeys.STREAK_FREEZES] ?: 0
+            prefs[SettingsKeys.STREAK_FREEZES] = (current + 1).coerceAtMost(MAX_STREAK_FREEZES)
+        }
+    }
+
     /** Epoch days the app was opened, within the retained window. */
     val activeDays: Flow<Set<Long>> =
         dataStore.data.map { prefs ->
@@ -176,16 +187,23 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             if (prefs[SettingsKeys.NEW_CARDS_DAY] == today) prefs[SettingsKeys.NEW_CARDS_COUNT] ?: 0 else 0
         }
 
-    // Consecutive-day streak: same day → no change, yesterday → +1, any gap → reset to 1.
+    // Consecutive-day streak: same day → no change, yesterday → +1, a single missed day spends a
+    // banked freeze (if any) and still counts as +1, any larger gap → reset to 1.
     suspend fun recordActivityToday() {
         val today = System.currentTimeMillis() / 86_400_000L
         dataStore.edit { prefs ->
             val lastDay = prefs[SettingsKeys.STREAK_LAST_DAY]
             val count = prefs[SettingsKeys.STREAK_COUNT] ?: 0
+            val freezes = prefs[SettingsKeys.STREAK_FREEZES] ?: 0
+            val gap = lastDay?.let { today - it }
             val newCount = when {
                 lastDay == null -> 1
-                lastDay == today -> count.coerceAtLeast(1)
-                lastDay == today - 1 -> count + 1
+                gap == 0L -> count.coerceAtLeast(1)
+                gap == 1L -> count + 1
+                gap == 2L && freezes > 0 -> {
+                    prefs[SettingsKeys.STREAK_FREEZES] = freezes - 1
+                    count + 1
+                }
                 else -> 1
             }
             prefs[SettingsKeys.STREAK_COUNT] = newCount
