@@ -60,6 +60,8 @@ class AiFigureCoverageTest {
         "apriori", "moving_average", "multi_armed_bandit", "svd",
         // A13 — the first premium batch: linear and kernel classifiers, and the two discriminants.
         "logistic_regression", "knn", "svm", "svm_rbf", "nu_svc", "lda", "qda", "passive_aggressive",
+        // A14 — ensembles that average rather than boost.
+        "bagging", "random_forest", "extra_trees", "voting", "stacking", "isolation_forest",
     )
 
     @Test
@@ -77,6 +79,6 @@ class AiFigureCoverageTest {
     @Test
     fun `the pilot is the size the phase was scoped against`() {
         // Keeps the batch table in docs/plan/phase-12-ai-figures.md verifiable rather than folklore.
-        assertEquals(85, pilotFigures.size)
+        assertEquals(91, pilotFigures.size)
     }
 }

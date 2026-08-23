@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,35 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val isolationForestContent = TopicContent(
     topicId = "isolation_forest",
+    figure = Figure(
+        caption = "s = 2^(−h/c(ψ)) at the default ψ = 256, where c(256) = 10.24 is the average path " +
+            "length of an unsuccessful search in a binary search tree of that size. That constant is " +
+            "the entire reason the score is comparable across sample sizes: the curve crosses 0.5 " +
+            "exactly at h = c(ψ), so \"above 0.5\" means \"isolated faster than an average point\" " +
+            "rather than any absolute depth. A point cut off in 3 splits scores 0.816; one that " +
+            "survives 12 scores 0.444. The decay is not linear — the first few splits carry far more " +
+            "signal than the last few.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "s(x)",
+                    listOf(
+                        FigurePoint(0f, 1f), FigurePoint(0.125f, 0.873f), FigurePoint(0.1875f, 0.816f),
+                        FigurePoint(0.25f, 0.763f), FigurePoint(0.375f, 0.666f),
+                        FigurePoint(0.5f, 0.582f), FigurePoint(0.625f, 0.508f),
+                        FigurePoint(0.75f, 0.444f), FigurePoint(0.875f, 0.388f),
+                        FigurePoint(1f, 0.339f),
+                    ),
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.1875f, 0.816f, "h=3", FigureTone.Warn),
+                FigurePoint(0.640f, 0.500f, "h=c(ψ)"),
+            ),
+            xLabel = "path length h  (0 → 16)",
+            yLabel = "anomaly score",
+        ),
+    ),
     whatIsIt = listOf(
         "Most anomaly detectors build a model of what normal looks like and flag whatever sits far from it. Isolation Forest inverts that: it never models normality at all, and instead asks how many random cuts it takes to separate each point from everything else.",
         "The insight is that anomalies are *few and different*, which makes them easy to isolate. A point in a sparse region gets cut off from the crowd almost immediately, while a point in the middle of a dense cluster survives many cuts because each one leaves neighbours on the same side. Build a tree by repeatedly picking a random feature and a random split value, and the depth at which a point ends up alone — its path length — is the anomaly score. Short path means anomalous. Average over many trees and the estimate stabilizes.",

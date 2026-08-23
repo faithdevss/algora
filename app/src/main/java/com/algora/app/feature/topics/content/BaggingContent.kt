@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,53 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val baggingContent = TopicContent(
     topicId = "bagging",
+    figure = Figure(
+        caption = "ρσ² + (1−ρ)σ²/B with σ² = 1, plotted against B on a log axis from 1 to 1000. Every " +
+            "curve starts at 1 and flattens onto its own floor, which is ρ and nothing else. At " +
+            "ρ = 0.5 the first ten models take the variance from 1.0 to 0.55; the next nine hundred " +
+            "and ninety take it to 0.5005. That is the whole shape of the diminishing return — B buys " +
+            "the (1−ρ)σ²/B term and cannot touch the other one. A forest gets past this by lowering " +
+            "ρ, which moves the floor rather than sliding further along the curve.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "ρ = 0.2",
+                    listOf(
+                        FigurePoint(0f, 1f), FigurePoint(0.100f, 0.600f), FigurePoint(0.159f, 0.467f),
+                        FigurePoint(0.233f, 0.360f), FigurePoint(0.333f, 0.280f),
+                        FigurePoint(0.433f, 0.240f), FigurePoint(0.566f, 0.216f),
+                        FigurePoint(0.667f, 0.208f), FigurePoint(1f, 0.201f),
+                    ),
+                ),
+                FigureSeries(
+                    "ρ = 0.5",
+                    listOf(
+                        FigurePoint(0f, 1f), FigurePoint(0.100f, 0.750f), FigurePoint(0.159f, 0.667f),
+                        FigurePoint(0.233f, 0.600f), FigurePoint(0.333f, 0.550f),
+                        FigurePoint(0.433f, 0.525f), FigurePoint(0.566f, 0.510f),
+                        FigurePoint(0.667f, 0.505f), FigurePoint(1f, 0.501f),
+                    ),
+                    tone = FigureTone.Accent,
+                ),
+                FigureSeries(
+                    "ρ = 0.8",
+                    listOf(
+                        FigurePoint(0f, 1f), FigurePoint(0.100f, 0.900f), FigurePoint(0.159f, 0.867f),
+                        FigurePoint(0.233f, 0.840f), FigurePoint(0.333f, 0.820f),
+                        FigurePoint(0.433f, 0.810f), FigurePoint(0.566f, 0.804f),
+                        FigurePoint(0.667f, 0.802f), FigurePoint(1f, 0.800f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.333f, 0.550f, "B=10"),
+                FigurePoint(1f, 0.501f, "B=1000"),
+            ),
+            xLabel = "B  (1 → 1000, log)",
+            yLabel = "variance / σ²",
+        ),
+    ),
     whatIsIt = listOf(
         "Bagging — bootstrap aggregating — trains the same model many times on different resamples of the data and averages the results. Each resample draws n rows with replacement from a dataset of n rows, so roughly a third are missed and some appear several times.",
         "It targets variance specifically, and the arithmetic says exactly how well it can work. Averaging B models each with variance σ² and pairwise correlation ρ gives variance ρσ² + (1−ρ)σ²/B. The second term vanishes as B grows, but the first does not — so the ceiling is set entirely by how correlated the models are, not by how many you train. Adding the thousandth tree to a forest of nine hundred changes almost nothing.",

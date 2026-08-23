@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,34 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val randomForestContent = TopicContent(
     topicId = "random_forest",
+    figure = Figure(
+        caption = "Bootstrapping alone leaves every tree free to split on the same dominant feature " +
+            "first, which is how ρ stays high. Sampling m = √p features per node is what stops it: " +
+            "the chance any particular feature is even a candidate at a given split is m/p = 1/√p, " +
+            "so at p = 100 the strongest feature is off the menu at 90% of nodes and the tree is " +
+            "forced to find whatever else the data has. The curve is the mechanism behind bagging's " +
+            "ρ — a forest does not add trees to a bagged ensemble, it lowers the floor those trees " +
+            "are averaging toward.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "chance a given feature is a candidate",
+                    listOf(
+                        FigurePoint(0.201f, 0.500f), FigurePoint(0.318f, 0.333f),
+                        FigurePoint(0.401f, 0.250f), FigurePoint(0.466f, 0.200f),
+                        FigurePoint(0.602f, 0.125f), FigurePoint(0.667f, 0.100f),
+                        FigurePoint(0.867f, 0.050f), FigurePoint(1f, 0.032f),
+                    ),
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.466f, 0.200f, "p=25, m=5"),
+                FigurePoint(0.667f, 0.100f, "p=100, m=10"),
+            ),
+            xLabel = "p  (4 → 1000, log)",
+            yLabel = "m / p",
+        ),
+    ),
     whatIsIt = listOf(
         "A random forest trains many decision trees on different random views of the data and averages their predictions — majority vote for classification, mean for regression.",
         "Two sources of randomness make the trees disagree in useful ways: each tree sees a bootstrap resample of the rows, and each split considers only a random subset of the features. Individually the trees overfit; because their errors are decorrelated, averaging cancels much of that variance.",

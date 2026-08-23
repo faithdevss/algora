@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,24 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val votingContent = TopicContent(
     topicId = "voting",
+    figure = Figure(
+        caption = "Each bar is one member's P(class B) on a single row. Hard voting reads only which " +
+            "side of 0.5 each bar falls on — A, A, B — and calls it A, two to one. Soft voting " +
+            "averages the bars themselves: (0.49 + 0.48 + 0.95)/3 = 0.64, which is B. The third " +
+            "member is nearly certain and the first two are coin-flips, and only one of the two " +
+            "rules can tell the difference. This is the ordinary situation near a boundary, not a " +
+            "constructed edge case — which is why soft voting is the better default, provided the " +
+            "probabilities are calibrated enough to average.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("m₁", 0.49f, FigureTone.Muted),
+                FigureBar("m₂", 0.48f, FigureTone.Muted),
+                FigureBar("m₃", 0.95f, FigureTone.Primary),
+                FigureBar("soft", 0.64f, FigureTone.Accent),
+            ),
+            yLabel = "P(class B)",
+        ),
+    ),
     whatIsIt = listOf(
         "A voting classifier combines several independently trained models with a fixed rule. Hard voting takes the majority class; soft voting averages the predicted probabilities and takes the argmax of that. Unlike bagging, the members are usually of different *kinds* — a tree, an SVM, a logistic regression — rather than the same model on different data.",
         "Soft voting is generally the better default, and the reason is that hard voting throws away the one piece of information that matters when members disagree. Three models predicting {A at 0.51, A at 0.52, B at 0.95} produce a hard vote for A, two to one, and a soft vote for B — because two near-coin-flips should not outvote a model that is nearly certain. That is not a contrived case; it is the normal situation near a decision boundary.",

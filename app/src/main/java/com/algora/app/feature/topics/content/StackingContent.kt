@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,24 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val stackingContent = TopicContent(
     topicId = "stacking",
+    figure = Figure(
+        caption = "Two base models on the same 400-row, two-class synthetic set, each scored twice: " +
+            "on the rows it was fitted on, and out-of-fold across five folds. 1-NN reads 1.000 " +
+            "in-sample and 0.778 honestly — a 0.222 gap that is pure memorization. A stable model " +
+            "barely moves: 0.830 against 0.825. Leakage does not inflate every column equally, it " +
+            "inflates the high-variance members most, so a meta-learner trained on in-sample " +
+            "predictions does not merely overfit — it systematically hands the largest weight to " +
+            "whichever member lies hardest about itself.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("1-NN fit", 1.000f, FigureTone.Warn),
+                FigureBar("1-NN OOF", 0.778f, FigureTone.Primary),
+                FigureBar("LDA fit", 0.830f, FigureTone.Warn),
+                FigureBar("LDA OOF", 0.825f, FigureTone.Primary),
+            ),
+            yLabel = "accuracy",
+        ),
+    ),
     whatIsIt = listOf(
         "Stacking replaces voting's fixed combination rule with a learned one. Base models make predictions, those predictions become the features of a second model — the meta-learner — and that model works out how to combine them. It can discover that one member is reliable on one region of the data and another elsewhere, which no fixed averaging rule can express.",
         "Everything hinges on one detail, and getting it wrong is the standard way stacking fails. The meta-learner must be trained on *out-of-fold* predictions: split the training data into folds, fit the base models on all but one, predict the held-out fold, and rotate. If instead you feed it predictions the base models made for rows they were fitted on, those predictions carry a level of accuracy that will not exist at inference time — the meta-learner learns to trust it, and the whole stack overfits. The symptom is a validation score that looks excellent and a test score that does not.",

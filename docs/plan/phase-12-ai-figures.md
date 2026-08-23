@@ -1,8 +1,8 @@
 # Phase 12 — Figures for AI topics (pilot)
 
-Status: **Pilot shipped, free tier closed, premium extension started.** 85 of 323 AI topics carry a
-figure — the A1–A5 pilot plus A6–A13. The remaining 238 continue in the same batch size — see
-*What the pilot was for* below.
+Status: **Pilot shipped, free tier closed, premium extension in progress.** 91 of 323 AI topics
+carry a figure — the A1–A5 pilot plus A6–A14. The remaining 232 continue in the same batch size —
+see *What the pilot was for* below.
 
 Depends on: the figure layer (`core/data/model/Figure.kt`, `feature/topics/FigureCard.kt`,
 `FigureShapeTest`) and Phase 11, which took it to 122/122 Data Structures and Algorithms topics.
@@ -28,7 +28,7 @@ were, and they are exactly the three it named.
 |---|---|---|
 | Interview Prep — Patterns | 57 | 57 |
 | Data Structures + Algorithms | 122 | 122 |
-| ML / DL / NLP / RL | 323 unique (356 entries, 33 cross-listed) | **85** (all free-tier topics, plus A13) |
+| ML / DL / NLP / RL | 323 unique (356 entries, 33 cross-listed) | **91** (all free-tier topics, plus A13–A14) |
 
 ## New shapes
 
@@ -70,6 +70,7 @@ meant. Cells are square — an attention matrix drawn as a rectangle loses its d
 | A11 | Free-tier NLP | `bert`, `perplexity`, `prompt_engineering`, `wer`, `transfer_learning` |
 | A12 | The last of the free tier | `neural_style_transfer`, `segmentation_types`, `siamese_networks`, `apriori`, `moving_average`, `multi_armed_bandit`, `svd` |
 | A13 | First premium batch — ML classification | `logistic_regression`, `knn`, `svm`, `svm_rbf`, `nu_svc`, `lda`, `qda`, `passive_aggressive` |
+| A14 | Premium — ensembles that average | `bagging`, `random_forest`, `extra_trees`, `voting`, `stacking`, `isolation_forest` |
 
 Each batch's shape work landed in the same commit as its first figures — a shape with no caller is
 unreviewable.
@@ -81,7 +82,7 @@ unreviewable.
 - `feature/topics/FigureCard.kt` — `PlotFigure`, `LayerStackFigure`, `HeatmapFigure`, three `when`
   branches. Also dropped a dead `widestNode` local left in `GraphFigure` by F2.
 - `feature/topics/content/*.kt` — 30 files gained a `figure = Figure(…)` argument after `topicId`.
-  A6–A13 added 55 more the same way; no renderer change since A4.
+  A6–A14 added 61 more the same way; no renderer change since A4.
 - `feature/topics/FigureShapeTest.kt` — three conformance tests; the enumeration already covered
   ML/DL/NLP/RL, so no wiring changed.
 - `feature/topics/AiFigureCoverageTest.kt` — new.
@@ -114,7 +115,7 @@ lines. A shape-only batch (A1, A3, A4) costs about one extra hour for renderer p
 
 Per batch: `./gradlew :app:testDebugUnitTest` (`FigureShapeTest`, `AiFigureCoverageTest`,
 `DsaFigureCoverageTest`, `FigureCoverageTest`, `ContentCoverageTest`) then `./gradlew assembleDebug`.
-Both green for A1–A13.
+Both green for A1–A14.
 
 **Emulator pass — partial, and it earned its keep.** Nine of the 30 pages walked on a 1080×2400
 emulator, chosen to hit every shape at its densest: MLP and CNNs (vertical `LayerStack` at three and
@@ -131,12 +132,24 @@ Two risks named above turned out not to be real: the heatmap ramp is legible at 
 both themes, and the plot's axis labels do not crowd at three series.
 
 **Still outstanding:** the other 21 pilot pages, light mode for six of the nine walked, and all of
-A9–A13. The riskiest cells there, in the order worth checking: `knn`'s graph, which hangs five
+A9–A14. The riskiest cells there, in the order worth checking: `knn`'s graph, which hangs five
 labelled edges off one node — the densest edge labelling in the app, and the only cell in A13 no unit
 test can size; the `mdp` and `apriori` graphs, whose hand-placed nodes push to y = 0.04/0.96;
-`qda`'s 7×7 heatmap at 182dp with nine outlined cells; `policy`'s heatmap row labels, which get 16%
+`qda`'s 7×7 heatmap at 182dp with nine outlined cells; `extra_trees`' seven-cell strip, the first to
+carry a full-width aux row of five-character numbers; `policy`'s heatmap row labels, which get 16%
 of the card's width at 9sp; `conv_layers`' 7×7 grid, the tallest in the app at 210dp; and `bert`'s
 six-cell strip, where "[MASK]" has to fit a sixth of the width at labelMedium.
+
+**A14 wrote the models rather than importing them.** The batch's two most useful figures are
+measurements, and sklearn is still not installed, so `stacking`'s leakage gap comes from a 1-NN and a
+closed-form LDA implemented in NumPy over a 400-row synthetic set and scored twice — 1.000 in-sample
+against 0.778 out-of-fold, versus 0.830 against 0.825 for the stable model. That second pair is the
+part worth having: it shows leakage inflating members *unequally*, which is why the meta-learner ends
+up trusting the worst-behaved one. `extra_trees` is the same move at smaller scale — real Gini gains
+for all seven candidate cuts on one eight-value node, so the forest's 0.281 and the random draw's
+0.040 are computed rather than asserted. The other four are exact arithmetic on the pages' own
+formulas, and `bagging` and `random_forest` were deliberately drawn as one argument across two pages:
+the variance floor is ρ, and √p feature sampling is what moves it.
 
 **A13 computed every value in NumPy first.** The page's own numbers were the starting point but not
 the figure: LDA's code block runs a symmetric Σ where w lands on the line between the means and the
@@ -155,6 +168,6 @@ perplexity's k = 0.01 optimum ended up on the axes as measured rather than appro
 
 ## Non-goals
 
-- **The remaining 238 (premium) AI topics.** Plan against the cost note above.
+- **The remaining 232 (premium) AI topics.** Plan against the cost note above.
 - **Phase 11's F8 sweep.** Skipped by decision; `feat/dsa-figures` still ends at F7.
 - **Replacing any simulation.** Figures sit above the steps; the labs are untouched.

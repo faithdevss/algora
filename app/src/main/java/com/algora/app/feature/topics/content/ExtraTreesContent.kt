@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,24 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val extraTreesContent = TopicContent(
     topicId = "extra_trees",
+    figure = Figure(
+        caption = "One node, one feature, eight sorted values, and the seven cuts between them — with " +
+            "the real Gini gain of each on labels (0,0,1,0,1,1,1,1). A forest sorts the values and " +
+            "scores all seven, taking 0.281 at 1.55. Extra Trees draws one cut uniformly instead and " +
+            "keeps it: this draw landed at 3.75, worth 0.040, seven times worse on this node. That " +
+            "is the trade in one picture — the random cut is chosen without ever consulting the " +
+            "labels, so it cannot chase this particular sample's noise, and skipping the sort is " +
+            "where the wall-clock advantage comes from.",
+        shape = FigureShape.Strip(
+            cells = listOf("0.25", "0.55", "0.95", "1.55", "2.10", "2.70", "3.75"),
+            aux = listOf("0.112", "0.260", "0.102", "0.281", "0.169", "0.094", "0.040"),
+            auxLabel = "Gini gain",
+            pointers = listOf(
+                FigurePointer(3, "forest"),
+                FigurePointer(6, "extra", FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Extremely Randomized Trees take a random forest's randomness one step further. A forest samples which features to consider at each split but still searches for the best threshold among them; Extra Trees draws the threshold at random too, and simply keeps the best of those random candidates.",
         "That sounds like vandalism and is a deliberate trade. Each tree is worse in isolation — it is not making the locally optimal cut — but the trees are much less correlated with each other, and bagging's variance formula ρσ² + (1−ρ)σ²/B is floored by exactly that ρ. Lowering the correlation lowers the floor, which more models never can. The second effect is bias: random thresholds bias each tree slightly, so Extra Trees typically has marginally higher bias and lower variance than a forest, and which wins depends on the dataset.",
