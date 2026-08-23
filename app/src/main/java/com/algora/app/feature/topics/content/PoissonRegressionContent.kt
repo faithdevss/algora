@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,36 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val poissonRegressionContent = TopicContent(
     topicId = "poisson_regression",
+    figure = Figure(
+        caption = "OLS fit to the same counts runs straight through zero and keeps going, predicting a " +
+            "negative expected count past the right edge of the data. exp(xᵀβ) cannot do that by " +
+            "construction — it curves upward instead, and every coefficient reads as a rate ratio: " +
+            "exp(βⱼ) multiplies the expected count rather than adding to it, which is why the two curves " +
+            "agree near the middle of the data and disagree completely at the edges.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "OLS (linear)",
+                    listOf(
+                        FigurePoint(0f, 0.6f), FigurePoint(0.25f, 0.45f), FigurePoint(0.5f, 0.30f),
+                        FigurePoint(0.75f, 0.15f), FigurePoint(1f, 0.0f),
+                    ),
+                    tone = FigureTone.Warn,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "Poisson mean, exp(xᵀβ)",
+                    listOf(
+                        FigurePoint(0f, 0.15f), FigurePoint(0.25f, 0.22f), FigurePoint(0.5f, 0.35f),
+                        FigurePoint(0.75f, 0.55f), FigurePoint(1f, 0.85f),
+                    ),
+                ),
+            ),
+            markers = listOf(FigurePoint(1f, 0.0f, "OLS: negative past here")),
+            xLabel = "x",
+            yLabel = "expected count",
+        ),
+    ),
     whatIsIt = listOf(
         "Poisson regression models counts: emails per hour, defects per batch, claims per policy. It assumes y follows a Poisson distribution whose mean is exp(xᵀβ), which makes it a generalized linear model with a log link.",
         "Fitting counts with ordinary least squares is wrong in three specific ways, and each has a visible consequence. A straight line eventually goes negative, predicting an impossible number of events. OLS assumes constant variance, but a Poisson's variance equals its mean, so high-count regions are genuinely noisier and get systematically over-weighted. And effects on counts are usually multiplicative rather than additive — doubling the exposure doubles the expected count — which the log link expresses directly and a linear mean does not.",

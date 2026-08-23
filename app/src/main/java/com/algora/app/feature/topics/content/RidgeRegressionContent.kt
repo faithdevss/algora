@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,33 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val ridgeRegressionContent = TopicContent(
     topicId = "ridge_regression",
+    figure = Figure(
+        caption = "Shrinkage is dⱼ²/(dⱼ²+λ), and it is not the same number for every direction. A " +
+            "direction the data constrains strongly (large dⱼ) is still at 0.95 of its OLS value once " +
+            "the direction with the least signal has already lost half its coefficient (0.55, then " +
+            "0.25, then 0.10) — the same λ, two completely different discounts. Both start at 1.0 at " +
+            "λ = 0, which is OLS exactly, and neither one is forced to zero at any finite λ.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "large-signal direction",
+                    listOf(
+                        FigurePoint(0f, 1.0f), FigurePoint(0.25f, 0.95f), FigurePoint(0.5f, 0.85f),
+                        FigurePoint(0.75f, 0.70f), FigurePoint(1f, 0.55f),
+                    ),
+                ),
+                FigureSeries(
+                    "small-signal direction",
+                    listOf(
+                        FigurePoint(0f, 1.0f), FigurePoint(0.25f, 0.55f), FigurePoint(0.5f, 0.25f),
+                        FigurePoint(0.75f, 0.10f), FigurePoint(1f, 0.03f),
+                    ),
+                ),
+            ),
+            xLabel = "λ",
+            yLabel = "fraction of OLS coefficient kept",
+        ),
+    ),
     whatIsIt = listOf(
         "Ridge regression adds λ‖β‖² to the least-squares objective. The fit is no longer allowed to buy a small residual with enormous coefficients — it has to pay for them — and the result is a model that generalizes better despite fitting the training data worse.",
         "The mechanism is visible in the closed form: β̂ = (XᵀX + λI)⁻¹Xᵀy. That λI added to the diagonal is where the name comes from, and it does two things at once. It makes the matrix invertible even when XᵀX is singular — so ridge still has a unique answer when features outnumber observations or are perfectly collinear, cases where OLS has none — and it shrinks each coefficient toward zero, hardest along the directions where the data carries least information.",

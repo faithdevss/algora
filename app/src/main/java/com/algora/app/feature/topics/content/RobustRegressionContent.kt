@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,21 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val robustRegressionContent = TopicContent(
     topicId = "robust_regression",
+    figure = Figure(
+        caption = "Breakdown point is the contamination fraction that defeats an estimator entirely. " +
+            "OLS is at 0% — one arbitrarily bad point out of a million can drag the fit arbitrarily " +
+            "far, since squaring the residual squares its influence too. Theil-Sen, the median of " +
+            "pairwise slopes, holds to 29%. RANSAC's consensus-set refit passes 50%: it can be right " +
+            "even when more than half the data is contamination, because it never averages outliers in.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("OLS", 0.0f, FigureTone.Warn),
+                FigureBar("Theil-Sen", 0.29f, FigureTone.Muted),
+                FigureBar("RANSAC", 0.55f),
+            ),
+            yLabel = "breakdown point",
+        ),
+    ),
     whatIsIt = listOf(
         "Least squares has a fatal property when data is contaminated: because error is squared, a point ten units off the line contributes a hundred times more than a point one unit off. A single arbitrarily bad observation can therefore drag the fit arbitrarily far. In the formal language, OLS has a breakdown point of 0% — one bad point out of a million is enough.",
         "RANSAC attacks this by refusing to average outliers in at all. It repeatedly samples the minimum number of points needed to define a model (two, for a line), fits that model, and counts how many of the remaining points fall within a threshold of it. The sample producing the largest consensus set wins, and the model is then refitted on that consensus set alone. Points outside it are never weighted down — they are excluded. Its breakdown point can exceed 50%, so it works even when most of the data is contamination.",

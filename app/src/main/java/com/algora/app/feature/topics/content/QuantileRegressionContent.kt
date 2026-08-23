@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,22 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val quantileRegressionContent = TopicContent(
     topicId = "quantile_regression",
+    figure = Figure(
+        caption = "Delivery time against distance, fit at three τ. The median line barely tilts — 0.15 " +
+            "to 0.35 across the full range — but τ = 0.9 climbs from 0.25 to 0.75, more than twice as " +
+            "steep. That non-parallel fan is the direct signature of variance growing with distance: a " +
+            "single OLS line through the mean would say nothing about it, and it is the 0.9 line, not " +
+            "the mean, that a service guarantee has to be built on.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries("τ = 0.1", listOf(FigurePoint(0f, 0.05f), FigurePoint(1f, 0.15f)), tone = FigureTone.Muted),
+                FigureSeries("τ = 0.5", listOf(FigurePoint(0f, 0.15f), FigurePoint(1f, 0.35f))),
+                FigureSeries("τ = 0.9", listOf(FigurePoint(0f, 0.25f), FigurePoint(1f, 0.75f)), tone = FigureTone.Warn),
+            ),
+            xLabel = "distance",
+            yLabel = "delivery time",
+        ),
+    ),
     whatIsIt = listOf(
         "Ordinary regression models the conditional mean. Quantile regression models a conditional percentile instead — the median, the 90th, the 5th — by swapping squared error for the pinball loss, which penalizes over- and under-prediction at different rates.",
         "The asymmetry is the whole mechanism. At τ = 0.9, being below the true value costs 0.9 per unit while being above costs only 0.1, so the fit is pushed upward until exactly 90% of the data sits beneath it. At τ = 0.5 the two costs are equal, the loss reduces to mean absolute error, and you get the conditional median — which is also why median regression is naturally robust to outliers in a way mean regression is not.",

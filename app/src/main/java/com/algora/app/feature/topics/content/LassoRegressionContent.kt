@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,35 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val lassoRegressionContent = TopicContent(
     topicId = "lasso_regression",
+    figure = Figure(
+        caption = "Same sweep of λ, two different endings. Ridge's coefficient keeps sliding — 0.75, " +
+            "0.55, 0.40, 0.30 — and would still be a small positive number at ten times this λ. Lasso's " +
+            "soft-threshold takes it to exactly 0.0 by λ = 0.75 and holds it there for every larger λ, " +
+            "because |ρ| has dropped below λ and (|ρ|−λ)₊ is identically zero, not merely small.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "ridge (L2)",
+                    listOf(
+                        FigurePoint(0f, 1.0f), FigurePoint(0.25f, 0.75f), FigurePoint(0.5f, 0.55f),
+                        FigurePoint(0.75f, 0.40f), FigurePoint(1f, 0.30f),
+                    ),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "lasso (L1)",
+                    listOf(
+                        FigurePoint(0f, 1.0f), FigurePoint(0.25f, 0.60f), FigurePoint(0.5f, 0.25f),
+                        FigurePoint(0.75f, 0.0f), FigurePoint(1f, 0.0f),
+                    ),
+                ),
+            ),
+            markers = listOf(FigurePoint(0.75f, 0.0f, "exactly 0 from here")),
+            xLabel = "λ",
+            yLabel = "coefficient magnitude",
+        ),
+    ),
     whatIsIt = listOf(
         "Lasso replaces ridge's squared penalty with an absolute one: λΣ|βⱼ|. A one-character change in the formula, and a categorical change in behaviour — coefficients do not merely shrink toward zero, they arrive there exactly and stay. The fit performs feature selection as a side effect of being fitted.",
         "The geometry explains why. Minimizing squared error subject to a budget on the coefficients means expanding an elliptical contour until it touches the constraint region. Ridge's region is a sphere, which is smooth everywhere, so the touch point almost never lands on an axis. Lasso's is a diamond with corners on the axes, and corners are exactly where a random ellipse is most likely to make first contact. In one dimension the same fact appears as soft-thresholding: the solution is (|ρ| − λ)₊ · sign(ρ), which is identically zero for every |ρ| below λ, not merely small.",

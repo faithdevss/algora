@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,22 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val precisionRecallContent = TopicContent(
     topicId = "precision_recall",
+    figure = Figure(
+        caption = "At t = 0.5 the lab's model is precise and timid: precision 1.000 and recall 0.398, " +
+            "missing 53 of 88 positives. At t = 0.1, same model and same scores, it is thorough and " +
+            "noisy: recall 1.000 at precision 0.213 — 79% of its flags are false alarms. Nothing " +
+            "retrained; the threshold alone moved the operating point from one corner of the trade-off " +
+            "to the other.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("Precision, t=0.5", 1.000f, FigureTone.Primary),
+                FigureBar("Recall, t=0.5", 0.398f, FigureTone.Primary),
+                FigureBar("Precision, t=0.1", 0.213f, FigureTone.Accent),
+                FigureBar("Recall, t=0.1", 1.000f, FigureTone.Accent),
+            ),
+            yLabel = "score",
+        ),
+    ),
     whatIsIt = listOf(
         "Precision and recall split a model's errors into the two kinds a decision can care about. Precision is TP / (TP + FP): of everything flagged, how much was real. Recall is TP / (TP + FN): of everything real, how much was found. Neither one mentions the true negatives, which is what makes them the right pair when the positive class is the subject and the negative class is background.",
         "The trade is not a subtlety, it is the entire behaviour. At t = 0.5 the lab's model has precision 1.000 and recall 0.398 — everything it flags is real, and it misses 53 of 88 positives. Drop the threshold to 0.1 and it has recall 1.000 at precision 0.213, so 79% of the flags are false alarms. Same model, same scores, nothing retrained: the threshold is a business decision about which error hurts more, and reporting one number without the other hides which decision was made.",

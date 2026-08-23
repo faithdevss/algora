@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,35 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val polynomialRegressionContent = TopicContent(
     topicId = "polynomial_regression",
+    figure = Figure(
+        caption = "Cross-validated on degrees 1 through 9: training error falls every step — 0.90, 0.55, " +
+            "0.30, 0.15, 0.05 — because a higher degree can only fit the training points better, never " +
+            "worse. Held-out error does the opposite past degree 5: 0.75, 0.35, 0.25, then back up to " +
+            "0.45 and 0.85 as Runge's phenomenon takes over near the edges. Choosing by training error " +
+            "would pick degree 9 every time; choosing by validation error picks 5.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "train error",
+                    listOf(
+                        FigurePoint(0f, 0.90f), FigurePoint(0.25f, 0.55f), FigurePoint(0.5f, 0.30f),
+                        FigurePoint(0.75f, 0.15f), FigurePoint(1f, 0.05f),
+                    ),
+                ),
+                FigureSeries(
+                    "validation error",
+                    listOf(
+                        FigurePoint(0f, 0.75f), FigurePoint(0.25f, 0.35f), FigurePoint(0.5f, 0.25f),
+                        FigurePoint(0.75f, 0.45f), FigurePoint(1f, 0.85f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+            ),
+            markers = listOf(FigurePoint(0.5f, 0.25f, "best: degree 5")),
+            xLabel = "degree (1 → 9)",
+            yLabel = "error",
+        ),
+    ),
     whatIsIt = listOf(
         "Polynomial regression fits a curve by feeding powers of x — x, x², x³ and so on — into an ordinary linear model. The curve bends, but nothing about the estimator changes: it is still linear in the coefficients, so the same closed-form least-squares solution applies unchanged.",
         "That phrase is the one worth holding onto. \"Linear model\" constrains how the parameters enter, not how the input does. y = β₀ + β₁x + β₂x² is linear in β and curved in x, which is why the entire toolkit — normal equations, ridge penalties, confidence intervals — carries over untouched. Basis expansion is the general version of this trick, and splines, Fourier features and kernel methods are all the same idea with a different basis.",

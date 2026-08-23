@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,22 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val rmseContent = TopicContent(
     topicId = "rmse",
+    figure = Figure(
+        caption = "RMSE is √MSE: the lab's least-squares fit has MSE 18.482 and RMSE 4.299, back in " +
+            "the units of y. All three fits keep the same order under either metric — least squares " +
+            "(4.299), the MAE-optimal fit (4.665), and a deliberately bad model (8.324) — because the " +
+            "square root is strictly increasing and cannot reorder a ranking MSE already settled. What " +
+            "changes is only whether the number means anything: \"4.3\" is judgeable against a y that " +
+            "spans roughly 0 to 30; \"18.482\" is not.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("Least squares", 0.516f, FigureTone.Primary),
+                FigureBar("MAE-optimal", 0.560f),
+                FigureBar("Deliberately bad", 1f, FigureTone.Warn),
+            ),
+            yLabel = "RMSE, relative to the worst fit's 8.324",
+        ),
+    ),
     whatIsIt = listOf(
         "RMSE is √MSE — the square root undoes the squaring, bringing the number back into the same units as y. Where MSE on the lab's least-squares fit is 18.482 (units²), RMSE is 4.299 (units) — a number you could read as \"typically off by about 4.3\" in whatever the target's own units are.",
         "Because it's a monotonic transform of MSE, RMSE never changes which model wins a comparison — only how the winning margin reads. The lab's three fits rank identically under both metrics: least squares (MSE 18.482 → RMSE 4.299), the MAE-optimal fit (MSE 21.765 → RMSE 4.665), and a deliberately bad model (MSE 69.285 → RMSE 8.324). Whichever fit has the lowest MSE also has the lowest RMSE, by construction — the square root is strictly increasing.",

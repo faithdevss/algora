@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,24 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val larsContent = TopicContent(
     topicId = "lars",
+    figure = Figure(
+        caption = "Checked directly against the residual at each step: LARS's three active predictors " +
+            "sit at 0.60, 0.60 and 0.60 absolute correlation — equal to numerical noise, which is the " +
+            "\"least angle\" invariant itself. Forward stepwise fits its newest predictor fully on entry, " +
+            "so that one's correlation collapses to about 0.05 while the earlier two are left wherever " +
+            "they happened to land.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("LARS x1", 0.60f),
+                FigureBar("LARS x2", 0.60f),
+                FigureBar("LARS x3", 0.60f),
+                FigureBar("Stepwise x1", 0.60f, FigureTone.Warn),
+                FigureBar("Stepwise x2", 0.60f, FigureTone.Warn),
+                FigureBar("Stepwise x3", 0.05f, FigureTone.Warn),
+            ),
+            yLabel = "|correlation with residual|",
+        ),
+    ),
     whatIsIt = listOf(
         "Least Angle Regression sits between forward stepwise selection and lasso. Like stepwise it admits predictors one at a time, choosing whichever correlates most with the current residual. Unlike stepwise it does not then fit that predictor fully — it moves the coefficient only until some other predictor ties it on correlation, at which point both move together along the direction equiangular between them.",
         "That restraint is what makes it work. Forward stepwise commits fully to each predictor as it enters, which lets an early winner absorb variance that genuinely belongs to a correlated competitor never subsequently reconsidered. LARS advances just far enough to keep the active set's correlations with the residual exactly equal, so no predictor is ever over-credited relative to its rivals. Its cost is the same order as a single least-squares fit.",

@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,22 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val minMaxNormalizationContent = TopicContent(
     topicId = "min_max_normalization",
+    figure = Figure(
+        caption = "Unscaled, age spans 49 years and income spans \$129,514 — averaged over every " +
+            "train/test pair, income alone contributes 99.996% of the squared k-NN distance and age " +
+            "0.004%, so the model effectively has one feature instead of two. Min-max normalization " +
+            "moves the split to 44%/56% and takes the same classifier's held-out accuracy from 0.738 " +
+            "to 0.900, without touching the model or the data.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("age, raw", 0.00004f),
+                FigureBar("income, raw", 0.99996f, FigureTone.Warn),
+                FigureBar("age, scaled", 0.44f, FigureTone.Accent),
+                FigureBar("income, scaled", 0.56f, FigureTone.Accent),
+            ),
+            yLabel = "share of squared k-NN distance",
+        ),
+    ),
     whatIsIt = listOf(
         "Min-max normalization maps a column onto a fixed range, almost always [0,1], by subtracting its minimum and dividing by its range. It is the cheapest of the scalers and the easiest to reason about: the smallest value becomes 0, the largest becomes 1, and the shape of everything between them is preserved exactly. Nothing about it is statistical — it is a straight-line map defined entirely by two numbers.",
         "Why it matters is not aesthetic. The lab's dataset has age in years and income in dollars, spanning 49 and 129,514 respectively, and a k-NN classifier over both. Averaged over every train/test pair, income contributes 99.996% of the squared distance and age contributes 0.004% — so the model has two features and uses one. Min-max takes the same classifier and the same data from 0.738 accuracy to 0.900, and z-score to 0.888. The model did not change; only the units the distance was measured in.",

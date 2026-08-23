@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,21 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val accuracyContent = TopicContent(
     topicId = "accuracy",
+    figure = Figure(
+        caption = "The lab's model scores accuracy 0.947 at the default threshold — only 3.5 points " +
+            "above 0.912, what predicting the majority class scores for free on this 8.8%-positive " +
+            "data. Pushed to t = 0.99, accuracy rises to 0.921 while recall collapses to 0.011: a " +
+            "higher score from a model that has stopped finding positives. On the identical matrix, " +
+            "Cohen's kappa — the chance-corrected version of the same question — reads 0.546.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("Model, t=0.5", 0.947f, FigureTone.Primary),
+                FigureBar("Baseline (predict −)", 0.912f, FigureTone.Muted),
+                FigureBar("Model, t=0.99", 0.921f, FigureTone.Warn),
+            ),
+            yLabel = "accuracy",
+        ),
+    ),
     whatIsIt = listOf(
         "Accuracy is (TP + TN) / everything — the share of cases a model gets right. It is the metric everyone reaches for first, it is the right metric when the classes are balanced and both errors cost the same, and it is actively misleading everywhere else. The lab's model scores 0.947 at the default threshold, which sounds like a finished result.",
         "Here is the same number without a model. Predicting \"negative\" for every case scores 0.912 on this data, because 912 of the 1,000 cases are negative. The trained model's 0.947 is worth 3.5 points over answering the same way every time — and the majority-class baseline, not 0.5, is what any accuracy figure has to be read against. Push the threshold to 0.99 and accuracy goes *up* to 0.921 while the model finds almost no positives at all.",

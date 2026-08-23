@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,27 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val confusionMatrixContent = TopicContent(
     topicId = "confusion_matrix",
+    figure = Figure(
+        caption = "At the default threshold of 0.5, the lab's 1,000-case problem sorts into 35 true " +
+            "positives, 53 false negatives, 0 false positives and 912 true negatives — 91.2% of the " +
+            "table in that one true-negative cell, with the two decision-relevant errors holding 53 " +
+            "cases between them. Moving the threshold to 0.2 slides the same boundary to 75/85/13/827: " +
+            "40 more positives caught at 85 more false alarms, from the same fitted model.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("35", "53"),
+                listOf("0", "912"),
+            ),
+            rowHeaders = listOf("Actual +", "Actual −"),
+            colHeaders = listOf("Pred +", "Pred −"),
+            marks = listOf(
+                FigureCell(0, 0, FigureTone.Primary),
+                FigureCell(0, 1, FigureTone.Warn),
+                FigureCell(1, 0, FigureTone.Warn),
+                FigureCell(1, 1, FigureTone.Muted),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A confusion matrix is the four counts every classification metric is a function of: true positives, false positives, false negatives, true negatives. It is the only object in this category that loses no information — accuracy, precision, recall, F1 and kappa are all summaries of these four numbers, and each one throws something away to get to a single figure.",
         "On the lab's problem — 1,000 cases, 88 of them positive, one fitted logistic model at the default threshold of 0.5 — the matrix is 35 true positives, 0 false positives, 53 false negatives, 912 true negatives. The asymmetry is the thing to notice: 91% of the table sits in one cell, so any metric that averages over all four is dominated by it, while the two cells a decision actually turns on hold 53 cases between them.",

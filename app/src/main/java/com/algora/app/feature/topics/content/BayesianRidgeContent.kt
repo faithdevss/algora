@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,26 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val bayesianRidgeContent = TopicContent(
     topicId = "bayesian_ridge",
+    figure = Figure(
+        caption = "Probed at x = 1.5, 4.5 and 7.5 across a design with a deliberate gap between 3 and 6: " +
+            "predictive std is low in both dense regions and several times higher in the middle, exactly " +
+            "where no training point ever fell. A plain ridge fit produces the same mean curve here and " +
+            "carries no signal at all that the middle third of it is a guess rather than a measurement.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "predictive std",
+                    listOf(
+                        FigurePoint(0f, 0.15f), FigurePoint(0.25f, 0.35f), FigurePoint(0.5f, 0.55f),
+                        FigurePoint(0.75f, 0.35f), FigurePoint(1f, 0.15f),
+                    ),
+                ),
+            ),
+            markers = listOf(FigurePoint(0.5f, 0.55f, "gap: std ≈ 3× dense region")),
+            xLabel = "x (dense · gap · dense)",
+            yLabel = "predictive std",
+        ),
+    ),
     whatIsIt = listOf(
         "Bayesian ridge regression returns a distribution over coefficients rather than a single vector. Put a Gaussian prior β ~ N(0, α⁻¹I) on the weights and a Gaussian likelihood on the data, and the posterior is Gaussian too — available in closed form, with a mean and a full covariance matrix.",
         "The mean of that posterior is exactly the ridge estimate with λ = α/β. So ordinary ridge was already doing Bayesian inference; it simply threw away everything except the peak. What the covariance buys you is calibrated uncertainty: the predictive variance at a point is σ² + φ(x)ᵀSφ(x), where the second term grows wherever the data does not constrain the fit. The model can say \"I do not know here\", and it says it loudest in the gaps between observations and beyond the edges of the training range — which is precisely where a point estimate is most confidently wrong.",

@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,22 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val missingValueImputationContent = TopicContent(
     topicId = "missing_value_imputation",
+    figure = Figure(
+        caption = "At 30% missing completely at random, mean imputation drops this column's variance " +
+            "from 8.09 to 5.89 — a 0.728 ratio, close to the 0.70 the missing rate alone predicts — and " +
+            "its correlation with a partner column from 0.982 to 0.829, because the filled rows carry " +
+            "none of that relationship. Dropping the 60 affected rows instead keeps both statistics " +
+            "within noise of the original, at the cost of 30% of the sample.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("Var, observed", 1f),
+                FigureBar("Var, imputed", 0.728f, FigureTone.Warn),
+                FigureBar("Corr, observed", 0.982f),
+                FigureBar("Corr, imputed", 0.829f, FigureTone.Warn),
+            ),
+            yLabel = "ratio to the complete-data value",
+        ),
+    ),
     whatIsIt = listOf(
         "Imputation fills missing values so that models which cannot accept them will run. The cheapest version is a constant — the mean of what was observed — and it does exactly what it promises: nothing crashes, no rows are lost, every downstream step works. What it also does is change the column, and the lab measures that against the complete data the holes were cut from.",
         "With 30% of a column missing completely at random, mean imputation drops its variance from 8.09 to 5.89 — a ratio of 0.728, against the 0.70 that the missing rate alone predicts, because the filled values contribute nothing to the spread. The damage is not confined to one column either: this column's correlation with another falls from 0.982 to 0.829, because 30% of the rows now carry a value that has nothing to do with their partner. Imputation attenuates every relationship the column was in, and it does so silently.",

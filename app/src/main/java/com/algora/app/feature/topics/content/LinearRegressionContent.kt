@@ -4,6 +4,10 @@ import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CodeVariant
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -14,6 +18,25 @@ import com.algora.app.core.data.model.TopicContent
 // three fully-specified content references).
 internal val linearRegressionContent = TopicContent(
     topicId = "linear_regression",
+    figure = Figure(
+        caption = "The fitted line here is y = 0.6x + 0.2. One point sits 0.16 above it and another 0.11 " +
+            "below — neither is an outlier, just noise the line cannot explain — and MSE is exactly the " +
+            "average of those gaps squared: 0.16² and 0.11² contribute 0.0256 and 0.0121 to the sum " +
+            "gradient descent is nudging downhill. A line through the points exactly would need one " +
+            "parameter per point; this one has two, m and c, which is the whole compression.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries("fitted line", listOf(FigurePoint(0f, 0.2f), FigurePoint(1f, 0.8f))),
+            ),
+            markers = listOf(
+                FigurePoint(0.25f, 0.30f, "actual"),
+                FigurePoint(0.6f, 0.72f, "+0.16"),
+                FigurePoint(0.85f, 0.60f, "−0.11"),
+            ),
+            xLabel = "x",
+            yLabel = "y",
+        ),
+    ),
     whatIsIt = listOf(
         "Linear regression finds the straight line that best describes the relationship between an input x and an output y.",
         "It answers “given x, what is the most likely y?” by minimizing the gap between the line and every data point.",

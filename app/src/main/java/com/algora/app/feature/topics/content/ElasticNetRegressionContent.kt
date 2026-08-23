@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,21 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val elasticNetRegressionContent = TopicContent(
     topicId = "elasticnet_regression",
+    figure = Figure(
+        caption = "Two near-duplicate predictors, y = 2·base + noise. Lasso hands 1.98 to one twin and " +
+            "0.00 to the other — an arbitrary split that flips between bootstrap resamples. ElasticNet " +
+            "at α = 0.5 splits it 1.02 and 0.96, close to even, and both survive every resample: the L2 " +
+            "term's strict convexity is what turns an arbitrary pick into a grouped, reproducible one.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("Lasso: twin A", 0.99f, FigureTone.Warn),
+                FigureBar("Lasso: twin B", 0.0f, FigureTone.Warn),
+                FigureBar("ElasticNet: twin A", 0.51f),
+                FigureBar("ElasticNet: twin B", 0.48f),
+            ),
+            yLabel = "coefficient / 2.0",
+        ),
+    ),
     whatIsIt = listOf(
         "ElasticNet carries both penalties at once: λ(α·Σ|βⱼ| + (1−α)/2·Σβⱼ²). The L1 part still zeroes useless coefficients, and the L2 part fixes the specific failure lasso has when predictors are correlated.",
         "That failure is worth stating precisely. Given two near-identical predictors, lasso's diamond has its corner on one axis or the other, so the solution keeps one and zeroes its twin — and which twin survives is decided by noise, flipping between bootstrap resamples. ElasticNet's L2 component makes the objective strictly convex, which produces the grouping effect: correlated predictors get near-equal coefficients and enter or leave the model together. If the selected set is something you intend to report rather than merely predict with, this is the difference between a finding and an artifact.",

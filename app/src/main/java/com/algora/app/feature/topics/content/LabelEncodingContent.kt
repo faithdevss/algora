@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,21 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val labelEncodingContent = TopicContent(
     topicId = "label_encoding",
+    figure = Figure(
+        caption = "Scored on a target that is non-monotone in the label-code order, a linear fit " +
+            "reaches MSE 11.26 on the raw code and 0.280 on one-hot — 40× worse — because it must pass " +
+            "one straight line through four unordered levels. A tree grown on the same label-coded " +
+            "column needs only two splits to reach 0.280, one-hot's number exactly: it never reads the " +
+            "code as a distance, only as a place to cut.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("Linear, label", 1f, FigureTone.Warn),
+                FigureBar("Linear, one-hot", 0.025f),
+                FigureBar("Tree, label", 0.025f, FigureTone.Accent),
+            ),
+            yLabel = "MSE, relative to the label-coded linear fit",
+        ),
+    ),
     whatIsIt = listOf(
         "Label encoding replaces each category with an integer: red 0, green 1, blue 2, yellow 3. It costs one column instead of four and it is the fastest thing you can do to a categorical feature. The received rule is that you should not do it, and the rule is half right in a way worth being precise about, because the other half is used by every gradient-boosting library in production.",
         "What the encoding introduces is a geometry the categories do not have. Under those codes red sits 3 away from yellow and 1 away from green, and a model that multiplies the code by a weight reads that literally. Scored on data whose true effect per category is non-monotone in the code order, a least-squares fit reaches MSE 11.26 on the label code against 0.280 on one-hot — 40× worse — because it has to pass one straight line through four unordered levels.",

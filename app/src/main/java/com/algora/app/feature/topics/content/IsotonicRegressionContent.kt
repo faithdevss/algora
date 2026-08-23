@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,34 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val isotonicRegressionContent = TopicContent(
     topicId = "isotonic_regression",
+    figure = Figure(
+        caption = "pava([1, 3, 2, 4]) returns [1, 2.5, 2.5, 4]. The 3 and the 2 are the violation — index 2 " +
+            "is lower than index 1 — so PAVA pools them into their weighted mean, 2.5, and the pair " +
+            "moves together from then on. The 1 and the 4 already obeyed the ordering, so they pass " +
+            "through untouched; only the violating pair was ever adjusted.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "raw",
+                    listOf(
+                        FigurePoint(0f, 0f), FigurePoint(0.33f, 0.667f),
+                        FigurePoint(0.67f, 0.333f), FigurePoint(1f, 1f),
+                    ),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "PAVA fit",
+                    listOf(
+                        FigurePoint(0f, 0f), FigurePoint(0.33f, 0.5f),
+                        FigurePoint(0.67f, 0.5f), FigurePoint(1f, 1f),
+                    ),
+                ),
+            ),
+            xLabel = "index",
+            yLabel = "value (1 → 4 normalized)",
+        ),
+    ),
     whatIsIt = listOf(
         "Isotonic regression finds the least-squares fit subject to one constraint: the fitted values must never decrease. No functional form is assumed — not linear, not polynomial, not smooth — only monotonicity. The result is a step function that is flat wherever the data disagreed with the ordering.",
         "The algorithm is Pool Adjacent Violators (PAVA), and it is genuinely simple. Walk left to right; whenever the current value is lower than the block before it, that pair violates monotonicity, so merge them and replace both with their weighted average. Merging can create a new violation with the block before that, so keep merging backwards until the sequence is non-decreasing again. Each point is merged at most once, so the whole thing runs in O(n) after sorting — and it returns the exact global optimum, not an approximation.",

@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,21 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val oneHotEncodingContent = TopicContent(
     topicId = "one_hot_encoding",
+    figure = Figure(
+        caption = "The width one-hot adds is exactly the level count: 4 columns for colour, 842 for " +
+            "product_id, 5,213 for postcode in this dataset — the same encoding that scores MSE 0.280 " +
+            "against a label code's 11.26 on a four-level column costs 5,213 columns on a " +
+            "high-cardinality one. Dropping one level to fix the intercept's collinearity costs nothing " +
+            "measurable (0.280 either way) and only ever removes one column, not the growth itself.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("colour · 4", 0.0008f),
+                FigureBar("product_id · 842", 0.162f),
+                FigureBar("postcode · 5,213", 1f, FigureTone.Warn),
+            ),
+            yLabel = "one-hot columns added, relative to postcode's 5,213",
+        ),
+    ),
     whatIsIt = listOf(
         "One-hot encoding turns one categorical column into k binary ones: a column per level, a single 1 per row. It is the encoding that makes no claim about the categories beyond which one each row belongs to — every pair of levels ends up exactly √2 = 1.414 apart, which is the truth about unordered categories and precisely what a label code gets wrong when it puts red 3 away from yellow and 1 away from green.",
         "Scored on data whose true effect per category is non-monotone in the label-code order, a least-squares fit reaches MSE 0.280 on the one-hot matrix and 11.26 on the label code — 40× worse — because the one-hot fit can give each level its own coefficient while the label fit has to pass one straight line through all four. That is the entire argument for it, and it applies to every model that multiplies a feature by a weight or measures a distance.",

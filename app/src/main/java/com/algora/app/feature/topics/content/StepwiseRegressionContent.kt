@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,27 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val stepwiseRegressionContent = TopicContent(
     topicId = "stepwise_regression",
+    figure = Figure(
+        caption = "100 observations, 50 predictors, and a target independent of every one of them. Five " +
+            "rounds of forward selection still climb R² to 0.04, 0.08, 0.12, 0.16, then 0.20 — and " +
+            "several of the five chosen columns come back with p < 0.05, computed as though they had " +
+            "been named in advance. Nothing in the data was ever predictive; the climb is the search.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "R² (pure noise)",
+                    listOf(
+                        FigurePoint(0f, 0.04f), FigurePoint(0.25f, 0.08f), FigurePoint(0.5f, 0.12f),
+                        FigurePoint(0.75f, 0.16f), FigurePoint(1f, 0.20f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+            ),
+            markers = listOf(FigurePoint(1f, 0.20f, "5 predictors, all noise")),
+            xLabel = "selection step",
+            yLabel = "R²",
+        ),
+    ),
     whatIsIt = listOf(
         "Stepwise regression builds a model by greedy search over feature subsets. Forward selection starts empty and repeatedly adds whichever remaining feature improves the fit most; backward elimination starts full and removes the least useful; bidirectional does both, allowing a feature added earlier to be dropped later.",
         "It exists because exhaustive search does not scale — 2^p subsets is 10³⁰ at p = 100 — and greedy search is O(p²). But greedy is not optimal, and the failure mode is specific: a pair of features that is jointly predictive while neither is individually predictive will never be found, because forward selection judges each candidate alone. Backward elimination can catch that case, which is one reason the two directions disagree.",
