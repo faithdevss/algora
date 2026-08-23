@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,32 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val mdpContent = TopicContent(
     topicId = "mdp",
+    figure = Figure(
+        caption = "One step of an MDP written out: the policy chooses among the actions, the " +
+            "environment's P(s′|s,a) chooses where that action lands, and the reward rides on the " +
+            "arrival rather than on the choice. Action a₁ is stochastic — 0.8 to s′ for nothing, " +
+            "0.2 to s″ for +1 — while a₂ pays −1 with certainty. Only the node you are standing on " +
+            "feeds the next hop; that is the Markov property, and it is what collapses an " +
+            "unbounded history into |S| equations in |S| unknowns. ⟨S, A, P, R, γ⟩ is exactly the " +
+            "five things this picture needed before it could be drawn.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("s", 0.06f, 0.50f, FigureTone.Primary),
+                FigureGraphNode("a₁", 0.42f, 0.18f, FigureTone.Accent),
+                FigureGraphNode("a₂", 0.42f, 0.86f, FigureTone.Accent),
+                FigureGraphNode("s′ 0", 0.94f, 0.04f, FigureTone.Muted),
+                FigureGraphNode("s″ +1", 0.94f, 0.44f, FigureTone.Primary),
+                FigureGraphNode("s‴ −1", 0.94f, 0.96f, FigureTone.Warn),
+            ),
+            edges = listOf(
+                FigureEdge(0, 1, "π", directed = true, tone = FigureTone.Accent),
+                FigureEdge(0, 2, "π", directed = true, tone = FigureTone.Accent),
+                FigureEdge(1, 3, "0.8", directed = true),
+                FigureEdge(1, 4, "0.2", directed = true),
+                FigureEdge(2, 5, "1.0", directed = true),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A Markov Decision Process (MDP) is the mathematical framework for reinforcement learning: an agent in a state takes an action, receives a reward, and transitions to a new state.",
         "Its defining Markov property is that the future depends only on the current state, not the full history — which makes the problem tractable.",

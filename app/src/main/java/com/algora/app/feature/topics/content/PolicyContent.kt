@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,26 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val policyContent = TopicContent(
     topicId = "policy",
+    figure = Figure(
+        caption = "Both rows are policies in the same state, and both would answer \"→\" if you " +
+            "asked only for their best action. The difference is everything the top row throws " +
+            "away: μ(s) is a one-hot, so it explores nothing and an opponent can predict it " +
+            "exactly. π(·|s) keeps mass on three actions, which is where exploration comes from " +
+            "for free — and why matching pennies has no optimal deterministic play at all. A " +
+            "finite, fully observable MDP always has an optimal deterministic policy; drop full " +
+            "observability and two identical-looking corridors trap μ forever while a coin flip " +
+            "walks out.",
+        shape = FigureShape.Heatmap(
+            values = listOf(
+                listOf(0f, 1f, 0f, 0f),
+                listOf(0.10f, 0.55f, 0.30f, 0.05f),
+            ),
+            rowLabels = listOf("μ(s)", "π(·|s)"),
+            colLabels = listOf("↑", "→", "↓", "←"),
+            marks = listOf(FigureCell(0, 1), FigureCell(1, 1)),
+            legend = "Intensity = P(a|s) in one state; outlined = the greedy action both agree on.",
+        ),
+    ),
     whatIsIt = listOf(
         "A policy π is the agent's behaviour: a rule that turns a state into an action. It is the only thing that gets deployed — value functions, models and replay buffers are scaffolding used to build a good π, then thrown away.",
         "Policies come in two shapes. A deterministic policy a = μ(s) commits to one action per state. A stochastic policy π(a|s) returns a distribution and samples from it. The stochastic form is not merely a softer version: it is required whenever the optimal behaviour is genuinely random. In rock-paper-scissors any deterministic policy is beaten outright, and in a partially observable maze where two corridors look identical, a deterministic policy that turns left in both can be trapped forever while a coin flip escapes.",

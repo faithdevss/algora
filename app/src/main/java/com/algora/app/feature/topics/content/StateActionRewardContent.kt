@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,26 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val stateActionRewardContent = TopicContent(
     topicId = "state_action_reward",
+    figure = Figure(
+        caption = "The unit of experience is a four-cell window, and it overlaps its neighbour: s₁ " +
+            "closes one transition and opens the next, which is why a replay buffer's rows share " +
+            "states. The indexing is the point — r₁ is numbered t+1 because it arrives with s₁, " +
+            "after the action, not alongside a₀. The agent authors only the a cells; the " +
+            "environment answers with the r and s cells. Sufficiency is a decision you make about " +
+            "the s cells and not a property you inherit: one Pong frame carries no velocity, so " +
+            "the state is four stacked frames, not one.",
+        shape = FigureShape.Strip(
+            cells = listOf("s₀", "a₀", "r₁", "s₁", "a₁", "r₂", "s₂"),
+            bands = listOf(
+                FigureBand(0, 3, "one transition (s, a, r, s′)", FigureTone.Primary),
+                FigureBand(4, 6, "the next one", FigureTone.Muted),
+            ),
+            pointers = listOf(
+                FigurePointer(2, "scores a₀"),
+                FigurePointer(3, "shared"),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Three signals define an RL problem. The state describes the situation, the action is what the agent may do about it, and the reward is a single number saying how good the last transition was. Everything else in RL is machinery for turning a stream of these into a policy.",
         "A state must be sufficient: given sₜ, the past adds nothing about the future. That is the Markov property, and it is a design requirement, not a fact about the world. A single frame of Pong is not a state — it has no velocity — but four stacked frames is. Getting this wrong is the most common reason an agent plateaus for reasons that look like an algorithm bug.",

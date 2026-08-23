@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureLayer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,23 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val agentEnvironmentContent = TopicContent(
     topicId = "agent_environment",
+    figure = Figure(
+        caption = "Two blocks and two arrows is the whole of reinforcement learning. Forward, the " +
+            "agent sends aₜ and nothing else — not its value estimates, not how sure it is. Back " +
+            "come exactly one observation and one scalar. The boundary is drawn by control, not by " +
+            "hardware: a robot's motors sit on the environment side because the agent can only " +
+            "command them, never change how they answer. Everything the agent will ever learn has " +
+            "to be squeezed out of that returning pair — which is also why its current behaviour " +
+            "decides what data it gets to learn from next.",
+        shape = FigureShape.LayerStack(
+            layers = listOf(
+                FigureLayer("Agent", "π(a|s) → aₜ", FigureTone.Accent),
+                FigureLayer("Environment", "P(s′|s,a), R", FigureTone.Primary),
+            ),
+            horizontal = true,
+            backwardLabel = "sₜ₊₁, rₜ₊₁",
+        ),
+    ),
     whatIsIt = listOf(
         "Reinforcement learning splits the world in two. The agent is the part you are training — it chooses actions. The environment is everything else — it receives those actions and answers with a new observation and a scalar reward. The loop between them is the only channel either side has.",
         "The boundary is not physical, it is a boundary of control. A robot's motors are part of the environment, not the agent, because the agent cannot change how a motor responds to a command — it can only send the command and see what happened. The useful rule: anything the agent cannot alter arbitrarily is environment, even if it lives inside the same robot.",

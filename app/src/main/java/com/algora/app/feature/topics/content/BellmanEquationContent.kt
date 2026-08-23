@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,25 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val bellmanEquationContent = TopicContent(
     topicId = "bellman_equation",
+    figure = Figure(
+        caption = "The backup diagram both forms share: one step down to the actions, one more to " +
+            "where they land, then fold the leaves back up into the root. What separates Vπ from " +
+            "V* is a single operator at the middle row — weight the branches by π(a|s) and you " +
+            "have evaluated a policy, take the max instead and you have improved it. Nothing here " +
+            "is an algorithm yet; it is the equality V(s) must satisfy, one equation per state. " +
+            "Sweeping it from any starting guess still converges, because the backup is a " +
+            "γ-contraction in the max-norm: every sweep shrinks the worst error by at least γ.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("V(s)", null, FigureTone.Primary),
+                FigureNode("a₁", 0, FigureTone.Accent),
+                FigureNode("a₂", 0, FigureTone.Accent),
+                FigureNode("r+γV(s′)", 1),
+                FigureNode("r+γV(s″)", 1),
+                FigureNode("r+γV(s‴)", 2),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "The Bellman equation says a state's value must equal the immediate reward for leaving it plus the discounted value of wherever it lands. It is a consistency condition, not a procedure — a description of what a correct value function looks like, which every algorithm in this section then chases in a different way.",
         "It comes in two forms and the difference is one operator. The expectation equation averages over the actions a given policy would take, and describes Vπ. The optimality equation takes a max over actions instead, and describes V*. Expectation is what you evaluate; max is what you optimize. Nearly every confusion about the tabular methods dissolves once you can tell which of the two you are looking at.",

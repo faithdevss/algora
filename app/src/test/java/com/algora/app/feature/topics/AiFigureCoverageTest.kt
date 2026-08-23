@@ -48,6 +48,8 @@ class AiFigureCoverageTest {
         "confusion_matrix", "accuracy", "precision_recall", "rmse",
         // A8 — free-tier NLP preprocessing, on the existing Strip shape.
         "pos_tagging", "stemming", "stop_words", "text_cleaning",
+        // A9 — free-tier RL foundations, on LayerStack, Strip, Heatmap, Graph and Tree.
+        "agent_environment", "state_action_reward", "policy", "mdp", "bellman_equation",
     )
 
     @Test
@@ -65,6 +67,6 @@ class AiFigureCoverageTest {
     @Test
     fun `the pilot is the size the phase was scoped against`() {
         // Keeps the batch table in docs/plan/phase-12-ai-figures.md verifiable rather than folklore.
-        assertEquals(54, pilotFigures.size)
+        assertEquals(59, pilotFigures.size)
     }
 }

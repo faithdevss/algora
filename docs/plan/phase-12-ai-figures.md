@@ -1,10 +1,17 @@
 # Phase 12 — Figures for AI topics (pilot)
 
-Status: **Pilot shipped, extension in progress.** 54 of 323 AI topics carry a figure — the A1–A5
-pilot plus A6–A8, batched by free-tier priority from here on (see *Batches* below). The remaining
-~269 continue in the same batch size — see *What the pilot was for* below.
+Status: **Pilot shipped, extension in progress.** 59 of 323 AI topics carry a figure — the A1–A5
+pilot plus A6–A9, batched by free-tier priority from here on (see *Batches* below). The remaining
+~264 continue in the same batch size — see *What the pilot was for* below.
+
 Depends on: the figure layer (`core/data/model/Figure.kt`, `feature/topics/FigureCard.kt`,
 `FigureShapeTest`) and Phase 11, which took it to 122/122 Data Structures and Algorithms topics.
+
+Free-tier topics still without one: **18**, after A9 took the five RL foundations. What is left of
+the free tier is `bert`, `perplexity`, `prompt_engineering`, `transfer_learning`, `wer` (NLP);
+`biological_neuron`, `conv_layers`, `pooling_layers`, `data_augmentation`, `early_stopping`,
+`neural_style_transfer`, `perceptron`, `segmentation_types`, `siamese_networks` (DL); and `apriori`,
+`moving_average`, `multi_armed_bandit`, `svd` (ML). Everything after that is premium.
 
 ## Goal
 
@@ -23,7 +30,7 @@ were, and they are exactly the three it named.
 |---|---|---|
 | Interview Prep — Patterns | 57 | 57 |
 | Data Structures + Algorithms | 122 | 122 |
-| ML / DL / NLP / RL | 323 unique (356 entries, 33 cross-listed) | **54** |
+| ML / DL / NLP / RL | 323 unique (356 entries, 33 cross-listed) | **59** |
 
 ## New shapes
 
@@ -60,6 +67,7 @@ meant. Cells are square — an attention matrix drawn as a rectangle loses its d
 | A6 | `Plot` — regression | `linear_regression`, `polynomial_regression`, `ridge_regression`, `lasso_regression`, `elasticnet_regression`, `stepwise_regression`, `robust_regression`, `quantile_regression`, `bayesian_ridge`, `poisson_regression`, `isotonic_regression`, `lars` |
 | A7 | Free-tier priority — data preprocessing & model evaluation, `Plot` + `Grid` | `missing_value_imputation`, `label_encoding`, `one_hot_encoding`, `min_max_normalization`, `confusion_matrix` (Grid), `accuracy`, `precision_recall`, `rmse` |
 | A8 | Free-tier priority — NLP preprocessing, on the existing `Strip` shape | `pos_tagging`, `stemming`, `stop_words`, `text_cleaning` |
+| A9 | Free-tier priority — RL foundations, one topic per shape | `agent_environment` (LayerStack), `state_action_reward` (Strip), `policy` (Heatmap), `mdp` (Graph), `bellman_equation` (Tree) |
 
 Each batch's shape work landed in the same commit as its first figures — a shape with no caller is
 unreviewable.
@@ -71,6 +79,7 @@ unreviewable.
 - `feature/topics/FigureCard.kt` — `PlotFigure`, `LayerStackFigure`, `HeatmapFigure`, three `when`
   branches. Also dropped a dead `widestNode` local left in `GraphFigure` by F2.
 - `feature/topics/content/*.kt` — 30 files gained a `figure = Figure(…)` argument after `topicId`.
+  A6–A9 added 29 more the same way; no renderer change since A4.
 - `feature/topics/FigureShapeTest.kt` — three conformance tests; the enumeration already covered
   ML/DL/NLP/RL, so no wiring changed.
 - `feature/topics/AiFigureCoverageTest.kt` — new.
@@ -103,7 +112,7 @@ lines. A shape-only batch (A1, A3, A4) costs about one extra hour for renderer p
 
 Per batch: `./gradlew :app:testDebugUnitTest` (`FigureShapeTest`, `AiFigureCoverageTest`,
 `DsaFigureCoverageTest`, `FigureCoverageTest`, `ContentCoverageTest`) then `./gradlew assembleDebug`.
-Both green for A1–A5.
+Both green for A1–A9.
 
 **Emulator pass — partial, and it earned its keep.** Nine of the 30 pages walked on a 1080×2400
 emulator, chosen to hit every shape at its densest: MLP and CNNs (vertical `LayerStack` at three and
@@ -119,7 +128,9 @@ guard's cap dropped from five blocks to four. Re-verified in both themes.
 Two risks named above turned out not to be real: the heatmap ramp is legible at 0.10 intensity in
 both themes, and the plot's axis labels do not crowd at three series.
 
-**Still outstanding:** the other 21 pages, and light mode for six of the nine walked.
+**Still outstanding:** the other 21 pages, and light mode for six of the nine walked. A9 is
+unwalked — its two riskiest cells are the `mdp` graph, whose six hand-placed nodes push to y = 0.04
+and 0.96, and `policy`'s heatmap row labels, which get 16% of the card's width at 9sp.
 
 ## Non-goals
 
