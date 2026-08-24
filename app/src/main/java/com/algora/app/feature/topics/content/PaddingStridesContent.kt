@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,36 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val paddingStridesContent = TopicContent(
     topicId = "padding_strides",
+    figure = Figure(
+        caption = "The formula drawn as what it does to the pixels. A 7×7 input, a 3×3 kernel, " +
+            "stride 1, no padding: ⌊(7 + 0 − 3)/1⌋ + 1 = 5, so 25 windows land on the image and " +
+            "each cell here counts how many of them read that pixel. The interior is read nine " +
+            "times, the corners once — a 9-to-1 asymmetry fixed before a single weight exists, " +
+            "and the reason the border of an unpadded feature map is systematically " +
+            "under-represented. Same padding, p = (k − 1)/2 = 1, is that formula solved for p: " +
+            "every count becomes 9 and the output stays 7×7. The shrinkage is the other half — " +
+            "k − 1 = 2 pixels per layer, survivable once and not at depth, which takes a 224×224 " +
+            "image to 204×204 over ten unpadded 3×3 layers and is why VGG pads all thirteen of its " +
+            "convolutions.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("1", "2", "3", "3", "3", "2", "1"),
+                listOf("2", "4", "6", "6", "6", "4", "2"),
+                listOf("3", "6", "9", "9", "9", "6", "3"),
+                listOf("3", "6", "9", "9", "9", "6", "3"),
+                listOf("3", "6", "9", "9", "9", "6", "3"),
+                listOf("2", "4", "6", "6", "6", "4", "2"),
+                listOf("1", "2", "3", "3", "3", "2", "1"),
+            ),
+            marks = listOf(
+                FigureCell(0, 0, FigureTone.Warn),
+                FigureCell(0, 6, FigureTone.Warn),
+                FigureCell(6, 0, FigureTone.Warn),
+                FigureCell(6, 6, FigureTone.Warn),
+                FigureCell(3, 3, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Padding and stride are the two knobs that decide a convolution's output shape, and one formula covers both: ⌊(n + 2p − k)/s⌋ + 1. Padding adds a border of zeros so the window has somewhere to stand at the edges; stride is how far it jumps between positions. Getting this arithmetic wrong is the single most common shape error in a vision model, and it fails loudly at the first dense layer rather than where the mistake was made.",
         "Without padding, the border of every image is under-read before a single weight is learned. The simulation counts it: with a 3×3 kernel over a 7×7 input, the corner pixel falls inside exactly one window while the centre pixel falls inside nine. The map also shrinks by k − 1 pixels per layer, which is survivable once and not survivable at depth — ten unpadded 3×3 layers take a 224×224 image down to 204×204. \"Same\" padding, p = (k − 1)/2 at stride 1, is that formula solved for p, and it is why VGG pads every one of its thirteen convolutions.",

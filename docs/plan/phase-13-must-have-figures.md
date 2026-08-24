@@ -1,6 +1,6 @@
 # Phase 13 — The figures that must exist
 
-Status: **In progress — M1, M2 and M3 shipped, 15 of 41.** Everything else in `phase-12-figure-scope.md`'s
+Status: **In progress — M1 to M4 shipped, 21 of 41.** Everything else in `phase-12-figure-scope.md`'s
 Tier A becomes optional and stays unbuilt unless a page proves it needs one.
 
 Depends on: Phase 12's figure layer, which is finished as a *capability* — nine shapes, a renderer
@@ -101,7 +101,14 @@ scale — the series spans 55 units and its differences span 21 around zero, so 
 differences into a line. The ACF is the diagnostic the page's own readout quotes, and all three
 curves live on the same −1..+1 axis: 0.884 decaying slowly, 0.063 flat, −0.469 over-differenced.
 
-**M4 — Gradients and what each CNN changed** (6).
+**M4 — Gradients and what each CNN changed** (6) — **shipped.** `vanishing_gradient` is the only one
+that needed a lab run — `deepGradients()` at four init scales — and every other number in the batch
+was already stated on its page and was re-derived before being drawn: 192×32×25 = 153,600 and the
+whole 3a module both ways, 25C² against 18C², 1/N + 1/k² swept over eight widths, and the 7×7
+read-count map. `resnet` uses `Graph` rather than the `LayerStack` the brief named, because a skip
+connection is an edge and `LayerStack` has no way to draw one — the addition is the figure, so the
+shape that can draw the addition wins.
+
 
 | Topic | The figure has to show |
 |---|---|
@@ -111,6 +118,12 @@ curves live on the same −1..+1 axis: 0.884 decaying slowly, 0.063 flat, −0.4
 | `inception` | The 1×1 bottleneck's arithmetic, as a cost comparison. |
 | `vgg` | Two 3×3s against one 5×5: same receptive field, fewer parameters. |
 | `mobilenet` | Depthwise separable convolution costing 8× less, as the division it is. |
+
+The batch's six figures land on five shapes — Plot twice (a log-scale gradient sweep and a cost
+curve), Grid twice (a 7×7 read-count map and a five-row cost table), plus Graph and a bar chart — so
+the differ-from-each-other rule is satisfied on content as well as on shape. `mobilenet` and
+`inception` are both cost arguments and were checked against each other for that reason: one is a
+curve with a floor, the other a table where a single row carries the saving.
 
 **M5 — Detection** (5). The one block where the numbers only mean something side by side.
 
@@ -168,7 +181,7 @@ Per batch: `./gradlew :app:testDebugUnitTest` (`FigureShapeTest`, `AiFigureCover
 **One emulator pass at the end of the phase, not per batch** — and it has a backlog to clear from
 Phase 12 already: `knn`'s five labelled edges off one node, the eleven-node dendrogram in
 `hierarchical_clustering`, `catboost`'s and `factor_analysis`'s narrow grids, `qda`'s 7×7 heatmap,
-and `extra_trees`' full-width aux row. M7's trellis joins that list on arrival, M3 has added the
+and `extra_trees`' full-width aux row. M7's trellis joins that list on arrival, M4 has added `padding_strides`' 7×7 grid and `resnet`'s five-node graph, M3 added the
 reachability profile it was promised plus `hdbscan`'s three-span timeline and `fp_growth`'s
 nine-node tree, and M2 added two: `bias_variance`'s four series on one axis, and
 `gaussian_nb`'s four bells, where each class's two curves nearly coincide and the solid/dashed

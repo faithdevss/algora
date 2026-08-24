@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,34 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val inceptionContent = TopicContent(
     topicId = "inception",
+    figure = Figure(
+        caption = "The inception 3a module priced twice, in multiply-accumulates per output " +
+            "position, at its real widths: 192 channels in, branches of 64, 128, 32 and 32. The " +
+            "naive column is what running the kernels directly costs; the second is the same " +
+            "module with a 1×1 reduction in front of each spatial branch. Almost all of the " +
+            "saving is in one row — the 5×5 branch drops 9.7×, because compressing 192 channels " +
+            "to 16 first costs 3,072 and then the 5×5 runs over 16 channels instead of 192. The " +
+            "1×1 branch and the pooling projection have no spatial kernel to feed, so nothing " +
+            "changes there. Module total 393,216 → 163,328, a 2.4× cut at an identical output " +
+            "shape, which is what made stacking nine of these affordable — and the 1×1 sandwich " +
+            "is the part of this paper that outlived the module.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("12,288", "12,288", "1.0×"),
+                listOf("221,184", "129,024", "1.7×"),
+                listOf("153,600", "15,872", "9.7×"),
+                listOf("6,144", "6,144", "1.0×"),
+                listOf("393,216", "163,328", "2.4×"),
+            ),
+            rowHeaders = listOf("1×1 · 64", "3×3 · 128", "5×5 · 32", "pool · 32", "module"),
+            colHeaders = listOf("naive", "with 1×1", "cut"),
+            marks = listOf(
+                FigureCell(2, 0, FigureTone.Warn),
+                FigureCell(2, 1, FigureTone.Accent),
+                FigureCell(4, 2),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Every architecture before it answered \"which kernel size should this layer use?\" by choosing one. Inception's answer is to stop choosing: one module runs 1×1, 3×3 and 5×5 convolutions plus a pooling branch over the same input and concatenates the outputs along the channel axis, so the network decides per feature which scale mattered. GoogLeNet stacks nine of these and won ILSVRC 2014 at 6.67% top-5 error.",
         "Done naively that is unaffordable, and the simulation prices it exactly. At the real widths of the inception 3a module — 192 input channels, branches of 64, 128, 32 and 32 — the naive version costs 393,216 multiply-accumulates per output position, of which the 5×5 branch alone is 153,600. Worse, concatenation means each module's output is wider than its input, so stacking makes the next module's cost grow with it.",

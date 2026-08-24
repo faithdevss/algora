@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,27 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val vggContent = TopicContent(
     topicId = "vgg",
+    figure = Figure(
+        caption = "Parameters per convolution, in units of C² for C channels in and out, for the " +
+            "two substitutions VGG's design rests on. A 5×5 kernel is 25C²; two stacked 3×3s see " +
+            "the same 5×5 patch and cost 18C², 28% less. A 7×7 is 49C²; three stacked 3×3s reach " +
+            "the same 7×7 and cost 27C², 45% less. The receptive field is identical in both " +
+            "cases — that is the point, the comparison is like for like — and the stack throws in " +
+            "two or three non-linearities where the single large kernel has one. Applied without " +
+            "exception this gives VGG-16 its 138,357,544 parameters, of which only 14,714,688 are " +
+            "in the thirteen convolutions: fc6 alone, 4096 × (25088 + 1) = 102,764,544, is 74% of " +
+            "the model, which is the part later architectures deleted.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("one 5×5", 0.510f, FigureTone.Warn),
+                FigureBar("two 3×3", 0.367f, FigureTone.Accent),
+                FigureBar("one 7×7", 1.000f, FigureTone.Warn),
+                FigureBar("three 3×3", 0.551f, FigureTone.Accent),
+            ),
+            xLabel = "same receptive field within each pair",
+            yLabel = "parameters, in C² · 49C² full scale",
+        ),
+    ),
     whatIsIt = listOf(
         "VGG is one design decision applied without exception: every convolution is 3×3, stride 1, padded; every pooling layer is 2×2 stride 2; channels double after each pool — 64, 128, 256, 512, 512. VGG-16 has thirteen convolutions and three dense layers, VGG-19 has three more convolutions. The paper's contribution is the controlled experiment: hold the kernel at the smallest useful size, vary only depth, and show that accuracy keeps improving to 16–19 layers.",
         "The case for the small kernel is arithmetic, and the simulation prices it. Two stacked 3×3 layers see the same 5×5 receptive field as one 5×5 layer, with 4,718,592 parameters against 6,553,600 at 512 channels — 28% fewer — and a non-linearity in between that the single large kernel does not have. Three stacked 3×3s reach 7×7 the same way, at 45% fewer parameters than one 7×7. More depth, more non-linearity and fewer weights, all from refusing to use a big kernel.",

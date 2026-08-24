@@ -75,6 +75,8 @@ class AiFigureCoverageTest {
         "r_squared", "bias_variance", "outlier_detection", "gaussian_nb", "multinomial_nb",
         // M3 — outputs that are shapes.
         "optics", "hdbscan", "fp_growth", "arima", "exponential_smoothing",
+        // M4 — gradients, and what each CNN generation actually changed.
+        "vanishing_gradient", "padding_strides", "resnet", "inception", "vgg", "mobilenet",
     )
 
     @Test
@@ -92,6 +94,6 @@ class AiFigureCoverageTest {
     @Test
     fun `the pilot is the size the phase was scoped against`() {
         // Keeps the batch table in docs/plan/phase-12-ai-figures.md verifiable rather than folklore.
-        assertEquals(123, pilotFigures.size)
+        assertEquals(129, pilotFigures.size)
     }
 }

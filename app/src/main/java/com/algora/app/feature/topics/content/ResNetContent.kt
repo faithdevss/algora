@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,34 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val resNetContent = TopicContent(
     topicId = "resnet",
+    figure = Figure(
+        caption = "One edge, and it is the whole contribution. The block computes F(x) down the " +
+            "top path and then adds x back unchanged, so ∂y/∂x = 1 + ∂F/∂x: whatever the " +
+            "convolutions do to the gradient, there is always a route home multiplied by exactly " +
+            "1. The lab runs the same thirty-layer stack twice with identical weights, differing " +
+            "only in that addition — the plain stack delivers 1.3×10⁻⁸ of a unit output gradient " +
+            "to the first layer and the residual stack delivers 6.7×10³. Note the direction: " +
+            "summing corrections makes the residual gradient *grow* toward the input, which is a " +
+            "far easier failure to manage than vanishing, and is what the batch norm in each " +
+            "block — with the last γ initialised to zero, so a fresh block is exactly the " +
+            "identity — is there to keep in range.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("x", 0.06f, 0.50f, FigureTone.Primary),
+                FigureGraphNode("conv 3×3", 0.34f, 0.82f),
+                FigureGraphNode("conv, BN", 0.62f, 0.82f),
+                FigureGraphNode("+", 0.84f, 0.50f, FigureTone.Accent),
+                FigureGraphNode("y", 0.97f, 0.50f, FigureTone.Primary),
+            ),
+            edges = listOf(
+                FigureEdge(0, 1, directed = true),
+                FigureEdge(1, 2, directed = true),
+                FigureEdge(2, 3, "F(x)", directed = true),
+                FigureEdge(0, 3, "∂ = 1", directed = true, tone = FigureTone.Accent),
+                FigureEdge(3, 4, directed = true),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "The problem ResNet was built for is not overfitting. A 56-layer plain network had *higher training error* than a 20-layer one — it could not even fit the data it already had. Depth was making optimisation harder rather than the model weaker, which is a strange result: the deeper network can represent everything the shallow one can, simply by setting the extra layers to the identity. It just could not find that solution by gradient descent.",
         "The fix is one addition. A residual block computes y = F(x) + x instead of y = F(x), so the block only has to learn the *difference* between its input and the desired output. If the best thing it can do is nothing, a plain block has to construct the identity out of its weights while a residual block gets it by driving F toward zero — which is where weight decay is already pushing it. The easy case became the default case.",

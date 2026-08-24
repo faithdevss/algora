@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,64 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val vanishingGradientContent = TopicContent(
     topicId = "vanishing_gradient",
+    figure = Figure(
+        caption = "The measurement the page insists on: ‖∂L/∂W‖ at each of twelve layers, from one " +
+            "real forward and one real backward pass through a 16-wide stack, on a log scale " +
+            "because a linear one draws eleven of the twelve as nothing. Sigmoid at unit init " +
+            "runs from 1.45×10⁻³ at layer 1 to 8.26×10⁻¹ at layer 12 — the input end learns 569× " +
+            "slower than the output end, on the same step size. Shrinking the init to 0.25 does " +
+            "not help, it steepens the line to a ratio of 3.1×10⁷, because small weights shrink " +
+            "the backward signal too; growing it to 1.5 flattens the ratio to 57 and buys that by " +
+            "saturating the units, where σ′ is near zero anyway. ReLU with He initialisation on " +
+            "the identical architecture is the flat line, varying by 0.6× end to end. The ceiling " +
+            "σ′ ≤ 0.25 is what none of the init scales can move.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "ReLU + He",
+                    listOf(
+                        FigurePoint(0.000f, 0.943f), FigurePoint(0.091f, 0.952f),
+                        FigurePoint(0.182f, 0.953f), FigurePoint(0.273f, 0.948f),
+                        FigurePoint(0.364f, 0.943f), FigurePoint(0.455f, 0.947f),
+                        FigurePoint(0.545f, 0.942f), FigurePoint(0.636f, 0.922f),
+                        FigurePoint(0.727f, 0.928f), FigurePoint(0.818f, 0.925f),
+                        FigurePoint(0.909f, 0.932f), FigurePoint(1.000f, 0.916f),
+                    ),
+                    tone = FigureTone.Accent,
+                ),
+                FigureSeries(
+                    "sigmoid, init 1.0",
+                    listOf(
+                        FigurePoint(0.000f, 0.574f), FigurePoint(0.091f, 0.617f),
+                        FigurePoint(0.182f, 0.646f), FigurePoint(0.273f, 0.659f),
+                        FigurePoint(0.364f, 0.692f), FigurePoint(0.455f, 0.711f),
+                        FigurePoint(0.545f, 0.734f), FigurePoint(0.636f, 0.770f),
+                        FigurePoint(0.727f, 0.786f), FigurePoint(0.818f, 0.800f),
+                        FigurePoint(0.909f, 0.845f), FigurePoint(1.000f, 0.880f),
+                    ),
+                    tone = FigureTone.Primary,
+                ),
+                FigureSeries(
+                    "sigmoid, init 0.25",
+                    listOf(
+                        FigurePoint(0.000f, 0.059f), FigurePoint(0.091f, 0.142f),
+                        FigurePoint(0.182f, 0.237f), FigurePoint(0.273f, 0.293f),
+                        FigurePoint(0.364f, 0.364f), FigurePoint(0.455f, 0.439f),
+                        FigurePoint(0.545f, 0.515f), FigurePoint(0.636f, 0.587f),
+                        FigurePoint(0.727f, 0.666f), FigurePoint(0.818f, 0.731f),
+                        FigurePoint(0.909f, 0.810f), FigurePoint(1.000f, 0.891f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.000f, 0.574f, "569× weaker"),
+                FigurePoint(0.000f, 0.059f, "3.1×10⁷ weaker", FigureTone.Warn),
+            ),
+            xLabel = "layer, 1 (input) → 12 (loss)",
+            yLabel = "log₁₀ ‖∂L/∂W‖, −8 → +1",
+        ),
+    ),
     whatIsIt = listOf(
         "Backpropagation multiplies. The gradient reaching layer l is the product of every activation derivative and every weight matrix between l and the loss, so whatever those factors do on average, they do it once per layer. If the average factor is below one, the product decays geometrically with depth, and the layers nearest the input receive a gradient many orders of magnitude smaller than the layers nearest the output.",
         "With sigmoid activations this is not bad luck, it is arithmetic. The derivative σ′(z) = σ(z)(1−σ(z)) peaks at exactly 0.25 at z = 0 and falls away fast on both sides, so every layer contributes a factor of at most a quarter before the weights are even considered. The simulation builds a real 12-layer network, runs one forward and one backward pass, and measures the Frobenius norm of ∂L/∂W at every layer — the first layer's gradient comes out around 570 times weaker than the last's, and it is the measurement rather than the formula that is on screen.",

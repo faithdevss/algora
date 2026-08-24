@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,43 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val mobileNetContent = TopicContent(
     topicId = "mobilenet",
+    figure = Figure(
+        caption = "The saving is a division, and this is the whole of it: depthwise separable " +
+            "costs 1/N + 1/k² of a standard convolution, where N is the output channel count. " +
+            "With k = 3 the second term is a fixed 1/9 = 0.111 that no amount of width removes, " +
+            "so the curve falls fast and then parks — 4.2× cheaper at 32 output channels, 8.7× at " +
+            "256, and still only 8.9× at 1024. At the lab's shape of 128 → 256 with k = 3 that " +
+            "0.1150 is 294,912 parameters becoming 33,920, and the same factor applies to the " +
+            "multiply-accumulates, with no dependence on image size at all. Reading the ceiling " +
+            "the other way is the useful part: the 1×1 that mixes channels is what the whole cost " +
+            "converges to, which is why MobileNetV2 spends its budget there and runs the depthwise " +
+            "filter wide and cheap in between.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "the floor, 1/k² = 0.111",
+                    listOf(FigurePoint(0f, 0.444f), FigurePoint(1f, 0.444f)),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "cost ratio, 1/N + 1/9",
+                    listOf(
+                        FigurePoint(0.000f, 0.944f), FigurePoint(0.143f, 0.694f),
+                        FigurePoint(0.286f, 0.569f), FigurePoint(0.429f, 0.507f),
+                        FigurePoint(0.571f, 0.476f), FigurePoint(0.714f, 0.460f),
+                        FigurePoint(0.857f, 0.452f), FigurePoint(1.000f, 0.448f),
+                    ),
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.286f, 0.569f, "N = 32 · 7.0×", FigureTone.Warn),
+                FigurePoint(0.714f, 0.460f, "N = 256 · 8.7×"),
+            ),
+            xLabel = "output channels N, 8 → 1024, doubling",
+            yLabel = "cost against a standard conv, 0 → 0.25",
+        ),
+    ),
     whatIsIt = listOf(
         "A standard convolution does two jobs at once: it filters spatially and it mixes channels, because every output channel reads every input channel through its own k×k kernel. MobileNet's observation is that those two jobs can be separated. A depthwise convolution applies one k×k kernel per input channel and mixes nothing; a pointwise 1×1 mixes channels and does no spatial work. Together they produce the same output shape as the standard layer.",
         "The saving is exact and independent of image size. The cost ratio is 1/N + 1/k², where N is the output channel count — at 128 → 256 channels with k = 3 that is 0.1150, so the layer drops from 294,912 parameters to 33,920, 8.7× cheaper, and the same factor applies to its multiply-accumulates. Because the 1/k² term dominates once N is large, the saving parks near 8–9× for 3×3 kernels and stays there; the simulation sweeps N to show the curve flattening. MobileNetV1 is that block repeated 28 times: 4.2M parameters and 569M MACs, within about a point of VGG-16's ImageNet accuracy at 33× fewer parameters.",
