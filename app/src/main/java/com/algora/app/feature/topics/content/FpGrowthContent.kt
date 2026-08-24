@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,30 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val fpGrowthContent = TopicContent(
     topicId = "fp_growth",
+    figure = Figure(
+        caption = "The lab's ten baskets, complete, as one tree. D is dropped first — support 2 " +
+            "against a threshold of 3 — which takes 26 item slots down to 24, and those 24 are " +
+            "held in 8 nodes. B occurs in 9 of the 10 baskets and is a single node carrying a " +
+            "counter, which is the compression: descending-frequency order puts the common items " +
+            "at the front, so the baskets share prefixes and the prefixes share nodes. The two " +
+            "highlighted C nodes are the header chain for C: two nodes, five occurrences, because " +
+            "a chain's length counts distinct contexts and not support. Reading upward from them " +
+            "gives C's conditional pattern base directly — BA×3 and B×2 — with no candidate " +
+            "generated and no pass over the database.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("root", null),
+                FigureNode("B:9", 0, FigureTone.Primary),
+                FigureNode("E:1", 0),
+                FigureNode("A:6", 1, FigureTone.Primary),
+                FigureNode("C:2", 1, FigureTone.Accent),
+                FigureNode("E:1", 1),
+                FigureNode("C:3", 3, FigureTone.Accent),
+                FigureNode("E:1", 4),
+                FigureNode("E:1", 6),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Apriori's cost is candidate generation: it proposes itemsets and then reads the database to find out whether they exist. FP-Growth removes that step entirely. It never generates a candidate — it compresses the database into a prefix tree and then reads the frequent itemsets directly out of the tree's structure.",
         "The compression comes from a single ordering decision. Count items once, drop the infrequent ones, and sort every remaining transaction by descending global frequency. Common items now appear at the front of most transactions, so they share prefixes, so they share tree nodes; a node is stored once with a counter rather than once per transaction. A header table keeps a linked list through every node holding a given item, which is how the mining step finds them all without traversing the tree.",

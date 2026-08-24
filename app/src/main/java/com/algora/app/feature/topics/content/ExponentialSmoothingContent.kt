@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,89 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val exponentialSmoothingContent = TopicContent(
     topicId = "exponential_smoothing",
+    figure = Figure(
+        caption = "Holt-Winters on the lab's 48 training months at α = 0.3, β = 0.1, γ = 0.3, with " +
+            "two of its three components drawn. The dashed line is the level: the series as the " +
+            "model believes it would be with the annual cycle taken out, climbing from 108.29 to " +
+            "146.19. The solid line is the fit, and the gap between them is the other two " +
+            "components — a seasonal figure running from −10.37 to +6.36 and repeating every 12 " +
+            "months, plus a trend that stays under 1.7 a month throughout and ends at 0.441. The " +
+            "three add, exactly: the first forecast month is 146.187 + 0.441 + 0.499 = 147.126. " +
+            "The trend being invisible at this scale is the honest picture of it — 0.441 against " +
+            "a level of 146 is what a slowing series looks like, and the model is tracking the " +
+            "slope change at month 30 rather than the one global trend a straight line would fit.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "level",
+                    listOf(
+                        FigurePoint(0.000f, 0.172f), FigurePoint(0.021f, 0.180f),
+                        FigurePoint(0.043f, 0.185f), FigurePoint(0.064f, 0.188f),
+                        FigurePoint(0.085f, 0.189f), FigurePoint(0.106f, 0.189f),
+                        FigurePoint(0.128f, 0.188f), FigurePoint(0.149f, 0.187f),
+                        FigurePoint(0.170f, 0.185f), FigurePoint(0.191f, 0.183f),
+                        FigurePoint(0.213f, 0.180f), FigurePoint(0.234f, 0.178f),
+                        FigurePoint(0.255f, 0.264f), FigurePoint(0.277f, 0.299f),
+                        FigurePoint(0.298f, 0.310f), FigurePoint(0.319f, 0.337f),
+                        FigurePoint(0.340f, 0.349f), FigurePoint(0.362f, 0.372f),
+                        FigurePoint(0.383f, 0.397f), FigurePoint(0.404f, 0.405f),
+                        FigurePoint(0.426f, 0.416f), FigurePoint(0.447f, 0.436f),
+                        FigurePoint(0.468f, 0.417f), FigurePoint(0.489f, 0.429f),
+                        FigurePoint(0.511f, 0.510f), FigurePoint(0.532f, 0.577f),
+                        FigurePoint(0.553f, 0.589f), FigurePoint(0.574f, 0.610f),
+                        FigurePoint(0.596f, 0.651f), FigurePoint(0.617f, 0.705f),
+                        FigurePoint(0.638f, 0.719f), FigurePoint(0.660f, 0.742f),
+                        FigurePoint(0.681f, 0.748f), FigurePoint(0.702f, 0.716f),
+                        FigurePoint(0.723f, 0.720f), FigurePoint(0.745f, 0.719f),
+                        FigurePoint(0.766f, 0.727f), FigurePoint(0.787f, 0.772f),
+                        FigurePoint(0.809f, 0.756f), FigurePoint(0.830f, 0.812f),
+                        FigurePoint(0.851f, 0.804f), FigurePoint(0.872f, 0.786f),
+                        FigurePoint(0.894f, 0.796f), FigurePoint(0.915f, 0.818f),
+                        FigurePoint(0.936f, 0.824f), FigurePoint(0.957f, 0.806f),
+                        FigurePoint(0.979f, 0.797f), FigurePoint(1.000f, 0.803f),
+                    ),
+                    tone = FigureTone.Primary,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "level + trend + season",
+                    listOf(
+                        FigurePoint(0.000f, 0.090f), FigurePoint(0.021f, 0.185f),
+                        FigurePoint(0.043f, 0.311f), FigurePoint(0.064f, 0.234f),
+                        FigurePoint(0.085f, 0.298f), FigurePoint(0.106f, 0.253f),
+                        FigurePoint(0.128f, 0.269f), FigurePoint(0.149f, 0.172f),
+                        FigurePoint(0.170f, 0.065f), FigurePoint(0.191f, 0.084f),
+                        FigurePoint(0.213f, 0.131f), FigurePoint(0.234f, 0.239f),
+                        FigurePoint(0.255f, 0.093f), FigurePoint(0.277f, 0.267f),
+                        FigurePoint(0.298f, 0.420f), FigurePoint(0.319f, 0.350f),
+                        FigurePoint(0.340f, 0.440f), FigurePoint(0.362f, 0.407f),
+                        FigurePoint(0.383f, 0.448f), FigurePoint(0.404f, 0.379f),
+                        FigurePoint(0.426f, 0.283f), FigurePoint(0.447f, 0.316f),
+                        FigurePoint(0.468f, 0.387f), FigurePoint(0.489f, 0.476f),
+                        FigurePoint(0.511f, 0.408f), FigurePoint(0.532f, 0.534f),
+                        FigurePoint(0.553f, 0.705f), FigurePoint(0.574f, 0.645f),
+                        FigurePoint(0.596f, 0.717f), FigurePoint(0.617f, 0.722f),
+                        FigurePoint(0.638f, 0.797f), FigurePoint(0.660f, 0.704f),
+                        FigurePoint(0.681f, 0.625f), FigurePoint(0.702f, 0.660f),
+                        FigurePoint(0.723f, 0.644f), FigurePoint(0.745f, 0.783f),
+                        FigurePoint(0.766f, 0.747f), FigurePoint(0.787f, 0.780f),
+                        FigurePoint(0.809f, 0.885f), FigurePoint(0.830f, 0.802f),
+                        FigurePoint(0.851f, 0.927f), FigurePoint(0.872f, 0.886f),
+                        FigurePoint(0.894f, 0.854f), FigurePoint(0.915f, 0.765f),
+                        FigurePoint(0.936f, 0.675f), FigurePoint(0.957f, 0.685f),
+                        FigurePoint(0.979f, 0.714f), FigurePoint(1.000f, 0.839f),
+                    ),
+                    tone = FigureTone.Accent,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.000f, 0.172f, "level 108.29"),
+                FigurePoint(1.000f, 0.803f, "level 146.19"),
+            ),
+            xLabel = "month, 1 → 48",
+            yLabel = "series value, 98 → 158",
+        ),
+    ),
     whatIsIt = listOf(
         "A moving average treats the last w observations as equally informative and everything before them as worthless. Exponential smoothing fixes both halves of that: every past observation contributes, with a weight that decays geometrically as it recedes. One line does it — ℓₜ = αyₜ + (1−α)ℓₜ₋₁ — and expanding the recursion shows the weights are α, α(1−α), α(1−α)², and so on, summing to one.",
         "That is simple exponential smoothing, which has no notion of trend or season, so its forecast is a flat line. Holt adds a second recursion for the slope; Holt-Winters adds a third for the seasonal figures, each stored per position in the cycle and updated once per cycle. Three components, three recursions, three smoothing parameters — α for the level, β for the trend, γ for the season — and a forecast that is level plus h steps of trend plus the seasonal figure for the month you are forecasting.",

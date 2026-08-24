@@ -73,6 +73,8 @@ class AiFigureCoverageTest {
         "roc_curve", "f1_score", "log_loss", "cohens_kappa", "mae",
         // M2 — fit, capacity and the two likelihoods.
         "r_squared", "bias_variance", "outlier_detection", "gaussian_nb", "multinomial_nb",
+        // M3 — outputs that are shapes.
+        "optics", "hdbscan", "fp_growth", "arima", "exponential_smoothing",
     )
 
     @Test
@@ -90,6 +92,6 @@ class AiFigureCoverageTest {
     @Test
     fun `the pilot is the size the phase was scoped against`() {
         // Keeps the batch table in docs/plan/phase-12-ai-figures.md verifiable rather than folklore.
-        assertEquals(118, pilotFigures.size)
+        assertEquals(123, pilotFigures.size)
     }
 }

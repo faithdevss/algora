@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureSpan
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,28 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val hdbscanContent = TopicContent(
     topicId = "hdbscan",
+    figure = Figure(
+        caption = "Persistence, on the same 36 points OPTICS orders — computed from the minimum " +
+            "spanning tree over mutual reachability, whose edge weights are exactly the ε values " +
+            "at which things join. The axis is ε × 1000. The tight cluster is fully connected at " +
+            "ε = 0.038 and the loose one not until 0.113; both stop being separate clusters at " +
+            "0.410, where the single edge between them closes. So in ε the two lifetimes look " +
+            "comparable, 0.372 against 0.297 — and that is why HDBSCAN measures on λ = 1/ε " +
+            "instead, where they are 23.8 and 6.4 and the tight cluster is the more persistent " +
+            "one by 3.7×. Neither stray is ever a cluster: the first attaches at 0.294 and the " +
+            "second not until 0.591, and a single point joining is a point falling out rather " +
+            "than a split, which is exactly what min_cluster_size prunes away.",
+        shape = FigureShape.Timeline(
+            spans = listOf(
+                FigureSpan(38, 410, "tight cluster · λ-span 23.8"),
+                FigureSpan(112, 410, "loose cluster · λ-span 6.4", FigureTone.Accent),
+                FigureSpan(410, 600, "one merged blob", FigureTone.Warn),
+            ),
+            axisMax = 600,
+            marker = 294,
+            markerLabel = "first stray attaches",
+        ),
+    ),
     whatIsIt = listOf(
         "HDBSCAN takes OPTICS' insight — that there is no single correct eps — and finishes the job. Rather than producing a profile for a human to cut, it builds the full hierarchy of DBSCAN results across every eps and then selects, automatically, the clusters that persisted longest across that range.",
         "The mechanism is a change of metric followed by a change of question. Distances are replaced by mutual reachability, max(core(a), core(b), d(a,b)), which inflates distances in sparse regions and leaves dense ones alone — this is what stops a single sparse point bridging two clusters. A minimum spanning tree over that metric, cut in decreasing weight order, is exactly the DBSCAN hierarchy. Then instead of cutting at one height, HDBSCAN measures each candidate cluster's *stability*: how much total eps-range its points survived before shattering into children. Clusters with high stability are selected, and a cluster is never chosen alongside its own descendants.",

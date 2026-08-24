@@ -1,6 +1,6 @@
 # Phase 13 — The figures that must exist
 
-Status: **In progress — M1 and M2 shipped, 10 of 41.** Everything else in `phase-12-figure-scope.md`'s
+Status: **In progress — M1, M2 and M3 shipped, 15 of 41.** Everything else in `phase-12-figure-scope.md`'s
 Tier A becomes optional and stays unbuilt unless a page proves it needs one.
 
 Depends on: Phase 12's figure layer, which is finished as a *capability* — nine shapes, a renderer
@@ -73,7 +73,19 @@ degrees 1–12 on 15 points of sin(2πx) + N(0, 0.30²), scored on 101 test poin
 degree-12 variance is stable to three decimals across seeds; that one moves ±2%, so the caption
 quotes it to two.
 
-**M3 — Outputs that are shapes** (5).
+**M3 — Outputs that are shapes** (5) — **shipped.** Every number here came out of a lab already in
+the app: `optics()` and the mutual-reachability MST over `varyingDensity`, `buildFpTree()`, and
+`retailSeries(4)` through `difference`, `lag1Autocorrelation` and `holtWinters`. Two shapes get their
+first AI use — `Timeline` for HDBSCAN's persistence intervals and `Tree` for the FP-tree.
+
+One brief was changed on contact. `exponential_smoothing` was scoped as "level, trend and season as
+three curves that sum to the fit", and on the lab's numbers the trend is under 1.7 a month against a
+level of 108–146: drawn on a shared axis it is indistinguishable from the level line, and drawn on
+its own axis it is three panels pretending to be one. The figure draws level and fit, so the seasonal
+component is the visible gap, and the caption does the addition exactly — 146.187 + 0.441 + 0.499 =
+147.126, the first forecast month. A component too small to see is a fact about the series, and the
+figure says so rather than rescaling until it looks important.
+
 
 | Topic | The figure has to show |
 |---|---|
@@ -82,6 +94,12 @@ quotes it to two.
 | `fp_growth` | The FP-tree, on the `Tree` shape, with the compression counted. |
 | `arima` | Differencing turning a wandering series stationary. |
 | `exponential_smoothing` | Level, trend and season as three curves that sum to the fit. |
+
+`arima` also moved: "differencing turning a wandering series stationary" is drawn as the lag-1..12
+autocorrelation at d = 0, 1 and 2 rather than as the raw and differenced series, which have no shared
+scale — the series spans 55 units and its differences span 21 around zero, so one axis flattens the
+differences into a line. The ACF is the diagnostic the page's own readout quotes, and all three
+curves live on the same −1..+1 axis: 0.884 decaying slowly, 0.063 flat, −0.469 over-differenced.
 
 **M4 — Gradients and what each CNN changed** (6).
 
@@ -150,8 +168,9 @@ Per batch: `./gradlew :app:testDebugUnitTest` (`FigureShapeTest`, `AiFigureCover
 **One emulator pass at the end of the phase, not per batch** — and it has a backlog to clear from
 Phase 12 already: `knn`'s five labelled edges off one node, the eleven-node dendrogram in
 `hierarchical_clustering`, `catboost`'s and `factor_analysis`'s narrow grids, `qda`'s 7×7 heatmap,
-and `extra_trees`' full-width aux row. M3's reachability plot and M7's trellis join that list on
-arrival, and M2 has already added two: `bias_variance`'s four series on one axis, and
+and `extra_trees`' full-width aux row. M7's trellis joins that list on arrival, M3 has added the
+reachability profile it was promised plus `hdbscan`'s three-span timeline and `fp_growth`'s
+nine-node tree, and M2 added two: `bias_variance`'s four series on one axis, and
 `gaussian_nb`'s four bells, where each class's two curves nearly coincide and the solid/dashed
 pairing is the only thing telling them apart.
 

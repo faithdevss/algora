@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,59 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val opticsContent = TopicContent(
     topicId = "optics",
+    figure = Figure(
+        caption = "The lab's 36 points in OPTICS' processing order, each carrying the reachability " +
+            "distance it was reached at — the algorithm's actual output, before anything has been " +
+            "called a cluster. The terrain reads directly: the first twenty points are the tight " +
+            "cluster and never rise above 0.030, the thirteen after the peak are the loose one and " +
+            "sit between 0.062 and 0.112, and the 0.410 spike between them is the gap. Both " +
+            "densities are on the same axis, which is the thing one eps cannot express. The dashed " +
+            "line is a flat cut at 0.05, and that cut *is* DBSCAN(0.05) exactly: the tight cluster " +
+            "survives whole and all fourteen loose points are above the line, so they become noise. " +
+            "Nothing below 0.112 keeps the loose cluster intact, and that is nearly four times the " +
+            "tight cluster's deepest internal distance. The final bar is 0 because the last stray " +
+            "restarts the ordering — a restart, not a valley.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "a flat cut at 0.05",
+                    listOf(FigurePoint(0f, 0.119f), FigurePoint(1f, 0.119f)),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "reachability",
+                    listOf(
+                        FigurePoint(0.000f, 0.000f), FigurePoint(0.029f, 0.060f),
+                        FigurePoint(0.057f, 0.045f), FigurePoint(0.086f, 0.045f),
+                        FigurePoint(0.114f, 0.048f), FigurePoint(0.143f, 0.048f),
+                        FigurePoint(0.171f, 0.058f), FigurePoint(0.200f, 0.042f),
+                        FigurePoint(0.229f, 0.042f), FigurePoint(0.257f, 0.030f),
+                        FigurePoint(0.286f, 0.025f), FigurePoint(0.314f, 0.025f),
+                        FigurePoint(0.343f, 0.036f), FigurePoint(0.371f, 0.039f),
+                        FigurePoint(0.400f, 0.039f), FigurePoint(0.429f, 0.049f),
+                        FigurePoint(0.457f, 0.068f), FigurePoint(0.486f, 0.073f),
+                        FigurePoint(0.514f, 0.073f), FigurePoint(0.543f, 0.073f),
+                        FigurePoint(0.571f, 0.673f), FigurePoint(0.600f, 0.976f),
+                        FigurePoint(0.629f, 0.268f), FigurePoint(0.657f, 0.148f),
+                        FigurePoint(0.686f, 0.148f), FigurePoint(0.714f, 0.148f),
+                        FigurePoint(0.743f, 0.151f), FigurePoint(0.771f, 0.151f),
+                        FigurePoint(0.800f, 0.152f), FigurePoint(0.829f, 0.162f),
+                        FigurePoint(0.857f, 0.183f), FigurePoint(0.886f, 0.188f),
+                        FigurePoint(0.914f, 0.188f), FigurePoint(0.943f, 0.171f),
+                        FigurePoint(0.971f, 0.171f), FigurePoint(1.000f, 0.000f),
+                    ),
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.286f, 0.025f, "tight · 0.010"),
+                FigurePoint(0.600f, 0.976f, "the gap · 0.410", FigureTone.Warn),
+                FigurePoint(0.771f, 0.151f, "loose · 0.064"),
+            ),
+            xLabel = "processing order, 36 points",
+            yLabel = "reachability distance, 0 → 0.42",
+        ),
+    ),
     whatIsIt = listOf(
         "DBSCAN needs one eps, and one eps cannot serve clusters of different densities. Set it for the tight cluster and the loose one dissolves into noise; set it for the loose one and the tight cluster merges with everything around it. OPTICS removes the choice rather than automating it.",
         "It produces an ordering instead of labels. Points are processed so that density-reachable ones end up adjacent, and each point records a reachability distance — how far it was from the already-processed set when it was reached. Plot those distances in processing order and you get a profile that reads like terrain: valleys are clusters, and the peaks between them are the gaps. A shallow valley is a loose cluster and a deep one is tight, and both appear in the same plot, which is precisely what a single eps cannot express.",
