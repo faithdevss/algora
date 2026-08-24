@@ -1,6 +1,6 @@
 # Phase 13 — The figures that must exist
 
-Status: **In progress — M1 shipped, 5 of 41.** Everything else in `phase-12-figure-scope.md`'s
+Status: **In progress — M1 and M2 shipped, 10 of 41.** Everything else in `phase-12-figure-scope.md`'s
 Tier A becomes optional and stays unbuilt unless a page proves it needs one.
 
 Depends on: Phase 12's figure layer, which is finished as a *capability* — nine shapes, a renderer
@@ -53,7 +53,12 @@ instead, where AUC does not move and the two scoring rules disagree by 64% again
 | `cohens_kappa` | Accuracy 0.912 sitting beside kappa 0.000 on the same predictions. |
 | `mae` | The two objectives picking different lines through the same points. |
 
-**M2 — Fit, capacity and the two likelihoods** (5).
+**M2 — Fit, capacity and the two likelihoods** (5) — **shipped.** Three of these came out of a lab
+that was already in the app — `RegressionMetricsLab` and the decision-surface blobs were executed and
+their numbers read off rather than reproduced in NumPy — and the other two were computed from
+scratch. The batch's own check is `r_squared`: the least-absolute-deviations line has the slope
+nearer the truth *and* the worse R², which is only visible because both fits were scored against the
+same SS total.
 
 | Topic | The figure has to show |
 |---|---|
@@ -62,6 +67,11 @@ instead, where AUC does not move and the two scoring rules disagree by 64% again
 | `outlier_detection` | The sample size below which the z-rule cannot fire at all. |
 | `gaussian_nb` | One likelihood curve per feature per class — the shape the name promises. |
 | `multinomial_nb` | Counts, and why the text classifier refuses to die. |
+
+`bias_variance` is the one figure in the batch with no lab behind it: the U-curve is 20,000 refits of
+degrees 1–12 on 15 points of sin(2πx) + N(0, 0.30²), scored on 101 test points. Everything but the
+degree-12 variance is stable to three decimals across seeds; that one moves ±2%, so the caption
+quotes it to two.
 
 **M3 — Outputs that are shapes** (5).
 
@@ -141,7 +151,9 @@ Per batch: `./gradlew :app:testDebugUnitTest` (`FigureShapeTest`, `AiFigureCover
 Phase 12 already: `knn`'s five labelled edges off one node, the eleven-node dendrogram in
 `hierarchical_clustering`, `catboost`'s and `factor_analysis`'s narrow grids, `qda`'s 7×7 heatmap,
 and `extra_trees`' full-width aux row. M3's reachability plot and M7's trellis join that list on
-arrival.
+arrival, and M2 has already added two: `bias_variance`'s four series on one axis, and
+`gaussian_nb`'s four bells, where each class's two curves nearly coincide and the solid/dashed
+pairing is the only thing telling them apart.
 
 ## Non-goals
 

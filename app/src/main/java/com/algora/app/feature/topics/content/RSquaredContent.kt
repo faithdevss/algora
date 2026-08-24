@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,32 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val rSquaredContent = TopicContent(
     topicId = "r_squared",
+    figure = Figure(
+        caption = "R²'s baseline is a model, not a convention: the horizontal line at ȳ = 10.565, " +
+            "whose residual sum of squares over the lab's 44 points is 2,088.5. That is SS total, " +
+            "and every other row is that same quantity divided by it. Least squares leaves 813.2 " +
+            "of it and scores 0.611. The line fitted to minimise *absolute* error leaves 957.7 and " +
+            "scores 0.541 — even though its slope of 1.434 is nearer the data's true 1.4 than " +
+            "least squares' 1.861, because R² is built out of squared error and therefore prefers " +
+            "the line the four contaminating points pulled. And a plausible-looking wrong model " +
+            "(intercept 14, slope −0.6) leaves 3,048.6, which is more than the flat line does: " +
+            "that ratio exceeding 1 is the whole content of a negative R².",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("2,088.5", "1.000", "0.000"),
+                listOf("813.2", "0.389", "0.611"),
+                listOf("957.7", "0.459", "0.541"),
+                listOf("3,048.6", "1.460", "−0.460"),
+            ),
+            rowHeaders = listOf("mean only", "least sq", "LAD fit", "bad fit"),
+            colHeaders = listOf("SS res", "÷ SS tot", "R²"),
+            marks = listOf(
+                FigureCell(0, 2),
+                FigureCell(1, 2, FigureTone.Accent),
+                FigureCell(3, 2, FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "R² is 1 − (sum of squared residuals / total sum of squares) — the share of y's variance the model explains beyond what predicting the mean of y every time would already give you. Predicting the mean scores exactly R² = 0, by construction; that's the floor a model has to clear to be worth anything.",
         "The lab's least-squares fit scores R² = 0.611 — it explains 61.1% of the variance a mean-only baseline misses. A deliberately bad model (intercept 14, slope −0.6, chosen to look plausible without fitting the data) scores R² = −0.460: negative, meaning it is worse than just guessing the mean for every point. R² has no floor at zero for an arbitrary model — only for the one that literally is the mean.",

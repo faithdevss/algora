@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,46 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val outlierDetectionContent = TopicContent(
     topicId = "outlier_detection",
+    figure = Figure(
+        caption = "The ceiling, not a measurement on any particular data: a single point among n " +
+            "values cannot have |z| above (n−1)/√n, because the mean and the standard deviation " +
+            "judging it are computed with it inside them. The curve is that bound; the dashed line " +
+            "is the usual threshold of 3. They cross between n = 10 (2.85) and n = 11 (3.02), so " +
+            "on any sample of ten or fewer the rule cannot fire — not \"is strict\", cannot fire, " +
+            "whatever the data looks like. At n = 5 the largest reachable |z| is 1.79, barely half " +
+            "the threshold. The bound rises slowly after that (4.25 at n = 20, 7.62 at n = 60), " +
+            "which is why the failure is invisible on the sample sizes people test rules against.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "threshold |z| > 3",
+                    listOf(FigurePoint(0f, 0.5f), FigurePoint(1f, 0.5f)),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "largest |z| the sample allows",
+                    listOf(
+                        FigurePoint(0.000f, 0.118f), FigurePoint(0.036f, 0.192f),
+                        FigurePoint(0.071f, 0.250f), FigurePoint(0.107f, 0.298f),
+                        FigurePoint(0.143f, 0.340f), FigurePoint(0.179f, 0.378f),
+                        FigurePoint(0.214f, 0.412f), FigurePoint(0.250f, 0.444f),
+                        FigurePoint(0.286f, 0.474f), FigurePoint(0.321f, 0.503f),
+                        FigurePoint(0.357f, 0.529f), FigurePoint(0.429f, 0.579f),
+                        FigurePoint(0.500f, 0.625f), FigurePoint(0.571f, 0.668f),
+                        FigurePoint(0.643f, 0.708f), FigurePoint(0.786f, 0.782f),
+                        FigurePoint(1.000f, 0.882f),
+                    ),
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.107f, 0.298f, "n = 5 · 1.79", FigureTone.Warn),
+                FigurePoint(0.321f, 0.503f, "n = 11 · 3.02"),
+            ),
+            xLabel = "sample size n, 2 → 30",
+            yLabel = "largest |z| a single point can reach",
+        ),
+    ),
     whatIsIt = listOf(
         "The two standard rules for flagging a numeric outlier look interchangeable. The z-score rule flags a value more than three standard deviations from the mean; the IQR rule flags anything outside the quartiles by more than 1.5 interquartile ranges. On clean data they agree — on the lab's 60 clean values, both flag zero — and agreement on easy data is not evidence that two rules are equivalent.",
         "They are not, and the reason is structural: a z-score is computed from the mean and standard deviation, both of which the outliers themselves move. Outliers that arrive together therefore hide each other, each inflating σ for the rest. Adding extreme values to the lab's column until the largest z-score falls under the threshold takes 7 of them — 10.4% of the sample — and at that point the z-score rule flags zero while the IQR rule flags all 7, because the quartiles have not moved at all.",

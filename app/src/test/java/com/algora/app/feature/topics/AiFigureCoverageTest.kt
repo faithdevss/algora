@@ -71,6 +71,8 @@ class AiFigureCoverageTest {
         // M1 — Phase 13's first must-have batch: the classification metrics, each a quantity
         // read against a threshold. See docs/plan/phase-13-must-have-figures.md.
         "roc_curve", "f1_score", "log_loss", "cohens_kappa", "mae",
+        // M2 — fit, capacity and the two likelihoods.
+        "r_squared", "bias_variance", "outlier_detection", "gaussian_nb", "multinomial_nb",
     )
 
     @Test
@@ -88,6 +90,6 @@ class AiFigureCoverageTest {
     @Test
     fun `the pilot is the size the phase was scoped against`() {
         // Keeps the batch table in docs/plan/phase-12-ai-figures.md verifiable rather than folklore.
-        assertEquals(113, pilotFigures.size)
+        assertEquals(118, pilotFigures.size)
     }
 }

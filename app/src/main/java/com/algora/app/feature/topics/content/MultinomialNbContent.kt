@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,38 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val multinomialNbContent = TopicContent(
     topicId = "multinomial_nb",
+    figure = Figure(
+        caption = "The lab's whole training procedure, which is the first two columns: five " +
+            "documents, 18 tokens, six vocabulary terms, counted per class. Five of the twelve " +
+            "count cells are zero, and unsmoothed every one of them is fatal — the score is a " +
+            "product, so a single zero takes the class to −∞ regardless of the other evidence. " +
+            "α = 1 turns them into 1/17 and 1/13 instead, which is the last two columns. Scoring " +
+            "\"goal goal great\" from those numbers alone: −4.405 for sports against −7.513 for " +
+            "politics, a log gap of 3.107, odds of 22.4 to 1, posterior 0.957. Almost all of it " +
+            "is \"goal\", worth a likelihood ratio of 3.82 per occurrence; \"great\" is worth 1.02, " +
+            "which is nothing. Counting, then dividing, is the whole model.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("4", "0", "0.294", "0.077"),
+                listOf("3", "0", "0.235", "0.077"),
+                listOf("1", "0", "0.118", "0.077"),
+                listOf("0", "3", "0.059", "0.308"),
+                listOf("0", "2", "0.059", "0.231"),
+                listOf("3", "2", "0.235", "0.231"),
+            ),
+            rowHeaders = listOf("goal", "match", "team", "vote", "policy", "great"),
+            colHeaders = listOf("n sp", "n pol", "P | sp", "P | pol"),
+            marks = listOf(
+                FigureCell(0, 1, FigureTone.Warn),
+                FigureCell(1, 1, FigureTone.Warn),
+                FigureCell(2, 1, FigureTone.Warn),
+                FigureCell(3, 0, FigureTone.Warn),
+                FigureCell(4, 0, FigureTone.Warn),
+                FigureCell(5, 2, FigureTone.Muted),
+                FigureCell(5, 3, FigureTone.Muted),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Multinomial naive Bayes models a document as a bag of counts drawn from a per-class multinomial distribution. Position is discarded entirely — \"dog bites man\" and \"man bites dog\" are the same input — and what remains is how often each vocabulary term occurred.",
         "Training is counting. Sum the occurrences of each term within each class, divide by that class's total token count, and you have the likelihood. There is no gradient, no iteration and no hyperparameter beyond the smoothing constant, so it fits a corpus of millions of documents in a single pass and updates incrementally forever after.",
