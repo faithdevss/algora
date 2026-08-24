@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,34 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val yoloContent = TopicContent(
     topicId = "yolo",
+    figure = Figure(
+        caption = "The 7×7 grid, with each cell shaded by how many object centres fall inside it. " +
+            "The architecture's budget per cell is fixed and small: two boxes and *one* class " +
+            "vector, so 49 cells give 98 boxes for the whole image against R-CNN's 2,000 " +
+            "proposals, in one pass over a 7×7×30 tensor of 1,470 numbers. The single cell holding " +
+            "three centres is the failure the grid builds in — it can emit two boxes, so one " +
+            "object is unreportable no matter how clearly it is visible, and if those objects are " +
+            "of different classes the one class vector loses them anyway. That is the flock-of-" +
+            "birds case, and it is why v2 added anchors and v3 predicted at three scales. The " +
+            "counts and the budget are the architecture's; the arrangement is drawn to put the " +
+            "constraint in one picture.",
+        shape = FigureShape.Heatmap(
+            values = listOf(
+                listOf(0f, 0f, 0.5f, 0f, 0f, 0f, 0f),
+                listOf(0f, 0f, 0f, 0f, 0.5f, 0f, 0f),
+                listOf(0f, 0.5f, 0f, 0f, 0f, 0f, 0.5f),
+                listOf(0f, 0f, 0f, 1f, 0f, 0f, 0f),
+                listOf(0f, 0f, 0.75f, 0f, 0f, 0.5f, 0f),
+                listOf(0.5f, 0f, 0f, 0f, 0f, 0f, 0f),
+                listOf(0f, 0f, 0f, 0f, 0.5f, 0f, 0f),
+            ),
+            marks = listOf(
+                FigureCell(3, 3, FigureTone.Warn),
+                FigureCell(4, 2, FigureTone.Accent),
+            ),
+            legend = "0 · 1 · 2 · 3 object centres in the cell",
+        ),
+    ),
     whatIsIt = listOf(
         "YOLO removes the proposal stage entirely. One CNN pass produces every box for the whole image at once: the image is divided into a 7×7 grid, and the cell containing an object's centre is responsible for predicting it. Each cell emits two boxes with confidences plus one set of 20 class probabilities, so the entire output is a single 7×7×30 tensor — 1,470 numbers, and 98 boxes total against R-CNN's 2,000 proposals.",
         "Framing detection as one regression problem is what buys the speed: 45 frames per second against Faster R-CNN's 7, and 155 for the smaller Fast YOLO. The accuracy cost was real — 63.4% mAP on VOC 2007 against 73.2% — but it makes *fewer* background false positives than Fast R-CNN, because each prediction is made with the whole image in view rather than from a cropped region. Reasoning globally about the scene is a genuine advantage of the design, not a side effect.",

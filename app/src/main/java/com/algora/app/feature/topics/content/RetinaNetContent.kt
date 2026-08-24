@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,54 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val retinaNetContent = TopicContent(
     topicId = "retinanet",
+    figure = Figure(
+        caption = "One factor, drawn. Cross-entropy is −log(p_t) and focal loss multiplies it by " +
+            "(1 − p_t)^γ, so the two curves are identical in shape and differ only in how fast " +
+            "they fall as the model gets an example right. At p_t = 0.9 — an anchor the model has " +
+            "already learned — CE still charges 0.105 while focal loss charges 0.001, a factor of " +
+            "0.01. At p_t = 0.1, the hard case, the factor is 0.81 and almost nothing is taken " +
+            "away. That gap is the whole mechanism, and on the lab's 100,000 background anchors " +
+            "at 0.9 against 10 foreground at 0.1 it moves the loss split from 10,536-against-23 " +
+            "to 105-against-19: a background-to-foreground ratio of 458:1 becoming 5.6:1, an 81× " +
+            "rebalance. Nothing is thrown away — the easy examples are still in the sum, which is " +
+            "what separates this from hard negative mining.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "cross-entropy",
+                    listOf(
+                        FigurePoint(0.000f, 0.966f), FigurePoint(0.053f, 0.743f),
+                        FigurePoint(0.106f, 0.612f), FigurePoint(0.160f, 0.519f),
+                        FigurePoint(0.266f, 0.388f), FigurePoint(0.372f, 0.296f),
+                        FigurePoint(0.479f, 0.224f), FigurePoint(0.585f, 0.165f),
+                        FigurePoint(0.691f, 0.115f), FigurePoint(0.798f, 0.072f),
+                        FigurePoint(0.904f, 0.034f), FigurePoint(0.957f, 0.017f),
+                        FigurePoint(1.000f, 0.003f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+                FigureSeries(
+                    "focal, γ = 2",
+                    listOf(
+                        FigurePoint(0.000f, 0.872f), FigurePoint(0.053f, 0.602f),
+                        FigurePoint(0.106f, 0.442f), FigurePoint(0.160f, 0.332f),
+                        FigurePoint(0.266f, 0.190f), FigurePoint(0.372f, 0.106f),
+                        FigurePoint(0.479f, 0.056f), FigurePoint(0.585f, 0.026f),
+                        FigurePoint(0.691f, 0.010f), FigurePoint(0.798f, 0.003f),
+                        FigurePoint(0.904f, 0.000f), FigurePoint(0.957f, 0.000f),
+                        FigurePoint(1.000f, 0.000f),
+                    ),
+                    tone = FigureTone.Accent,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.053f, 0.743f, "hard · ×0.81", FigureTone.Warn),
+                FigurePoint(0.904f, 0.034f, "easy · ×0.01"),
+            ),
+            xLabel = "p_t, 0.05 → 0.99",
+            yLabel = "loss, 0 → 3.1",
+        ),
+    ),
     whatIsIt = listOf(
         "By 2017 the pattern was accepted as a law: two-stage detectors are accurate, one-stage detectors are fast, and you choose. RetinaNet's paper argues the gap was never architectural — it was the loss. A one-stage detector scores every anchor on the whole pyramid, roughly 100,000 per image, and essentially all of them are background. A two-stage detector never faces that, because its proposal step has already thrown away the easy negatives before the classifier sees them.",
         "Cross-entropy has no answer to that imbalance, and the simulation prices it. Take 100,000 background anchors the model already gets right at 0.9 confidence and 10 hard foreground anchors at 0.1: the background contributes 10,536 of loss against the foreground's 23 — 99.8% of the gradient comes from examples that are already correct. The model's best move is to predict background everywhere, and that is exactly what an untreated one-stage detector does.",

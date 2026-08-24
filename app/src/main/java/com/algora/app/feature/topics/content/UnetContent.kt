@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,45 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val unetContent = TopicContent(
     topicId = "unet",
+    figure = Figure(
+        caption = "The U at its real sizes, in pixels per side, with the four skips drawn as what " +
+            "they are: horizontal edges carrying the encoder's map sideways to the decoder stage " +
+            "of the same resolution. Down the left, two unpadded 3×3 convolutions take 4 pixels " +
+            "off and a 2×2 pool halves what is left; up the right, an up-convolution doubles and " +
+            "two more convolutions take another 4. Because nothing is padded, the encoder map is " +
+            "always larger than the decoder map it joins, so each skip is cropped — 88, 40, 16 " +
+            "and 4 pixels per side going down the list — and the crop is a consequence of the " +
+            "arithmetic rather than a design choice. The same arithmetic is why 572 in becomes " +
+            "388 out: the network refuses to predict a border it cannot see enough context for, " +
+            "and a large image is covered by overlapping tiles instead.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("572→568", 0.14f, 0.08f, FigureTone.Primary),
+                FigureGraphNode("280", 0.14f, 0.33f),
+                FigureGraphNode("136", 0.14f, 0.58f),
+                FigureGraphNode("64", 0.14f, 0.83f),
+                FigureGraphNode("28", 0.50f, 0.97f, FigureTone.Muted),
+                FigureGraphNode("56", 0.86f, 0.83f),
+                FigureGraphNode("104", 0.86f, 0.58f),
+                FigureGraphNode("200", 0.86f, 0.33f),
+                FigureGraphNode("392→388", 0.86f, 0.08f, FigureTone.Accent),
+            ),
+            edges = listOf(
+                FigureEdge(0, 1, directed = true),
+                FigureEdge(1, 2, directed = true),
+                FigureEdge(2, 3, directed = true),
+                FigureEdge(3, 4, directed = true),
+                FigureEdge(4, 5, directed = true),
+                FigureEdge(5, 6, directed = true),
+                FigureEdge(6, 7, directed = true),
+                FigureEdge(7, 8, directed = true),
+                FigureEdge(3, 5, "crop 4", tone = FigureTone.Accent),
+                FigureEdge(2, 6, "crop 16", tone = FigureTone.Accent),
+                FigureEdge(1, 7, "crop 40", tone = FigureTone.Accent),
+                FigureEdge(0, 8, "crop 88", tone = FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Segmentation needs a label for every pixel, so a classifier's ending — pool everything away, flatten, dense layer — is exactly wrong: it discards the spatial information the task is asking for. U-Net keeps the contracting encoder that builds semantics and mirrors it with an expanding decoder that upsamples back toward image resolution, giving the architecture the U shape it is named for.",
         "Upsampling alone cannot invent back the boundary detail that pooling threw away, and that is what the skip connections are for. Each decoder stage concatenates the encoder feature map of the same resolution: coarse \"what is this\" from below, fine \"exactly where is the edge\" from the side. Concatenation rather than addition matters — the decoder sees both maps in full and learns how to combine them, rather than being handed a sum.",

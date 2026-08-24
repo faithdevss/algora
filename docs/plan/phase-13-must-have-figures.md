@@ -1,6 +1,6 @@
 # Phase 13 — The figures that must exist
 
-Status: **In progress — M1 to M4 shipped, 21 of 41.** Everything else in `phase-12-figure-scope.md`'s
+Status: **In progress — M1 to M5 shipped, 26 of 41.** Everything else in `phase-12-figure-scope.md`'s
 Tier A becomes optional and stays unbuilt unless a page proves it needs one.
 
 Depends on: Phase 12's figure layer, which is finished as a *capability* — nine shapes, a renderer
@@ -125,7 +125,21 @@ the differ-from-each-other rule is satisfied on content as well as on shape. `mo
 `inception` are both cost arguments and were checked against each other for that reason: one is a
 curve with a floor, the other a table where a single row carries the saving.
 
-**M5 — Detection** (5). The one block where the numbers only mean something side by side.
+**M5 — Detection** (5) — **shipped.** The one block where the numbers only mean something side by
+side, and the one batch where two figures had to reach onto neighbouring pages for the other half of
+their comparison: `rcnn`'s 47 seconds is only a number next to Fast R-CNN's 2.3 and Faster R-CNN's
+0.2, both of which live on their own pages and were taken from there rather than restated. Every
+figure in the batch is on a different shape — Grid, Heatmap, Plot, Graph, Strip — which was not a
+target but is a fair sign the five claims really are five different claims.
+
+`unet` follows `resnet` off `LayerStack` for the same reason: the skips are the content and only
+`Graph` can draw an edge. The four crops fall out of the arithmetic, so the figure is checkable
+against itself — 568 − 2·88 = 392, 280 − 2·40 = 200, 136 − 2·16 = 104, 64 − 2·4 = 56.
+
+`yolo` is the one figure in the phase so far whose layout is illustrative rather than measured: the
+counts and the per-cell budget are the architecture's, but which cells hold the centres is drawn to
+put the constraint in one picture. The caption says so.
+
 
 | Topic | The figure has to show |
 |---|---|
@@ -181,7 +195,7 @@ Per batch: `./gradlew :app:testDebugUnitTest` (`FigureShapeTest`, `AiFigureCover
 **One emulator pass at the end of the phase, not per batch** — and it has a backlog to clear from
 Phase 12 already: `knn`'s five labelled edges off one node, the eleven-node dendrogram in
 `hierarchical_clustering`, `catboost`'s and `factor_analysis`'s narrow grids, `qda`'s 7×7 heatmap,
-and `extra_trees`' full-width aux row. M7's trellis joins that list on arrival, M4 has added `padding_strides`' 7×7 grid and `resnet`'s five-node graph, M3 added the
+and `extra_trees`' full-width aux row. M7's trellis joins that list on arrival, M5 has added `unet`'s nine-node U — the widest graph in the app and the one most likely to collide with itself on a narrow screen — plus `mask_rcnn`'s ten-cell strip with two bands and a pointer, M4 added `padding_strides`' 7×7 grid and `resnet`'s five-node graph, M3 added the
 reachability profile it was promised plus `hdbscan`'s three-span timeline and `fp_growth`'s
 nine-node tree, and M2 added two: `bias_variance`'s four series on one axis, and
 `gaussian_nb`'s four bells, where each class's two curves nearly coincide and the solid/dashed

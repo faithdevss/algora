@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,32 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val rcnnContent = TopicContent(
     topicId = "rcnn",
+    figure = Figure(
+        caption = "Where the 47 seconds goes, and what each successor removed — the same VGG-16 " +
+            "backbone in all three rows, so the column is a like-for-like measurement. R-CNN runs " +
+            "the convolutional stack once per proposal, 2,000 times, with nothing shared between " +
+            "regions that overlap almost entirely; that is roughly 45 of the 47 seconds, and the " +
+            "other 2 are selective search. Fast R-CNN runs the stack once over the whole image and " +
+            "crops features instead of pixels, which takes the network's share to 0.32 s — at " +
+            "which point selective search is 87% of what is left and is the only unlearned stage " +
+            "in the pipeline. Faster R-CNN learns the proposals too and lands at 0.2 s. Two orders " +
+            "of magnitude, and not one of the three changed what is being computed, only how many " +
+            "times.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("47", "2,000", "≈2.0 s"),
+                listOf("2.3", "1", "≈2.0 s"),
+                listOf("0.2", "1", "learned"),
+            ),
+            rowHeaders = listOf("R-CNN", "Fast", "Faster"),
+            colHeaders = listOf("s / image", "conv passes", "proposals"),
+            marks = listOf(
+                FigureCell(0, 1, FigureTone.Warn),
+                FigureCell(1, 2, FigureTone.Warn),
+                FigureCell(2, 0, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Classification asks what is in an image. Detection asks what, where, and how many — and the number of answers is not known in advance, so it cannot be a fixed-size output layer. R-CNN's move in 2014 was to turn the problem back into classification: propose about 2,000 candidate regions with selective search, warp each to 227×227, run the CNN on it, and classify. \"Regions with CNN features\" is the whole name and the whole idea.",
         "It worked spectacularly and cost accordingly. On VOC 2012 it reached 53.3% mAP against the previous best of 35.1% from deformable part models — a jump of eighteen points in a field used to arguing over one. It also runs the convolutional stack 2,000 times per image with no computation shared between heavily overlapping regions, which is 47 seconds per image with VGG-16, and it is three models trained in three separate stages: the CNN fine-tuned for classification, a linear SVM per class trained on cached features, and a bounding-box regressor trained after that.",

@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,28 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val maskRcnnContent = TopicContent(
     topicId = "mask_rcnn",
+    figure = Figure(
+        caption = "The defect a class label survived and a mask did not, measured along one axis " +
+            "of a 145-pixel box at stride 16. In feature-map units the box is 145/16 = 9.0625 " +
+            "wide, and RoI pooling floors that to 9 — one rounding, 1 pixel of the image gone " +
+            "before anything is read. Then it divides those 9 units into 7 bins and floors again, " +
+            "to 1 unit per bin, so only the first 7 units are ever sampled: units 7 and 8, which " +
+            "are 32 image pixels of the object's far edge, are never read at all. Both roundings " +
+            "happen in feature units, so each one costs a multiple of the stride. RoIAlign takes " +
+            "the same box, divides 9.0625 by 7 to get bins of 1.2946, samples at the exact " +
+            "centres 0.65, 1.94, 3.24, 4.53, 5.83, 7.12 and 8.42 with bilinear interpolation, and " +
+            "never calls floor() — worth about 3 mask AP, and roughly double that at AP75.",
+        shape = FigureShape.Strip(
+            cells = listOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9"),
+            bands = listOf(
+                FigureBand(0, 6, "the 7 bins RoI pooling reads"),
+                FigureBand(7, 8, "32 px never read", FigureTone.Warn),
+            ),
+            pointers = listOf(
+                FigurePointer(9, "true 9.06"),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Mask R-CNN is Faster R-CNN plus a third head: alongside the class score and the box, a small fully convolutional branch predicts a 28×28 binary mask for each region of interest. The addition is almost trivially simple, which is the paper's point — instance segmentation did not need a new paradigm, it needed one more branch and one arithmetic fix. It beat every entrant of the 2016 COCO segmentation challenge and runs at about 5 frames per second.",
         "The masks are per-class and binary, with no softmax across classes. The classification head decides *what* the object is; the mask head only decides *which pixels* belong to it, predicting one independent mask per class and using the one the classifier chose. Decoupling those two questions is worth several points of mask AP over the usual per-pixel multi-class softmax, because the mask branch stops competing with itself across classes it was never asked to distinguish.",
