@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,37 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val valueFunctionContent = TopicContent(
     topicId = "value_function",
+    figure = Figure(
+        caption = "The same 4×4 world, evaluated rather than optimised: V under the uniform-random " +
+            "policy, computed by sweeping the Bellman expectation backup — a sum weighted by π, " +
+            "not a max — until it stops moving. What the table holds is the answer to one " +
+            "question per cell: from here, moving in a random direction forever, what is the " +
+            "expected discounted return? Almost all of it is negative, because a random walk in " +
+            "this world mostly wanders and pays −0.04 a step, and the shading is a gradient " +
+            "climbing toward the goal at (0,3). The cell to look at is (1,2), directly above the " +
+            "pit: it is worth −0.478 here and +0.860 under the optimal policy, the same square in " +
+            "the same world differing by 1.34 because value is a property of a policy and not of " +
+            "a state. The start at (3,0) is −0.420 against +0.427; (1,1) is a wall and is drawn " +
+            "blank, as is the pit at exactly −1. And nothing in this table says " +
+            "which way to move — reading an action off it needs the transition model, which is " +
+            "the gap Q closes.",
+        shape = FigureShape.Heatmap(
+            values = listOf(
+                listOf(0.363f, 0.429f, 0.552f, 1.000f),
+                listOf(0.325f, 0.000f, 0.261f, 0.000f),
+                listOf(0.298f, 0.278f, 0.247f, 0.167f),
+                listOf(0.290f, 0.278f, 0.258f, 0.228f),
+            ),
+            rowLabels = listOf("row 0", "row 1", "row 2", "row 3"),
+            colLabels = listOf("c0", "c1", "c2", "c3"),
+            marks = listOf(
+                FigureCell(0, 3, FigureTone.Accent),
+                FigureCell(1, 3, FigureTone.Warn),
+                FigureCell(1, 1, FigureTone.Muted),
+            ),
+            legend = "V^π, uniform-random · 0.0 = −1, 0.5 = 0, 1.0 = +1 · outlined: goal, pit, wall",
+        ),
+    ),
     whatIsIt = listOf(
         "The value function Vπ(s) answers one question: starting in state s and following policy π forever, what total discounted reward do I expect? It converts a stream of delayed rewards into a single number attached to the present, which is what makes long-horizon credit assignment tractable.",
         "The crucial detail is the superscript. Value is always relative to a policy — there is no such thing as \"the value of a state\" on its own. A square one step from the cliff is worth a lot under a careful policy and very little under a random one. This is why policy evaluation (compute Vπ for a fixed π) and policy improvement (make π greedy with respect to it) are separate operations that alternate.",

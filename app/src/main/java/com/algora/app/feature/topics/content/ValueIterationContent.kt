@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,42 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val valueIterationContent = TopicContent(
     topicId = "value_iteration",
+    figure = Figure(
+        caption = "Four cells of this page's own 4×4 world, sweep by sweep, run at γ = 0.9 with " +
+            "−0.04 a step, +1 at the goal and −1 at the pit. Value does not fade in everywhere at " +
+            "once — it arrives as a wavefront. Sweep 1 gives every non-terminal the step cost; " +
+            "sweep 2 reaches (1,2), the cell beside the goal, at +0.860; sweep 3 reaches (0,0) " +
+            "and sweep 5 reaches (3,1), and the start at (3,0) — six steps from the goal — turns " +
+            "positive only at sweep 6, at +0.427. The marked cell in each column is the sweep " +
+            "where that state reached its final value and stopped moving. What the table is " +
+            "really for is the gap between two convergences: the largest change per sweep runs " +
+            "1.000, 0.900, 0.810, 0.729, 0.656, 0.590 and then 0.000, so the values settle at " +
+            "sweep 6 — but the greedy policy has been optimal everywhere since sweep 3, while " +
+            "three of these four numbers were still wrong. Ranking actions needs the differences " +
+            "to be right, not the magnitudes, so a run that only wants a policy can stop at half " +
+            "the work.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0.000", "0.000", "0.000", "0.000"),
+                listOf("−0.040", "−0.040", "−0.040", "−0.040"),
+                listOf("−0.076", "+0.860", "−0.076", "−0.076"),
+                listOf("+0.734", "+0.860", "−0.108", "−0.108"),
+                listOf("+0.734", "+0.860", "−0.138", "−0.138"),
+                listOf("+0.734", "+0.860", "+0.519", "−0.164"),
+                listOf("+0.734", "+0.860", "+0.519", "+0.427"),
+            ),
+            rowHeaders = listOf("0", "1", "2", "3", "4", "5", "6"),
+            colHeaders = listOf("(0,0)", "(1,2)", "(3,1)", "(3,0)"),
+            marks = listOf(
+                FigureCell(2, 1, FigureTone.Accent),
+                FigureCell(3, 0, FigureTone.Accent),
+                FigureCell(5, 2, FigureTone.Accent),
+                FigureCell(6, 3, FigureTone.Accent),
+                FigureCell(3, 2, FigureTone.Warn),
+                FigureCell(3, 3, FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Value iteration is policy iteration with the evaluation step cut down to a single sweep. Rather than compute Vπ exactly and then improve, it applies one Bellman optimality backup — reward plus discounted best successor value — to every state, and repeats. No policy is ever stored; the max inside the backup does the improving.",
         "Convergence follows directly from contraction. The optimality operator shrinks the max-norm error by at least γ each sweep, so error after k sweeps is at most γᵏ times the initial error and any starting guess works. The practical stopping rule follows from the same bound: when the largest change in a sweep is below ε, the value function is within ε·γ/(1−γ) of optimal, which is a real guarantee rather than a heuristic.",

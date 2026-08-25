@@ -84,6 +84,8 @@ class AiFigureCoverageTest {
         "encoder_decoder", "seq2seq", "gpt", "bptt", "kl_divergence",
         // M7 — NLP where the structure is the point.
         "hmm", "n_grams", "cosine_similarity", "word2vec_skipgram", "dependency_parsing",
+        // M8 — the five hubs other topics link into, and the last of the phase.
+        "bleu", "lora_qlora", "ppo", "value_iteration", "value_function",
     )
 
     @Test
@@ -101,6 +103,6 @@ class AiFigureCoverageTest {
     @Test
     fun `the pilot is the size the phase was scoped against`() {
         // Keeps the batch table in docs/plan/phase-12-ai-figures.md verifiable rather than folklore.
-        assertEquals(144, pilotFigures.size)
+        assertEquals(149, pilotFigures.size)
     }
 }

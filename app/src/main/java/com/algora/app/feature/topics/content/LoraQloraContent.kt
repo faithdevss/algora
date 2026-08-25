@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,46 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val loraQloraContent = TopicContent(
     topicId = "lora_qlora",
+    figure = Figure(
+        caption = "Rank against quality, with the floor drawn underneath it. The dashed curve is " +
+            "not measured but predicted: Eckart-Young says a rank-r adapter cannot represent the " +
+            "singular directions it drops, so the tail of ΔW's spectrum puts a hard lower bound " +
+            "on the loss at every rank — 0.298, 0.111, 0.043, 0.020 at r = 1, 2, 4, 8. The solid " +
+            "curve is what six trained adapters actually reached: 0.309, 0.121, 0.047, 0.023, " +
+            "sitting just above the bound at every point rather than crossing it. That is the " +
+            "whole low-rank claim, and it is a theorem with a learning rate attached rather than " +
+            "a heuristic. Where it stops paying is visible too: three of 24 directions already " +
+            "carry 90.2% of the update's energy, so rank 4 closes 91% of the gap to full " +
+            "fine-tuning on 192 of 576 parameters, and doubling to rank 8 buys 0.024 more against " +
+            "a floor that has almost nothing left in it. The step size is the trap — it scales as " +
+            "(α/r)², 256× larger at r = 1 than at r = 16, and at one fixed rate every rank below " +
+            "16 diverged to NaN.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "trained adapters",
+                    listOf(
+                        FigurePoint(0.000f, 1.000f), FigurePoint(0.333f, 0.392f),
+                        FigurePoint(0.667f, 0.152f), FigurePoint(1.000f, 0.074f),
+                    ),
+                    tone = FigureTone.Accent,
+                ),
+                FigureSeries(
+                    "Eckart-Young floor",
+                    listOf(
+                        FigurePoint(0.000f, 0.964f), FigurePoint(0.333f, 0.359f),
+                        FigurePoint(0.667f, 0.139f), FigurePoint(1.000f, 0.065f),
+                    ),
+                    dashed = true,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.667f, 0.152f, "r = 4 · 91% of the gap", FigureTone.Accent),
+            ),
+            xLabel = "rank r = 1, 2, 4, 8",
+            yLabel = "loss, 0 → 0.309",
+        ),
+    ),
     whatIsIt = listOf(
         "LoRA freezes a pretrained weight matrix and trains a low-rank correction beside it: W₀ + (α/r)·BA, with B initialised at zero so the adapter is a no-op at step 0. The claim underneath is not that models are low-rank — it is that fine-tuning *updates* are, because a narrow adaptation moves the weights along few directions.",
         "The lab tests that rather than assuming it. A 24×24 map is fully fine-tuned for real, ΔW = W − W₀ is extracted, and its singular values fall off a cliff after three: 2.34, 2.12, 1.19, 0.46, 0.41. Three directions carry **90.2%** of the update's energy, giving an effective rank of 3.05 against 11.51 for the pretrained weights themselves. The update genuinely is low-rank where the model is not.",

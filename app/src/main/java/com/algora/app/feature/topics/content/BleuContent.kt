@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,36 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val bleuContent = TopicContent(
     topicId = "bleu",
+    figure = Figure(
+        caption = "Three outputs against one 8-token reference, and one score for all of them. " +
+            "The stuck decoder's unigram precision is a perfect 8/8 before clipping and 2/8 after " +
+            "— the reference contains \"the\" twice, and the clip is the min against that count — " +
+            "which is the only thing standing between BLEU and rewarding repetition. The " +
+            "three-word candidate is entirely correct as far as it goes: 3/3, 2/2, 1/1, and a " +
+            "brevity penalty of exp(1 − 8/3) = 0.189 standing in for the recall BLEU never " +
+            "measures; it also has no 4-gram at all, so the unsmoothed score is zero for a second " +
+            "reason. And the paraphrase is a correct translation in different words — 5 unigrams " +
+            "and 1 bigram matched, no trigram, no 4-gram — which the geometric mean converts to " +
+            "exactly 0.0000, the same number the degenerate output gets. Add-1 smoothing separates " +
+            "them by 0.0015 (0.1667 against 0.1652), which orders them without saying anything. " +
+            "Pool the counts across a test set first and no single sentence can do this.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("2/8", "0/7", "0/6", "0/5", "1.00", "0.0000"),
+                listOf("3/3", "2/2", "1/1", "0/0", "0.189", "0.0000"),
+                listOf("5/10", "1/9", "0/8", "0/7", "1.00", "0.0000"),
+            ),
+            rowHeaders = listOf("the ×8", "3 words", "paraphrase"),
+            colHeaders = listOf("p₁", "p₂", "p₃", "p₄", "BP", "BLEU"),
+            marks = listOf(
+                FigureCell(0, 0, FigureTone.Accent),
+                FigureCell(1, 4, FigureTone.Accent),
+                FigureCell(0, 5, FigureTone.Warn),
+                FigureCell(1, 5, FigureTone.Warn),
+                FigureCell(2, 5, FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "BLEU scores a translation by n-gram overlap with a reference: what fraction of the candidate's unigrams, bigrams, trigrams and 4-grams appear in the reference, combined as a geometric mean and multiplied by a length penalty. It is a **precision** metric — it asks what fraction of what you produced was warranted, and never whether you produced enough.",
         "**Clipping is not a detail, it is the entire defence.** A stuck decoder emitting \"the the the the the the the the\" has an unclipped unigram precision of 8/8 — perfect, because \"the\" really is in the reference. Cap each n-gram by how many times the reference actually contains it and the same count falls to 2/8. Without that cap, BLEU pays for repetition.",

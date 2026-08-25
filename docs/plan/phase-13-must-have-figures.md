@@ -1,6 +1,6 @@
 # Phase 13 — The figures that must exist
 
-Status: **In progress — M1 to M7 shipped, 36 of 41.** Everything else in `phase-12-figure-scope.md`'s
+Status: **All 41 built — M1 to M8 shipped. One emulator pass outstanding, and it is the only thing left in the phase.** Everything else in `phase-12-figure-scope.md`'s
 Tier A becomes optional and stays unbuilt unless a page proves it needs one.
 
 Depends on: Phase 12's figure layer, which is finished as a *capability* — nine shapes, a renderer
@@ -205,7 +205,29 @@ sentences, with the hapax share going 0% → 47% → 77% → 95%. Only the n = 4
 | `word2vec_skipgram` | The training pairs a window generates, counted. |
 | `dependency_parsing` | The labelled arcs, on `Graph`. A dependency parse is a drawing. |
 
-**M8 — The four that are hubs elsewhere** (5).
+**M8 — The four that are hubs elsewhere** (5) — **shipped.** The last batch, and the one where
+two figures had to be computed from the app rather than from the page. `value_iteration` and
+`value_function` both run this repo's own gridworld — `RlGridWorldSection.kt`'s 4×4 with γ = 0.9,
+−0.04 a step, +1 at (0,3), −1 at (1,3) and a wall at (1,1) — re-implemented in Python against the
+Kotlin backup, including the absorbing-terminal rule, so the figures agree with the simulation the
+reader can press play on rather than with a textbook grid. Value iteration reproduces the page's
+claim exactly: largest change per sweep 1.000, 0.900, 0.810, 0.729, 0.656, 0.590, 0.000, so the
+values settle at sweep 6 while the greedy policy has been optimal since sweep 3. Policy evaluation
+under the uniform-random policy gives the pair's punchline — (1,2) is worth −0.478 under random and
++0.860 under optimal, the same square differing by 1.34.
+
+`bleu`'s grid is the phase's densest at 3 × 6, and it is the one place three rows carry the same
+number on purpose: a stuck decoder, a three-word fragment and a correct paraphrase all score
+0.0000. The unclipped 8/8 and the smoothed 0.1652/0.1667 stay in the caption because they are what
+the cells are being compared against. Only p₃ = 1/1 on the three-word row is inferred rather than
+stated — it follows from the page's own 2/2 bigrams, since a single occurrence of "revised" with
+both its bigrams present makes the trigram contiguous in the reference.
+
+`ppo` is drawn for both signs of the advantage on one axis because the asymmetry *is* the topic:
+flat past 1 + ε for a good action, unbounded past it for a bad one. `lora_qlora` is the phase's
+only figure whose second curve is a prediction rather than a measurement — the Eckart-Young floor
+under the trained sweep, which the trained losses sit just above at all four ranks.
+
 
 | Topic | The figure has to show |
 |---|---|
@@ -231,7 +253,7 @@ Per batch: `./gradlew :app:testDebugUnitTest` (`FigureShapeTest`, `AiFigureCover
 **One emulator pass at the end of the phase, not per batch** — and it has a backlog to clear from
 Phase 12 already: `knn`'s five labelled edges off one node, the eleven-node dendrogram in
 `hierarchical_clustering`, `catboost`'s and `factor_analysis`'s narrow grids, `qda`'s 7×7 heatmap,
-and `extra_trees`' full-width aux row. M7 has added the trellis it was promised — a 4×3 grid whose cells hold "1.35e−5" and two backpointer arrows across it — plus `dependency_parsing`'s seven-node graph with six labelled edges, the most edge labels on one card so far, and `cosine_similarity`'s four rays from a shared origin where two of them coincide by construction. M6 has added `bptt`'s ten-cell strip — two bands, two pointers and a ten-cell aux row, the narrowest cells in the app — plus `kl_divergence`'s three 25-point series, where the reverse fit's spike and the target's near-identical left mode overlap for a third of the axis, M5 has added `unet`'s nine-node U — the widest graph in the app and the one most likely to collide with itself on a narrow screen — plus `mask_rcnn`'s ten-cell strip with two bands and a pointer, M4 added `padding_strides`' 7×7 grid and `resnet`'s five-node graph, M3 added the
+and `extra_trees`' full-width aux row. M8 has added `bleu`'s 3×6 grid — the most columns on one card — and `value_iteration`'s 7×4 table of signed values, plus a heatmap whose blank cells mean two different things (the pit at −1 and the wall) and rely on their outlines to say which. M7 has added the trellis it was promised — a 4×3 grid whose cells hold "1.35e−5" and two backpointer arrows across it — plus `dependency_parsing`'s seven-node graph with six labelled edges, the most edge labels on one card so far, and `cosine_similarity`'s four rays from a shared origin where two of them coincide by construction. M6 has added `bptt`'s ten-cell strip — two bands, two pointers and a ten-cell aux row, the narrowest cells in the app — plus `kl_divergence`'s three 25-point series, where the reverse fit's spike and the target's near-identical left mode overlap for a third of the axis, M5 has added `unet`'s nine-node U — the widest graph in the app and the one most likely to collide with itself on a narrow screen — plus `mask_rcnn`'s ten-cell strip with two bands and a pointer, M4 added `padding_strides`' 7×7 grid and `resnet`'s five-node graph, M3 added the
 reachability profile it was promised plus `hdbscan`'s three-span timeline and `fp_growth`'s
 nine-node tree, and M2 added two: `bias_variance`'s four series on one axis, and
 `gaussian_nb`'s four bells, where each class's two curves nearly coincide and the solid/dashed

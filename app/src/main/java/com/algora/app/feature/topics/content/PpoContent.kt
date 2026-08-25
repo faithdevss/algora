@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,57 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val ppoContent = TopicContent(
     topicId = "ppo",
+    figure = Figure(
+        caption = "The clipped objective as a function of the ratio, drawn for both signs of the " +
+            "advantage, at ε = 0.2. When the advantage is positive the objective follows r·A " +
+            "until r reaches 1 + ε and then goes flat: pushing the probability of a good action " +
+            "past 1.2× its old value earns nothing more, so the gradient there is zero and the " +
+            "step stops. When the advantage is negative the picture is deliberately not " +
+            "symmetric. The min() takes the pessimistic branch, which floors the objective at " +
+            "1 − ε on the left — a bad action that the new policy has already made unlikely stops " +
+            "being pushed further down — while leaving the right-hand side unbounded, so a bad " +
+            "action whose probability went *up* is penalised without limit. Clipping removes " +
+            "upside, never the penalty. Nothing here is a constraint in the TRPO sense: the " +
+            "policy can still leave the region in one step, and the objective simply stops " +
+            "rewarding it for doing so, which is why the KL is monitored as an early-stop signal " +
+            "anyway.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "unclipped r·A, A > 0",
+                    listOf(FigurePoint(0.000f, 0.500f), FigurePoint(1.000f, 1.000f)),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "clipped, A > 0",
+                    listOf(
+                        FigurePoint(0.000f, 0.500f), FigurePoint(0.200f, 0.600f),
+                        FigurePoint(0.400f, 0.700f), FigurePoint(0.500f, 0.750f),
+                        FigurePoint(0.600f, 0.800f), FigurePoint(0.800f, 0.800f),
+                        FigurePoint(1.000f, 0.800f),
+                    ),
+                    tone = FigureTone.Accent,
+                ),
+                FigureSeries(
+                    "clipped, A < 0",
+                    listOf(
+                        FigurePoint(0.000f, 0.300f), FigurePoint(0.200f, 0.300f),
+                        FigurePoint(0.400f, 0.300f), FigurePoint(0.500f, 0.250f),
+                        FigurePoint(0.600f, 0.200f), FigurePoint(0.800f, 0.100f),
+                        FigurePoint(1.000f, 0.000f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.600f, 0.800f, "flat past 1 + ε", FigureTone.Accent),
+                FigurePoint(0.400f, 0.300f, "floored at 1 − ε", FigureTone.Warn),
+            ),
+            xLabel = "ratio r = π_new/π_old, 0 → 2 · ε = 0.2",
+            yLabel = "objective, −2 → +2",
+        ),
+    ),
     whatIsIt = listOf(
         "Proximal Policy Optimization (PPO) keeps policy updates close to the old policy using a clipped objective — capturing TRPO's stability with far simpler first-order optimization.",
         "It's the default policy-gradient algorithm in modern RL, prized for being robust, easy to tune, and effective across discrete and continuous tasks — including RLHF for LLMs.",
