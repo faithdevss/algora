@@ -1,6 +1,6 @@
 # Phase 13 — The figures that must exist
 
-Status: **In progress — M1 to M6 shipped, 31 of 41.** Everything else in `phase-12-figure-scope.md`'s
+Status: **In progress — M1 to M7 shipped, 36 of 41.** Everything else in `phase-12-figure-scope.md`'s
 Tier A becomes optional and stays unbuilt unless a page proves it needs one.
 
 Depends on: Phase 12's figure layer, which is finished as a *capability* — nine shapes, a renderer
@@ -175,7 +175,27 @@ continuous integral gives 0.5139 and would have drawn a different argument.
 | `bptt` | The unrolled window, and what the truncation really bounds. |
 | `kl_divergence` | Forward against reverse on the same target — mode-covering beside mode-seeking. |
 
-**M7 — NLP where the structure is the point** (5).
+**M7 — NLP where the structure is the point** (5) — **shipped.** The batch with the least
+invention in it: four of the five figures are the page's own worked example drawn instead of
+described. `hmm`'s trellis is filled by running the page's transition and emission tables, and the
+drama survives the drawing — the DT cell at column 2 (7.50e−4) is *smaller* than the IN cell
+(7.87e−4) and still wins, because the transition out of it is 0.90 against 0.60. Greedy's two
+divergent cells are marked in the same grid rather than in a second figure.
+
+`cosine_similarity` is the one place a Plot is used as a plane rather than as a graph of a function:
+four documents as rays from the origin, with "long" drawn dashed because it lies exactly on top of
+"short" — which is the claim. `dependency_parsing` uses height for depth and keeps reading order on
+the x-axis, so the projectivity constraint the caption names is visible in the drawing.
+
+`word2vec_skipgram`'s strip is generic on purpose. The lab's corpus is described by its totals (102
+tokens, 20 sentences, 288 pairs) and never listed sentence by sentence, so the figure draws five
+unlabelled positions and shows the count identity instead of inventing text: 4L − 6 per sentence,
+which sums to 4 × 102 − 6 × 20 = 288 and reproduces the page's number exactly.
+
+`n_grams` is the batch's second Plot and the only figure that had to be re-counted rather than
+read off: types-per-occurrence at n = 1…4 is 0.244, 0.514, 0.759, 0.952 on the page's eight
+sentences, with the hapax share going 0% → 47% → 77% → 95%. Only the n = 4 pair was on the page.
+
 
 | Topic | The figure has to show |
 |---|---|
@@ -211,7 +231,7 @@ Per batch: `./gradlew :app:testDebugUnitTest` (`FigureShapeTest`, `AiFigureCover
 **One emulator pass at the end of the phase, not per batch** — and it has a backlog to clear from
 Phase 12 already: `knn`'s five labelled edges off one node, the eleven-node dendrogram in
 `hierarchical_clustering`, `catboost`'s and `factor_analysis`'s narrow grids, `qda`'s 7×7 heatmap,
-and `extra_trees`' full-width aux row. M7's trellis joins that list on arrival, M6 has added `bptt`'s ten-cell strip — two bands, two pointers and a ten-cell aux row, the narrowest cells in the app — plus `kl_divergence`'s three 25-point series, where the reverse fit's spike and the target's near-identical left mode overlap for a third of the axis, M5 has added `unet`'s nine-node U — the widest graph in the app and the one most likely to collide with itself on a narrow screen — plus `mask_rcnn`'s ten-cell strip with two bands and a pointer, M4 added `padding_strides`' 7×7 grid and `resnet`'s five-node graph, M3 added the
+and `extra_trees`' full-width aux row. M7 has added the trellis it was promised — a 4×3 grid whose cells hold "1.35e−5" and two backpointer arrows across it — plus `dependency_parsing`'s seven-node graph with six labelled edges, the most edge labels on one card so far, and `cosine_similarity`'s four rays from a shared origin where two of them coincide by construction. M6 has added `bptt`'s ten-cell strip — two bands, two pointers and a ten-cell aux row, the narrowest cells in the app — plus `kl_divergence`'s three 25-point series, where the reverse fit's spike and the target's near-identical left mode overlap for a third of the axis, M5 has added `unet`'s nine-node U — the widest graph in the app and the one most likely to collide with itself on a narrow screen — plus `mask_rcnn`'s ten-cell strip with two bands and a pointer, M4 added `padding_strides`' 7×7 grid and `resnet`'s five-node graph, M3 added the
 reachability profile it was promised plus `hdbscan`'s three-span timeline and `fp_growth`'s
 nine-node tree, and M2 added two: `bias_variance`'s four series on one axis, and
 `gaussian_nb`'s four bells, where each class's two curves nearly coincide and the solid/dashed

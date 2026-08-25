@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,39 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val dependencyParsingContent = TopicContent(
     topicId = "dependency_parsing",
+    figure = Figure(
+        caption = "\"The small dog chased a cat\", drawn as what a dependency parse actually is: " +
+            "one labelled arc per word, every token with exactly one head, and one token — " +
+            "chased — headed by ROOT. There are no phrase nodes to walk, so \"who did what to " +
+            "whom\" is a lookup on the arcs leaving the verb: nsubj gives dog, obj gives cat. " +
+            "Arc-standard builds all six arcs in exactly 2n = 12 transitions, each word shifted " +
+            "once and attached once, which is what makes greedy transition parsing linear in " +
+            "sentence length against a graph parser's O(n²). Height here is depth, but the words " +
+            "keep their reading order left to right, and that is the constraint the algorithm " +
+            "cannot escape: no two arcs may cross. Roughly 1% of English sentences and far more " +
+            "German or Czech ones need a crossing arc, which no sequence of the three moves can " +
+            "produce. Scoring is per word — heads alone for UAS, heads and labels for LAS, 0.83 " +
+            "against 0.67 on the lab's wrong parse.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("ROOT", 0.50f, 0.06f),
+                FigureGraphNode("the", 0.06f, 0.90f),
+                FigureGraphNode("small", 0.24f, 0.90f),
+                FigureGraphNode("dog", 0.40f, 0.58f, FigureTone.Primary),
+                FigureGraphNode("chased", 0.56f, 0.30f, FigureTone.Accent),
+                FigureGraphNode("a", 0.72f, 0.90f),
+                FigureGraphNode("cat", 0.88f, 0.58f, FigureTone.Primary),
+            ),
+            edges = listOf(
+                FigureEdge(0, 4, "root", directed = true, tone = FigureTone.Accent),
+                FigureEdge(4, 3, "nsubj", directed = true, tone = FigureTone.Primary),
+                FigureEdge(4, 6, "obj", directed = true, tone = FigureTone.Primary),
+                FigureEdge(3, 1, "det", directed = true),
+                FigureEdge(3, 2, "amod", directed = true),
+                FigureEdge(6, 5, "det", directed = true),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A dependency parse is a set of labelled arcs between words: every token has exactly one head, one token is headed by ROOT, and the label says what the relation is — nsubj, obj, det, amod. There are no phrase nodes anywhere. That makes the structure directly usable: \"who did what to whom\" is a lookup on the arcs out of the verb, which is why information extraction, relation extraction and most multilingual work run on dependencies rather than phrase trees.",
         "The dominant algorithm family is transition-based, and it is startlingly simple. A stack, a buffer and three moves: SHIFT pushes the next word onto the stack; LEFT-ARC attaches the second stack item to the top as its dependent and pops it; RIGHT-ARC attaches the top to the second and pops it. An arc is only committed once its dependent has collected all of its own children, so nothing is ever revisited. Parsing the lab's six-word sentence takes exactly 12 transitions — 2n, because every word is shifted once and attached once — so a greedy transition parser is linear in sentence length, with a classifier that only ever has to choose among three moves.",

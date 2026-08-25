@@ -82,6 +82,8 @@ class AiFigureCoverageTest {
         // M6 — sequence models: the bottleneck vector, the search, the mask, the window,
         // and the direction of the divergence.
         "encoder_decoder", "seq2seq", "gpt", "bptt", "kl_divergence",
+        // M7 — NLP where the structure is the point.
+        "hmm", "n_grams", "cosine_similarity", "word2vec_skipgram", "dependency_parsing",
     )
 
     @Test
@@ -99,6 +101,6 @@ class AiFigureCoverageTest {
     @Test
     fun `the pilot is the size the phase was scoped against`() {
         // Keeps the batch table in docs/plan/phase-12-ai-figures.md verifiable rather than folklore.
-        assertEquals(139, pilotFigures.size)
+        assertEquals(144, pilotFigures.size)
     }
 }

@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,48 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val cosineSimilarityContent = TopicContent(
     topicId = "cosine_similarity",
+    figure = Figure(
+        caption = "Four documents as rays in a two-term space — \"data\" across, \"model\" up — " +
+            "which is what makes the invariance visible rather than asserted. \"long\" is " +
+            "\"short\" written twice, so it lies on the same ray at twice the length: the angle " +
+            "between them is 0° and cosine is exactly 1.00, while Euclidean distance calls them " +
+            "3.162 apart, as far as \"short\" is from the origin. Score the query against all " +
+            "three and the two metrics disagree about which document is best. By cosine, " +
+            "\"short\" and \"long\" tie at 0.9899 and \"theory\" trails at 0.7071; by distance, " +
+            "\"short\" is 1.000 away, \"theory\" 2.236 and \"long\" 4.123 — the best match on " +
+            "topic ranks last, purely for being long. The angle between \"short\" and \"theory\" " +
+            "is arccos(0.60) = 53.1°, and every angle here stays inside 0°–90° because counts " +
+            "cannot be negative; embeddings use the full −1 to 1.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "long — same ray, twice as far",
+                    listOf(FigurePoint(0f, 0f), FigurePoint(1.000f, 0.333f)),
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "short",
+                    listOf(FigurePoint(0f, 0f), FigurePoint(0.500f, 0.167f)),
+                ),
+                FigureSeries(
+                    "query",
+                    listOf(FigurePoint(0f, 0f), FigurePoint(0.333f, 0.167f)),
+                    tone = FigureTone.Accent,
+                ),
+                FigureSeries(
+                    "theory",
+                    listOf(FigurePoint(0f, 0f), FigurePoint(0.167f, 0.500f)),
+                    tone = FigureTone.Warn,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(1.000f, 0.333f, "cos 1.00, distance 3.162", FigureTone.Primary),
+                FigurePoint(0.167f, 0.500f, "53.1° away", FigureTone.Warn),
+            ),
+            xLabel = "\"data\", 0 → 6",
+            yLabel = "\"model\", 0 → 6",
+        ),
+    ),
     whatIsIt = listOf(
         "Cosine similarity measures the angle between two vectors rather than the distance between them: cos θ = (a · b) / (‖a‖‖b‖). In a term space — one dimension per vocabulary entry, a document as its vector of weights — that means it compares the *mix* of terms and ignores how much text there is. It is the default similarity in information retrieval for that one reason, and it is the similarity every embedding model is trained and evaluated with.",
         "The lab makes the argument concrete. \"long\" is \"short\" with every sentence written twice: identical topic mix, double the counts. Euclidean distance calls them 3.16 apart — as far apart as \"short\" is from the origin — while cosine gives exactly 1.00, because scaling a vector multiplies both the dot product and the norm and the ratio is unchanged. Rank a query against the corpus by each metric and the orders differ: by cosine \"long\" is tied for first, by Euclidean distance it is last, purely for being long. A retrieval system that ranked by distance would bury the best match.",

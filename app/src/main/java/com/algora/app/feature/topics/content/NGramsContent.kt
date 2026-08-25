@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,29 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val nGramsContent = TopicContent(
     topicId = "n_grams",
+    figure = Figure(
+        caption = "The same eight sentences counted four times, and the wall arriving. Padded, " +
+            "the corpus is 11 unigram types over 45 occurrences — every type seen four times on " +
+            "average, which is enough to divide with. One token of context later there are 19 " +
+            "bigram types over 37 occurrences and 47% of them were seen exactly once; at n = 3 it " +
+            "is 22 over 29 with 77% singletons, and at n = 4, 20 types over 21 occurrences with " +
+            "19 of the 20 seen once. The bar is that ratio, and it is heading for 1.0, where " +
+            "every count is 1 and the maximum-likelihood estimate for every context is a single " +
+            "observation. The table grows as |V|ⁿ — 11, 121, 1,331, 14,641 possible cells here — " +
+            "while the evidence per cell collapses, which is why add-k has an optimum (5.20 at " +
+            "k = 1, 3.42 at 0.1, 4.34 at 0.01) rather than a safe default, and why a neural " +
+            "language model that shares strength across similar contexts exists at all.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("n = 1", 0.244f),
+                FigureBar("n = 2", 0.514f),
+                FigureBar("n = 3", 0.759f, FigureTone.Warn),
+                FigureBar("n = 4", 0.952f, FigureTone.Warn),
+            ),
+            xLabel = "11 / 45 · 19 / 37 · 22 / 29 · 20 / 21",
+            yLabel = "distinct n-grams per occurrence",
+        ),
+    ),
     whatIsIt = listOf(
         "An n-gram is a contiguous window of n tokens. Slid across a sentence one position at a time, the windows become features that a bag of words cannot express — \"not good\" and \"good\" are different bigrams, so a bigram model can represent negation that a unigram model provably cannot. Counting them is also the whole of training an n-gram language model: P(w₂|w₁) = count(w₁w₂) / count(w₁), one division, no gradient descent anywhere.",
         "The model that falls out is a Markov chain of order n−1: the probability of the next word depends on the previous n−1 words and nothing before them. Sentences are padded with <s> and </s> markers, which are not decoration — without them there is nothing to condition the first word on, no way to end a sentence, and the probabilities do not sum to 1. The standard evaluation is perplexity, exp(−(1/N)Σ ln p), read as the average number of words the model was choosing between: lower is better, and a uniform model over a vocabulary of V has perplexity exactly V.",

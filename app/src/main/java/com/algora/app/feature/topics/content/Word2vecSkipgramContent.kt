@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,31 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val word2vecSkipgramContent = TopicContent(
     topicId = "word2vec_skipgram",
+    figure = Figure(
+        caption = "One window, counted. Skip-gram emits a separate (centre, context) pair for " +
+            "every neighbour inside ±2, so a position in the middle of a sentence produces four " +
+            "training examples and CBOW produces one — the aux row is that count at each of five " +
+            "positions, and the ends are short because the window runs off the sentence. Fourteen " +
+            "pairs from five tokens, and the identity behind it is 4L − 6 for any sentence of " +
+            "L ≥ 3 tokens at this width, which is exactly where the lab's totals come from: " +
+            "4 × 102 − 6 × 20 = 288 pairs from 102 tokens in 20 sentences, against CBOW's 102 " +
+            "updates on the same text. Each pair costs k + 1 = 6 logistic decisions under " +
+            "negative sampling rather than a softmax over the vocabulary — 96 multiply-adds " +
+            "against 416 here, and 1,800 against 300 million at |V| = 1M, d = 300.",
+        shape = FigureShape.Strip(
+            cells = listOf("w₁", "w₂", "w₃", "w₄", "w₅"),
+            bands = listOf(
+                FigureBand(0, 1, "context", FigureTone.Muted),
+                FigureBand(2, 2, "centre", FigureTone.Accent),
+                FigureBand(3, 4, "context", FigureTone.Muted),
+            ),
+            pointers = listOf(
+                FigurePointer(2, "4 pairs"),
+            ),
+            aux = listOf("2", "3", "4", "3", "2"),
+            auxLabel = "pairs emitted at each position, window ±2 — 14 here, 288 on the corpus",
+        ),
+    ),
     whatIsIt = listOf(
         "Skip-gram inverts CBOW: instead of predicting the centre word from its context, it takes the centre word and predicts each surrounding word separately. One window of four neighbours becomes four training examples rather than one, so the lab's 102-token corpus yields 288 (centre, context) pairs. Each occurrence of a word therefore gets its own gradient instead of being averaged into a group, which is the mechanism behind skip-gram's reputation on rare words and small corpora.",
         "Training it exactly would require a softmax over the entire vocabulary for every pair, which is hopeless at |V| in the millions. Negative sampling replaces that with k+1 logistic decisions: pull the true context word's vector toward the centre's, push k noise words away. The noise distribution is unigram counts raised to the power 3/4 — the paper's one unexplained constant, and it matters: on the lab's corpus it takes \"the\" from 26.5% of draws down to 18.0% and lifts \"monarch\" from 2.0% to 2.5%. Cost per example falls from |V|·d to (k+1)·d — 416 to 96 multiply-adds here, and 300 million to 1,800 at a million-word vocabulary with 300 dimensions.",
