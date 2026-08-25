@@ -1,6 +1,6 @@
 # Phase 13 — The figures that must exist
 
-Status: **In progress — M1 to M5 shipped, 26 of 41.** Everything else in `phase-12-figure-scope.md`'s
+Status: **In progress — M1 to M6 shipped, 31 of 41.** Everything else in `phase-12-figure-scope.md`'s
 Tier A becomes optional and stays unbuilt unless a page proves it needs one.
 
 Depends on: Phase 12's figure layer, which is finished as a *capability* — nine shapes, a renderer
@@ -149,7 +149,23 @@ put the constraint in one picture. The caption says so.
 | `unet` | Contract, expand, and the concatenated skips, on `LayerStack`. |
 | `mask_rcnn` | The RoIPool quantisation the masks exposed, and what RoIAlign does instead. |
 
-**M6 — Sequence models** (5).
+**M6 — Sequence models** (5) — **shipped.** The batch where four of the five figures are the
+same claim at different scales: a fixed channel between two things, and what the channel drops.
+`encoder_decoder` measures it directly — a probe of the frozen context vector, 0.34 at position 1
+against 0.85 at position 6, and the flip to 0.98/0.33 when the source is fed backwards. `bptt` is
+the same picture in time rather than in width: ten steps, and a gradient that arrives 56× smaller
+nine steps back. `gpt`'s triangle is the one channel that was narrowed deliberately.
+
+`seq2seq` earns bars rather than a table because the point is that one of the three quantities does
+not move: 84 model errors at width 1, 84 at width 10, with the correct count going 35 → 36 beside
+them. `kl_divergence` is the batch's second Plot and the only figure here that is a pair of fitted
+curves — checked against `seq2seq` for redundancy, and they share nothing but the axis.
+
+Both KL fits were re-derived before being drawn rather than copied off the page: reverse KL(Q‖P)
+reproduces 0.6906 exactly, and forward KL(P‖Q) comes to 0.4684 against the page's 0.4685 on a
+[−6, 6] grid at step 0.05, which is what fixed the discretisation the lab must have used — a
+continuous integral gives 0.5139 and would have drawn a different argument.
+
 
 | Topic | The figure has to show |
 |---|---|
@@ -195,7 +211,7 @@ Per batch: `./gradlew :app:testDebugUnitTest` (`FigureShapeTest`, `AiFigureCover
 **One emulator pass at the end of the phase, not per batch** — and it has a backlog to clear from
 Phase 12 already: `knn`'s five labelled edges off one node, the eleven-node dendrogram in
 `hierarchical_clustering`, `catboost`'s and `factor_analysis`'s narrow grids, `qda`'s 7×7 heatmap,
-and `extra_trees`' full-width aux row. M7's trellis joins that list on arrival, M5 has added `unet`'s nine-node U — the widest graph in the app and the one most likely to collide with itself on a narrow screen — plus `mask_rcnn`'s ten-cell strip with two bands and a pointer, M4 added `padding_strides`' 7×7 grid and `resnet`'s five-node graph, M3 added the
+and `extra_trees`' full-width aux row. M7's trellis joins that list on arrival, M6 has added `bptt`'s ten-cell strip — two bands, two pointers and a ten-cell aux row, the narrowest cells in the app — plus `kl_divergence`'s three 25-point series, where the reverse fit's spike and the target's near-identical left mode overlap for a third of the axis, M5 has added `unet`'s nine-node U — the widest graph in the app and the one most likely to collide with itself on a narrow screen — plus `mask_rcnn`'s ten-cell strip with two bands and a pointer, M4 added `padding_strides`' 7×7 grid and `resnet`'s five-node graph, M3 added the
 reachability profile it was promised plus `hdbscan`'s three-span timeline and `fp_growth`'s
 nine-node tree, and M2 added two: `bias_variance`'s four series on one axis, and
 `gaussian_nb`'s four bells, where each class's two curves nearly coincide and the solid/dashed

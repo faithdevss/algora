@@ -79,6 +79,9 @@ class AiFigureCoverageTest {
         "vanishing_gradient", "padding_strides", "resnet", "inception", "vgg", "mobilenet",
         // M5 — detection, where the numbers only mean something side by side.
         "rcnn", "yolo", "retinanet", "unet", "mask_rcnn",
+        // M6 — sequence models: the bottleneck vector, the search, the mask, the window,
+        // and the direction of the divergence.
+        "encoder_decoder", "seq2seq", "gpt", "bptt", "kl_divergence",
     )
 
     @Test
@@ -96,6 +99,6 @@ class AiFigureCoverageTest {
     @Test
     fun `the pilot is the size the phase was scoped against`() {
         // Keeps the batch table in docs/plan/phase-12-ai-figures.md verifiable rather than folklore.
-        assertEquals(134, pilotFigures.size)
+        assertEquals(139, pilotFigures.size)
     }
 }

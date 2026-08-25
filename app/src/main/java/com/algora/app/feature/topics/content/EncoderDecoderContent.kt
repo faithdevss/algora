@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,32 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val encoderDecoderContent = TopicContent(
     topicId = "encoder_decoder",
+    figure = Figure(
+        caption = "Two networks, one vector between them, and a measurement of what that vector " +
+            "kept. The encoder reads six symbols over a six-symbol alphabet — 15.5 bits — and " +
+            "hands the decoder 12 tanh-squashed numbers; a linear probe fitted from those numbers " +
+            "to one source position, encoder frozen, says which positions survived the handover. " +
+            "Fed forward, the vector holds the end of the source: position 6 is recoverable 85% " +
+            "of the time and position 1 — the symbol the decoder needs first — 34%. Feed the same " +
+            "encoder the same sources backwards and the profile flips to 98% and 33%, taking " +
+            "exact match from 0.292 to 0.542 with 571 parameters either way. Reversal does not " +
+            "widen the channel, it reorders what goes through it, which is why the copy task " +
+            "still collapses to zero by length four in both directions. Attention removes the " +
+            "channel instead.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0.34", "0.85", "0.292"),
+                listOf("0.98", "0.33", "0.542"),
+            ),
+            rowHeaders = listOf("forward", "reversed"),
+            colHeaders = listOf("probe p₁", "probe p₆", "exact match"),
+            marks = listOf(
+                FigureCell(0, 1),
+                FigureCell(1, 0),
+                FigureCell(1, 2, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "An encoder-decoder is two recurrent networks joined by a single vector. The encoder reads the input and its final hidden state — the context vector — becomes the decoder's initial state; the decoder then generates until it emits an end symbol. The arrangement is what let sequence models produce sequences of a different length from their input, which is the whole of machine translation, summarisation and speech transcription. Everything the decoder will ever know about the source has to be in that one vector.",
         "The lab measures what that costs by asking for the least it possibly could: copy the source. No transformation, no alignment, no vocabulary mismatch — so every failure is the vector losing the input rather than the model failing to compute something. With 12 hidden units and 571 parameters, exact-match accuracy is 100% at one symbol, 48% at two, and zero from four on. A six-symbol source over a six-symbol alphabet is 15.5 bits; the context vector has 12 tanh-squashed numbers to hold them in, and the accuracy curve is what that mismatch looks like from the outside.",

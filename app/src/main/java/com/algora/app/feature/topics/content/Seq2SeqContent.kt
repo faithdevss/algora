@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,30 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val seq2seqContent = TopicContent(
     topicId = "seq2seq",
+    figure = Figure(
+        caption = "The same 120 sequences decoded twice by the same model, sorted by what went " +
+            "wrong. Widening the beam from 1 to 10 raises mean log-probability from −2.284 to " +
+            "−1.994 and changes 45 of the 120 outputs — and moves exact match by one sequence, 35 " +
+            "correct to 36. The split says why it could not do better. Score the gold sequence " +
+            "under the model and every failure is either a search error, where the model ranked " +
+            "gold above what was returned, or a model error, where it did not. There is exactly " +
+            "one search error at width 1 and none at width 10, while the 84 model errors do not " +
+            "move at all, because no beam width can return a sequence the model itself scores " +
+            "lower. Seven of every ten outputs are outside the decoder's reach at any width. " +
+            "Reversing the encoder's input — free at decode time — converts 31 of them.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("✓ 35", 0.292f, FigureTone.Accent),
+                FigureBar("search 1", 0.008f),
+                FigureBar("model 84", 0.700f, FigureTone.Warn),
+                FigureBar("✓ 36", 0.300f, FigureTone.Accent),
+                FigureBar("search 0", 0.000f),
+                FigureBar("model 84", 0.700f, FigureTone.Warn),
+            ),
+            xLabel = "greedy, k = 1 · then beam, k = 10",
+            yLabel = "share of 120 outputs",
+        ),
+    ),
     whatIsIt = listOf(
         "A seq2seq model does not emit a sequence. It scores them — assigning a probability to every string the decoder could produce — and something else has to search that space for one to return. Greedy decoding takes the most probable next symbol at each step and never reconsiders; beam search keeps the k best partial sequences by summed log-probability and lets a hypothesis that looked second-best early come first at the end. Greedy is beam search with k = 1, and the gap between them is a search problem, not a modelling one.",
         "Beam search does what it promises here and almost nothing else. Widening it from 1 to 10 raises mean log-probability from −2.284 to −1.994 and changes 45 of 120 outputs — and moves exact match from 0.292 to 0.300, a single sequence. That is not a disappointment to shrug at; it is diagnosable. Score the gold sequence under the same model and every wrong output sorts into one of two kinds: the model preferred gold and the search lost it (a search error), or the model preferred its own wrong answer (a model error). At width 1 the split is 1 search error against 84 model errors, and at width 10 the search errors are gone. Eighty-four of 120 outputs are beyond any beam width, because the thing being searched is wrong.",

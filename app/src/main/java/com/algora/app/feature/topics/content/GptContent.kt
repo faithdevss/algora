@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,40 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val gptContent = TopicContent(
     topicId = "gpt",
+    figure = Figure(
+        caption = "The mask, drawn. Every score at column j > row i is set to −∞ before the " +
+            "softmax, so the matrix is exactly triangular: 21 of 36 pairs survive at six tokens. " +
+            "The shading is what the softmax then does with equal scores — row 1 puts its whole " +
+            "weight on itself, row 6 spreads 0.167 across six tokens — and the first row is the " +
+            "cost the architecture cannot avoid, a token attending to nothing but itself and " +
+            "carrying no information about anything. Averaged over the six positions each " +
+            "prediction sees 2.72 tokens of context against a bidirectional model's 5.44 on the " +
+            "same corpus. What the triangle buys is every position as a training target — 64 " +
+            "predictions per forward pass against a masked model's 10 — and a cache, since no " +
+            "key or value to the left of a token can ever change: six generated tokens cost 21 " +
+            "rows of scores instead of 56 recomputed ones.",
+        shape = FigureShape.Heatmap(
+            values = listOf(
+                listOf(1.000f, 0f, 0f, 0f, 0f, 0f),
+                listOf(0.500f, 0.500f, 0f, 0f, 0f, 0f),
+                listOf(0.333f, 0.333f, 0.333f, 0f, 0f, 0f),
+                listOf(0.250f, 0.250f, 0.250f, 0.250f, 0f, 0f),
+                listOf(0.200f, 0.200f, 0.200f, 0.200f, 0.200f, 0f),
+                listOf(0.167f, 0.167f, 0.167f, 0.167f, 0.167f, 0.167f),
+            ),
+            rowLabels = listOf("q₁", "q₂", "q₃", "q₄", "q₅", "q₆"),
+            colLabels = listOf("k₁", "k₂", "k₃", "k₄", "k₅", "k₆"),
+            marks = listOf(
+                FigureCell(0, 0, FigureTone.Accent),
+                FigureCell(1, 1, FigureTone.Accent),
+                FigureCell(2, 2, FigureTone.Accent),
+                FigureCell(3, 3, FigureTone.Accent),
+                FigureCell(4, 4, FigureTone.Accent),
+                FigureCell(5, 5, FigureTone.Accent),
+            ),
+            legend = "attention weight at equal scores · blank = −∞ · outlined = the diagonal",
+        ),
+    ),
     whatIsIt = listOf(
         "GPT is the same transformer block as BERT with one line added to the attention: positions to the right of the query are set to −∞ before the softmax. That single mask is the whole architectural difference between a model that reconstructs text and one that continues it. Drawn as a matrix it is exactly triangular — over six tokens, bidirectional attention scores 36 pairs and the causal version scores 21 — and the first position attends only to itself, which is why the first token of a sequence carries no information about anything.",
         "What the mask buys is that every position becomes a training target. The same forward pass that gives a masked model 10 predictions on the lab's corpus gives a causal model 64, and the objective is exactly the task the model performs at inference: predict what comes next. There is no [MASK] token to create a pre-train/fine-tune mismatch and no corruption rule to tune. What it costs is context — each prediction sees only what is to its left, averaging 2.72 tokens against a masked model's 5.44 on the same corpus.",

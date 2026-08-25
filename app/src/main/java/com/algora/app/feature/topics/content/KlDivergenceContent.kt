@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,87 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val klDivergenceContent = TopicContent(
     topicId = "kl_divergence",
+    figure = Figure(
+        caption = "One target, two fits, and the argument order is the only difference between " +
+            "them. P is an equal mixture of N(−2.5, 0.8) and N(+2.5, 0.8); each fitted curve is a " +
+            "single Gaussian chosen by grid search over (μ, σ), one minimising KL(P‖Q) and the " +
+            "other KL(Q‖P). Forward KL charges P(x)·ln(P(x)/Q(x)), which grows without bound " +
+            "wherever Q is near zero and P is not, so the fit is forced to cover both modes and " +
+            "lands wide and flat — μ = 0.0, σ = 3.0, peaking at 0.267 of the target's height with " +
+            "most of its mass in the valley where P has almost none. Reverse KL charges the other " +
+            "way round, so mass Q simply never places is free: the fit abandons the right-hand " +
+            "mode outright and reproduces the left one exactly, μ = −2.5, σ = 0.8, which is one " +
+            "of P's true components. The costs are 0.4685 and 0.6906, and they are different " +
+            "divergences rather than two scores on one scale — which is why the direction is a " +
+            "modelling decision and not a formality.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "target P",
+                    listOf(
+                        FigurePoint(0.0000f, 0.000f), FigurePoint(0.0417f, 0.000f),
+                        FigurePoint(0.0833f, 0.004f), FigurePoint(0.1250f, 0.022f),
+                        FigurePoint(0.1667f, 0.086f), FigurePoint(0.2083f, 0.229f),
+                        FigurePoint(0.2500f, 0.411f), FigurePoint(0.2917f, 0.500f),
+                        FigurePoint(0.3333f, 0.411f), FigurePoint(0.3750f, 0.229f),
+                        FigurePoint(0.4167f, 0.086f), FigurePoint(0.4583f, 0.022f),
+                        FigurePoint(0.5000f, 0.008f), FigurePoint(0.5417f, 0.022f),
+                        FigurePoint(0.5833f, 0.086f), FigurePoint(0.6250f, 0.229f),
+                        FigurePoint(0.6667f, 0.411f), FigurePoint(0.7083f, 0.500f),
+                        FigurePoint(0.7500f, 0.411f), FigurePoint(0.7917f, 0.229f),
+                        FigurePoint(0.8333f, 0.086f), FigurePoint(0.8750f, 0.022f),
+                        FigurePoint(0.9167f, 0.004f), FigurePoint(0.9583f, 0.000f),
+                        FigurePoint(1.0000f, 0.000f),
+                    ),
+                    tone = FigureTone.Muted,
+                ),
+                FigureSeries(
+                    "forward KL fit",
+                    listOf(
+                        FigurePoint(0.0000f, 0.036f), FigurePoint(0.0417f, 0.050f),
+                        FigurePoint(0.0833f, 0.066f), FigurePoint(0.1250f, 0.087f),
+                        FigurePoint(0.1667f, 0.110f), FigurePoint(0.2083f, 0.135f),
+                        FigurePoint(0.2500f, 0.162f), FigurePoint(0.2917f, 0.188f),
+                        FigurePoint(0.3333f, 0.214f), FigurePoint(0.3750f, 0.235f),
+                        FigurePoint(0.4167f, 0.252f), FigurePoint(0.4583f, 0.263f),
+                        FigurePoint(0.5000f, 0.267f), FigurePoint(0.5417f, 0.263f),
+                        FigurePoint(0.5833f, 0.252f), FigurePoint(0.6250f, 0.235f),
+                        FigurePoint(0.6667f, 0.214f), FigurePoint(0.7083f, 0.188f),
+                        FigurePoint(0.7500f, 0.162f), FigurePoint(0.7917f, 0.135f),
+                        FigurePoint(0.8333f, 0.110f), FigurePoint(0.8750f, 0.087f),
+                        FigurePoint(0.9167f, 0.066f), FigurePoint(0.9583f, 0.050f),
+                        FigurePoint(1.0000f, 0.036f),
+                    ),
+                    tone = FigureTone.Accent,
+                ),
+                FigureSeries(
+                    "reverse KL fit",
+                    listOf(
+                        FigurePoint(0.0000f, 0.000f), FigurePoint(0.0417f, 0.001f),
+                        FigurePoint(0.0833f, 0.008f), FigurePoint(0.1250f, 0.044f),
+                        FigurePoint(0.1667f, 0.172f), FigurePoint(0.2083f, 0.458f),
+                        FigurePoint(0.2500f, 0.823f), FigurePoint(0.2917f, 1.000f),
+                        FigurePoint(0.3333f, 0.823f), FigurePoint(0.3750f, 0.458f),
+                        FigurePoint(0.4167f, 0.172f), FigurePoint(0.4583f, 0.044f),
+                        FigurePoint(0.5000f, 0.008f), FigurePoint(0.5417f, 0.001f),
+                        FigurePoint(0.5833f, 0.000f), FigurePoint(0.6250f, 0.000f),
+                        FigurePoint(0.6667f, 0.000f), FigurePoint(0.7083f, 0.000f),
+                        FigurePoint(0.7500f, 0.000f), FigurePoint(0.7917f, 0.000f),
+                        FigurePoint(0.8333f, 0.000f), FigurePoint(0.8750f, 0.000f),
+                        FigurePoint(0.9167f, 0.000f), FigurePoint(0.9583f, 0.000f),
+                        FigurePoint(1.0000f, 0.000f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.5000f, 0.267f, "covers both", FigureTone.Accent),
+                FigurePoint(0.7083f, 0.500f, "mode dropped", FigureTone.Warn),
+            ),
+            xLabel = "x, −6 → 6",
+            yLabel = "density, 0 → 0.499",
+        ),
+    ),
     whatIsIt = listOf(
         "KL divergence measures how one distribution differs from another: KL(P‖Q) = Σ P(x)·ln(P(x)/Q(x)). It is not a distance — it isn't symmetric, and computing it both directions on the same P=(0.5, 0.3, 0.15, 0.05) and Q=uniform proves it: KL(P‖Q)=0.2442, KL(Q‖P)=0.3112. Swapping the arguments changes the number. There's also an exact identity linking it to cross-entropy: cross-entropy(P,Q) = entropy(P) + KL(P‖Q) — checked here as 1.1421 + 0.2442 = 1.3863, matching cross-entropy computed directly to the digit.",
         "The asymmetry isn't just a technicality — the two directions optimize for different things. Fit a single Gaussian Q to a bimodal target P (two bumps at −2.5 and +2.5) by grid search, minimizing each direction separately. Forward KL, KL(P‖Q), is minimized by a wide Gaussian (μ=0.0, σ=3.0) that spreads mass across both modes at once — because forward KL penalizes Q being near-zero anywhere P has mass, so Q is forced to cover the whole target.",

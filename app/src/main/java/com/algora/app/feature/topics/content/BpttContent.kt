@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,32 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val bpttContent = TopicContent(
     topicId = "bptt",
+    figure = Figure(
+        caption = "Ten steps, one cue, and the window the gradient is actually allowed to walk. " +
+            "The loss sits at step 10 and the backward pass multiplies by the same recurrent " +
+            "matrix at every step on the way down, so ‖∂L/∂h‖ measured at initialization is 0.480 " +
+            "at the last step and 0.0085 nine steps earlier — 56× from repeated multiplication " +
+            "alone. Step 1 is worse than small: its contribution to the recurrent matrix is " +
+            "exactly zero, because h₀ is the zero vector, so the cue reaches the input weights " +
+            "and never reaches W at all. Truncating at k = 3 keeps three steps of graph alive — " +
+            "36 stored activations instead of 120 — and yields a gradient 99.0% cosine-aligned " +
+            "with the full one, sometimes larger than it, since the terms dropped were partly " +
+            "cancelling. That alignment predicts nothing: k = 3 learns the rule on one seed in " +
+            "three, while k = 9, which does not reach the cue either, learns it on all three.",
+        shape = FigureShape.Strip(
+            cells = listOf("x₁", "x₂", "x₃", "x₄", "x₅", "x₆", "x₇", "x₈", "x₉", "x₁₀"),
+            bands = listOf(
+                FigureBand(0, 0, "cue", FigureTone.Warn),
+                FigureBand(7, 9, "k = 3 window", FigureTone.Primary),
+            ),
+            pointers = listOf(
+                FigurePointer(0, "‖g‖ .0085", FigureTone.Warn),
+                FigurePointer(9, "‖g‖ .480"),
+            ),
+            aux = listOf("·", "·", "·", "·", "·", "·", "·", "h₈", "h₉", "h₁₀"),
+            auxLabel = "kept for the backward pass at k = 3 — 36 values, not 120",
+        ),
+    ),
     whatIsIt = listOf(
         "Backpropagation through time is ordinary backpropagation applied to a network that was written as a loop. Unroll a recurrent layer over T timesteps and what you have is a T-layer feedforward network in which every layer shares one weight matrix. The forward pass is the loop you wrote; the backward pass walks from the loss at the end of the sequence to the first step, multiplying by that same matrix on the way, and the gradient for the shared weights is the *sum* of what every step contributed. Nothing about it is special except the sharing, and the sharing is where all the trouble lives.",
         "The trouble is measurable rather than folkloric. In the lab's task — one informative token, nine steps of noise, a decision at the end — the gradient arriving at the last step has norm 0.480 at initialization and the one arriving at the first step has norm 0.0085, 56× smaller after nine multiplications. The first step's contribution to the recurrent matrix is not merely small, it is exactly zero, because h₀ is the zero vector and that step's outer product has a zero factor in it. The cue reaches the input matrix and the recurrent matrix never sees it at all.",
