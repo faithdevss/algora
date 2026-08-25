@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -521,7 +522,13 @@ private fun HeroSection(topic: Topic, content: TopicContent) {
                 Spacer(modifier = Modifier.size(14.dp))
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(topic.name, style = MaterialTheme.typography.titleLarge)
+                        // weight(fill = false) lets the badge claim its intrinsic width first, so a long
+                        // title wraps instead of squeezing the pill down to one letter per line.
+                        Text(
+                            text = topic.name,
+                            style = MaterialTheme.typography.titleLarge,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
                         topic.difficulty?.let {
                             Spacer(modifier = Modifier.size(8.dp))
                             DifficultyBadge(it)
@@ -593,11 +600,22 @@ private fun MathSection(formulas: List<FormulaEntry>, notationKey: List<Notation
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
             formulas.forEachIndexed { index, formula ->
                 Column(modifier = Modifier.padding(vertical = 12.dp)) {
-                    Row(
+                    // The mock's maths row is one flex line, but it only ever carried formulas as
+                    // short as "O(n)". Real entries run to a phrase ("emoji -1, lowercase -2, ..."),
+                    // and a plain Row squeezes the label to nothing and rag-wraps the formula against
+                    // it. FlowRow keeps the mock's two-column line while the pair fits and drops the
+                    // formula onto a full-width line of its own when it does not. The label's end
+                    // padding is the mock's 12px gap, counted into its width so the pair never touches.
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalArrangement = Arrangement.spacedBy(3.dp),
                     ) {
-                        Text(formula.label, style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            text = formula.label,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(end = 12.dp),
+                        )
                         Text(formula.formula, style = AlgoraCodeStyle, color = MaterialTheme.colorScheme.primary)
                     }
                     Text(
@@ -615,7 +633,8 @@ private fun MathSection(formulas: List<FormulaEntry>, notationKey: List<Notation
                 Row(modifier = Modifier.padding(vertical = 4.dp)) {
                     Text(entry.symbol, style = AlgoraCodeStyle, color = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.size(8.dp))
-                    Text(entry.meaning, style = MaterialTheme.typography.bodyMedium)
+                    // weight so a long meaning wraps under itself rather than pushing the symbol out.
+                    Text(entry.meaning, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                 }
             }
         }

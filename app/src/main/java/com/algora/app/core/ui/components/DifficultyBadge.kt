@@ -25,6 +25,8 @@ fun DifficultyBadge(difficulty: Difficulty, modifier: Modifier = Modifier) {
         color = color,
         fontSize = 10.sp,
         fontWeight = FontWeight.Bold,
+        maxLines = 1,
+        softWrap = false,
         modifier = modifier
             .background(color.copy(alpha = 0.12f), RoundedCornerShape(6.dp))
             .padding(horizontal = 7.dp, vertical = 3.dp),
