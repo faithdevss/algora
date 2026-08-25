@@ -13,6 +13,9 @@ set -euo pipefail
 
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Sources live here, exports land one level up in images/ — the PNGs are what
+# gets uploaded, and keeping them out of the source folder makes that obvious.
+OUT="$(cd "$DIR/.." && pwd)/images"
 FILTER="${1:-}"
 
 # name:width:height — the sizes Google Ads accepts for each asset slot.
@@ -25,6 +28,7 @@ ASSETS=(
 )
 
 [ -x "$CHROME" ] || { echo "Chrome not found at $CHROME" >&2; exit 1; }
+mkdir -p "$OUT"
 
 for entry in "${ASSETS[@]}"; do
   IFS=: read -r name w h <<< "$entry"
@@ -37,10 +41,10 @@ for entry in "${ASSETS[@]}"; do
     --force-device-scale-factor=1 \
     --window-size="$w,$h" \
     --virtual-time-budget=9000 \
-    --screenshot="$DIR/$name.png" \
+    --screenshot="$OUT/$name.png" \
     "file://$DIR/$name.html" 2>/dev/null
 
   # Chrome exits 0 even when it wrote nothing useful, so check the result.
-  [ -s "$DIR/$name.png" ] || { echo "  FAILED: no output" >&2; exit 1; }
-  echo "  -> $name.png ($(du -h "$DIR/$name.png" | cut -f1))"
+  [ -s "$OUT/$name.png" ] || { echo "  FAILED: no output" >&2; exit 1; }
+  echo "  -> images/$name.png ($(du -h "$OUT/$name.png" | cut -f1))"
 done

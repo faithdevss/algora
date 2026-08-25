@@ -1,7 +1,7 @@
 # Google Ads assets — Algora
 
 Everything a Google Ads App campaign asks for, in one place: the text that goes
-in the asset fields, and the images in `graphics/`.
+in the asset fields, and the images in `images/`.
 
 Sibling of `docs/store/listing.md`, which covers the Play listing. Where the two
 overlap — the pitch, the brand — this file defers to that one.
@@ -10,8 +10,9 @@ overlap — the pitch, the brand — this file defers to that one.
 
 ## Images
 
-Rendered from the `.html` sources next to them, same headless-Chrome pipeline the
-Play feature graphic uses. Rebuild all five:
+Uploadable PNGs live in `images/`. Their `.html` sources live in `graphics/`,
+and `graphics/build.sh` turns the second into the first — the same
+headless-Chrome pipeline the Play feature graphic uses. Rebuild all five:
 
 ```
 ./docs/ads/graphics/build.sh
@@ -21,11 +22,11 @@ or one at a time by substring: `./docs/ads/graphics/build.sh portrait`.
 
 | Asset | File | Slot it fills |
 |---|---|---|
-| Landscape 1.91:1 | `graphics/ad-landscape-1200x628.png` | Image, required |
-| Square 1:1 | `graphics/ad-square-1200x1200.png` | Image, required |
-| Portrait 4:5 | `graphics/ad-portrait-960x1200.png` | Image, recommended |
-| Logo 1:1 | `graphics/logo-square-1200x1200.png` | Logo |
-| Logo 4:1 | `graphics/logo-landscape-1200x300.png` | Logo |
+| Landscape 1.91:1 | `images/ad-landscape-1200x628.png` | Image, required |
+| Square 1:1 | `images/ad-square-1200x1200.png` | Image, required |
+| Portrait 4:5 | `images/ad-portrait-960x1200.png` | Image, recommended |
+| Logo 1:1 | `images/logo-square-1200x1200.png` | Logo |
+| Logo 4:1 | `images/logo-landscape-1200x300.png` | Logo |
 
 Upload all five. Google will not serve a placement whose ratio it has no asset
 for, and the ratio it wants is decided by the surface, not by us.
