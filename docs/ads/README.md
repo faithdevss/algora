@@ -22,14 +22,24 @@ or one at a time by substring: `./docs/ads/graphics/build.sh portrait`.
 
 | Asset | File | Slot it fills |
 |---|---|---|
-| Landscape 1.91:1 | `images/ad-landscape-1200x628.png` | Image, required |
-| Square 1:1 | `images/ad-square-1200x1200.png` | Image, required |
+| Landscape 1.91:1, A | `images/ad-landscape-1200x628.png` | Image, required |
+| Landscape 1.91:1, B | `images/ad-landscape-b-1200x628.png` | Image, variant |
+| Square 1:1, A | `images/ad-square-1200x1200.png` | Image, required |
+| Square 1:1, B | `images/ad-square-b-1200x1200.png` | Image, variant |
 | Portrait 4:5 | `images/ad-portrait-960x1200.png` | Image, recommended |
 | Logo 1:1 | `images/logo-square-1200x1200.png` | Logo |
 | Logo 4:1 | `images/logo-landscape-1200x300.png` | Logo |
 
-Upload all five. Google will not serve a placement whose ratio it has no asset
+Upload all seven. Google will not serve a placement whose ratio it has no asset
 for, and the ratio it wants is decided by the surface, not by us.
+
+**A and B are a real test, not the same ad twice.** A sells watching an
+algorithm run — a lab mid-execution, text left, phones right. B sells being
+drilled on it — the Practice hub and the labs catalog, with the layout mirrored
+so the two are told apart at a glance in the asset library. Change one variable
+at a time from here and leave each up long enough to read, or the result means
+nothing. B deliberately does not use the progress dashboard: a fresh install's
+dashboard is all zeros, which reads as an empty app.
 
 **The art is real app state, not a mockup.** The phones carry
 `docs/store/screenshots/Algora_33.png` (graph two-colouring lab, mid-run),
@@ -87,7 +97,10 @@ Spare: `Every topic: plain language, the maths written out, runnable code, then 
   campaign, or swap `504 Topics, 504 Labs` for `Algorithms You Can Run` and take
   the number out of the descriptions too. Note the 504 labs are 34 lab engines
   re-parameterised, not 504 bespoke screens — "every topic ships a lab" is
-  accurate, "504 unique visualisers" would not be.
+  accurate, "504 unique visualisers" would not be. The B variants carry the
+  number a second way, inside `Algora_28.png` itself, where the labs catalog
+  prints "504 interactive labs" as real app state. That one cannot be fixed by
+  editing text: it needs the screenshot recaptured.
 - **Do not claim a rating or a review count.** The app has neither yet, and
   Google disapproves ads that quote them without the data behind it.
 - The pitch line in `AppShare.kt` and the short description in

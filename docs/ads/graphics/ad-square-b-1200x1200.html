@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Algora — Google Ads square image asset, variant B (1200×1200, 1:1)</title>
+<!--
+  Source for ../images/ad-square-b-1200x1200.png. Render with build.sh.
+
+  Variant B of the required 1:1 slot, carrying the same practice angle as
+  ad-landscape-b. Inverted against variant A — phones on top, text underneath —
+  so the two squares do not read as one ad rendered twice.
+
+  Phones: docs/store/screenshots/Algora_30.png (the Practice hub) and
+  Algora_28.png (the labs catalog). See the note in ad-landscape-b about why the
+  progress dashboard is not in here.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css">
+<style>
+  html, body, .canvas { width: 1200px; height: 1200px; }
+
+  .brand    { position: absolute; left: 0; top: 786px; width: 1200px;
+              display: flex; align-items: center; justify-content: center; gap: 20px; }
+  .wordmark { font-size: 60px; line-height: 1; }
+
+  .headline { position: absolute; left: 0; top: 888px; width: 1200px;
+              padding: 0 150px; text-align: center; font-size: 50px; line-height: 1.16; }
+  .sub      { position: absolute; left: 0; top: 970px; width: 1200px;
+              padding: 0 190px; text-align: center; font-size: 23px; line-height: 1.45; }
+  .pills    { position: absolute; left: 0; top: 1054px; width: 1200px; justify-content: center; }
+
+  /* The phones bleed off the top edge: the status bars are the least
+     interesting rows on either shot, and losing them buys the copy its space. */
+</style>
+</head>
+<body>
+<div class="canvas">
+
+  <svg class="mark" width="1200" height="1200" viewBox="0 0 1200 1200">
+    <g class="edge" stroke-width="18">
+      <line x1="112" y1="912" x2="8"   y2="1112"></line>
+      <line x1="112" y1="912" x2="216" y2="1112"></line>
+      <line x1="60"  y1="1012" x2="164" y2="1012"></line>
+    </g>
+    <circle class="node" cx="112" cy="912"  r="30"></circle>
+    <circle class="node" cx="8"   cy="1112" r="24"></circle>
+    <circle class="node" cx="216" cy="1112" r="24"></circle>
+    <g class="edge" stroke-width="18">
+      <line x1="1088" y1="912" x2="984"  y2="1112"></line>
+      <line x1="1088" y1="912" x2="1192" y2="1112"></line>
+      <line x1="1036" y1="1012" x2="1140" y2="1012"></line>
+    </g>
+    <circle class="node" cx="1088" cy="912"  r="30"></circle>
+    <circle class="node" cx="984"  cy="1112" r="24"></circle>
+    <circle class="node" cx="1192" cy="1112" r="24"></circle>
+  </svg>
+
+  <div class="phone" style="left: 108px; top: -26px; width: 336px; transform: rotate(-6deg);">
+    <img src="../../store/screenshots/Algora_28.png" alt="">
+  </div>
+  <div class="phone" style="left: 628px; top: -26px; width: 336px; transform: rotate(6deg);">
+    <img src="../../store/screenshots/Algora_30.png" alt="">
+  </div>
+
+  <div class="brand">
+    <!-- app icon tile: docs/design/Algora Icon.html, 300-unit artwork at 82px -->
+    <svg width="82" height="82" viewBox="0 0 300 300">
+      <defs>
+        <linearGradient id="ramp" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0"    stop-color="#6366f1"></stop>
+          <stop offset="0.52" stop-color="#7c3aed"></stop>
+          <stop offset="1"    stop-color="#c026d3"></stop>
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="300" height="300" rx="70" fill="url(#ramp)"></rect>
+      <g stroke="rgba(255,255,255,.35)" stroke-width="21" stroke-linecap="round">
+        <line x1="150" y1="95" x2="78"  y2="240"></line>
+        <line x1="150" y1="95" x2="222" y2="240"></line>
+        <line x1="105" y1="185" x2="195" y2="185"></line>
+      </g>
+      <circle cx="150" cy="95"  r="36" fill="#fff"></circle>
+      <circle cx="78"  cy="240" r="30" fill="#fff"></circle>
+      <circle cx="222" cy="240" r="30" fill="#fff"></circle>
+      <circle cx="150" cy="95"  r="14" fill="#5b21b6"></circle>
+    </svg>
+    <div class="wordmark">Algora</div>
+  </div>
+
+  <div class="headline">Practice, not just reading</div>
+  <div class="sub">Pattern-grouped problems, timed rounds and flashcard recall.</div>
+
+  <div class="pills">
+    <div class="pill"><span class="dot" style="background:#3b82f6"></span>Problems</div>
+    <div class="pill"><span class="dot" style="background:#f59e0b"></span>Timed rounds</div>
+    <div class="pill"><span class="dot" style="background:#a855f7"></span>Flashcards</div>
+  </div>
+
+</div>
+</body>
+</html>

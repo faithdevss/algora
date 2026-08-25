@@ -20,8 +20,10 @@ FILTER="${1:-}"
 
 # name:width:height — the sizes Google Ads accepts for each asset slot.
 ASSETS=(
-  "ad-landscape-1200x628:1200:628"    # 1.91:1 landscape image
-  "ad-square-1200x1200:1200:1200"     # 1:1 square image
+  "ad-landscape-1200x628:1200:628"    # 1.91:1 landscape image, variant A
+  "ad-square-1200x1200:1200:1200"     # 1:1 square image, variant A
+  "ad-landscape-b-1200x628:1200:628"  # 1.91:1 landscape image, variant B
+  "ad-square-b-1200x1200:1200:1200"   # 1:1 square image, variant B
   "ad-portrait-960x1200:960:1200"     # 4:5 portrait image
   "logo-square-1200x1200:1200:1200"   # 1:1 logo
   "logo-landscape-1200x300:1200:300"  # 4:1 logo
