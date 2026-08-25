@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Algora — Google Ads landscape image asset (1200×628, 1.91:1)</title>
+<!--
+  Source for ad-landscape-1200x628.png. Render with build.sh, or by hand:
+
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+      --headless --disable-gpu --hide-scrollbars --allow-file-access-from-files \
+      --force-device-scale-factor=1 --window-size=1200,628 --virtual-time-budget=8000 \
+      --screenshot="$PWD/docs/ads/graphics/ad-landscape-1200x628.png" \
+      "file://$PWD/docs/ads/graphics/ad-landscape-1200x628.html"
+
+  Do not pass --default-background-color=00000000; the opaque body keeps the
+  export RGB, which is what the Ads asset library wants.
+
+  Phone art is the real app, not a mockup: docs/store/screenshots/Algora_33.png
+  (the graph two-colouring lab, mid-run) and Algora_26.png (the tree lab, with
+  the Kotlin traversal it belongs to visible above it).
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css">
+<style>
+  html, body, .canvas { width: 1200px; height: 628px; }
+
+  .tile     { position: absolute; left: 76px;  top: 74px; }
+  .wordmark { position: absolute; left: 176px; top: 84px; font-size: 62px; line-height: 1; }
+
+  .headline { position: absolute; left: 77px; top: 214px; width: 560px; font-size: 44px; line-height: 1.14; }
+  .sub      { position: absolute; left: 77px; top: 372px; width: 624px; font-size: 20px; line-height: 1.45; }
+  .pills    { position: absolute; left: 76px; top: 462px; }
+</style>
+</head>
+<body>
+<div class="canvas">
+
+  <svg class="mark" width="1200" height="628" viewBox="0 0 1200 628">
+    <g class="edge" stroke-width="15">
+      <line x1="120" y1="470" x2="8"   y2="586"></line>
+      <line x1="120" y1="470" x2="150" y2="640"></line>
+      <line x1="52"  y1="530" x2="140" y2="562"></line>
+    </g>
+    <circle class="node" cx="120" cy="470" r="23"></circle>
+    <circle class="node" cx="8"   cy="586" r="19"></circle>
+    <circle class="node" cx="150" cy="640" r="19"></circle>
+  </svg>
+
+  <!-- app icon tile: docs/design/Algora Icon.html, 300-unit artwork at 88px -->
+  <svg class="tile" width="88" height="88" viewBox="0 0 300 300">
+    <defs>
+      <linearGradient id="ramp" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0"    stop-color="#6366f1"></stop>
+        <stop offset="0.52" stop-color="#7c3aed"></stop>
+        <stop offset="1"    stop-color="#c026d3"></stop>
+      </linearGradient>
+    </defs>
+    <rect x="0" y="0" width="300" height="300" rx="70" fill="url(#ramp)"></rect>
+    <g stroke="rgba(255,255,255,.35)" stroke-width="21" stroke-linecap="round">
+      <line x1="150" y1="95" x2="78"  y2="240"></line>
+      <line x1="150" y1="95" x2="222" y2="240"></line>
+      <line x1="105" y1="185" x2="195" y2="185"></line>
+    </g>
+    <circle cx="150" cy="95"  r="36" fill="#fff"></circle>
+    <circle cx="78"  cy="240" r="30" fill="#fff"></circle>
+    <circle cx="222" cy="240" r="30" fill="#fff"></circle>
+    <circle cx="150" cy="95"  r="14" fill="#5b21b6"></circle>
+  </svg>
+
+  <div class="wordmark">Algora</div>
+  <div class="headline">Algorithms and AI you can actually see</div>
+  <div class="sub">Every topic ships with a lab you can run — offline, no account.</div>
+
+  <div class="pills">
+    <div class="pill"><span class="dot" style="background:#8b5cf6"></span>DSA &middot; AI</div>
+    <div class="pill"><span class="dot" style="background:#3b82f6"></span>Interview prep</div>
+    <div class="pill"><span class="dot" style="background:#10b981"></span>Works offline</div>
+  </div>
+
+  <!-- Back phone sits lower and rotates away, so the front one reads as the subject. -->
+  <div class="phone" style="left: 962px; top: 138px; width: 224px; transform: rotate(7deg);">
+    <img src="../../store/screenshots/Algora_26.png" alt="">
+  </div>
+  <div class="phone" style="left: 706px; top: 96px; width: 262px; transform: rotate(-3deg);">
+    <img src="../../store/screenshots/Algora_33.png" alt="">
+  </div>
+
+</div>
+</body>
+</html>

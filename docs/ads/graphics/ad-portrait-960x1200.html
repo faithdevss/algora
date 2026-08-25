@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Algora — Google Ads portrait image asset (960×1200, 4:5)</title>
+<!--
+  Source for ad-portrait-960x1200.png. Render with build.sh. Same rules as the
+  landscape file: no alpha, no counts burned into the art.
+
+  One screenshot, large: docs/store/screenshots/Algora_33.png — the graph
+  two-colouring lab caught mid-run. Its nodes carry the brand violet, so the
+  phone and the canvas around it read as one piece.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css">
+<style>
+  html, body, .canvas { width: 960px; height: 1200px; }
+
+  .brand    { position: absolute; left: 0; top: 88px; width: 960px;
+              display: flex; align-items: center; justify-content: center; gap: 20px; }
+  .wordmark { font-size: 64px; line-height: 1; }
+
+  .headline { position: absolute; left: 0; top: 208px; width: 960px;
+              padding: 0 165px; text-align: center; font-size: 46px; line-height: 1.16; }
+  .sub      { position: absolute; left: 0; top: 396px; width: 960px;
+              padding: 0 120px; text-align: center; font-size: 22px; line-height: 1.45; }
+  .pills    { position: absolute; left: 0; top: 462px; width: 960px; justify-content: center; }
+</style>
+</head>
+<body>
+<div class="canvas">
+
+  <svg class="mark" width="960" height="1200" viewBox="0 0 960 1200">
+    <g class="edge" stroke-width="18">
+      <line x1="852" y1="742" x2="744" y2="960"></line>
+      <line x1="852" y1="742" x2="960" y2="960"></line>
+      <line x1="790" y1="878" x2="914" y2="878"></line>
+    </g>
+    <circle class="node" cx="852" cy="742" r="34"></circle>
+    <circle class="node" cx="744" cy="960" r="28"></circle>
+    <circle class="node" cx="960" cy="960" r="28"></circle>
+    <g class="edge" stroke-width="15">
+      <line x1="86" y1="796" x2="-10" y2="972"></line>
+      <line x1="86" y1="796" x2="182" y2="972"></line>
+      <line x1="38" y1="884" x2="134" y2="884"></line>
+    </g>
+    <circle class="node" cx="86"  cy="796" r="27"></circle>
+    <circle class="node" cx="-10" cy="972" r="22"></circle>
+    <circle class="node" cx="182" cy="972" r="22"></circle>
+  </svg>
+
+  <div class="brand">
+    <!-- app icon tile: docs/design/Algora Icon.html, 300-unit artwork at 86px -->
+    <svg width="86" height="86" viewBox="0 0 300 300">
+      <defs>
+        <linearGradient id="ramp" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0"    stop-color="#6366f1"></stop>
+          <stop offset="0.52" stop-color="#7c3aed"></stop>
+          <stop offset="1"    stop-color="#c026d3"></stop>
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="300" height="300" rx="70" fill="url(#ramp)"></rect>
+      <g stroke="rgba(255,255,255,.35)" stroke-width="21" stroke-linecap="round">
+        <line x1="150" y1="95" x2="78"  y2="240"></line>
+        <line x1="150" y1="95" x2="222" y2="240"></line>
+        <line x1="105" y1="185" x2="195" y2="185"></line>
+      </g>
+      <circle cx="150" cy="95"  r="36" fill="#fff"></circle>
+      <circle cx="78"  cy="240" r="30" fill="#fff"></circle>
+      <circle cx="222" cy="240" r="30" fill="#fff"></circle>
+      <circle cx="150" cy="95"  r="14" fill="#5b21b6"></circle>
+    </svg>
+    <div class="wordmark">Algora</div>
+  </div>
+
+  <div class="headline">Algorithms and AI you can actually see</div>
+  <div class="sub">Every topic ships with a lab you can run — offline, no account.</div>
+
+  <div class="pills">
+    <div class="pill"><span class="dot" style="background:#8b5cf6"></span>DSA &middot; AI</div>
+    <div class="pill"><span class="dot" style="background:#3b82f6"></span>Interview prep</div>
+    <div class="pill"><span class="dot" style="background:#10b981"></span>Works offline</div>
+  </div>
+
+  <div class="phone" style="left: 268px; top: 552px; width: 424px; transform: rotate(-2deg);">
+    <img src="../../store/screenshots/Algora_33.png" alt="">
+  </div>
+
+</div>
+</body>
+</html>

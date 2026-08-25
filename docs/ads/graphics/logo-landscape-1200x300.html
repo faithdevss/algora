@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Algora — Google Ads logo asset, landscape (1200×300, 4:1)</title>
+<!--
+  Source for logo-landscape-1200x300.png. Render with build.sh.
+  Mark plus wordmark, nothing else — this asset is placed at small sizes and a
+  tagline in it would be unreadable everywhere it appears.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css">
+<style>
+  html, body, .canvas { width: 1200px; height: 300px; }
+  .canvas { display: flex; align-items: center; justify-content: center; gap: 34px; }
+  .wordmark { font-size: 124px; line-height: 1; }
+</style>
+</head>
+<body>
+<div class="canvas">
+  <!-- app icon tile: docs/design/Algora Icon.html, 300-unit artwork at 170px -->
+  <svg width="170" height="170" viewBox="0 0 300 300">
+    <defs>
+      <linearGradient id="ramp" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0"    stop-color="#6366f1"></stop>
+        <stop offset="0.52" stop-color="#7c3aed"></stop>
+        <stop offset="1"    stop-color="#c026d3"></stop>
+      </linearGradient>
+    </defs>
+    <rect x="0" y="0" width="300" height="300" rx="70" fill="url(#ramp)"></rect>
+    <g stroke="rgba(255,255,255,.35)" stroke-width="21" stroke-linecap="round">
+      <line x1="150" y1="95" x2="78"  y2="240"></line>
+      <line x1="150" y1="95" x2="222" y2="240"></line>
+      <line x1="105" y1="185" x2="195" y2="185"></line>
+    </g>
+    <circle cx="150" cy="95"  r="36" fill="#fff"></circle>
+    <circle cx="78"  cy="240" r="30" fill="#fff"></circle>
+    <circle cx="222" cy="240" r="30" fill="#fff"></circle>
+    <circle cx="150" cy="95"  r="14" fill="#5b21b6"></circle>
+  </svg>
+  <div class="wordmark">Algora</div>
+</div>
+</body>
+</html>

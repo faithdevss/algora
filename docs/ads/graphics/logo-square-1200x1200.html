@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Algora — Google Ads logo asset, square (1200×1200, 1:1)</title>
+<!--
+  Source for logo-square-1200x1200.png. Render with build.sh.
+
+  Google renders the logo asset small and sometimes circular-cropped, so the
+  tile is inset with a wide margin: a circle inscribed in this canvas still
+  clears the node mark on every side.
+-->
+<link rel="stylesheet" href="_shared.css">
+<style>
+  html, body, .canvas { width: 1200px; height: 1200px; }
+  .canvas { display: flex; align-items: center; justify-content: center; }
+</style>
+</head>
+<body>
+<div class="canvas">
+  <!-- app icon tile: docs/design/Algora Icon.html, 300-unit artwork at 760px -->
+  <svg width="760" height="760" viewBox="0 0 300 300">
+    <defs>
+      <linearGradient id="ramp" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0"    stop-color="#6366f1"></stop>
+        <stop offset="0.52" stop-color="#7c3aed"></stop>
+        <stop offset="1"    stop-color="#c026d3"></stop>
+      </linearGradient>
+    </defs>
+    <rect x="0" y="0" width="300" height="300" rx="70" fill="url(#ramp)"></rect>
+    <g stroke="rgba(255,255,255,.35)" stroke-width="21" stroke-linecap="round">
+      <line x1="150" y1="95" x2="78"  y2="240"></line>
+      <line x1="150" y1="95" x2="222" y2="240"></line>
+      <line x1="105" y1="185" x2="195" y2="185"></line>
+    </g>
+    <circle cx="150" cy="95"  r="36" fill="#fff"></circle>
+    <circle cx="78"  cy="240" r="30" fill="#fff"></circle>
+    <circle cx="222" cy="240" r="30" fill="#fff"></circle>
+    <circle cx="150" cy="95"  r="14" fill="#5b21b6"></circle>
+  </svg>
+</div>
+</body>
+</html>
