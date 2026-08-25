@@ -69,6 +69,9 @@ class MainActivity : ComponentActivity() {
             val accentChoice by settings.accent.collectAsState(initial = null)
             var mode by rememberSaveable { mutableStateOf(AppMode.DSA) }
             LaunchedEffect(Unit) { settings.recordActivityToday() }
+            // Stamped once, on the first launch of an install: the quiz-exit interstitial's grace
+            // period needs a real install date, and the trimmed ACTIVE_DAYS window cannot give one.
+            LaunchedEffect(Unit) { settings.ensureFirstOpenDay() }
 
             // Study reminder: keep the daily check enqueued while the user wants reminders, and ask
             // for the Android 13+ notification grant once — the system dialog is one-shot, so a

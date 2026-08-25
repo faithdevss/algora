@@ -119,15 +119,19 @@ fun TopicDetailScreen(
         if (resolved is TopicAccess.AdUnlocked) {
             AdUnlockBanner(expiresAt = resolved.expiresAt)
         }
-        TopicDetailContent(topicId = topicId, onBack = onBack, onTopicClick = onTopicClick)
+        TopicDetailContent(
+            topicId = topicId,
+            onBack = onBack,
+            onTopicClick = onTopicClick,
+            onGoPremium = onGoPremium,
+        )
     }
 }
 
 // Reminder that this access came from a rewarded ad and will lapse.
 @Composable
 private fun AdUnlockBanner(expiresAt: Long) {
-    // Weekday included: a 24h unlock always lands on the same clock time, so the time alone reads
-    // like it expires within the minute.
+    // Weekday included: an unlock that spans midnight would otherwise read as already past.
     val formatter = remember { SimpleDateFormat("EEE h:mm a", Locale.getDefault()) }
     Row(
         modifier = Modifier
@@ -152,7 +156,12 @@ private fun AdUnlockBanner(expiresAt: Long) {
 }
 
 @Composable
-private fun TopicDetailContent(topicId: String, onBack: () -> Unit, onTopicClick: (String) -> Unit) {
+private fun TopicDetailContent(
+    topicId: String,
+    onBack: () -> Unit,
+    onTopicClick: (String) -> Unit,
+    onGoPremium: () -> Unit,
+) {
     val topic = remember(topicId) { TopicRegistry.find(topicId) }
     val content = remember(topicId) { TopicContentProvider.get(topicId) }
 
@@ -184,6 +193,7 @@ private fun TopicDetailContent(topicId: String, onBack: () -> Unit, onTopicClick
             onBack = onBack,
             onTopicClick = onTopicClick,
             onFinish = { scope.launch { repository.markCompleted(topicId) } },
+            onGoPremium = onGoPremium,
         )
         return
     }

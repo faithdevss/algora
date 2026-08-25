@@ -7,18 +7,18 @@ import com.google.android.gms.ads.AdError
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.FullScreenContentCallback
 import com.google.android.gms.ads.LoadAdError
-import com.google.android.gms.ads.rewarded.RewardedAd
-import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
+import com.google.android.gms.ads.interstitial.InterstitialAd
+import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-private const val TAG = "AdMobRewardedAds"
+private const val TAG = "AdMobInterstitialAds"
 
-// One rewarded ad kept warm at a time: loaded on first paywall view, reloaded after each dismissal
-// so the next locked topic can unlock without a wait.
-class AdMobRewardedAds(context: Context, private val scope: CoroutineScope) : RewardedAds {
+// One interstitial kept warm at a time, mirroring AdMobRewardedAds: preloaded when a quiz starts
+// being taken seriously, reloaded after each dismissal so the next eligible exit does not wait.
+class AdMobInterstitialAds(context: Context, scope: CoroutineScope) : InterstitialAds {
 
     private val _isReady = MutableStateFlow(false)
     override val isReady: StateFlow<Boolean> = _isReady.asStateFlow()
@@ -26,7 +26,7 @@ class AdMobRewardedAds(context: Context, private val scope: CoroutineScope) : Re
     // Real ads render their own full-screen activity, so there is never an in-app overlay.
     override val overlay: StateFlow<String?> = MutableStateFlow<String?>(null).asStateFlow()
 
-    private var ad: RewardedAd? = null
+    private var ad: InterstitialAd? = null
     private var loading = false
 
     init {
@@ -36,13 +36,12 @@ class AdMobRewardedAds(context: Context, private val scope: CoroutineScope) : Re
     override fun preload(context: Context) {
         if (ad != null || loading) return
         loading = true
-        val appContext = context.applicationContext
-        RewardedAd.load(
-            appContext,
-            AdIds.rewardedUnit,
+        InterstitialAd.load(
+            context.applicationContext,
+            AdIds.interstitialUnit,
             AdRequest.Builder().build(),
-            object : RewardedAdLoadCallback() {
-                override fun onAdLoaded(loaded: RewardedAd) {
+            object : InterstitialAdLoadCallback() {
+                override fun onAdLoaded(loaded: InterstitialAd) {
                     loading = false
                     ad = loaded
                     _isReady.value = true
@@ -52,40 +51,40 @@ class AdMobRewardedAds(context: Context, private val scope: CoroutineScope) : Re
                     loading = false
                     ad = null
                     _isReady.value = false
-                    Log.w(TAG, "rewarded load failed: ${error.message}")
+                    Log.w(TAG, "interstitial load failed: ${error.message}")
                 }
             },
         )
     }
 
-    override fun show(activity: Activity, onReward: () -> Unit, onFailed: (String) -> Unit) {
+    override fun show(activity: Activity, onClosed: (Boolean) -> Unit) {
         val current = ad
+        // Nothing loaded: the user is already leaving a screen, so let them go and warm one up for
+        // the next time rather than stalling the exit on a network round trip.
         if (current == null) {
             preload(activity)
-            onFailed("Ad not ready yet — try again in a moment.")
+            onClosed(false)
             return
         }
 
-        var earned = false
         current.fullScreenContentCallback = object : FullScreenContentCallback() {
             override fun onAdDismissedFullScreenContent() {
                 ad = null
                 _isReady.value = false
                 preload(activity)
-                if (!earned) onFailed("Watch the full ad to unlock this topic.")
+                onClosed(true)
             }
 
             override fun onAdFailedToShowFullScreenContent(error: AdError) {
                 ad = null
                 _isReady.value = false
                 preload(activity)
-                onFailed(error.message.ifBlank { "Ad failed to play." })
+                Log.w(TAG, "interstitial show failed: ${error.message}")
+                onClosed(false)
             }
         }
-
-        current.show(activity) {
-            earned = true
-            onReward()
-        }
+        ad = null
+        _isReady.value = false
+        current.show(activity)
     }
 }

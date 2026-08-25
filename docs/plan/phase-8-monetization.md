@@ -67,7 +67,7 @@ test values.
   `planCard()` selected-state card (lifetime instead of monthly/yearly), gradient CTA, restore link.
   Route `premium`. Its Scaffold passes `WindowInsets(0)` — the app-level Scaffold already insets.
 - `feature/premium/LockedTopicBody.kt` — the paywall itself: amber lock tile, "Unlock Premium"
-  (→ paywall) and "Watch ad · 24h access" (→ rewarded ad → `grantAdUnlock`).
+  (→ paywall) and "Watch ad · 6h access" (→ rewarded ad → `grantAdUnlock`).
 - Home gains the mock's line-82 "Unlock Premium" gradient button, hidden once owned.
 - `TopicDetailScreen` was split: the public composable is now the **gate** and the old body became
   private `TopicDetailContent`. The gate sits before the quiz / behavioral / system-design /
@@ -91,7 +91,7 @@ test values.
 ## Verification
 
 - `./gradlew test` — `EntitlementAccessTest` (9 tests): free topic open, premium locked, unlock live
-  at +23h / dead at +25h, no leak to other topics, ownership wins, 24h grant, read-filtering,
+  at +23h / dead at +25h, no leak to other topics, ownership wins, 6h grant, read-filtering,
   re-grant dedupe, `setPremium` both directions.
 - On-device (emulator, debug build): Analysis list shows locks → "Growth Curve Chart" opens the
   paywall → fake ad countdown → content renders with the expiry banner → Home upsell → fake purchase
@@ -109,7 +109,7 @@ test values.
 4. Test with a licence-tester account on an internal-testing track (release build → real
    `PlayPremiumBilling` + `AdMobRewardedAds`).
 
-**Why $9.99 and not more.** The rewarded-ad path opens any locked topic for 24h, so the ceiling on
+**Why $9.99 and not more.** The rewarded-ad path opens any locked topic for 6h, so the ceiling on
 the lifetime price is not the value of the content — it is the point at which grinding ads beats
 paying. $9.99 also sits under the $10 mental threshold that separates an impulse buy from a
 considered one, which matters for a first release with no brand behind it. Play permits raising the

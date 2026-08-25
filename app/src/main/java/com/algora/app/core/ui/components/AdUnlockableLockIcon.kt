@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 val LockAmber = Color(0xFFF59E0B)
 
 // A plain padlock says "buy to open", which is only half true here: every locked topic also opens
-// for 24h after a rewarded ad. So the padlock body carries a knocked-out play triangle — locked,
+// for 6h after a rewarded ad. So the padlock body carries a knocked-out play triangle — locked,
 // but a video is a way in.
 //
 // Built as a composite rather than an ImageVector because Icon() tints a whole vector with one

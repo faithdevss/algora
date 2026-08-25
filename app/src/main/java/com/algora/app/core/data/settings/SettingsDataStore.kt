@@ -49,6 +49,18 @@ object SettingsKeys {
     // Banked streak freezes, earned by watching a rewarded ad. Spent automatically on a one-day gap
     // so a single missed day doesn't reset the streak counter.
     val STREAK_FREEZES = intPreferencesKey("streak_freezes")
+    // The epoch day this install first opened the app. ACTIVE_DAYS cannot answer this — it is a
+    // trimmed rolling window, so on an old install its earliest day is the window edge, not the
+    // install. The quiz-exit interstitial's grace period needs the real one.
+    val FIRST_OPEN_DAY = longPreferencesKey("first_open_epoch_day")
+    // Lifetime count of completed *full* quiz runs. QUIZ_ATTEMPTS cannot stand in: it is trimmed to
+    // the newest few per quiz, so it shrinks as the user does more.
+    val QUIZZES_FINISHED = intPreferencesKey("quizzes_finished")
+    // Quiz-exit interstitials shown, and on which day — the rolling daily cap, same shape as
+    // NEW_CARDS_DAY/COUNT. LAST_MS is separate because the spacing rule is minutes, not days.
+    val INTERSTITIAL_DAY = longPreferencesKey("interstitial_epoch_day")
+    val INTERSTITIAL_COUNT = intPreferencesKey("interstitial_count")
+    val INTERSTITIAL_LAST_MS = longPreferencesKey("interstitial_last_shown_ms")
 }
 
 /** A user can never bank more freezes than this, so the reward stays worth watching an ad for. */

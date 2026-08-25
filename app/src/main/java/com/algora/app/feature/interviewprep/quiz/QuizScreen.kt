@@ -1,5 +1,6 @@
 package com.algora.app.feature.interviewprep.quiz
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -48,6 +49,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.algora.app.core.ads.QuizExitInterstitial
+import com.algora.app.core.ads.rememberQuizExitInterstitial
+import com.algora.app.core.data.entitlement.EntitlementRepository
+import com.algora.app.core.data.entitlement.entitlementDataStore
 import com.algora.app.core.data.model.Difficulty
 import com.algora.app.core.data.settings.QuizAttempt
 import com.algora.app.core.data.settings.SettingsRepository
@@ -69,9 +74,16 @@ fun QuizScreen(
     onBack: () -> Unit,
     onTopicClick: (String) -> Unit,
     onFinish: () -> Unit,
+    onGoPremium: (() -> Unit)? = null,
+    // The quiz-exit interstitial (Phase 14). Off for surfaces that must never be taxed — see
+    // rememberQuizExitInterstitial.
+    adsEnabled: Boolean = true,
 ) {
     val context = LocalContext.current
     val settings = remember { SettingsRepository(context.settingsDataStore) }
+    val entitlements = remember { EntitlementRepository(context.entitlementDataStore) }
+    val isPremium by entitlements.isPremium.collectAsState(initial = true)
+    val interstitial = rememberQuizExitInterstitial(enabled = adsEnabled)
     val scope = rememberCoroutineScope()
     val attemptsByQuiz by settings.quizAttempts.collectAsState(initial = emptyMap())
     val history = attemptsByQuiz[quizId].orEmpty()
@@ -93,10 +105,17 @@ fun QuizScreen(
             priorAttempts = if (isFullQuiz) history.filter { it.atEpochSec != recordedAt } else emptyList(),
             onBack = onBack,
             onTopicClick = onTopicClick,
+            // A missed-only run is a subset drill, not a quiz finish: it neither scores nor counts
+            // towards the interstitial's warm-up, and leaving it is never taxed.
+            exitAd = if (isFullQuiz) interstitial else null,
+            onGoPremium = onGoPremium.takeIf { !isPremium },
             onComplete = { result ->
                 if (isFullQuiz) {
                     recordedAt = result.atEpochSec
-                    scope.launch { settings.recordQuizAttempt(quizId, result) }
+                    scope.launch {
+                        settings.recordQuizAttempt(quizId, result)
+                        settings.recordQuizFinished()
+                    }
                     onFinish()
                 }
             },
@@ -119,6 +138,8 @@ private fun QuizRunner(
     priorAttempts: List<QuizAttempt>,
     onBack: () -> Unit,
     onTopicClick: (String) -> Unit,
+    exitAd: QuizExitInterstitial?,
+    onGoPremium: (() -> Unit)?,
     onComplete: (QuizAttempt) -> Unit,
     onRetry: () -> Unit,
     onRetryWrong: (List<Int>) -> Unit,
@@ -157,16 +178,24 @@ private fun QuizRunner(
                 ),
             )
         }
+        // Every route off the results screen goes through here, system back included. Wiring the
+        // ad to only the header arrow and the button would leave the back gesture as a free bypass,
+        // which is most of how people actually leave a screen.
+        val exitResults: () -> Unit = { if (exitAd == null) onBack() else exitAd.exit(onBack) }
+        BackHandler(onBack = exitResults)
+
         QuizResults(
             quiz = quiz,
             answers = answers,
             wrongIndices = wrongIndices,
             priorAttempts = priorAttempts,
             timeUsed = quiz.timeLimitSeconds - remaining,
-            onBack = onBack,
+            onBack = exitResults,
+            // Retrying is continued study, so it is never taxed — only leaving is.
             onRetry = onRetry,
             onRetryWrong = onRetryWrong,
             onTopicClick = onTopicClick,
+            onGoPremium = onGoPremium,
         )
         return
     }
@@ -331,6 +360,7 @@ private fun QuizResults(
     onRetry: () -> Unit,
     onRetryWrong: (List<Int>) -> Unit,
     onTopicClick: (String) -> Unit,
+    onGoPremium: (() -> Unit)?,
 ) {
     val total = quiz.questions.size
     val correct = total - wrongIndices.size
@@ -403,6 +433,20 @@ private fun QuizResults(
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         OutlinedButton(onClick = onBack, modifier = Modifier.weight(1f)) { Text("Back to Prep") }
                         OutlinedButton(onClick = onRetry, modifier = Modifier.weight(1f)) { Text("Retry all") }
+                    }
+                    // Free users only. The ad on the way out creates the itch; this is the one place
+                    // it has somewhere to go, on the very next tap.
+                    onGoPremium?.let { goPremium ->
+                        Text(
+                            "Studying ad-free? Unlock everything — one payment, forever.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 14.dp)
+                                .clickable(onClick = goPremium),
+                        )
                     }
                 }
             }

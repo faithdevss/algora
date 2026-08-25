@@ -234,14 +234,20 @@ at a time and leave it up long enough to read, or the result means nothing.
 
 Open items that are not copy problems but will block or damage the release:
 
-- **AdMob ids are real.** `local.properties` carries a live `admob.appId`/`admob.rewardedUnitId`
-  pair, and `assembleRelease`/`bundleRelease` fail loudly if either falls back to Google's test id
-  — confirmed at time of writing. Still outstanding: the Play Console in-app product must exist
-  with id `algora_premium_lifetime` (`core/billing/PremiumBilling.kt`) before the paywall can
-  complete a real purchase — that's a Play Console entry, not a code change.
+- **AdMob ids are real — and there are three of them now.** `local.properties` must carry
+  `admob.appId`, `admob.rewardedUnitId` **and** `admob.interstitialUnitId` (the last added with the
+  quiz-exit interstitial in Phase 14). Note the build does **not** fail on a fallback: every Gradle
+  configuration run *logs* "AdMob: using Google test ids for release builds", and a release built
+  with that line still in the log ships test ads and earns nothing. Read the log before uploading.
+  Still outstanding: the Play Console in-app product must exist with id `algora_premium_lifetime`
+  (`core/billing/PremiumBilling.kt`) before the paywall can complete a real purchase — that's a Play
+  Console entry, not a code change.
 - **Data safety form.** The app itself collects nothing — progress lives in local DataStore, there
   is no account and no network call of our own. The ads SDK does collect data, so the form must
-  declare whatever AdMob's current disclosure requires once the real ids are in. Neither the study
+  declare whatever AdMob's current disclosure requires once the real ids are in. The interstitial
+  adds no new *category* of collection — it is the same SDK and the same identifiers as the rewarded
+  unit — but it does change what the listing and the privacy policy must say, because it is the one
+  ad the user does not opt into (`docs/privacy-policy.md` is already updated). Neither the study
   reminder nor the in-app review flow adds anything to declare: the reminder is scheduled locally
   from a stored epoch day, and Play's review API returns no data to the app.
 - **`POST_NOTIFICATIONS` is now requested** (`AndroidManifest.xml`) for the study reminder. Play does

@@ -29,9 +29,11 @@ Algora uses a small number of Google services to run rewarded ads, process the o
 in-app purchase, and show the native Play "rate this app" prompt. Each is Google's own SDK
 under Google's own terms — Algora adds no tracking of its own on top.
 
-- **Google AdMob** — optional rewarded video ads; watch one to unlock a locked topic for 24h.
-  Only shown if you tap "watch an ad"; never automatic. Google's ad SDK may collect device and
-  advertising identifiers to serve and measure ads, per
+- **Google AdMob** — ads, in two places and nowhere else. **Rewarded video** is optional: watch one
+  to unlock a locked topic for 6 hours, or to bank a streak freeze. It is only ever shown if you tap
+  "watch an ad". **A full-screen ad** may also appear when you leave the results of a completed quiz
+  — at most three a day, never during a quiz, and never for anyone who has bought Premium. Google's
+  ad SDK may collect device and advertising identifiers to serve and measure ads, per
   [Google's ad policy](https://policies.google.com/technologies/partner-sites).
 - **Google Play Billing** — handles the one lifetime "remove ads / unlock everything" purchase.
   Payment is processed entirely by Google Play. Algora never sees or stores card details —

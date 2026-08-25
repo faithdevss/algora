@@ -66,6 +66,10 @@ fun DailyDrillScreen(
             onBack = { runningQuiz = false },
             onTopicClick = onTopicClick,
             onFinish = {},
+            // The drill is a once-a-day habit loop, the same shape as the flashcard queue — taxing
+            // it would put an ad in front of the streak the app depends on. Sit-down quizzes carry
+            // the interstitial instead.
+            adsEnabled = false,
         )
         return
     }

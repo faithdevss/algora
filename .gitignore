@@ -16,3 +16,6 @@ build/
 /keystore
 *.jks
 *.keystore
+
+# CodeGraph local index (46MB SQLite, rebuildable with `codegraph init`).
+.codegraph/

@@ -6,14 +6,21 @@ import com.algora.app.BuildConfig
 import kotlinx.coroutines.flow.StateFlow
 
 // Configured in app/build.gradle.kts from local.properties / -P / the environment, never hardcoded
-// here — debug always gets Google's test unit, release gets the real one when it is set. The app id
-// travels the same way, as a manifest placeholder. See docs/admob-setup.md.
+// here — debug always gets Google's test units, release gets the real ones when they are set. The
+// app id travels the same way, as a manifest placeholder. See docs/admob-setup.md.
 object AdIds {
     val rewardedUnit: String = BuildConfig.ADMOB_REWARDED_UNIT_ID
+    val interstitialUnit: String = BuildConfig.ADMOB_INTERSTITIAL_UNIT_ID
 }
 
-// Rewarded video is the only ad surface in the app: it appears when a free user chooses to unlock a
-// premium topic for 24h. There are no banners or interstitials anywhere.
+// The app has exactly two ad surfaces, both full-screen and both only for non-premium users:
+//
+//  - Rewarded video (this file) — always opt-in. A free user taps it to unlock one premium topic for
+//    6h, or to bank a streak freeze. Nothing shows it automatically.
+//  - Interstitial (InterstitialAds.kt) — the one non-opt-in surface, shown on the way out of a
+//    finished quiz, behind the caps in InterstitialGate.kt.
+//
+// There are no banners anywhere, and nothing renders an ad over content the user is still reading.
 interface RewardedAds {
     val isReady: StateFlow<Boolean>
 

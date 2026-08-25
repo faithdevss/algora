@@ -187,6 +187,60 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             if (prefs[SettingsKeys.NEW_CARDS_DAY] == today) prefs[SettingsKeys.NEW_CARDS_COUNT] ?: 0 else 0
         }
 
+    /**
+     * The epoch day this install first opened the app, or `null` before it ever has.
+     *
+     * Written once by [ensureFirstOpenDay]; every later call is a no-op, so this is an install date
+     * and not a "last seen". An install that predates the key reads as null and is treated by
+     * callers as brand new — one extra ad-free grace period on upgrade, which is the harmless
+     * direction to be wrong in.
+     */
+    val firstOpenDay: Flow<Long?> =
+        dataStore.data.map { prefs -> prefs[SettingsKeys.FIRST_OPEN_DAY] }
+
+    suspend fun ensureFirstOpenDay(today: Long = System.currentTimeMillis() / 86_400_000L) {
+        dataStore.edit { prefs ->
+            if (prefs[SettingsKeys.FIRST_OPEN_DAY] == null) prefs[SettingsKeys.FIRST_OPEN_DAY] = today
+        }
+    }
+
+    /** Lifetime completed full quiz runs. Missed-only retries are not runs and never count here. */
+    val quizzesFinished: Flow<Int> =
+        dataStore.data.map { prefs -> prefs[SettingsKeys.QUIZZES_FINISHED] ?: 0 }
+
+    suspend fun recordQuizFinished() {
+        dataStore.edit { prefs ->
+            prefs[SettingsKeys.QUIZZES_FINISHED] = (prefs[SettingsKeys.QUIZZES_FINISHED] ?: 0) + 1
+        }
+    }
+
+    // Interstitials shown on `today`. Any other stored day means the cap has rolled over, so a stale
+    // count can never be mistaken for today's — the same read-side guard newCardsIntroduced uses.
+    fun interstitialsShownToday(today: Long): Flow<Int> =
+        dataStore.data.map { prefs ->
+            if (prefs[SettingsKeys.INTERSTITIAL_DAY] == today) prefs[SettingsKeys.INTERSTITIAL_COUNT] ?: 0 else 0
+        }
+
+    /** 0 until an interstitial has been shown; the spacing rule reads it as "never". */
+    val interstitialLastShownAtMs: Flow<Long> =
+        dataStore.data.map { prefs -> prefs[SettingsKeys.INTERSTITIAL_LAST_MS] ?: 0L }
+
+    // Charged only against an impression that actually happened — a skipped or failed ad must not
+    // spend the day's allowance.
+    suspend fun recordInterstitialShown(nowMs: Long = System.currentTimeMillis()) {
+        val today = nowMs / 86_400_000L
+        dataStore.edit { prefs ->
+            val shownToday = if (prefs[SettingsKeys.INTERSTITIAL_DAY] == today) {
+                prefs[SettingsKeys.INTERSTITIAL_COUNT] ?: 0
+            } else {
+                0
+            }
+            prefs[SettingsKeys.INTERSTITIAL_DAY] = today
+            prefs[SettingsKeys.INTERSTITIAL_COUNT] = shownToday + 1
+            prefs[SettingsKeys.INTERSTITIAL_LAST_MS] = nowMs
+        }
+    }
+
     // Consecutive-day streak: same day → no change, yesterday → +1, a single missed day spends a
     // banked freeze (if any) and still counts as +1, any larger gap → reset to 1.
     suspend fun recordActivityToday() {

@@ -2,16 +2,24 @@ package com.algora.app.core.ads
 
 import android.content.Context
 
-// App-lifetime singleton, mirroring core/billing/BillingProvider — including how the implementation
-// is chosen: AdsFactory exists once in src/debug and once in src/release, so the fake is not
+// App-lifetime singletons, mirroring core/billing/BillingProvider — including how the implementation
+// is chosen: AdsFactory exists once in src/debug and once in src/release, so the fakes are not
 // compiled into the shipped APK.
 object AdsProvider {
 
     @Volatile
-    private var instance: RewardedAds? = null
+    private var rewarded: RewardedAds? = null
+
+    @Volatile
+    private var interstitial: InterstitialAds? = null
 
     fun get(context: Context): RewardedAds =
-        instance ?: synchronized(this) {
-            instance ?: AdsFactory.create(context.applicationContext).also { instance = it }
+        rewarded ?: synchronized(this) {
+            rewarded ?: AdsFactory.create(context.applicationContext).also { rewarded = it }
+        }
+
+    fun getInterstitial(context: Context): InterstitialAds =
+        interstitial ?: synchronized(this) {
+            interstitial ?: AdsFactory.createInterstitial(context.applicationContext).also { interstitial = it }
         }
 }

@@ -30,6 +30,7 @@ val versionPatch = gitCommitCount % 100
 // obviously-fake one instead. See docs/admob-setup.md.
 val testAdMobAppId = "ca-app-pub-3940256099942544~3347511713"
 val testAdMobRewardedUnitId = "ca-app-pub-3940256099942544/5224354917"
+val testAdMobInterstitialUnitId = "ca-app-pub-3940256099942544/1033173712"
 
 // Real ids stay out of git. Looked up in order: local.properties (untracked), then -P gradle
 // properties, then the environment — so a workstation uses the file and CI uses secrets.
@@ -48,11 +49,18 @@ fun adMobId(propertyKey: String, environmentKey: String, fallback: String): Stri
 
 val admobAppId = adMobId("admob.appId", "ADMOB_APP_ID", testAdMobAppId)
 val admobRewardedUnitId = adMobId("admob.rewardedUnitId", "ADMOB_REWARDED_UNIT_ID", testAdMobRewardedUnitId)
+val admobInterstitialUnitId =
+    adMobId("admob.interstitialUnitId", "ADMOB_INTERSTITIAL_UNIT_ID", testAdMobInterstitialUnitId)
 
-if (admobAppId == testAdMobAppId || admobRewardedUnitId == testAdMobRewardedUnitId) {
+if (
+    admobAppId == testAdMobAppId ||
+    admobRewardedUnitId == testAdMobRewardedUnitId ||
+    admobInterstitialUnitId == testAdMobInterstitialUnitId
+) {
     logger.lifecycle(
-        "AdMob: using Google test ids for release builds — set admob.appId and " +
-            "admob.rewardedUnitId in local.properties before uploading (docs/admob-setup.md).",
+        "AdMob: using Google test ids for release builds — set admob.appId, " +
+            "admob.rewardedUnitId and admob.interstitialUnitId in local.properties before " +
+            "uploading (docs/admob-setup.md).",
     )
 }
 
@@ -102,6 +110,7 @@ android {
         // account — self-clicked impressions are what gets AdMob accounts suspended.
         manifestPlaceholders["admobAppId"] = testAdMobAppId
         buildConfigField("String", "ADMOB_REWARDED_UNIT_ID", "\"$testAdMobRewardedUnitId\"")
+        buildConfigField("String", "ADMOB_INTERSTITIAL_UNIT_ID", "\"$testAdMobInterstitialUnitId\"")
     }
 
     signingConfigs {
@@ -134,6 +143,7 @@ android {
 
             manifestPlaceholders["admobAppId"] = admobAppId
             buildConfigField("String", "ADMOB_REWARDED_UNIT_ID", "\"$admobRewardedUnitId\"")
+            buildConfigField("String", "ADMOB_INTERSTITIAL_UNIT_ID", "\"$admobInterstitialUnitId\"")
         }
     }
 
