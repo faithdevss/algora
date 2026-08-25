@@ -25,14 +25,14 @@ internal val knnContent = TopicContent(
             "have no say at all.",
         shape = FigureShape.Graph(
             nodes = listOf(
-                FigureGraphNode("?", 0.50f, 0.52f, FigureTone.Accent),
-                FigureGraphNode("B", 0.58f, 0.60f, FigureTone.Primary),
-                FigureGraphNode("B", 0.42f, 0.62f, FigureTone.Primary),
-                FigureGraphNode("A", 0.50f, 0.34f, FigureTone.Warn),
-                FigureGraphNode("A", 0.26f, 0.60f, FigureTone.Warn),
-                FigureGraphNode("A", 0.74f, 0.44f, FigureTone.Warn),
-                FigureGraphNode("B", 0.30f, 0.24f, FigureTone.Muted),
-                FigureGraphNode("A", 0.78f, 0.76f, FigureTone.Muted),
+                FigureGraphNode("?", 0.50f, 0.50f, FigureTone.Accent),
+                FigureGraphNode("B", 0.62f, 0.34f, FigureTone.Primary),
+                FigureGraphNode("B", 0.38f, 0.68f, FigureTone.Primary),
+                FigureGraphNode("A", 0.34f, 0.24f, FigureTone.Warn),
+                FigureGraphNode("A", 0.16f, 0.44f, FigureTone.Warn),
+                FigureGraphNode("A", 0.70f, 0.74f, FigureTone.Warn),
+                FigureGraphNode("B", 0.86f, 0.16f, FigureTone.Muted),
+                FigureGraphNode("A", 0.88f, 0.86f, FigureTone.Muted),
             ),
             edges = listOf(
                 FigureEdge(0, 1, "0.11", tone = FigureTone.Primary),

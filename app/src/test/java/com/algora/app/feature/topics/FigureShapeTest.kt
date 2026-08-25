@@ -106,9 +106,14 @@ class FigureShapeTest {
                     if (band.label.length <= budget) null
                     else "$id: band \"${band.label}\" is ${band.label.length} chars over $span cell(s), budget $budget"
                 } + shape.pointers.mapNotNull { pointer ->
-                    // A pointer hangs under exactly one cell, so it gets one cell's worth of room.
-                    if (pointer.label.length <= 11) null
-                    else "$id: pointer \"${pointer.label}\" is ${pointer.label.length} chars under one cell"
+                    // A pointer hangs under exactly one cell, so it gets one cell's worth of room —
+                    // and that room shrinks with the strip. Eleven characters fit under one of five
+                    // cells; under one of ten they do not, and `mask_rcnn`'s "true 9.06" came back
+                    // from the emulator broken across three lines with "true" split mid-word.
+                    val budget = if (shape.cells.size >= 10) 6 else 11
+                    if (pointer.label.length <= budget) null
+                    else "$id: pointer \"${pointer.label}\" is ${pointer.label.length} chars under " +
+                        "one of ${shape.cells.size} cells, budget $budget"
                 }
                 is FigureShape.Grid -> shape.arrows.mapNotNull { arrow ->
                     val label = arrow.label ?: return@mapNotNull null
@@ -206,6 +211,37 @@ class FigureShapeTest {
                 }
             }
             if (faults.isEmpty()) null else "$id: ${faults.joinToString("; ")}"
+        }
+        assertTrue(problems.joinToString("\n"), problems.isEmpty())
+    }
+
+    // The renderer now sizes a node's circle from the closest pair in the graph, so nothing overlaps
+    // by construction — but that trades collision for shrinkage, and a pair written almost on top of
+    // each other yields a circle too small to hold a label. This is the floor under that: the
+    // tightest pair must leave a radius of at least 14px, which is what the first emulator pass
+    // showed a one- or two-character label needs. Reproduces the renderer's numbers — a 132dp card
+    // (168dp past six nodes) at ~2.6x density, inset 22px.
+    @Test
+    fun `graph nodes leave room for a readable circle`() {
+        val cardWidth = 1000f
+        val inset = 22f
+        val problems = figures.mapNotNull { (id, figure) ->
+            val graph = figure.shape as? FigureShape.Graph ?: return@mapNotNull null
+            if (graph.nodes.size < 2) return@mapNotNull null
+            val cardHeight = if (graph.nodes.size > 6) 440f else 347f
+            val spanX = cardWidth - 2 * inset
+            val spanY = cardHeight - 2 * inset
+            val tightest = graph.nodes.indices.flatMap { a ->
+                ((a + 1) until graph.nodes.size).map { b ->
+                    val dx = (graph.nodes[a].x - graph.nodes[b].x) * spanX
+                    val dy = (graph.nodes[a].y - graph.nodes[b].y) * spanY
+                    Triple(kotlin.math.hypot(dx, dy), graph.nodes[a].label, graph.nodes[b].label)
+                }
+            }.minByOrNull { it.first } ?: return@mapNotNull null
+            val radius = minOf(cardHeight * 0.15f, tightest.first * 0.45f)
+            if (radius >= 14f) null
+            else "$id: \"${tightest.second}\"/\"${tightest.third}\" are ${tightest.first.toInt()}px " +
+                "apart, leaving a ${radius.toInt()}px radius — too small for a label"
         }
         assertTrue(problems.joinToString("\n"), problems.isEmpty())
     }

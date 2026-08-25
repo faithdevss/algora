@@ -329,7 +329,12 @@ private fun GraphFigure(shape: FigureShape.Graph) {
     val nodeStyle = TextStyle(color = onSurface, fontSize = 10.sp, fontWeight = FontWeight.Bold)
     val edgeStyle = TextStyle(color = muted, fontSize = 9.sp, fontWeight = FontWeight.Medium)
 
-    Canvas(modifier = Modifier.fillMaxWidth().height(132.dp)) {
+    // A U-shaped nine-node graph needs more vertical room than a three-node one, and the height is
+    // what the node radius is derived from — so a dense graph gets a taller card rather than
+    // circles that touch. The emulator pass found `unet` and `dependency_parsing` colliding at 132.
+    val height = if (shape.nodes.size > 6) 168.dp else 132.dp
+
+    Canvas(modifier = Modifier.fillMaxWidth().height(height)) {
         val inset = 22f
         fun centreOf(index: Int) = Offset(
             inset + shape.nodes[index].x * (size.width - 2 * inset),
@@ -337,7 +342,19 @@ private fun GraphFigure(shape: FigureShape.Graph) {
         )
         // Proportional, not a fixed pixel count: a node carries a label like "A c1" or "F 17", and a
         // circle sized in raw pixels leaves that text hanging outside it on a dense screen.
-        val radius = size.height * 0.15f
+        //
+        // Capped by the closest pair, because a fixed fraction of the height cannot work for both a
+        // three-node block diagram and `unet`'s nine-node U — and enlarging the card does not help,
+        // since the radius is derived from the height it grows with. The first emulator pass found
+        // four graphs drawing themselves as overlapping blobs at a flat 15%.
+        val tightest = shape.nodes.indices.flatMap { a ->
+            ((a + 1) until shape.nodes.size).map { b ->
+                val from = centreOf(a)
+                val to = centreOf(b)
+                kotlin.math.hypot(from.x - to.x, from.y - to.y)
+            }
+        }.minOrNull() ?: Float.MAX_VALUE
+        val radius = minOf(size.height * 0.15f, tightest * 0.45f).coerceAtLeast(size.height * 0.07f)
 
         shape.edges.forEach { edge ->
             val from = centreOf(edge.from)
@@ -359,12 +376,15 @@ private fun GraphFigure(shape: FigureShape.Graph) {
             edge.label?.let { label ->
                 val layout = textMeasurer.measure(label, edgeStyle)
                 val mid = Offset((start.x + end.x) / 2f, (start.y + end.y) / 2f)
-                // Nudge the weight off the line so it does not sit on top of it.
+                // Clear the line by half the text's own height, not by a fixed 9px: at 9sp the box
+                // is ~24px tall, so the old nudge left every label sitting on its own edge —
+                // `crop 4`, `F(x)` and all six dependency arcs came back struck through.
+                val clearance = layout.size.height / 2f + 6f
                 drawText(
                     layout,
                     topLeft = Offset(
-                        mid.x - layout.size.width / 2f + uy * 9f,
-                        mid.y - layout.size.height / 2f - ux * 9f,
+                        mid.x - layout.size.width / 2f + uy * clearance,
+                        mid.y - layout.size.height / 2f - ux * clearance,
                     ),
                 )
             }
@@ -375,7 +395,17 @@ private fun GraphFigure(shape: FigureShape.Graph) {
             val centre = centreOf(index)
             drawCircle(tone.copy(alpha = 0.24f), radius = radius, center = centre)
             drawCircle(tone, radius = radius, center = centre, style = Stroke(width = 1.8f))
-            val layout = textMeasurer.measure(node.label, nodeStyle)
+            // Shrink a long label to fit rather than letting it hang outside the circle: `conv 3×3`
+            // and `chased` both overflowed at a fixed 10sp. The circle cannot grow instead — a
+            // wider one collides with its neighbours, which is the failure this pass came to fix.
+            val room = 2f * radius - 8f
+            var layout = textMeasurer.measure(node.label, nodeStyle)
+            if (layout.size.width > room) {
+                layout = textMeasurer.measure(node.label, nodeStyle.copy(fontSize = 8.sp))
+            }
+            if (layout.size.width > room) {
+                layout = textMeasurer.measure(node.label, nodeStyle.copy(fontSize = 7.sp))
+            }
             drawText(
                 layout,
                 topLeft = Offset(centre.x - layout.size.width / 2f, centre.y - layout.size.height / 2f),
@@ -776,6 +806,7 @@ private fun HeatmapFigure(shape: FigureShape.Heatmap) {
     val ramp = toneColor(shape.tone)
     val gridColor = muted.copy(alpha = 0.18f)
     val markColor = toneColor(FigureTone.Accent)
+    val toneFor = FigureTone.entries.associateWith { toneColor(it) }
     val headerStyle = TextStyle(color = muted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
 
     val rows = shape.values.size
@@ -833,8 +864,12 @@ private fun HeatmapFigure(shape: FigureShape.Heatmap) {
             }
 
             shape.marks.forEach { mark ->
+                // Honour the mark's tone: `value_function` outlines a goal, a pit and a wall on one
+                // grid, and drawing all three in the same colour made two blank cells that mean
+                // different things look identical. Primary keeps the old accent so nothing else moves.
+                val outline = if (mark.tone == FigureTone.Primary) markColor else toneFor.getValue(mark.tone)
                 drawRect(
-                    color = markColor,
+                    color = outline,
                     topLeft = Offset(originX + mark.col * cell, originY + mark.row * cell),
                     size = Size(cell - 1.5f, cell - 1.5f),
                     style = Stroke(width = 2f),

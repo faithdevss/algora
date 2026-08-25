@@ -17,7 +17,7 @@ import com.algora.app.core.data.model.TopicContent
 internal val bpttContent = TopicContent(
     topicId = "bptt",
     figure = Figure(
-        caption = "Ten steps, one cue, and the window the gradient is actually allowed to walk. " +
+        caption = "Ten steps, one cue, and the two gradient norms the pointers carry. " +
             "The loss sits at step 10 and the backward pass multiplies by the same recurrent " +
             "matrix at every step on the way down, so ‖∂L/∂h‖ measured at initialization is 0.480 " +
             "at the last step and 0.0085 nine steps earlier — 56× from repeated multiplication " +
@@ -35,8 +35,8 @@ internal val bpttContent = TopicContent(
                 FigureBand(7, 9, "k = 3 window", FigureTone.Primary),
             ),
             pointers = listOf(
-                FigurePointer(0, "‖g‖ .0085", FigureTone.Warn),
-                FigurePointer(9, "‖g‖ .480"),
+                FigurePointer(0, ".0085", FigureTone.Warn),
+                FigurePointer(9, ".480"),
             ),
             aux = listOf("·", "·", "·", "·", "·", "·", "·", "h₈", "h₉", "h₁₀"),
             auxLabel = "kept for the backward pass at k = 3 — 36 values, not 120",

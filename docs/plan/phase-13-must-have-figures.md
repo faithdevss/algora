@@ -1,6 +1,6 @@
 # Phase 13 — The figures that must exist
 
-Status: **All 41 built — M1 to M8 shipped. One emulator pass outstanding, and it is the only thing left in the phase.** Everything else in `phase-12-figure-scope.md`'s
+Status: **Complete — all 41 built, M1 to M8 shipped, and the emulator pass done.** Six figures came back broken and were fixed; the rest of this file records what the pass found. Everything else in `phase-12-figure-scope.md`'s
 Tier A becomes optional and stays unbuilt unless a page proves it needs one.
 
 Depends on: Phase 12's figure layer, which is finished as a *capability* — nine shapes, a renderer
@@ -250,14 +250,36 @@ computed honestly is cut, not estimated.
 Per batch: `./gradlew :app:testDebugUnitTest` (`FigureShapeTest`, `AiFigureCoverageTest`,
 `DsaFigureCoverageTest`, `FigureCoverageTest`, `ContentCoverageTest`) then `./gradlew assembleDebug`.
 
-**One emulator pass at the end of the phase, not per batch** — and it has a backlog to clear from
-Phase 12 already: `knn`'s five labelled edges off one node, the eleven-node dendrogram in
-`hierarchical_clustering`, `catboost`'s and `factor_analysis`'s narrow grids, `qda`'s 7×7 heatmap,
-and `extra_trees`' full-width aux row. M8 has added `bleu`'s 3×6 grid — the most columns on one card — and `value_iteration`'s 7×4 table of signed values, plus a heatmap whose blank cells mean two different things (the pit at −1 and the wall) and rely on their outlines to say which. M7 has added the trellis it was promised — a 4×3 grid whose cells hold "1.35e−5" and two backpointer arrows across it — plus `dependency_parsing`'s seven-node graph with six labelled edges, the most edge labels on one card so far, and `cosine_similarity`'s four rays from a shared origin where two of them coincide by construction. M6 has added `bptt`'s ten-cell strip — two bands, two pointers and a ten-cell aux row, the narrowest cells in the app — plus `kl_divergence`'s three 25-point series, where the reverse fit's spike and the target's near-identical left mode overlap for a third of the axis, M5 has added `unet`'s nine-node U — the widest graph in the app and the one most likely to collide with itself on a narrow screen — plus `mask_rcnn`'s ten-cell strip with two bands and a pointer, M4 added `padding_strides`' 7×7 grid and `resnet`'s five-node graph, M3 added the
-reachability profile it was promised plus `hdbscan`'s three-span timeline and `fp_growth`'s
-nine-node tree, and M2 added two: `bias_variance`'s four series on one axis, and
-`gaussian_nb`'s four bells, where each class's two curves nearly coincide and the solid/dashed
-pairing is the only thing telling them apart.
+**The emulator pass, and what it found.** Twenty-five figures were opened on a Pixel 7 (API 36,
+1080×2400): the whole of M6–M8, both M5 graphs, and every cell of the Phase 12 backlog. Nineteen
+were right the first time. Six were not, and five of those trace to two renderer bugs rather than to
+the specs:
+
+- **Graph node circles used a flat 15% of the card height**, so `knn`, `unet`, `resnet` and
+  `dependency_parsing` all drew overlapping blobs, and labels longer than the circle (`conv 3×3`,
+  `chased`, `572→568`) hung outside it. Making the card taller cannot help — the radius is derived
+  from the height it grows with — so the radius is now capped by the closest pair in the graph, and
+  a label that still does not fit steps down to 8sp and then 7sp.
+- **Edge labels were nudged 9px off their line**, about a third of what a 9sp text box needs, so
+  `crop 4`, `F(x)` and all six dependency arcs came back struck through. The offset is now half the
+  label's own height plus 6.
+- **Heatmap marks ignored their tone** and drew every outline in the accent colour, which is why
+  `value_function`'s goal, pit and wall — two of them blank cells meaning different things — were
+  indistinguishable.
+- `value_function` also anchored its ramp to the two terminals, flattening every walkable cell into
+  the same pale blue. It is stretched over the walkable range now, −0.666 to +0.104, and the
+  terminals clamp.
+- `mask_rcnn`'s pointer wrapped across three lines under one cell of a ten-cell strip, splitting
+  `true` mid-word. That number is a one-cell band above the strip now, and `bptt`'s two pointers were
+  shortened for the same reason.
+
+Two guards went in with the fixes: `FigureShapeTest` now checks that a graph's closest pair still
+leaves a circle big enough for a label, and that a pointer's length fits the strip it hangs under
+(six characters once a strip reaches ten cells, eleven below that).
+
+`dbscan` was the one graph left alone deliberately — its ten points are drawn as a density cloud,
+where circles touching is what "within ε of each other" looks like, and it reads correctly on the
+device.
 
 ## Non-goals
 

@@ -25,16 +25,19 @@ internal val valueFunctionContent = TopicContent(
             "climbing toward the goal at (0,3). The cell to look at is (1,2), directly above the " +
             "pit: it is worth −0.478 here and +0.860 under the optimal policy, the same square in " +
             "the same world differing by 1.34 because value is a property of a policy and not of " +
-            "a state. The start at (3,0) is −0.420 against +0.427; (1,1) is a wall and is drawn " +
-            "blank, as is the pit at exactly −1. And nothing in this table says " +
+            "a state. The start at (3,0) is −0.420 against +0.427. The ramp is stretched over the " +
+            "walkable range rather than over −1 to +1, because anchoring it to the two " +
+            "terminals flattened every cell between them into the same pale blue; both of " +
+            "those clamp instead, and the wall at (1,1) and the pit at (1,3) are told apart " +
+            "by their outlines rather than by their fill. And nothing in this table says " +
             "which way to move — reading an action off it needs the transition model, which is " +
             "the gap Q closes.",
         shape = FigureShape.Heatmap(
             values = listOf(
-                listOf(0.363f, 0.429f, 0.552f, 1.000f),
-                listOf(0.325f, 0.000f, 0.261f, 0.000f),
-                listOf(0.298f, 0.278f, 0.247f, 0.167f),
-                listOf(0.290f, 0.278f, 0.258f, 0.228f),
+                listOf(0.508f, 0.658f, 0.940f, 1.000f),
+                listOf(0.421f, 0.000f, 0.275f, 0.000f),
+                listOf(0.359f, 0.313f, 0.242f, 0.060f),
+                listOf(0.341f, 0.314f, 0.267f, 0.199f),
             ),
             rowLabels = listOf("row 0", "row 1", "row 2", "row 3"),
             colLabels = listOf("c0", "c1", "c2", "c3"),
@@ -43,7 +46,8 @@ internal val valueFunctionContent = TopicContent(
                 FigureCell(1, 3, FigureTone.Warn),
                 FigureCell(1, 1, FigureTone.Muted),
             ),
-            legend = "V^π, uniform-random · 0.0 = −1, 0.5 = 0, 1.0 = +1 · outlined: goal, pit, wall",
+            legend = "V^π, uniform-random · the ramp is stretched over the walkable cells, " +
+                "−0.666 to +0.104, so the terminals clamp · outlined: goal, pit, wall",
         ),
     ),
     whatIsIt = listOf(

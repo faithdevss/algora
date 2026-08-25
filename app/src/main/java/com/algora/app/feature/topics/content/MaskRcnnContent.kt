@@ -5,7 +5,6 @@ import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
 import com.algora.app.core.data.model.Figure
 import com.algora.app.core.data.model.FigureBand
-import com.algora.app.core.data.model.FigurePointer
 import com.algora.app.core.data.model.FigureShape
 import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
@@ -32,9 +31,7 @@ internal val maskRcnnContent = TopicContent(
             bands = listOf(
                 FigureBand(0, 6, "the 7 bins RoI pooling reads"),
                 FigureBand(7, 8, "32 px never read", FigureTone.Warn),
-            ),
-            pointers = listOf(
-                FigurePointer(9, "true 9.06"),
+                FigureBand(9, 9, "9.06", FigureTone.Accent),
             ),
         ),
     ),
