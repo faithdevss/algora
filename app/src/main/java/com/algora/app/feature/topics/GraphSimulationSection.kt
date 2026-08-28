@@ -424,7 +424,7 @@ private fun RunTraversalButton(label: String, color: Color, modifier: Modifier =
         colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = Color.White),
         shape = RoundedCornerShape(12.dp),
         contentPadding = PaddingValues(horizontal = 6.dp),
-        modifier = modifier.height(44.dp),
+        modifier = modifier.height(40.dp),
     ) {
         Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
         Text(label, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(start = 2.dp))
@@ -487,7 +487,7 @@ private fun GraphCanvas(
     val textMeasurer = rememberTextMeasurer()
     val labelStyle = TextStyle(
         color = MaterialTheme.colorScheme.onSurface,
-        fontSize = 15.sp,
+        fontSize = 13.sp,
         fontWeight = FontWeight.Bold,
         textAlign = TextAlign.Center,
     )
@@ -505,7 +505,13 @@ private fun GraphCanvas(
             // Same trick the static figures use: size the node off the canvas rather than fixing a
             // pixel radius, so the circle stays big enough to read its label as rows and columns grow.
             val maxRowSize = (rows.maxOfOrNull { it.size } ?: 1).coerceAtLeast(1)
-            val radius = minOf(size.height / (rows.size.coerceAtLeast(2) * 2.8f), size.width / (maxRowSize * 3.1f), 62f)
+            // Cap and floor in dp, not raw pixels: a 62px cap was a 62dp node on a 1x screen and a
+            // 21dp one at 3x. 16.dp matches the graph-algorithm canvas.
+            val radius = minOf(
+                size.height / (rows.size.coerceAtLeast(2) * 2.8f),
+                size.width / (maxRowSize * 3.1f),
+                16.dp.toPx(),
+            ).coerceAtLeast(11.dp.toPx())
             val marginX = radius + 10f
             val marginY = radius + 8f
             val usableWidth = size.width - marginX * 2

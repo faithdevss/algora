@@ -666,7 +666,8 @@ private fun LegendSwatch(color: Color, label: String) {
 @Composable
 private fun RecursionCanvas(nodes: List<RecNode>, stateById: Map<Int, RecState>) {
     val textMeasurer = rememberTextMeasurer()
-    val labelStyle = TextStyle(color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+    val labelStyle = TextStyle(color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+    val denseLabelStyle = TextStyle(color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
 
     // Layout: depth → row; leaves take sequential x slots, internal nodes center over their children.
     val maxDepth = (nodes.maxOfOrNull { it.depth } ?: 0)
@@ -693,9 +694,11 @@ private fun RecursionCanvas(nodes: List<RecNode>, stateById: Map<Int, RecState>)
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
             .padding(6.dp),
     ) {
-        Canvas(modifier = Modifier.fillMaxWidth().height(230.dp)) {
-            val padX = 24f
-            val padY = 22f
+        Canvas(modifier = Modifier.fillMaxWidth().height(260.dp)) {
+            // dp, not raw canvas pixels: as constants in pixels the padding and the node radius
+            // shrank by the screen density, so on a 3x device a 17px node was a ~6dp dot.
+            val padX = 10.dp.toPx()
+            val padY = 14.dp.toPx()
             fun px(x: Float): Float = padX + (x + 0.5f) / leafCount * (size.width - 2 * padX)
             fun py(depth: Int): Float =
                 if (maxDepth == 0) size.height / 2f else padY + depth.toFloat() / maxDepth * (size.height - 2 * padY)
@@ -707,12 +710,18 @@ private fun RecursionCanvas(nodes: List<RecNode>, stateById: Map<Int, RecState>)
                         Color(0xFFCBD0DA),
                         Offset(px(xById.getValue(p)), py(nodes[p].depth)),
                         Offset(px(xById.getValue(node.id)), py(node.depth)),
-                        strokeWidth = 2f,
+                        strokeWidth = 2.dp.toPx(),
                     )
                 }
             }
 
-            val radius = if (nodes.size > 14) 13f else 17f
+            // Size the node off the space each one actually gets — the leaf slot across and the row
+            // gap down — capped so a shallow tree does not blow up into overlapping discs.
+            val slot = (size.width - 2 * padX) / leafCount
+            val rowGap = if (maxDepth == 0) size.height else (size.height - 2 * padY) / maxDepth
+            // 16.dp is the shared node size across the sims — see the graph-algorithm canvas.
+            val radius = minOf(slot * 0.40f, rowGap * 0.36f, 16.dp.toPx()).coerceAtLeast(9.dp.toPx())
+            val style = if (radius < 13.dp.toPx()) denseLabelStyle else labelStyle
             nodes.forEach { node ->
                 val center = Offset(px(xById.getValue(node.id)), py(node.depth))
                 val color = when (stateById[node.id]) {
@@ -722,7 +731,7 @@ private fun RecursionCanvas(nodes: List<RecNode>, stateById: Map<Int, RecState>)
                     else -> PendingColor
                 }
                 drawCircle(color, radius = radius, center = center)
-                val layout = textMeasurer.measure(node.label.removePrefix("fact").removePrefix("fib"), labelStyle)
+                val layout = textMeasurer.measure(node.label.removePrefix("fact").removePrefix("fib"), style)
                 drawText(layout, topLeft = Offset(center.x - layout.size.width / 2f, center.y - layout.size.height / 2f))
             }
         }

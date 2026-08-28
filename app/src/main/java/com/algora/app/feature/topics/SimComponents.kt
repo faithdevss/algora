@@ -65,7 +65,7 @@ fun SimButtonRow(buttons: List<Triple<String, Color, () -> Unit>>, modifier: Mod
 }
 
 /** Height shared by the sim widgets' buttons and inputs, so a row of them lines up. */
-private val SimControlHeight = 44.dp
+private val SimControlHeight = 40.dp
 
 /**
  * Compact numeric input. Material3's OutlinedTextField reserves 56dp plus room for a floating
@@ -280,7 +280,7 @@ internal fun TransportButton(
         colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = Color.White),
         shape = RoundedCornerShape(12.dp),
         contentPadding = PaddingValues(0.dp),
-        modifier = modifier.height(44.dp),
+        modifier = modifier.height(40.dp),
     ) {
         Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(iconSize))
     }

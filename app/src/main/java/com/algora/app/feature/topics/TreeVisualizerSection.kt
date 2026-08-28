@@ -2433,7 +2433,7 @@ private fun TreeLegend(color: Color, label: String) {
 @Composable
 private fun TreeCanvas(frame: TreeFrame) {
     val textMeasurer = rememberTextMeasurer()
-    val labelStyle = TextStyle(color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+    val labelStyle = TextStyle(color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
 
     // Leaf-slot layout: leaves take sequential slots, parents centre over their children. Siblings
     // are ordered by `order` so left/right children keep their sides regardless of insertion order.
@@ -2469,7 +2469,7 @@ private fun TreeCanvas(frame: TreeFrame) {
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
             .padding(6.dp),
     ) {
-        Canvas(modifier = Modifier.fillMaxWidth().height(220.dp)) {
+        Canvas(modifier = Modifier.fillMaxWidth().height(240.dp)) {
             // All of these are dp, not raw canvas pixels: as constants in pixels the whole layout
             // shrank by the screen density, so on a 3x device a 56px row gap was a ~19dp step and
             // the tree huddled in the top third of a 220dp canvas.
@@ -2528,8 +2528,10 @@ private fun TreeCanvas(frame: TreeFrame) {
                 }
                 val layout = textMeasurer.measure(node.label, labelStyle)
                 // Multi-key B-tree nodes need a wider pill than a single digit does.
-                val boxWidth = (layout.size.width + 12.dp.toPx()).coerceAtLeast(26.dp.toPx())
-                val boxHeight = layout.size.height + 8.dp.toPx()
+                // Sized to the 32dp node the graph canvases draw, so a tree pill and a graph disc
+                // read at the same weight.
+                val boxWidth = (layout.size.width + 14.dp.toPx()).coerceAtLeast(32.dp.toPx())
+                val boxHeight = layout.size.height + 12.dp.toPx()
                 drawRoundRect(
                     color = color,
                     topLeft = Offset(center.x - boxWidth / 2f, center.y - boxHeight / 2f),

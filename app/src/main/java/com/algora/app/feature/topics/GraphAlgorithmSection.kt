@@ -2364,7 +2364,7 @@ private fun GraphAlgoCanvas(def: GraphDef, frame: GraphAlgoFrame) {
             .padding(6.dp),
     ) {
         Canvas(modifier = Modifier.fillMaxWidth().height(250.dp)) {
-            val radius = 17.dp.toPx()
+            val radius = 16.dp.toPx()
             val padX = 26.dp.toPx()
             val padY = 26.dp.toPx()
             val positions = def.nodes.associate { node ->
