@@ -29,7 +29,7 @@ can never grant access even if the pruning write is missed; `grantAdUnlock()` pr
 `PremiumBilling` interface (price / status / event flow / `refresh()` / `launchPurchase()`); the
 implementations write the result into `EntitlementRepository`, which is what the UI observes.
 
-- `PlayPremiumBilling` — Play Billing 8, product `algora_premium_lifetime` (INAPP, non-consumable).
+- `PlayPremiumBilling` — Play Billing 9, product `algora_premium_lifetime` (INAPP, non-consumable).
   `enablePendingPurchases(...)` is mandatory since Billing 7.x. Purchases are **acknowledged
   immediately** (Google auto-refunds anything unacknowledged for 3 days).
   `queryPurchasesAsync` is the source of truth and runs on every connect, so refunds, reinstalls and

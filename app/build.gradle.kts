@@ -180,7 +180,7 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.2.1")
 
     // Monetization (Phase 8): one-time premium IAP + rewarded ads.
-    implementation("com.android.billingclient:billing-ktx:8.0.0")
+    implementation("com.android.billingclient:billing-ktx:9.1.0")
     implementation("com.google.android.gms:play-services-ads:24.6.0")
 
     // Play In-App Review — the rating prompt shown once a learner is genuinely invested.

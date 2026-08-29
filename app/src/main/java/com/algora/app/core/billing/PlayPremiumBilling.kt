@@ -24,7 +24,7 @@ import kotlinx.coroutines.launch
 
 private const val TAG = "PlayPremiumBilling"
 
-// Play Billing v8 wiring for the single lifetime IAP. queryPurchasesAsync() is treated as the source
+// Play Billing v9 wiring for the single lifetime IAP. queryPurchasesAsync() is treated as the source
 // of truth: it runs on every connect, so refunds, reinstalls and account switches all converge.
 //
 // No server-side receipt validation — the roadmap defers a backend, so entitlement lives in
