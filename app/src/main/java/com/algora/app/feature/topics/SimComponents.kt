@@ -112,10 +112,10 @@ fun SimNumberField(
 class SimChip(val top: Color, val bottom: Color)
 
 /** Resting value. */
-val ChipViolet = SimChip(Color(0xFF8B5CF6), Color(0xFF6D28D9))
+val ChipViolet = SimChip(SimColors.Violet, Color(0xFF6D28D9))
 
 /** Being looked at — cursor, peek, comparison. */
-val ChipAmber = SimChip(Color(0xFFFACC15), Color(0xFFF59E0B))
+val ChipAmber = SimChip(SimColors.Active, SimColors.Amber)
 
 /** Being moved. */
 val ChipBlue = SimChip(Color(0xFF60A5FA), Color(0xFF2563EB))

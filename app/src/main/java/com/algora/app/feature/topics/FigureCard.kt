@@ -52,7 +52,7 @@ import com.algora.app.core.ui.theme.SimColors
 @Composable
 private fun toneColor(tone: FigureTone): Color = when (tone) {
     FigureTone.Primary -> SimColors.Blue
-    FigureTone.Accent -> Color(0xFFF59E0B)
+    FigureTone.Accent -> SimColors.Amber
     // Full strength, not a faded onSurfaceVariant: every caller already fades it for fills, and the
     // same value is used for the *text* inside a muted band — which went unreadable on dark.
     FigureTone.Muted -> MaterialTheme.colorScheme.onSurfaceVariant

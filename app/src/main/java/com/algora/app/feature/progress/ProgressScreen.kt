@@ -68,6 +68,7 @@ import com.algora.app.core.playreview.AppReviewPrompt
 import com.algora.app.core.ui.components.resolveIcon
 import com.algora.app.core.ui.theme.ScreenBottomInset
 import com.algora.app.core.ui.theme.ScreenGutter
+import com.algora.app.core.ui.theme.SimColors
 import com.algora.app.core.ui.theme.SpaceGrotesk
 import kotlinx.coroutines.launch
 import com.algora.app.feature.algorithms.AlgorithmsTopics
@@ -96,12 +97,12 @@ private val interviewPrepTopics = InterviewPrepTopics.topics - patternTopics.toS
 
 private val dsaGroups = listOf(
     ProgressGroup("Data Structures", "stack", Color(0xFF10B981), DataStructuresTopics.topics, Screen.DataStructures.route),
-    ProgressGroup("Algorithms", "chip", Color(0xFF3B82F6), AlgorithmsTopics.topics, Screen.Algorithms.route),
+    ProgressGroup("Algorithms", "chip", SimColors.Blue, AlgorithmsTopics.topics, Screen.Algorithms.route),
     // Split to match where each topic is actually reachable: Patterns has its own screen now, so its
     // rows must not deep-link into Interview Prep, which no longer lists them.
-    ProgressGroup("Patterns", "help", Color(0xFFF59E0B), patternTopics, PatternsRoute.ROUTE),
+    ProgressGroup("Patterns", "help", SimColors.Amber, patternTopics, PatternsRoute.ROUTE),
     ProgressGroup("Interview Prep", "mic", Color(0xFFEC4899), interviewPrepTopics, Screen.InterviewPrep.route),
-    ProgressGroup("Analysis", "trend", Color(0xFF8B5CF6), AnalysisTopics.topics, Screen.Analysis.route),
+    ProgressGroup("Analysis", "trend", SimColors.Violet, AnalysisTopics.topics, Screen.Analysis.route),
 )
 
 private val aiGroups = listOf(
@@ -117,9 +118,9 @@ private data class Milestone(val title: String, val iconName: String, val color:
 
 private fun milestonesFor(total: Int): List<Milestone> = listOf(
     Milestone("First Steps", "check", Color(0xFF10B981), 1),
-    Milestone("Explorer", "map", Color(0xFF3B82F6), 10),
-    Milestone("Momentum", "trend", Color(0xFFF59E0B), 25),
-    Milestone("Halfway", "target", Color(0xFF8B5CF6), (total + 1) / 2),
+    Milestone("Explorer", "map", SimColors.Blue, 10),
+    Milestone("Momentum", "trend", SimColors.Amber, 25),
+    Milestone("Halfway", "target", SimColors.Violet, (total + 1) / 2),
     Milestone("Track Complete", "crown", Color(0xFFEC4899), total),
 ).filter { it.target in 1..total }.distinctBy { it.target }.sortedBy { it.target }
 

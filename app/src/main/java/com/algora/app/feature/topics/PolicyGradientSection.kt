@@ -69,7 +69,7 @@ private class PgConfig(
     val build: () -> List<PgFrame>,
 )
 
-private val PlainColor = Color(0xFF94A3B8)
+private val PlainColor = SimColors.Grey
 private val BetterColor = SimColors.Green
 private val RiskColor = Color(0xFFEC4899)
 private val MainColor = SimColors.Blue

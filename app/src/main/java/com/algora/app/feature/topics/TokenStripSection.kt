@@ -76,7 +76,7 @@ private class TokenConfig(
     val build: () -> List<TokenFrame>,
 )
 
-private val ChipActive = Color(0xFFFACC15)
+private val ChipActive = SimColors.Active
 private val ChipResult = Color(0xFF7C3AED)
 private val BarPositive = SimColors.Blue
 private val BarNegative = Color(0xFFEC4899)

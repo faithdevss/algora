@@ -61,8 +61,8 @@ import com.algora.app.core.ui.theme.SpaceGrotesk
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-private val CorrectGreen = Color(0xFF16A34A)
-private val WrongRed = Color(0xFFEF4444)
+private val CorrectGreen = SimColors.Green
+private val WrongRed = SimColors.Red
 
 @Composable
 fun QuizScreen(
@@ -321,9 +321,9 @@ private fun TagChip(text: String, color: Color) {
 @Composable
 private fun DifficultyChip(difficulty: Difficulty) {
     val (label, color) = when (difficulty) {
-        Difficulty.BEGINNER -> "Easy" to Color(0xFF16A34A)
-        Difficulty.INTERMEDIATE -> "Medium" to Color(0xFFF59E0B)
-        Difficulty.ADVANCED -> "Hard" to Color(0xFFEF4444)
+        Difficulty.BEGINNER -> "Easy" to SimColors.Green
+        Difficulty.INTERMEDIATE -> "Medium" to SimColors.Amber
+        Difficulty.ADVANCED -> "Hard" to SimColors.Red
     }
     TagChip(label, color)
 }

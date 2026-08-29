@@ -84,7 +84,7 @@ private class EnvConfig(val intro: String, val build: () -> List<EnvFrame>)
 
 private val EnvBlue = SimColors.Blue
 private val EnvGreen = SimColors.Green
-private val EnvAmber = Color(0xFFFACC15)
+private val EnvAmber = SimColors.Active
 private val EnvViolet = Color(0xFF7C3AED)
 private val EnvRed = SimColors.Red
 

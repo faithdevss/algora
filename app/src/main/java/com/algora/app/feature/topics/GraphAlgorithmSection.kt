@@ -61,15 +61,15 @@ private enum class EdgeMark { IDLE, ACTIVE, ACCEPTED, REJECTED }
 
 private val NodeMarkColors = mapOf(
     NodeMark.IDLE to Color(0xFF7C3AED),
-    NodeMark.FRONTIER to Color(0xFF3B82F6),
-    NodeMark.ACTIVE to Color(0xFFFACC15),
+    NodeMark.FRONTIER to SimColors.Blue,
+    NodeMark.ACTIVE to SimColors.Active,
     NodeMark.UPDATED to SimColors.Green,
     NodeMark.DONE to Color(0xFFF97316),
 )
 
 private val EdgeMarkColors = mapOf(
-    EdgeMark.IDLE to Color(0xFFCBD0DA),
-    EdgeMark.ACTIVE to Color(0xFFFACC15),
+    EdgeMark.IDLE to SimColors.Idle,
+    EdgeMark.ACTIVE to SimColors.Active,
     EdgeMark.ACCEPTED to SimColors.Green,
     EdgeMark.REJECTED to SimColors.Red,
 )

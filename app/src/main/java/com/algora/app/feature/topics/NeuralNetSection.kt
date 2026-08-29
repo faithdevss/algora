@@ -88,7 +88,7 @@ private class NetConfig(
 private val ForwardColor = SimColors.Blue
 private val BackwardColor = Color(0xFFEC4899)
 private val OutputColor = Color(0xFF7C3AED)
-private val NeutralColor = Color(0xFF94A3B8)
+private val NeutralColor = SimColors.Grey
 private val AccentA = SimColors.Green
 private val AccentB = Color(0xFFF97316)
 

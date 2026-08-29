@@ -29,6 +29,18 @@ object SimColors {
     val Amber = Color(0xFFF59E0B)
     val Grey = Color(0xFF94A3B8)
     val Green = Color(0xFF16A34A)
+
+    // The states a lab paints its own data in, as opposed to the actions above. Every visualizer
+    // marks "the thing being looked at right now" the same yellow, so a learner moving between
+    // labs reads the highlight without relearning it — note it is NOT `Amber`, which is the
+    // search/alt *button*. The two live side by side in SimChip's amber gradient.
+    val Active = Color(0xFFFACC15)
+
+    /** Untouched / not yet reached — idle graph nodes and edges, ghosted links. */
+    val Idle = Color(0xFFCBD0DA)
+
+    /** Impassable or masked off — grid walls, cleared bits. */
+    val Wall = Color(0xFF39414F)
 }
 
 // Named gradients from the design mock's `grads` map + hero/topbar gradients.

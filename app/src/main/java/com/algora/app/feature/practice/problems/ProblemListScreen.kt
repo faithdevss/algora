@@ -44,6 +44,7 @@ import com.algora.app.core.ui.components.DifficultyBadge
 import com.algora.app.core.ui.components.ScreenHeader
 import com.algora.app.core.ui.theme.ScreenBottomInset
 import com.algora.app.core.ui.theme.ScreenGutter
+import com.algora.app.core.ui.theme.SimColors
 
 // Problem bank grouped by pattern, easy → hard inside each group, with a solved tick per row.
 // 100+ problems over 23 patterns is too long to scan flat, so groups collapse and a search field
@@ -191,9 +192,9 @@ private fun FilterChips(
     ) {
         Difficulty.entries.forEach { difficulty ->
             val (label, color) = when (difficulty) {
-                Difficulty.BEGINNER -> "Easy" to Color(0xFF16A34A)
-                Difficulty.INTERMEDIATE -> "Medium" to Color(0xFFF59E0B)
-                Difficulty.ADVANCED -> "Hard" to Color(0xFFEF4444)
+                Difficulty.BEGINNER -> "Easy" to SimColors.Green
+                Difficulty.INTERMEDIATE -> "Medium" to SimColors.Amber
+                Difficulty.ADVANCED -> "Hard" to SimColors.Red
             }
             FilterChip(
                 label = label,

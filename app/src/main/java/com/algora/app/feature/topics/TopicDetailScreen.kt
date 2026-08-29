@@ -87,7 +87,7 @@ import java.util.Locale
 import kotlinx.coroutines.launch
 
 // Same amber as the lock icon in core/ui/components/TopicRow.kt.
-private val RowLockAmber = Color(0xFFF59E0B)
+private val RowLockAmber = SimColors.Amber
 
 // Paywall gate (Phase 8). Every route into topic content funnels through here, so premium topics
 // stay closed no matter which branch below would have rendered them — quiz, behavioral bank, system
@@ -661,7 +661,7 @@ private fun ApplicationsSection(applications: List<ApplicationCard>) {
     }
 }
 
-private val TakeawayGreen = Color(0xFF16A34A)
+private val TakeawayGreen = SimColors.Green
 private val TakeawayGreenBgLight = Color(0xFFE9F9EE)
 
 @Composable

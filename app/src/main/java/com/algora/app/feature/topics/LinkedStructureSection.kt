@@ -60,10 +60,10 @@ private class LinkConfig(
 )
 
 private val LinkPath = SimColors.Blue
-private val LinkActive = Color(0xFFFACC15)
+private val LinkActive = SimColors.Active
 private val LinkResult = Color(0xFF7C3AED)
 private val LinkIdle = Color(0xFF64748B)
-private val LinkGhost = Color(0xFFCBD0DA)
+private val LinkGhost = SimColors.Idle
 
 // ── Doubly linked list ───────────────────────────────────────────────────────
 

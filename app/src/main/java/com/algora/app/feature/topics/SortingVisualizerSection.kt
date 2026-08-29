@@ -47,10 +47,10 @@ private class SortConfig(
     val build: () -> List<SortFrame>,
 )
 
-private val ComparedBar = Color(0xFFFACC15)
+private val ComparedBar = SimColors.Active
 private val MovedBar = Color(0xFFF97316)
 private val SortedBar = SimColors.Green
-private val RangeBar = Color(0xFF3B82F6)
+private val RangeBar = SimColors.Blue
 
 // Small enough that every bar stays readable on a phone, big enough that O(n²) vs O(n log n) shows.
 private val sampleInput = listOf(42, 8, 27, 61, 15, 34, 3, 50)

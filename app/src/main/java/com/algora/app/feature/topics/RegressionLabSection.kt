@@ -35,7 +35,6 @@ import com.algora.app.core.ui.theme.AlgoraCodeStyle
 import com.algora.app.core.ui.theme.SimColors
 import kotlin.math.abs
 import kotlin.math.exp
-import kotlin.math.ln
 import kotlin.math.roundToInt
 import kotlin.random.Random
 
@@ -48,8 +47,8 @@ import kotlin.random.Random
 
 private val LabFit = Color(0xFF4F46E5)
 private val LabPointColor = Color(0xFF7C3AED)
-private val LabReference = Color(0xFF94A3B8)
-private val LabHighlight = Color(0xFFEF4444)
+private val LabReference = SimColors.Grey
+private val LabHighlight = SimColors.Red
 private val LabBand = Color(0xFF10B981)
 
 private class LabCurve(
@@ -565,8 +564,8 @@ private fun larsConfig() = LabConfig(
 // design for AR, Hannan-Rissanen for ARIMA's MA terms, the three Holt-Winters recursions, a
 // piecewise-linear trend on changepoint basis functions plus a Fourier seasonality for Prophet.
 
-private val SeriesForecast = Color(0xFFEF4444)
-private val SeriesComponent = Color(0xFFF59E0B)
+private val SeriesForecast = SimColors.Red
+private val SeriesComponent = SimColors.Amber
 
 private fun seriesData(seed: Int): List<LabPoint> =
     retailSeries(seed).mapIndexed { t, v -> LabPoint(t.toFloat(), v.toFloat()) }

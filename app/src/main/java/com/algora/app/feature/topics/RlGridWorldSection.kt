@@ -148,10 +148,10 @@ private class RlConfig(
 )
 
 private val GoalColor = SimColors.Green
-private val PitColor = Color(0xFFEF4444)
-private val WallColor = Color(0xFF39414F)
-private val AgentColor = Color(0xFFFACC15)
-private val PositiveValue = Color(0xFF3B82F6)
+private val PitColor = SimColors.Red
+private val WallColor = SimColors.Wall
+private val AgentColor = SimColors.Active
+private val PositiveValue = SimColors.Blue
 
 // Shims onto DefaultWorld, so every builder written against the original 4×4 keeps reading the way
 // it did before the world became a parameter.

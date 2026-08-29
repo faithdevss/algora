@@ -67,7 +67,7 @@ private class RlTrainConfig(
     val build: () -> List<RlTrainFrame>,
 )
 
-private val BaselineColor = Color(0xFF94A3B8)
+private val BaselineColor = SimColors.Grey
 private val ImprovedColor = SimColors.Green
 private val WarnColor = Color(0xFFEC4899)
 private val AccentColor = SimColors.Blue

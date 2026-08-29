@@ -39,13 +39,14 @@ import com.algora.app.core.ui.components.ScreenHeader
 import com.algora.app.core.ui.components.resolveIcon
 import com.algora.app.core.ui.theme.ScreenBottomInset
 import com.algora.app.core.ui.theme.ScreenGutter
+import com.algora.app.core.ui.theme.SimColors
 import com.algora.app.feature.interviewprep.quiz.QuizRegistry
 
 // Score bands mirror the results screen's 60% pass line.
 private fun scoreColor(percent: Int): Color = when {
-    percent >= 80 -> Color(0xFF16A34A)
-    percent >= 60 -> Color(0xFFF59E0B)
-    else -> Color(0xFFEF4444)
+    percent >= 80 -> SimColors.Green
+    percent >= 60 -> SimColors.Amber
+    else -> SimColors.Red
 }
 
 private fun relativeDay(day: Long, today: Long): String = when (val ago = today - day) {
@@ -118,7 +119,7 @@ private fun QuizRow(
     bestPercent: Int,
     onClick: () -> Unit,
 ) {
-    val accent = Color(0xFFF59E0B)
+    val accent = SimColors.Amber
     Surface(
         modifier = Modifier
             .fillMaxWidth()

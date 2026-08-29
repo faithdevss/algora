@@ -45,8 +45,8 @@ private class DpConfig(
     val build: () -> List<DpFrame>,
 )
 
-private val ActiveCell = Color(0xFFFACC15)
-private val FilledCell = Color(0xFF3B82F6)
+private val ActiveCell = SimColors.Active
+private val FilledCell = SimColors.Blue
 private val TracedCell = SimColors.Green
 
 private class DpBuilder(val rows: Int, val cols: Int) {

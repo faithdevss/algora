@@ -586,8 +586,8 @@ internal fun recursionTreeFrameCount(topicId: String): Int {
     return total
 }
 
-private val ActiveColor = Color(0xFFFACC15)
-private val WaitingColor = Color(0xFF3B82F6)
+private val ActiveColor = SimColors.Active
+private val WaitingColor = SimColors.Blue
 private val ReturnedColor = SimColors.Green
 private val PendingColor = Color(0xFF7C3AED)
 
@@ -707,7 +707,7 @@ private fun RecursionCanvas(nodes: List<RecNode>, stateById: Map<Int, RecState>)
             nodes.forEach { node ->
                 node.parent?.let { p ->
                     drawLine(
-                        Color(0xFFCBD0DA),
+                        SimColors.Idle,
                         Offset(px(xById.getValue(p)), py(nodes[p].depth)),
                         Offset(px(xById.getValue(node.id)), py(node.depth)),
                         strokeWidth = 2.dp.toPx(),

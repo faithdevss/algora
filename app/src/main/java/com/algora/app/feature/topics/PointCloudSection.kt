@@ -86,8 +86,8 @@ private val CloudColors = listOf(
     Color(0xFF0EA5E9), Color(0xFFF97316), Color(0xFF10B981),
     Color(0xFFEC4899), Color(0xFF6366F1),
 )
-private val UnassignedColor = Color(0xFF94A3B8)
-private val QueryColor = Color(0xFFFACC15)
+private val UnassignedColor = SimColors.Grey
+private val QueryColor = SimColors.Active
 private val AxisColor = Color(0xFF7C3AED)
 
 private fun groupColor(group: Int): Color =

@@ -83,7 +83,7 @@ private class MaConfig(
     val build: () -> List<MaFrame>,
 )
 
-private val MaBaseline = Color(0xFF94A3B8)
+private val MaBaseline = SimColors.Grey
 private val MaGood = SimColors.Green
 private val MaBad = Color(0xFFEC4899)
 private val MaAccent = SimColors.Blue

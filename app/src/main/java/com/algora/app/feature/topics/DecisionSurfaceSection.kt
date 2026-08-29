@@ -46,10 +46,10 @@ import kotlin.math.roundToInt
 // boundary emerge where the tint flips. Everything shown is computed in DecisionSurfaceMath.kt.
 
 private val NegativeFill = Color(0xFF6366F1)
-private val PositiveFill = Color(0xFF16A34A)
-private val SupportRing = Color(0xFFF59E0B)
-private val ErrorRing = Color(0xFFEF4444)
-private val EllipseColor = Color(0xFF94A3B8)
+private val PositiveFill = SimColors.Green
+private val SupportRing = SimColors.Amber
+private val ErrorRing = SimColors.Red
+private val EllipseColor = SimColors.Grey
 
 private class SurfaceReadout(val value: String, val label: String)
 

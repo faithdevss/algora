@@ -85,12 +85,12 @@ private class ExpConfig(
     val build: () -> List<ExpFrame>,
 )
 
-private val ExpBaseline = Color(0xFF94A3B8)
+private val ExpBaseline = SimColors.Grey
 private val ExpGood = SimColors.Green
 private val ExpBad = Color(0xFFEC4899)
 private val ExpAccent = SimColors.Blue
 private val ExpHighlight = Color(0xFF7C3AED)
-private val ExpWall = Color(0xFF39414F)
+private val ExpWall = SimColors.Wall
 
 private fun ex(x: Double, digits: Int = 2) = "%.${digits}f".format(x)
 

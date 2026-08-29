@@ -134,7 +134,7 @@ private val SignalColor = SimColors.Blue
 private val NegativeColor = Color(0xFFEC4899)
 private val SavingColor = SimColors.Green
 private val CostColor = Color(0xFFF97316)
-private val MutedColor = Color(0xFF94A3B8)
+private val MutedColor = SimColors.Grey
 
 private fun Long.compact(): String = when {
     this >= 1_000_000_000L -> "%.2fB".format(this / 1e9)

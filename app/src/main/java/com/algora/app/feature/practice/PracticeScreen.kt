@@ -48,6 +48,7 @@ import com.algora.app.core.nav.Screen
 import com.algora.app.core.ui.components.resolveIcon
 import com.algora.app.core.ui.theme.Gradients
 import com.algora.app.core.ui.theme.ScreenGutter
+import com.algora.app.core.ui.theme.SimColors
 import com.algora.app.core.ui.theme.SpaceGrotesk
 import com.algora.app.feature.interviewprep.quiz.QuizRegistry
 import com.algora.app.feature.practice.daily.rememberDrillStatus
@@ -183,7 +184,7 @@ fun PracticeScreen(onNavigate: (String) -> Unit, modifier: Modifier = Modifier) 
 private fun DailyDrillBanner(onClick: () -> Unit) {
     val status = rememberDrillStatus()
     val done = status.allDone
-    val accent = if (done) Color(0xFF16A34A) else Color(0xFF6366F1)
+    val accent = if (done) SimColors.Green else Color(0xFF6366F1)
 
     Surface(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),

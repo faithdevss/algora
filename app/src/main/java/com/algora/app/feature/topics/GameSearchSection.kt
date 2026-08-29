@@ -68,7 +68,7 @@ private class GsConfig(
     val build: () -> List<GsFrame>,
 )
 
-private val PlainTone = Color(0xFF94A3B8)
+private val PlainTone = SimColors.Grey
 private val GoodTone = SimColors.Green
 private val BadTone = Color(0xFFEC4899)
 private val MainTone = SimColors.Blue

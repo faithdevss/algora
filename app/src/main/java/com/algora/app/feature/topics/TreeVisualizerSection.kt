@@ -73,8 +73,8 @@ private class TreeConfig(
     val linkLabel: String? = null,
 )
 
-private val PathColor = Color(0xFF3B82F6)
-private val ActiveColor = Color(0xFFFACC15)
+private val PathColor = SimColors.Blue
+private val ActiveColor = SimColors.Active
 private val MarkedColor = SimColors.Green
 private val IdleColor = Color(0xFF7C3AED)
 private val LinkColor = Color(0xFFF97316)
@@ -2485,7 +2485,7 @@ private fun TreeCanvas(frame: TreeFrame) {
             frame.nodes.forEach { node ->
                 val parent = node.parent?.let { byId[it] } ?: return@forEach
                 drawLine(
-                    Color(0xFFCBD0DA),
+                    SimColors.Idle,
                     Offset(px(xById.getValue(parent.id)), py(depthById.getValue(parent.id))),
                     Offset(px(xById.getValue(node.id)), py(depthById.getValue(node.id))),
                     // In dp, not raw pixels: a fixed 3.5px edge is a ~1dp hairline on a 3x screen.

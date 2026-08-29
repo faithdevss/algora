@@ -77,9 +77,9 @@ private class BitConfig(
     val build: () -> List<BitFrame>,
 )
 
-private val ZeroFill = Color(0xFF39414F)
-private val OneFill = Color(0xFF3B82F6)
-private val ActiveFillBit = Color(0xFFFACC15)
+private val ZeroFill = SimColors.Wall
+private val OneFill = SimColors.Blue
+private val ActiveFillBit = SimColors.Active
 private val ClearedFill = SimColors.Red
 private val ResultFillBit = Color(0xFF7C3AED)
 private val MaskedFill = Color(0xFF2A2F38)

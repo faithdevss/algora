@@ -58,9 +58,9 @@ class ClassifierConfig(
     val readout: (w1: Float, w2: Float, bias: Float) -> String? = { _, _, _ -> null },
 )
 
-private val PositiveColor = Color(0xFF16A34A)
+private val PositiveColor = SimColors.Green
 private val NegativeColor = Color(0xFF6366F1)
-private val BoundaryColor = Color(0xFFF59E0B)
+private val BoundaryColor = SimColors.Amber
 
 private fun predict(w1: Float, w2: Float, bias: Float, x: Float, y: Float): Int =
     if (w1 * x + w2 * y + bias >= 0f) 1 else 0

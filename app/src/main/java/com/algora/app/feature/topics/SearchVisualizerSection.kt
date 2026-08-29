@@ -45,8 +45,8 @@ private class SearchConfig(
     val build: () -> List<SearchFrame>,
 )
 
-private val ProbeCell = Color(0xFFFACC15)
-private val WindowCell = Color(0xFF3B82F6)
+private val ProbeCell = SimColors.Active
+private val WindowCell = SimColors.Blue
 private val FoundCell = SimColors.Green
 private val EliminatedAlpha = 0.18f
 

@@ -51,10 +51,10 @@ private class HashConfig(
     val build: () -> List<HashFrame>,
 )
 
-private val ProbedSlot = Color(0xFFFACC15)
+private val ProbedSlot = SimColors.Active
 private val HitSlot = SimColors.Green
-private val MissSlot = Color(0xFFEF4444)
-private val FilledSlot = Color(0xFF3B82F6)
+private val MissSlot = SimColors.Red
+private val FilledSlot = SimColors.Blue
 
 // Deterministic small hash so the walkthrough text can state the arithmetic exactly.
 private fun hashOf(key: String, buckets: Int): Int {

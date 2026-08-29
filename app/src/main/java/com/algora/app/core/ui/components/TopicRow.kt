@@ -21,13 +21,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.algora.app.core.data.model.Difficulty
+import com.algora.app.core.ui.theme.SimColors
 
 // Matches docs/design/Algora.dc.html's row.style/markStyle/endStyle exactly.
 // Rows never show a per-topic icon (only section headers do) — confirmed from the mock markup.
-private val RowCompleteGreen = Color(0xFF16A34A)
+private val RowCompleteGreen = SimColors.Green
 
 @Composable
 fun TopicRow(

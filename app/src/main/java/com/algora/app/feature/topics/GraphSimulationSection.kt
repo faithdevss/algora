@@ -66,15 +66,15 @@ private enum class NodeState { IDLE, CURRENT, VISITED, QUEUE }
 
 private val NodeStateColors = mapOf(
     // Neutral on purpose: a colour on an untouched node reads as a state the algorithm assigned.
-    NodeState.IDLE to Color(0xFFCBD0DA),
-    NodeState.CURRENT to Color(0xFFFACC15),
+    NodeState.IDLE to SimColors.Idle,
+    NodeState.CURRENT to SimColors.Active,
     NodeState.VISITED to Color(0xFFF97316),
-    NodeState.QUEUE to Color(0xFF3B82F6),
+    NodeState.QUEUE to SimColors.Blue,
 )
 
-private val EdgeIdleColor = Color(0xFFCBD0DA)
+private val EdgeIdleColor = SimColors.Idle
 private val PathColor = Color(0xFFF97316)
-private val ActiveEdgeColor = Color(0xFFFACC15)
+private val ActiveEdgeColor = SimColors.Active
 
 /** Normalized undirected edge id, so A-B and B-A share one walk counter. */
 private typealias EdgeKey = Pair<String, String>

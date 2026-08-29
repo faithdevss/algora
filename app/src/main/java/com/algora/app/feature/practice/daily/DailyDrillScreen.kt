@@ -39,6 +39,7 @@ import com.algora.app.core.nav.ReviewRoute
 import com.algora.app.core.ui.components.ScreenHeader
 import com.algora.app.core.ui.components.resolveIcon
 import com.algora.app.core.ui.theme.ScreenGutter
+import com.algora.app.core.ui.theme.SimColors
 import com.algora.app.core.ui.theme.SpaceGrotesk
 import com.algora.app.feature.interviewprep.quiz.QuizScreen
 
@@ -147,7 +148,7 @@ fun DailyDrillScreen(
     }
 }
 
-private val DoneGreen = Color(0xFF16A34A)
+private val DoneGreen = SimColors.Green
 
 @Composable
 private fun DrillStepCard(

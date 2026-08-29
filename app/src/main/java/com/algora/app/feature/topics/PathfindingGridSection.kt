@@ -51,11 +51,11 @@ private class PathConfig(
     val build: () -> List<PathFrame>,
 )
 
-private val VisitedCell = Color(0xFF3B82F6)
-private val FrontierCell = Color(0xFF8B5CF6)
-private val CurrentCell = Color(0xFFFACC15)
+private val VisitedCell = SimColors.Blue
+private val FrontierCell = SimColors.Violet
+private val CurrentCell = SimColors.Active
 private val PathCell = SimColors.Green
-private val WallCell = Color(0xFF39414F)
+private val WallCell = SimColors.Wall
 private val StartCell = Color(0xFF0EA5E9)
 private val GoalCell = Color(0xFFF97316)
 

@@ -13,10 +13,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
+import com.algora.app.core.ui.theme.SimColors
 
 // Amber from the mock's lock treatment (docs/design/Algora.dc.html endIcon).
-val LockAmber = Color(0xFFF59E0B)
+val LockAmber = SimColors.Amber
 
 // A plain padlock says "buy to open", which is only half true here: every locked topic also opens
 // for 6h after a rewarded ad. So the padlock body carries a knocked-out play triangle — locked,

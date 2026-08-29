@@ -65,7 +65,7 @@ private class WalkConfig(
 )
 
 private val WindowFill = SimColors.Blue
-private val ActiveFill = Color(0xFFFACC15)
+private val ActiveFill = SimColors.Active
 private val DoneFill = SimColors.Green
 private val ResultFill = Color(0xFF7C3AED)
 

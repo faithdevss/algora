@@ -6,19 +6,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.algora.app.core.data.model.Difficulty
+import com.algora.app.core.ui.theme.SimColors
 
 // Small color-coded difficulty pill (Phase 7). Green/amber/red mirror the mock's status palette.
 @Composable
 fun DifficultyBadge(difficulty: Difficulty, modifier: Modifier = Modifier) {
     val (label, color) = when (difficulty) {
-        Difficulty.BEGINNER -> "Easy" to Color(0xFF16A34A)
-        Difficulty.INTERMEDIATE -> "Medium" to Color(0xFFF59E0B)
-        Difficulty.ADVANCED -> "Hard" to Color(0xFFEF4444)
+        Difficulty.BEGINNER -> "Easy" to SimColors.Green
+        Difficulty.INTERMEDIATE -> "Medium" to SimColors.Amber
+        Difficulty.ADVANCED -> "Hard" to SimColors.Red
     }
     Text(
         text = label,

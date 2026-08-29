@@ -56,9 +56,9 @@ private class BanditConfig(
     val choose: (List<Float>, List<Int>, Int, Random) -> Pair<Int, String>,
 )
 
-private val ChosenArm = Color(0xFFFACC15)
+private val ChosenArm = SimColors.Active
 private val BestArm = SimColors.Green
-private val OtherArm = Color(0xFF3B82F6)
+private val OtherArm = SimColors.Blue
 
 private fun runBandit(config: BanditConfig): List<BanditFrame> {
     val random = Random(11) // fixed seed so the narrative in the status line is reproducible

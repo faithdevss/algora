@@ -52,6 +52,7 @@ import com.algora.app.core.data.entitlement.entitlementDataStore
 import com.algora.app.core.ui.components.ScreenHeader
 import com.algora.app.core.ui.theme.Gradients
 import com.algora.app.core.ui.theme.ScreenGutter
+import com.algora.app.core.ui.theme.SimColors
 import com.algora.app.core.ui.theme.SpaceGrotesk
 
 // Ported from docs/design/Algora.dc.html's isPremium block (radii, gradients, paddings and the
@@ -271,7 +272,7 @@ private fun LifetimePlanCard(price: String?, owned: Boolean) {
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(end = 12.dp)
-                .background(Color(0xFF16A34A), RoundedCornerShape(99.dp))
+                .background(SimColors.Green, RoundedCornerShape(99.dp))
                 .padding(horizontal = 8.dp, vertical = 3.dp),
         )
     }
