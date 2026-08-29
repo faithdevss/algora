@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -19,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -26,13 +28,26 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.algora.app.core.ui.theme.SpaceGrotesk
 
-/** The back button's footprint, and the width reserved opposite it to keep the title centred. */
-private val BackButtonSize = 36.dp
+/**
+ * The back button's touch target, and the width reserved opposite it to keep the title centred.
+ *
+ * The mock draws a 36px button inside a 14px gutter, putting the icon's centre 32px from the edge.
+ * A 36dp target is under the 48dp minimum for a tappable control, so the button is widened to 48dp
+ * and the row's start padding narrowed to 8dp to compensate: the icon lands on the same 32dp line
+ * the mock puts it on, with a touch target that can actually be hit.
+ */
+private val BackButtonSize = 48.dp
+
+/** Start inset, chosen so the widened back button still centres its icon on the mock's 32dp line. */
+private val HeaderStartPadding = 8.dp
+
+/** The mock's own gutter, kept for the trailing edge where there is no oversized touch target. */
+private val HeaderEndPadding = 14.dp
 
 /**
  * The one screen header, ported from the mock's shared `headerStyle` (docs/design/Algora.dc.html
  * line 601) and the back-button/title markup every screen that uses it repeats (lines 95, 136,
- * 309, 348): a 36dp back button, a centred 17sp Space Grotesk title, and a bottom hairline in
+ * 309, 348): a back button, a centred 17sp Space Grotesk title, and a bottom hairline in
  * `--border`.
  *
  * It is deliberately not part of the scrolling body — the mock pins it with `position:sticky`, so
@@ -40,7 +55,7 @@ private val BackButtonSize = 36.dp
  *
  * `trailing` hangs an action off the right edge (the topic page's bookmark toggle, the quiz
  * timer). It replaces the spacer that otherwise balances the back button, so a trailing action
- * roughly 36dp wide keeps the title optically centred; anything much wider will pull it left.
+ * roughly a back button wide keeps the title optically centred; a wider one will pull it left.
  */
 @Composable
 fun ScreenHeader(
@@ -54,12 +69,18 @@ fun ScreenHeader(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.background)
-                .padding(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 12.dp),
+                .padding(
+                    start = HeaderStartPadding,
+                    end = HeaderEndPadding,
+                    top = 8.dp,
+                    bottom = 12.dp,
+                ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
                 modifier = Modifier
                     .size(BackButtonSize)
+                    .clip(CircleShape)
                     .clickable(onClick = onBack),
                 contentAlignment = Alignment.Center,
             ) {
