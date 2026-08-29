@@ -52,6 +52,7 @@ import com.algora.app.core.notify.StudyReminder
 import com.algora.app.core.notify.StudyReminderWorker
 import com.algora.app.core.ui.components.CrossPromoApp
 import com.algora.app.core.ui.components.CrossPromoRow
+import com.algora.app.core.ui.theme.ScreenGutter
 import com.algora.app.core.ui.theme.SpaceGrotesk
 import com.algora.app.core.ui.theme.accent
 import kotlinx.coroutines.launch
@@ -74,7 +75,7 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 18.dp),
+            .padding(horizontal = ScreenGutter),
     ) {
         Spacer(modifier = Modifier.height(6.dp))
 

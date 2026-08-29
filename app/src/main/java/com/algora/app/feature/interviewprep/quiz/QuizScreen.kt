@@ -5,7 +5,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,14 +15,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -59,6 +55,7 @@ import com.algora.app.core.data.settings.SettingsRepository
 import com.algora.app.core.data.settings.bestCorrect
 import com.algora.app.core.data.settings.bestPercent
 import com.algora.app.core.data.settings.settingsDataStore
+import com.algora.app.core.ui.components.ScreenHeader
 import com.algora.app.core.ui.theme.SimColors
 import com.algora.app.core.ui.theme.SpaceGrotesk
 import kotlinx.coroutines.delay
@@ -266,25 +263,7 @@ private fun QuizRunner(
 
 @Composable
 private fun QuizHeader(title: String, remaining: Int, onBack: () -> Unit) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.Center,
-            )
-            TimerPill(remaining)
-            Spacer(modifier = Modifier.size(6.dp))
-        }
-        HorizontalDivider()
-    }
+    ScreenHeader(title = title, onBack = onBack, trailing = { TimerPill(remaining) })
 }
 
 @Composable
@@ -367,7 +346,7 @@ private fun QuizResults(
     val pct = if (total == 0) 0 else correct * 100 / total
 
     Column(modifier = Modifier.fillMaxSize()) {
-        QuizHeaderStatic(title = "Results", onBack = onBack)
+        ScreenHeader(title = "Results", onBack = onBack)
 
         LazyColumn(modifier = Modifier.weight(1f).padding(horizontal = 16.dp)) {
             item {
@@ -506,23 +485,6 @@ private fun ReviewCard(question: QuizQuestion, chosen: Int?, onTopicClick: (Stri
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun QuizHeaderStatic(title: String, onBack: () -> Unit) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-            Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-            Spacer(modifier = Modifier.size(48.dp))
-        }
-        HorizontalDivider()
     }
 }
 

@@ -66,6 +66,8 @@ import com.algora.app.core.nav.PatternsRoute
 import com.algora.app.core.nav.Screen
 import com.algora.app.core.playreview.AppReviewPrompt
 import com.algora.app.core.ui.components.resolveIcon
+import com.algora.app.core.ui.theme.ScreenBottomInset
+import com.algora.app.core.ui.theme.ScreenGutter
 import com.algora.app.core.ui.theme.SpaceGrotesk
 import kotlinx.coroutines.launch
 import com.algora.app.feature.algorithms.AlgorithmsTopics
@@ -171,7 +173,12 @@ fun ProgressScreen(
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 28.dp),
+        contentPadding = PaddingValues(
+            start = ScreenGutter,
+            end = ScreenGutter,
+            top = 14.dp,
+            bottom = ScreenBottomInset,
+        ),
     ) {
         item {
             Text(

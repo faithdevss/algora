@@ -17,11 +17,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -38,7 +36,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.algora.app.core.nav.ReviewRoute
+import com.algora.app.core.ui.components.ScreenHeader
 import com.algora.app.core.ui.components.resolveIcon
+import com.algora.app.core.ui.theme.ScreenGutter
 import com.algora.app.core.ui.theme.SpaceGrotesk
 import com.algora.app.feature.interviewprep.quiz.QuizScreen
 
@@ -74,82 +74,75 @@ fun DailyDrillScreen(
         return
     }
 
-    Column(modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+    Column(modifier = modifier.fillMaxSize()) {
+        ScreenHeader(title = "Daily Drill", onBack = onBack)
+        Column(modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
+            Column(modifier = Modifier.padding(horizontal = ScreenGutter)) {
+                Text(
+                    when {
+                        !status.ready -> "Building today's set…"
+                        status.allDone -> "Done for today — come back tomorrow."
+                        else -> "${status.doneCount} of ${status.stepCount} done"
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (status.allDone) DoneGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                LinearProgressIndicator(
+                    progress = { status.doneCount / status.stepCount.toFloat() },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                DrillStepCard(
+                    index = 1,
+                    title = "Recall",
+                    subtitle = if (status.recallDone) "Nothing waiting" else "${status.cardsWaiting} cards waiting",
+                    iconName = "stack",
+                    accent = Color(0xFFC084FC),
+                    done = status.recallDone,
+                    enabled = true,
+                    onClick = { onNavigate(ReviewRoute.ROUTE) },
+                )
+
+                DrillStepCard(
+                    index = 2,
+                    title = "Solve",
+                    subtitle = when {
+                        !status.ready -> "Picking a problem…"
+                        status.problem == null -> "Whole bank solved"
+                        else -> status.problem.title
+                    },
+                    iconName = "chip",
+                    accent = Color(0xFF60A5FA),
+                    done = status.solveDone,
+                    enabled = status.problem != null,
+                    onClick = { status.problem?.let { onProblemClick(it.id) } },
+                )
+
+                DrillStepCard(
+                    index = 3,
+                    title = "Drill",
+                    subtitle = if (status.questions.isEmpty()) {
+                        "No questions available"
+                    } else {
+                        "${status.questions.size} questions · ${status.questions.size * 45 / 60} min"
+                    },
+                    iconName = "help",
+                    accent = Color(0xFFFBBF24),
+                    done = status.drillDone,
+                    enabled = status.questions.isNotEmpty(),
+                    onClick = { runningQuiz = true },
+                )
+
+                Text(
+                    "Questions you have missed before come first; the rest are ones no attempt has covered yet.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 14.dp, bottom = 28.dp),
+                )
             }
-            Text("Daily Drill", style = MaterialTheme.typography.headlineMedium)
-        }
-
-        Column(modifier = Modifier.padding(horizontal = 18.dp)) {
-            Text(
-                when {
-                    !status.ready -> "Building today's set…"
-                    status.allDone -> "Done for today — come back tomorrow."
-                    else -> "${status.doneCount} of ${status.stepCount} done"
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (status.allDone) DoneGreen else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
-            LinearProgressIndicator(
-                progress = { status.doneCount / status.stepCount.toFloat() },
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            DrillStepCard(
-                index = 1,
-                title = "Recall",
-                subtitle = if (status.recallDone) "Nothing waiting" else "${status.cardsWaiting} cards waiting",
-                iconName = "stack",
-                accent = Color(0xFFC084FC),
-                done = status.recallDone,
-                enabled = true,
-                onClick = { onNavigate(ReviewRoute.ROUTE) },
-            )
-
-            DrillStepCard(
-                index = 2,
-                title = "Solve",
-                subtitle = when {
-                    !status.ready -> "Picking a problem…"
-                    status.problem == null -> "Whole bank solved"
-                    else -> status.problem.title
-                },
-                iconName = "chip",
-                accent = Color(0xFF60A5FA),
-                done = status.solveDone,
-                enabled = status.problem != null,
-                onClick = { status.problem?.let { onProblemClick(it.id) } },
-            )
-
-            DrillStepCard(
-                index = 3,
-                title = "Drill",
-                subtitle = if (status.questions.isEmpty()) {
-                    "No questions available"
-                } else {
-                    "${status.questions.size} questions · ${status.questions.size * 45 / 60} min"
-                },
-                iconName = "help",
-                accent = Color(0xFFFBBF24),
-                done = status.drillDone,
-                enabled = status.questions.isNotEmpty(),
-                onClick = { runningQuiz = true },
-            )
-
-            Text(
-                "Questions you have missed before come first; the rest are ones no attempt has covered yet.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 14.dp, bottom = 28.dp),
-            )
         }
     }
 }

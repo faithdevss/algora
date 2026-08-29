@@ -57,6 +57,7 @@ import com.algora.app.core.nav.SettingsRoute
 import com.algora.app.core.ui.components.resolveIcon
 import com.algora.app.core.ui.theme.Gradients
 import com.algora.app.core.ui.theme.LocalAccent
+import com.algora.app.core.ui.theme.ScreenGutter
 import com.algora.app.core.ui.theme.SpaceGrotesk
 import com.algora.app.feature.algorithms.AlgorithmsTopics
 import com.algora.app.feature.analysis.AnalysisTopics
@@ -121,7 +122,7 @@ fun HomeScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 18.dp),
+            .padding(horizontal = ScreenGutter),
     ) {
         Spacer(modifier = Modifier.height(6.dp))
 

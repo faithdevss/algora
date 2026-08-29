@@ -36,6 +36,7 @@ import com.algora.app.core.data.entitlement.TopicAccess
 import com.algora.app.core.data.entitlement.entitlementDataStore
 import com.algora.app.core.data.settings.SettingsRepository
 import com.algora.app.core.data.settings.settingsDataStore
+import com.algora.app.core.ui.theme.ScreenGutter
 import com.algora.app.core.ui.theme.SpaceGrotesk
 import com.algora.app.feature.premium.LockedTopicBody
 import com.algora.app.feature.topics.DetailHeader
@@ -102,7 +103,7 @@ fun SimulationDetailScreen(
                     simLabel(content.simulation),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 10.dp),
+                    modifier = Modifier.padding(start = ScreenGutter, end = ScreenGutter, top = 12.dp, bottom = 10.dp),
                 )
             }
             item {

@@ -16,13 +16,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -35,16 +32,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.algora.app.core.ui.components.CrossPromoApp
 import com.algora.app.core.ui.components.CrossPromoCard
+import com.algora.app.core.ui.components.ScreenHeader
+import com.algora.app.core.ui.theme.ScreenGutter
 import com.algora.app.core.ui.theme.SimColors
 
 @Composable
 fun SystemDesignScreen(primer: SystemDesignPrimer, onBack: () -> Unit, onComplete: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize()) {
-        Header(primer.title, onBack)
+        ScreenHeader(primer.title, onBack)
         LazyColumn(modifier = Modifier.weight(1f)) {
             item {
                 Text(
@@ -59,7 +57,7 @@ fun SystemDesignScreen(primer: SystemDesignPrimer, onBack: () -> Unit, onComplet
                 Text(
                     "Building Blocks",
                     style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 8.dp),
+                    modifier = Modifier.padding(start = ScreenGutter, end = ScreenGutter, top = 18.dp, bottom = 8.dp),
                 )
             }
             items(primer.concepts) { c -> ConceptCard(c) }
@@ -76,7 +74,7 @@ fun SystemDesignScreen(primer: SystemDesignPrimer, onBack: () -> Unit, onComplet
                 item {
                     CrossPromoCard(
                         promo = CrossPromoApp.Systa,
-                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 20.dp),
+                        modifier = Modifier.padding(start = ScreenGutter, end = ScreenGutter, bottom = 20.dp),
                     )
                 }
             }
@@ -171,27 +169,5 @@ private fun ConceptCard(c: SystemDesignConcept) {
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun Header(title: String, onBack: () -> Unit) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-            Text(
-                title,
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.Center,
-            )
-            Spacer(modifier = Modifier.size(48.dp))
-        }
-        HorizontalDivider()
     }
 }

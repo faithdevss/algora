@@ -15,10 +15,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -37,7 +35,10 @@ import com.algora.app.core.data.settings.SettingsRepository
 import com.algora.app.core.data.settings.bestCorrect
 import com.algora.app.core.data.settings.bestPercent
 import com.algora.app.core.data.settings.settingsDataStore
+import com.algora.app.core.ui.components.ScreenHeader
 import com.algora.app.core.ui.components.resolveIcon
+import com.algora.app.core.ui.theme.ScreenBottomInset
+import com.algora.app.core.ui.theme.ScreenGutter
 import com.algora.app.feature.interviewprep.quiz.QuizRegistry
 
 // Score bands mirror the results screen's 60% pass line.
@@ -67,42 +68,42 @@ fun QuizCatalogScreen(onQuizClick: (String) -> Unit, onBack: () -> Unit, modifie
     val attempts by settings.quizAttempts.collectAsState(initial = emptyMap())
     val today = System.currentTimeMillis() / 86_400_000L
 
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
-    ) {
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 4.dp)) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                }
-                Text("Quizzes", style = MaterialTheme.typography.headlineMedium)
+    Column(modifier = modifier.fillMaxSize()) {
+        ScreenHeader(title = "Quizzes", onBack = onBack)
+        LazyColumn(
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            contentPadding = PaddingValues(
+                start = ScreenGutter,
+                end = ScreenGutter,
+                top = 8.dp,
+                bottom = ScreenBottomInset,
+            ),
+        ) {
+            item {
+                Text(
+                    "${entries.size} timed sets — the clock auto-submits when it runs out",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 4.dp, bottom = 10.dp),
+                )
             }
-        }
-        item {
-            Text(
-                "${entries.size} timed sets — the clock auto-submits when it runs out",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 4.dp, bottom = 10.dp),
-            )
-        }
 
-        items(entries.size) { index ->
-            val (topicId, quiz) = entries[index]
-            val locked = TopicRegistry.find(topicId)?.isPremium == true
-            val history = attempts[topicId].orEmpty()
-            QuizRow(
-                title = quiz.title,
-                subtitle = "${quiz.questions.size} questions · ${quiz.timeLimitSeconds / 60} min",
-                description = quiz.description,
-                locked = locked,
-                history = history.takeIf { it.isNotEmpty() }?.let { h ->
-                    "Best ${h.bestCorrect}/${quiz.questions.size} · last ${relativeDay(h.first().day, today)}"
-                },
-                bestPercent = history.bestPercent,
-                onClick = { onQuizClick(topicId) },
-            )
+            items(entries.size) { index ->
+                val (topicId, quiz) = entries[index]
+                val locked = TopicRegistry.find(topicId)?.isPremium == true
+                val history = attempts[topicId].orEmpty()
+                QuizRow(
+                    title = quiz.title,
+                    subtitle = "${quiz.questions.size} questions · ${quiz.timeLimitSeconds / 60} min",
+                    description = quiz.description,
+                    locked = locked,
+                    history = history.takeIf { it.isNotEmpty() }?.let { h ->
+                        "Best ${h.bestCorrect}/${quiz.questions.size} · last ${relativeDay(h.first().day, today)}"
+                    },
+                    bestPercent = history.bestPercent,
+                    onClick = { onQuizClick(topicId) },
+                )
+            }
         }
     }
 }

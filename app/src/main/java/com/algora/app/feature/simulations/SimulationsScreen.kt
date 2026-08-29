@@ -52,6 +52,8 @@ import com.algora.app.core.ui.components.AdUnlockableLockIcon
 import com.algora.app.core.ui.components.CategorySearchField
 import com.algora.app.core.ui.components.LockAmber
 import com.algora.app.core.ui.components.resolveIcon
+import com.algora.app.core.ui.theme.ScreenBottomInset
+import com.algora.app.core.ui.theme.ScreenGutter
 import com.algora.app.core.ui.theme.SpaceGrotesk
 import com.algora.app.feature.topics.content.TopicContentProvider
 
@@ -151,7 +153,12 @@ fun SimulationsScreen(onTopicClick: (String) -> Unit, modifier: Modifier = Modif
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+        contentPadding = PaddingValues(
+            start = ScreenGutter,
+            end = ScreenGutter,
+            top = 8.dp,
+            bottom = ScreenBottomInset,
+        ),
     ) {
         item {
             Column(modifier = Modifier.padding(bottom = 10.dp)) {

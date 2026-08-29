@@ -19,7 +19,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.CheckCircle
@@ -52,6 +51,7 @@ import androidx.compose.foundation.horizontalScroll
 import com.algora.app.core.data.PrerequisiteGraph
 import com.algora.app.core.data.TopicRegistry
 import com.algora.app.core.ui.theme.LocalDarkTheme
+import com.algora.app.core.ui.theme.ScreenGutter
 import com.algora.app.core.ui.theme.SimColors
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CrossLink
@@ -68,6 +68,7 @@ import com.algora.app.core.data.progress.progressDataStore
 import com.algora.app.core.data.settings.SettingsRepository
 import com.algora.app.core.data.settings.settingsDataStore
 import com.algora.app.core.ui.components.DifficultyBadge
+import com.algora.app.core.ui.components.ScreenHeader
 import com.algora.app.core.ui.components.resolveIcon
 import com.algora.app.core.ui.theme.AlgoraCodeStyle
 import com.algora.app.core.ui.theme.SpaceGrotesk
@@ -138,7 +139,7 @@ private fun AdUnlockBanner(expiresAt: Long) {
         modifier = Modifier
             .fillMaxWidth()
             .background(RowLockAmber.copy(alpha = 0.13f))
-            .padding(horizontal = 16.dp, vertical = 7.dp),
+            .padding(horizontal = ScreenGutter, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -267,7 +268,7 @@ private fun TopicDetailContent(
                 item {
                     // bottom gap matches HowItWorksSection's 11.dp step spacing so the figure reads
                     // as the first card in that stack; the title already supplies the gap above.
-                    Box(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 11.dp)) {
+                    Box(modifier = Modifier.padding(start = ScreenGutter, end = ScreenGutter, bottom = 11.dp)) {
                         FigureCard(figure)
                     }
                 }
@@ -277,13 +278,13 @@ private fun TopicDetailContent(
             item { MathSection(content.formulas, content.notationKey) }
             item { SectionTitle("Technical Deep Dive") }
             items(content.codeBlocks.withIndex().toList()) { (index, block) ->
-                Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
+                Box(modifier = Modifier.padding(horizontal = ScreenGutter, vertical = 6.dp)) {
                     CodeBlockCard(block = block, initiallyExpanded = index == 0)
                 }
             }
             item { SectionTitle("Interactive Simulation") }
             item {
-                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                Box(modifier = Modifier.padding(horizontal = ScreenGutter)) {
                     SimulationHost(topicId = topicId, type = content.simulation)
                 }
             }
@@ -323,34 +324,21 @@ internal fun DetailHeader(
     isBookmarked: Boolean? = null,
     onToggleBookmark: () -> Unit = {},
 ) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.weight(1f),
-            )
-            if (isBookmarked != null) {
-                IconButton(onClick = onToggleBookmark) {
+    ScreenHeader(
+        title = title,
+        onBack = onBack,
+        trailing = isBookmarked?.let {
+            {
+                IconButton(onClick = onToggleBookmark, modifier = Modifier.size(36.dp)) {
                     Icon(
-                        if (isBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
-                        contentDescription = if (isBookmarked) "Remove bookmark" else "Bookmark",
-                        tint = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        if (it) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                        contentDescription = if (it) "Remove bookmark" else "Bookmark",
+                        tint = if (it) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-            } else {
-                Spacer(modifier = Modifier.size(48.dp))
             }
-        }
-        HorizontalDivider()
-    }
+        },
+    )
 }
 
 @Composable
@@ -358,7 +346,7 @@ private fun SectionTitle(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleLarge,
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 22.dp, bottom = 12.dp),
+        modifier = Modifier.padding(start = ScreenGutter, end = ScreenGutter, top = 22.dp, bottom = 12.dp),
     )
 }
 
@@ -426,7 +414,7 @@ private fun PrerequisitesSection(topicId: String, onTopicClick: (String) -> Unit
     val unlocks = PrerequisiteGraph.unlockedBy(topicId).mapNotNull { TopicRegistry.find(it) }
     if (prereqs.isEmpty() && unlocks.isEmpty()) return
 
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+    Column(modifier = Modifier.padding(horizontal = ScreenGutter, vertical = 4.dp)) {
         Text("Learning Path", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 12.dp))
         if (prereqs.isNotEmpty()) {
             PathRow(label = "Learn first", topics = prereqs, accent = MaterialTheme.colorScheme.primary, onTopicClick = onTopicClick)
@@ -474,7 +462,7 @@ private fun PathRow(
 // Cross-links to related topics, possibly in the other app mode (Phase 5 DSA ↔ AI bridges).
 @Composable
 private fun RelatedTopicsSection(links: List<CrossLink>, onTopicClick: (String) -> Unit) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+    Column(modifier = Modifier.padding(horizontal = ScreenGutter)) {
         Text("Related Topics", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 12.dp))
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             links.forEach { link ->
@@ -503,7 +491,7 @@ private fun HeroSection(topic: Topic, content: TopicContent) {
     val isDark = LocalDarkTheme.current
 
     Surface(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = ScreenGutter),
         shape = RoundedCornerShape(20.dp),
         color = accent.copy(alpha = if (isDark) 0.14f else 0.10f),
         border = BorderStroke(1.dp, accent.copy(alpha = 0.22f)),
@@ -554,7 +542,7 @@ private fun HeroSection(topic: Topic, content: TopicContent) {
 @Composable
 private fun HowItWorksSection(steps: List<StepCard>) {
     Column(
-        modifier = Modifier.padding(horizontal = 16.dp),
+        modifier = Modifier.padding(horizontal = ScreenGutter),
         verticalArrangement = Arrangement.spacedBy(11.dp),
     ) {
         steps.forEach { step ->
@@ -592,12 +580,12 @@ private fun HowItWorksSection(steps: List<StepCard>) {
 @Composable
 private fun MathSection(formulas: List<FormulaEntry>, notationKey: List<NotationEntry>) {
     Surface(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = ScreenGutter),
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
     ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
+        Column(modifier = Modifier.padding(horizontal = ScreenGutter, vertical = 6.dp)) {
             formulas.forEachIndexed { index, formula ->
                 Column(modifier = Modifier.padding(vertical = 12.dp)) {
                     // The mock's maths row is one flex line, but it only ever carried formulas as
@@ -644,7 +632,7 @@ private fun MathSection(formulas: List<FormulaEntry>, notationKey: List<Notation
 @Composable
 private fun ApplicationsSection(applications: List<ApplicationCard>) {
     Column(
-        modifier = Modifier.padding(horizontal = 16.dp),
+        modifier = Modifier.padding(horizontal = ScreenGutter),
         verticalArrangement = Arrangement.spacedBy(11.dp),
     ) {
         applications.forEach { app ->
@@ -680,7 +668,7 @@ private val TakeawayGreenBgLight = Color(0xFFE9F9EE)
 private fun TakeawaysSection(takeaways: List<String>) {
     val isDark = LocalDarkTheme.current
     Surface(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 22.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = ScreenGutter, vertical = 22.dp),
         shape = RoundedCornerShape(20.dp),
         color = if (isDark) TakeawayGreen.copy(alpha = 0.12f) else TakeawayGreenBgLight,
         border = BorderStroke(1.dp, TakeawayGreen.copy(alpha = 0.3f)),

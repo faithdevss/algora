@@ -20,12 +20,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.WorkspacePremium
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -52,7 +49,9 @@ import com.algora.app.core.billing.BillingProvider
 import com.algora.app.core.billing.BillingStatus
 import com.algora.app.core.data.entitlement.EntitlementRepository
 import com.algora.app.core.data.entitlement.entitlementDataStore
+import com.algora.app.core.ui.components.ScreenHeader
 import com.algora.app.core.ui.theme.Gradients
+import com.algora.app.core.ui.theme.ScreenGutter
 import com.algora.app.core.ui.theme.SpaceGrotesk
 
 // Ported from docs/design/Algora.dc.html's isPremium block (radii, gradients, paddings and the
@@ -110,12 +109,12 @@ fun PremiumScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            PremiumHeader(onBack = onBack)
+            ScreenHeader(title = "Go Premium", onBack = onBack)
 
             Column(
                 modifier = Modifier
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 18.dp, vertical = 16.dp),
+                    .padding(horizontal = ScreenGutter, vertical = 16.dp),
             ) {
                 PremiumHero(owned = owned)
 
@@ -162,33 +161,6 @@ fun PremiumScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }
-    }
-}
-
-// The mock's shared headerStyle (line 601): sticky row, 36dp back button, centred title offset by
-// the button width so it stays optically centred.
-@Composable
-private fun PremiumHeader(onBack: () -> Unit) {
-    Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-            Text(
-                "Go Premium",
-                fontFamily = SpaceGrotesk,
-                fontWeight = FontWeight.Bold,
-                fontSize = 17.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.weight(1f).padding(end = 36.dp),
-            )
-        }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outline)
     }
 }
 

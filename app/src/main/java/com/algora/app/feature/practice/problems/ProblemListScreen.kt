@@ -1,10 +1,8 @@
 package com.algora.app.feature.practice.problems
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -16,11 +14,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -45,6 +41,9 @@ import com.algora.app.core.data.progress.progressDataStore
 import com.algora.app.core.ui.components.AccordionHeader
 import com.algora.app.core.ui.components.CategorySearchField
 import com.algora.app.core.ui.components.DifficultyBadge
+import com.algora.app.core.ui.components.ScreenHeader
+import com.algora.app.core.ui.theme.ScreenBottomInset
+import com.algora.app.core.ui.theme.ScreenGutter
 
 // Problem bank grouped by pattern, easy → hard inside each group, with a solved tick per row.
 // 100+ problems over 23 patterns is too long to scan flat, so groups collapse and a search field
@@ -81,95 +80,95 @@ fun ProblemListScreen(
     val groups = filterByPattern(filters, solvedIds)
     val shownCount = groups.sumOf { it.second.size }
 
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
-    ) {
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                }
-                Text("Problem Solving", style = MaterialTheme.typography.headlineMedium)
-            }
-        }
-        item {
-            Text(
-                if (filters.isActive) "$shownCount of $total shown · $solvedCount solved" else "$solvedCount of $total solved",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 4.dp, bottom = 10.dp),
-            )
-        }
-        item {
-            CategorySearchField(
-                query = query,
-                onQueryChange = { query = it },
-                placeholder = "Search problems…",
-            )
-        }
-        item {
-            FilterChips(
-                selected = difficultyNames,
-                unsolvedOnly = unsolvedOnly,
-                onToggleDifficulty = { name ->
-                    difficultyNames = if (name in difficultyNames) difficultyNames - name else difficultyNames + name
-                },
-                onToggleUnsolved = { unsolvedOnly = !unsolvedOnly },
-            )
-        }
-
-        if (groups.isEmpty()) {
+    Column(modifier = modifier.fillMaxSize()) {
+        ScreenHeader(title = "Problem Solving", onBack = onBack)
+        LazyColumn(
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            contentPadding = PaddingValues(
+                start = ScreenGutter,
+                end = ScreenGutter,
+                top = 8.dp,
+                bottom = ScreenBottomInset,
+            ),
+        ) {
             item {
                 Text(
-                    "No problems match these filters.",
+                    if (filters.isActive) "$shownCount of $total shown · $solvedCount solved" else "$solvedCount of $total solved",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 24.dp),
+                    modifier = Modifier.padding(start = 4.dp, bottom = 10.dp),
                 )
             }
-        }
-
-        groups.forEach { (pattern, problems) ->
-            val isLocked = pattern.isPremium && !isPremium && pattern.id !in adUnlocks
-            // A narrowed bank shows its hits directly — hiding them behind a tap would defeat the
-            // filter that just produced them. Locked groups never auto-open, filter match or not.
-            val isOpen = !isLocked && (filters.isActive || pattern.id in expanded)
-            item(key = "header_${pattern.id}") {
-                AccordionHeader(
-                    title = pattern.name,
-                    count = problems.size,
-                    subtitle = "${problems.count { it.id in solvedIds }} solved",
-                    accentColor = pattern.accentColor,
-                    isExpanded = isOpen,
-                    locked = isLocked,
-                    modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
-                    onClick = {
-                        if (isLocked) {
-                            onGoPremium()
-                        } else {
-                            expanded = if (pattern.id in expanded) expanded - pattern.id else expanded + pattern.id
-                        }
+            item {
+                CategorySearchField(
+                    query = query,
+                    onQueryChange = { query = it },
+                    placeholder = "Search problems…",
+                )
+            }
+            item {
+                FilterChips(
+                    selected = difficultyNames,
+                    unsolvedOnly = unsolvedOnly,
+                    onToggleDifficulty = { name ->
+                        difficultyNames = if (name in difficultyNames) difficultyNames - name else difficultyNames + name
                     },
+                    onToggleUnsolved = { unsolvedOnly = !unsolvedOnly },
                 )
             }
-            if (isOpen) {
-                item(key = "blurb_${pattern.id}") {
+
+            if (groups.isEmpty()) {
+                item {
                     Text(
-                        pattern.blurb,
+                        "No problems match these filters.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 22.dp, top = 6.dp, bottom = 2.dp),
+                        modifier = Modifier.padding(top = 24.dp),
                     )
                 }
-                items(problems.size, key = { i -> problems[i].id }) { i ->
-                    val problem = problems[i]
-                    ProblemRow(
-                        problem = problem,
-                        accent = Color(pattern.accentColor),
-                        solved = problem.id in solvedIds,
-                        onClick = { onProblemClick(problem.id) },
+            }
+
+            groups.forEach { (pattern, problems) ->
+                val isLocked = pattern.isPremium && !isPremium && pattern.id !in adUnlocks
+                // A narrowed bank shows its hits directly — hiding them behind a tap would defeat the
+                // filter that just produced them. Locked groups never auto-open, filter match or not.
+                val isOpen = !isLocked && (filters.isActive || pattern.id in expanded)
+                item(key = "header_${pattern.id}") {
+                    AccordionHeader(
+                        title = pattern.name,
+                        count = problems.size,
+                        subtitle = "${problems.count { it.id in solvedIds }} solved",
+                        accentColor = pattern.accentColor,
+                        isExpanded = isOpen,
+                        locked = isLocked,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
+                        onClick = {
+                            if (isLocked) {
+                                onGoPremium()
+                            } else {
+                                expanded = if (pattern.id in expanded) expanded - pattern.id else expanded + pattern.id
+                            }
+                        },
                     )
+                }
+                if (isOpen) {
+                    item(key = "blurb_${pattern.id}") {
+                        Text(
+                            pattern.blurb,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 22.dp, top = 6.dp, bottom = 2.dp),
+                        )
+                    }
+                    items(problems.size, key = { i -> problems[i].id }) { i ->
+                        val problem = problems[i]
+                        ProblemRow(
+                            problem = problem,
+                            accent = Color(pattern.accentColor),
+                            solved = problem.id in solvedIds,
+                            onClick = { onProblemClick(problem.id) },
+                        )
+                    }
                 }
             }
         }

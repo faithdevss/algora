@@ -12,13 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -42,6 +37,7 @@ import com.algora.app.core.data.TopicRegistry
 import com.algora.app.core.data.settings.SettingsRepository
 import com.algora.app.core.data.settings.SrsCard
 import com.algora.app.core.data.settings.settingsDataStore
+import com.algora.app.core.ui.components.ScreenHeader
 import com.algora.app.core.ui.theme.SimColors
 import com.algora.app.core.ui.theme.SpaceGrotesk
 import com.algora.app.feature.topics.content.TopicContentProvider
@@ -151,7 +147,7 @@ fun ReviewScreen(onBack: () -> Unit) {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Header(onBack)
+        ScreenHeader("Flashcards", onBack)
 
         val cards = queue
         when {
@@ -336,27 +332,5 @@ private fun CenterMessage(text: String) {
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(32.dp),
         )
-    }
-}
-
-@Composable
-private fun Header(onBack: () -> Unit) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-            Text(
-                "Flashcards",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.Center,
-            )
-            Spacer(modifier = Modifier.size(48.dp))
-        }
-        HorizontalDivider()
     }
 }

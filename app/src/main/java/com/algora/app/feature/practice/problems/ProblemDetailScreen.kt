@@ -16,12 +16,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -48,8 +46,10 @@ import com.algora.app.core.data.model.Topic
 import com.algora.app.core.data.progress.ProgressRepository
 import com.algora.app.core.data.progress.progressDataStore
 import com.algora.app.core.ui.components.DifficultyBadge
+import com.algora.app.core.ui.components.ScreenHeader
 import com.algora.app.core.ui.theme.IBMPlexMono
-import com.algora.app.core.ui.theme.SpaceGrotesk
+import com.algora.app.core.ui.theme.ScreenBottomInset
+import com.algora.app.core.ui.theme.ScreenGutter
 import com.algora.app.feature.premium.LockedTopicBody
 import com.algora.app.feature.topics.CodeBlockCard
 import com.algora.app.feature.topics.DetailHeader
@@ -116,190 +116,192 @@ fun ProblemDetailScreen(
     var hintsShown by remember(problemId) { mutableIntStateOf(0) }
     var approachShown by remember(problemId) { mutableStateOf(false) }
 
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+    Column(modifier = modifier.fillMaxSize()) {
+        ScreenHeader(title = problem.title, onBack = onBack)
+        LazyColumn(
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            contentPadding = PaddingValues(
+                start = ScreenGutter,
+                end = ScreenGutter,
+                top = 8.dp,
+                bottom = ScreenBottomInset,
+            ),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            // The title moved up into the fixed header, so what is left here is the problem's
+            // pattern and difficulty — the metadata the header has no room for.
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier.background(accent.copy(alpha = 0.14f), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                    ) {
+                        Text(patternName, style = MaterialTheme.typography.labelSmall, color = accent)
+                    }
+                    Spacer(modifier = Modifier.size(8.dp))
+                    DifficultyBadge(problem.difficulty)
                 }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(problem.title, style = MaterialTheme.typography.headlineSmall, fontFamily = SpaceGrotesk)
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 5.dp)) {
-                        Box(
-                            modifier = Modifier.background(accent.copy(alpha = 0.14f), RoundedCornerShape(6.dp))
-                                .padding(horizontal = 8.dp, vertical = 3.dp),
-                        ) {
-                            Text(patternName, style = MaterialTheme.typography.labelSmall, color = accent)
+            }
+
+            item {
+                SectionCard(title = "Problem", accent = accent) {
+                    Text(problem.prompt, style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+
+            if (problem.examples.isNotEmpty()) {
+                item {
+                    SectionCard(title = "Examples", accent = accent) {
+                        problem.examples.forEachIndexed { index, example ->
+                            if (index > 0) Spacer(modifier = Modifier.size(12.dp))
+                            Text(
+                                "Input:  ${example.input}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontFamily = IBMPlexMono,
+                            )
+                            Text(
+                                "Output: ${example.output}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontFamily = IBMPlexMono,
+                                color = accent,
+                            )
+                            if (example.note.isNotEmpty()) {
+                                Text(
+                                    example.note,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 2.dp),
+                                )
+                            }
                         }
-                        Spacer(modifier = Modifier.size(8.dp))
-                        DifficultyBadge(problem.difficulty)
                     }
                 }
             }
-        }
 
-        item {
-            SectionCard(title = "Problem", accent = accent) {
-                Text(problem.prompt, style = MaterialTheme.typography.bodyLarge)
+            // Placed before the hints on purpose: if you cannot start at all, the gap is knowledge, not
+            // a missing nudge. Each row opens the topic that teaches it.
+            if (problem.prerequisites.isNotEmpty()) {
+                item {
+                    SectionCard(title = "Knowledge you need", accent = accent) {
+                        Text(
+                            "Tap any of these to study it before solving.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 10.dp),
+                        )
+                        problem.prerequisites.forEach { prereq ->
+                            PrereqRow(prereq = prereq, onClick = { onOpenTopic(prereq.topicId) })
+                        }
+                    }
+                }
             }
-        }
 
-        if (problem.examples.isNotEmpty()) {
+            if (problem.constraints.isNotEmpty()) {
+                item {
+                    SectionCard(title = "Constraints", accent = accent) {
+                        problem.constraints.forEach { line -> BulletLine(line) }
+                    }
+                }
+            }
+
+            // Hints reveal one at a time; each is a smaller nudge than the approach below it.
             item {
-                SectionCard(title = "Examples", accent = accent) {
-                    problem.examples.forEachIndexed { index, example ->
-                        if (index > 0) Spacer(modifier = Modifier.size(12.dp))
+                SectionCard(title = "Hints", accent = accent) {
+                    if (hintsShown == 0) {
                         Text(
-                            "Input:  ${example.input}",
+                            "Stuck? Take the smallest nudge first — ${problem.hints.size} hints available.",
                             style = MaterialTheme.typography.bodyMedium,
-                            fontFamily = IBMPlexMono,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        Text(
-                            "Output: ${example.output}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontFamily = IBMPlexMono,
-                            color = accent,
-                        )
-                        if (example.note.isNotEmpty()) {
+                    }
+                    problem.hints.take(hintsShown).forEachIndexed { index, hint ->
+                        Row(modifier = Modifier.padding(top = if (index == 0) 0.dp else 10.dp)) {
                             Text(
-                                example.note,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                "${index + 1}",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = accent,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(end = 10.dp),
+                            )
+                            Text(hint, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                    if (hintsShown < problem.hints.size) {
+                        OutlinedButton(
+                            onClick = { hintsShown++ },
+                            modifier = Modifier.padding(top = 10.dp),
+                        ) {
+                            Text(if (hintsShown == 0) "Show first hint" else "Next hint (${hintsShown + 1}/${problem.hints.size})")
+                        }
+                    }
+                }
+            }
+
+            item {
+                SectionCard(title = "Approach", accent = accent) {
+                    if (approachShown) {
+                        problem.approach.forEachIndexed { index, step ->
+                            Row(modifier = Modifier.padding(top = if (index == 0) 0.dp else 9.dp)) {
+                                Text(
+                                    "${index + 1}.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = accent,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(end = 8.dp),
+                                )
+                                Text(step, style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                        Spacer(modifier = Modifier.size(12.dp))
+                        ComplexityLine("Time", problem.timeComplexity, accent)
+                        ComplexityLine("Space", problem.spaceComplexity, accent)
+                    } else {
+                        OutlinedButton(onClick = { approachShown = true }) { Text("Show approach & complexity") }
+                    }
+                }
+            }
+
+            // Collapsed by default — CodeBlockCard's own expander doubles as the "show solution" gate.
+            item {
+                CodeBlockCard(
+                    CodeBlock(
+                        title = "Solution — tap to reveal",
+                        accentColor = ProblemRegistry.pattern(problem.patternId)?.accentColor ?: 0xFF3B82F6,
+                        code = problem.solutionCode,
+                    ),
+                )
+            }
+
+            item {
+                Button(
+                    onClick = { scope.launch { repository.setProblemSolved(problem.id, !solved) } },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (solved) MaterialTheme.colorScheme.surfaceVariant else accent,
+                        contentColor = if (solved) MaterialTheme.colorScheme.onSurfaceVariant else Color.White,
+                    ),
+                ) {
+                    Text(if (solved) "Solved — tap to undo" else "Mark as solved")
+                }
+            }
+
+            val linkedId = problem.linkedTopicId
+            if (linkedId != null) {
+                item {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().clickable { onOpenTopic(linkedId) },
+                        shape = RoundedCornerShape(14.dp),
+                        color = accent.copy(alpha = 0.10f),
+                        border = BorderStroke(1.dp, accent.copy(alpha = 0.35f)),
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Text("Study the pattern", style = MaterialTheme.typography.labelMedium, color = accent)
+                            Text(
+                                problem.linkedTopicLabel ?: linkedId,
+                                style = MaterialTheme.typography.titleMedium,
                                 modifier = Modifier.padding(top = 2.dp),
                             )
                         }
-                    }
-                }
-            }
-        }
-
-        // Placed before the hints on purpose: if you cannot start at all, the gap is knowledge, not
-        // a missing nudge. Each row opens the topic that teaches it.
-        if (problem.prerequisites.isNotEmpty()) {
-            item {
-                SectionCard(title = "Knowledge you need", accent = accent) {
-                    Text(
-                        "Tap any of these to study it before solving.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 10.dp),
-                    )
-                    problem.prerequisites.forEach { prereq ->
-                        PrereqRow(prereq = prereq, onClick = { onOpenTopic(prereq.topicId) })
-                    }
-                }
-            }
-        }
-
-        if (problem.constraints.isNotEmpty()) {
-            item {
-                SectionCard(title = "Constraints", accent = accent) {
-                    problem.constraints.forEach { line -> BulletLine(line) }
-                }
-            }
-        }
-
-        // Hints reveal one at a time; each is a smaller nudge than the approach below it.
-        item {
-            SectionCard(title = "Hints", accent = accent) {
-                if (hintsShown == 0) {
-                    Text(
-                        "Stuck? Take the smallest nudge first — ${problem.hints.size} hints available.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                problem.hints.take(hintsShown).forEachIndexed { index, hint ->
-                    Row(modifier = Modifier.padding(top = if (index == 0) 0.dp else 10.dp)) {
-                        Text(
-                            "${index + 1}",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = accent,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(end = 10.dp),
-                        )
-                        Text(hint, style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-                if (hintsShown < problem.hints.size) {
-                    OutlinedButton(
-                        onClick = { hintsShown++ },
-                        modifier = Modifier.padding(top = 10.dp),
-                    ) {
-                        Text(if (hintsShown == 0) "Show first hint" else "Next hint (${hintsShown + 1}/${problem.hints.size})")
-                    }
-                }
-            }
-        }
-
-        item {
-            SectionCard(title = "Approach", accent = accent) {
-                if (approachShown) {
-                    problem.approach.forEachIndexed { index, step ->
-                        Row(modifier = Modifier.padding(top = if (index == 0) 0.dp else 9.dp)) {
-                            Text(
-                                "${index + 1}.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = accent,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(end = 8.dp),
-                            )
-                            Text(step, style = MaterialTheme.typography.bodyMedium)
-                        }
-                    }
-                    Spacer(modifier = Modifier.size(12.dp))
-                    ComplexityLine("Time", problem.timeComplexity, accent)
-                    ComplexityLine("Space", problem.spaceComplexity, accent)
-                } else {
-                    OutlinedButton(onClick = { approachShown = true }) { Text("Show approach & complexity") }
-                }
-            }
-        }
-
-        // Collapsed by default — CodeBlockCard's own expander doubles as the "show solution" gate.
-        item {
-            CodeBlockCard(
-                CodeBlock(
-                    title = "Solution — tap to reveal",
-                    accentColor = ProblemRegistry.pattern(problem.patternId)?.accentColor ?: 0xFF3B82F6,
-                    code = problem.solutionCode,
-                ),
-            )
-        }
-
-        item {
-            Button(
-                onClick = { scope.launch { repository.setProblemSolved(problem.id, !solved) } },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (solved) MaterialTheme.colorScheme.surfaceVariant else accent,
-                    contentColor = if (solved) MaterialTheme.colorScheme.onSurfaceVariant else Color.White,
-                ),
-            ) {
-                Text(if (solved) "Solved — tap to undo" else "Mark as solved")
-            }
-        }
-
-        val linkedId = problem.linkedTopicId
-        if (linkedId != null) {
-            item {
-                Surface(
-                    modifier = Modifier.fillMaxWidth().clickable { onOpenTopic(linkedId) },
-                    shape = RoundedCornerShape(14.dp),
-                    color = accent.copy(alpha = 0.10f),
-                    border = BorderStroke(1.dp, accent.copy(alpha = 0.35f)),
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Text("Study the pattern", style = MaterialTheme.typography.labelMedium, color = accent)
-                        Text(
-                            problem.linkedTopicLabel ?: linkedId,
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(top = 2.dp),
-                        )
                     }
                 }
             }
@@ -386,10 +388,12 @@ private fun ComplexityLine(label: String, value: String, accent: Color) {
 
 @Composable
 private fun MissingProblem(onBack: () -> Unit, modifier: Modifier = Modifier) {
-    Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
-        IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-        }
-        Text("Problem not found", style = MaterialTheme.typography.titleMedium)
+    Column(modifier = modifier.fillMaxSize()) {
+        ScreenHeader(title = "Problem", onBack = onBack)
+        Text(
+            "Problem not found",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = ScreenGutter, vertical = 16.dp),
+        )
     }
 }

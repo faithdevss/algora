@@ -47,6 +47,7 @@ import com.algora.app.core.nav.ReviewRoute
 import com.algora.app.core.nav.Screen
 import com.algora.app.core.ui.components.resolveIcon
 import com.algora.app.core.ui.theme.Gradients
+import com.algora.app.core.ui.theme.ScreenGutter
 import com.algora.app.core.ui.theme.SpaceGrotesk
 import com.algora.app.feature.interviewprep.quiz.QuizRegistry
 import com.algora.app.feature.practice.daily.rememberDrillStatus
@@ -133,7 +134,7 @@ fun PracticeScreen(onNavigate: (String) -> Unit, modifier: Modifier = Modifier) 
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 18.dp),
+            .padding(horizontal = ScreenGutter),
     ) {
         Spacer(modifier = Modifier.height(6.dp))
 
