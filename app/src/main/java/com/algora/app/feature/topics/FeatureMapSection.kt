@@ -1783,7 +1783,7 @@ private fun FeatureGrid(grid: FmGrid) {
                                 Canvas(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
                                     drawRoundRect(
                                         color = WindowColor,
-                                        style = Stroke(width = 4f),
+                                        style = Stroke(width = 4.dp.toPx()),
                                         cornerRadius = CornerRadius(6f, 6f),
                                     )
                                 }
@@ -1848,8 +1848,8 @@ private fun SceneCanvas(scene: FmScene, modifier: Modifier = Modifier) {
             if (scene.gridCells > 0) {
                 val step = side / scene.gridCells
                 (1 until scene.gridCells).forEach { i ->
-                    drawLine(gridColor, Offset(originX + i * step, 0f), Offset(originX + i * step, side), strokeWidth = 1.5f)
-                    drawLine(gridColor, Offset(originX, i * step), Offset(originX + side, i * step), strokeWidth = 1.5f)
+                    drawLine(gridColor, Offset(originX + i * step, 0f), Offset(originX + i * step, side), strokeWidth = 1.5.dp.toPx())
+                    drawLine(gridColor, Offset(originX, i * step), Offset(originX + side, i * step), strokeWidth = 1.5.dp.toPx())
                 }
             }
 
@@ -1966,8 +1966,8 @@ private fun FeaturePlot(plot: FmPlot, modifier: Modifier = Modifier) {
             fun px(x: Float) = (x - plot.xRange.start) / xSpan * size.width
             fun py(y: Float) = size.height - (y - plot.yRange.start) / ySpan * size.height
 
-            drawLine(axis, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 1.5f)
-            if (0f in plot.yRange) drawLine(axis, Offset(0f, py(0f)), Offset(size.width, py(0f)), strokeWidth = 1f)
+            drawLine(axis, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 1.5.dp.toPx())
+            if (0f in plot.yRange) drawLine(axis, Offset(0f, py(0f)), Offset(size.width, py(0f)), strokeWidth = 1.dp.toPx())
 
             plot.curves.forEach { curve ->
                 curve.points.zipWithNext().forEach { (a, b) ->
@@ -1975,7 +1975,7 @@ private fun FeaturePlot(plot: FmPlot, modifier: Modifier = Modifier) {
                         curve.color,
                         Offset(px(a.first), py(a.second)),
                         Offset(px(b.first), py(b.second)),
-                        strokeWidth = 3f,
+                        strokeWidth = 3.dp.toPx(),
                     )
                 }
             }

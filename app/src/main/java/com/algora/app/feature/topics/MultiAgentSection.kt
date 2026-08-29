@@ -890,7 +890,7 @@ private fun MaPlotCanvas(plot: MaPlot, modifier: Modifier = Modifier) {
                 }
                 if (0f in plot.yRange) {
                     val zero = place(0, 0f)
-                    drawLine(axisColor, Offset(0f, zero.y), Offset(size.width, zero.y), strokeWidth = 1.5f)
+                    drawLine(axisColor, Offset(0f, zero.y), Offset(size.width, zero.y), strokeWidth = 1.5.dp.toPx())
                 }
                 plot.curves.forEach { curve ->
                     curve.values.forEachIndexed { i, value ->
@@ -899,7 +899,7 @@ private fun MaPlotCanvas(plot: MaPlot, modifier: Modifier = Modifier) {
                             color = curve.color,
                             start = place(i - 1, curve.values[i - 1]),
                             end = place(i, value),
-                            strokeWidth = 4f,
+                            strokeWidth = 4.dp.toPx(),
                         )
                     }
                 }
@@ -938,7 +938,7 @@ private fun MaBars(bar: MaBar, modifier: Modifier = Modifier) {
         Canvas(modifier = Modifier.fillMaxWidth().height(46.dp).padding(top = 4.dp)) {
             val slot = size.width / bar.values.size
             val mid = size.height / 2f
-            drawLine(axis, Offset(0f, mid), Offset(size.width, mid), strokeWidth = 1.5f)
+            drawLine(axis, Offset(0f, mid), Offset(size.width, mid), strokeWidth = 1.5.dp.toPx())
             bar.values.forEachIndexed { index, value ->
                 val height = (abs(value) / peak) * (size.height / 2f - 2f)
                 drawRoundRect(

@@ -1263,17 +1263,17 @@ private fun GsPlotCanvas(plot: GsPlot, modifier: Modifier = Modifier) {
                 }
                 if (0f in plot.yRange) {
                     val zero = place(0, 0f)
-                    drawLine(axisColor, Offset(0f, zero.y), Offset(size.width, zero.y), strokeWidth = 1.5f)
+                    drawLine(axisColor, Offset(0f, zero.y), Offset(size.width, zero.y), strokeWidth = 1.5.dp.toPx())
                 }
                 plot.curves.forEach { curve ->
                     curve.values.forEachIndexed { i, value ->
-                        drawCircle(curve.color, radius = 5f, center = place(i, value))
+                        drawCircle(curve.color, radius = 5.dp.toPx(), center = place(i, value))
                         if (i == 0) return@forEachIndexed
                         drawLine(
                             color = curve.color,
                             start = place(i - 1, curve.values[i - 1]),
                             end = place(i, value),
-                            strokeWidth = 4f,
+                            strokeWidth = 4.dp.toPx(),
                         )
                     }
                 }
@@ -1312,7 +1312,7 @@ private fun GsBars(bar: GsBar, modifier: Modifier = Modifier) {
         Canvas(modifier = Modifier.fillMaxWidth().height(46.dp).padding(top = 4.dp)) {
             val slot = size.width / bar.values.size
             val mid = size.height / 2f
-            drawLine(axis, Offset(0f, mid), Offset(size.width, mid), strokeWidth = 1.5f)
+            drawLine(axis, Offset(0f, mid), Offset(size.width, mid), strokeWidth = 1.5.dp.toPx())
             bar.values.forEachIndexed { index, value ->
                 val height = (abs(value) / peak) * (size.height / 2f - 2f)
                 drawRoundRect(

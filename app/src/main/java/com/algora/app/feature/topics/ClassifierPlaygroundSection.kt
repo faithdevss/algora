@@ -233,8 +233,8 @@ private fun ClassifierCanvas(
         fun px(x: Float): Float = (x - lo) / (hi - lo) * size.width
         fun py(y: Float): Float = size.height - (y - lo) / (hi - lo) * size.height
 
-        drawLine(gridColor, Offset(px(0f), 0f), Offset(px(0f), size.height), strokeWidth = 1f)
-        drawLine(gridColor, Offset(0f, py(0f)), Offset(size.width, py(0f)), strokeWidth = 1f)
+        drawLine(gridColor, Offset(px(0f), 0f), Offset(px(0f), size.height), strokeWidth = 1.dp.toPx())
+        drawLine(gridColor, Offset(0f, py(0f)), Offset(size.width, py(0f)), strokeWidth = 1.dp.toPx())
 
         // A line where w₁·x + w₂·y + b = level.
         fun drawBoundary(level: Float, color: Color, width: Float) {

@@ -434,7 +434,7 @@ private fun ArrayCanvas(slots: List<Int?>, size: Int, markIndex: Int?, markKind:
                     topLeft = Offset(left, 0f),
                     size = Size(cellPx, cellPx),
                     cornerRadius = corner,
-                    style = Stroke(width = 2f, pathEffect = dashed),
+                    style = Stroke(width = 2.dp.toPx(), pathEffect = dashed),
                 )
             } else {
                 drawRoundRect(
@@ -454,7 +454,7 @@ private fun ArrayCanvas(slots: List<Int?>, size: Int, markIndex: Int?, markKind:
                         topLeft = Offset(left, 0f),
                         size = Size(cellPx, cellPx),
                         cornerRadius = corner,
-                        style = Stroke(width = 4f),
+                        style = Stroke(width = 4.dp.toPx()),
                     )
                 }
             }

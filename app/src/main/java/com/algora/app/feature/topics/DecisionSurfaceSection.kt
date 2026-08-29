@@ -442,7 +442,7 @@ private const val GRID = 42
 @Composable
 private fun SurfaceCanvas(points: List<ClassPoint>, result: SurfaceResult) {
     Canvas(modifier = Modifier.fillMaxWidth().aspectRatio(1f)) {
-        val pad = 8f
+        val pad = 8.dp.toPx()
         val xs = points.map { it.x }
         val ys = points.map { it.y }
         val margin = 0.6f
@@ -492,7 +492,7 @@ private fun SurfaceCanvas(points: List<ClassPoint>, result: SurfaceResult) {
                     color = EllipseColor,
                     start = Offset(sx(a.first), sy(a.second)),
                     end = Offset(sx(b.first), sy(b.second)),
-                    strokeWidth = 3f,
+                    strokeWidth = 3.dp.toPx(),
                 )
             }
         }
@@ -502,15 +502,15 @@ private fun SurfaceCanvas(points: List<ClassPoint>, result: SurfaceResult) {
             val cy = sy(p.y)
             drawCircle(
                 color = if (p.label > 0) PositiveFill else NegativeFill,
-                radius = 8f,
+                radius = 8.dp.toPx(),
                 center = Offset(cx, cy),
             )
-            drawCircle(color = Color.White, radius = 8f, center = Offset(cx, cy), style = Stroke(width = 1.5f))
+            drawCircle(color = Color.White, radius = 8.dp.toPx(), center = Offset(cx, cy), style = Stroke(width = 1.5.dp.toPx()))
             if (i in result.ringed) {
-                drawCircle(color = SupportRing, radius = 13f, center = Offset(cx, cy), style = Stroke(width = 3f))
+                drawCircle(color = SupportRing, radius = 13.dp.toPx(), center = Offset(cx, cy), style = Stroke(width = 3.dp.toPx()))
             }
             if (i in result.errors) {
-                drawCircle(color = ErrorRing, radius = 17f, center = Offset(cx, cy), style = Stroke(width = 2.5f))
+                drawCircle(color = ErrorRing, radius = 17.dp.toPx(), center = Offset(cx, cy), style = Stroke(width = 2.5.dp.toPx()))
             }
         }
     }

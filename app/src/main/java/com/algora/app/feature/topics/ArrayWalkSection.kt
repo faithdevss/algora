@@ -6011,7 +6011,7 @@ private fun LoopBackArc(edge: Pair<Int, Int>, count: Int) {
             moveTo(from, 0f)
             cubicTo(from, size.height * 1.6f, to, size.height * 1.6f, to, 0f)
         }
-        drawPath(path, color = stroke, style = Stroke(width = 3f))
+        drawPath(path, color = stroke, style = Stroke(width = 3.dp.toPx()))
         // Arrowhead pointing back up into the target cell.
         drawPath(
             Path().apply {

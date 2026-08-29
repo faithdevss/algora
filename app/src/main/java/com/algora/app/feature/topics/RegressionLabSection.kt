@@ -1275,7 +1275,7 @@ private fun LabCanvas(points: List<LabPoint>, result: LabResult) {
     val gridColor = MaterialTheme.colorScheme.outline
 
     Canvas(modifier = Modifier.fillMaxWidth().height(210.dp)) {
-        val pad = 14f
+        val pad = 14.dp.toPx()
         // Curve x's are included, not just the points'. The regression topics never needed this —
         // their curves are sampled across the data's own range — but a forecast is by definition
         // drawn past the last observation, and without this the whole forecast fell off the canvas.
@@ -1303,11 +1303,11 @@ private fun LabCanvas(points: List<LabPoint>, result: LabResult) {
 
         for (i in 0..4) {
             val gy = pad + i * (size.height - 2 * pad) / 4
-            drawLine(gridColor, Offset(pad, gy), Offset(size.width - pad, gy), strokeWidth = 1f)
+            drawLine(gridColor, Offset(pad, gy), Offset(size.width - pad, gy), strokeWidth = 1.dp.toPx())
         }
 
         result.curves.forEach { curve ->
-            val effect = if (curve.dashed) PathEffect.dashPathEffect(floatArrayOf(12f, 10f)) else null
+            val effect = if (curve.dashed) PathEffect.dashPathEffect(floatArrayOf(12.dp.toPx(), 10.dp.toPx())) else null
             // Drawn segment by segment, with anything off-scale skipped rather than clipped to the
             // edge — a clipped spike would read as a real feature of the fit.
             curve.points.zipWithNext().forEach { (a, b) ->
@@ -1336,9 +1336,9 @@ private fun LabCanvas(points: List<LabPoint>, result: LabResult) {
             if (highlighted) {
                 drawCircle(
                     color = LabHighlight,
-                    radius = 12f,
+                    radius = 12.dp.toPx(),
                     center = Offset(xOf(p.x), yOf(p.y)),
-                    style = Stroke(width = 2f),
+                    style = Stroke(width = 2.dp.toPx()),
                 )
             }
         }

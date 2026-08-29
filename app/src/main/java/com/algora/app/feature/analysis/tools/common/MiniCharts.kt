@@ -37,7 +37,7 @@ fun MiniLineChart(
         if (curves.isEmpty() || maxN < 1) return@Canvas
         val maxValue = curves.maxOf { it.fn(maxN.toDouble()) }.coerceAtLeast(1.0)
         val logMax = ln(maxValue + 1)
-        val padding = 8f
+        val padding = 8.dp.toPx()
 
         fun xOf(n: Int): Float = padding + (n.toFloat() / maxN) * (size.width - 2 * padding)
         fun yOf(value: Double): Float {
@@ -46,8 +46,8 @@ fun MiniLineChart(
             return size.height - padding - normalized.coerceIn(0f, 1f) * (size.height - 2 * padding)
         }
 
-        drawLine(gridColor, Offset(padding, size.height - padding), Offset(size.width - padding, size.height - padding), strokeWidth = 2f)
-        drawLine(gridColor, Offset(padding, padding), Offset(padding, size.height - padding), strokeWidth = 2f)
+        drawLine(gridColor, Offset(padding, size.height - padding), Offset(size.width - padding, size.height - padding), strokeWidth = 2.dp.toPx())
+        drawLine(gridColor, Offset(padding, padding), Offset(padding, size.height - padding), strokeWidth = 2.dp.toPx())
 
         val sampleStep = (maxN / 60).coerceAtLeast(1)
         curves.forEach { curve ->
@@ -65,7 +65,7 @@ fun MiniLineChart(
                 }
                 n += sampleStep
             }
-            drawPath(path, color = curve.color, style = Stroke(width = 3f))
+            drawPath(path, color = curve.color, style = Stroke(width = 3.dp.toPx()))
         }
     }
 }
@@ -92,7 +92,7 @@ fun MiniBarChart(
         if (bars.isEmpty()) return@Canvas
         val maxValue = bars.maxOf { it.value }.coerceAtLeast(1.0)
         val logMax = ln(maxValue + 1)
-        val padding = 8f
+        val padding = 8.dp.toPx()
         val slot = (size.width - 2 * padding) / bars.size
         val barWidth = slot * 0.6f
 
@@ -102,7 +102,7 @@ fun MiniBarChart(
         val axisY = size.height - padding - labelHeight - 4f
         val plotHeight = axisY - padding
 
-        drawLine(axisColor, Offset(padding, axisY), Offset(size.width - padding, axisY), strokeWidth = 2f)
+        drawLine(axisColor, Offset(padding, axisY), Offset(size.width - padding, axisY), strokeWidth = 2.dp.toPx())
 
         val widest = labels.maxOf { it.size.width }.toFloat()
         val stride = ceil((widest + 6f) / slot).toInt().coerceAtLeast(1)

@@ -921,15 +921,16 @@ private fun SceneCanvas(scene: Scene) {
             when (scene) {
                 is Scene.Cart -> {
                     val groundY = size.height * 0.72f
-                    drawLine(trackColor, Offset(16f, groundY), Offset(size.width - 16f, groundY), strokeWidth = 3f)
-                    val cx = size.width / 2f + (scene.x / CP_X_LIMIT).toFloat() * (size.width / 2f - 60f)
-                    val cartW = 60f
-                    val cartH = 26f
+                    val inset = 16.dp.toPx()
+                    drawLine(trackColor, Offset(inset, groundY), Offset(size.width - inset, groundY), strokeWidth = 3.dp.toPx())
+                    val cx = size.width / 2f + (scene.x / CP_X_LIMIT).toFloat() * (size.width / 2f - 60.dp.toPx())
+                    val cartW = 60.dp.toPx()
+                    val cartH = 26.dp.toPx()
                     drawRoundRect(
                         color = EnvBlue,
                         topLeft = Offset(cx - cartW / 2f, groundY - cartH),
                         size = Size(cartW, cartH),
-                        cornerRadius = CornerRadius(6f, 6f),
+                        cornerRadius = CornerRadius(6.dp.toPx(), 6.dp.toPx()),
                     )
                     val poleLen = size.height * 0.45f
                     val tip = Offset(
@@ -941,12 +942,12 @@ private fun SceneCanvas(scene: Scene) {
                         if (failing) EnvRed else EnvGreen,
                         Offset(cx, groundY - cartH),
                         tip,
-                        strokeWidth = 8f,
+                        strokeWidth = 8.dp.toPx(),
                     )
-                    drawCircle(EnvAmber, radius = 7f, center = tip)
+                    drawCircle(EnvAmber, radius = 7.dp.toPx(), center = tip)
                     scene.force?.let { f ->
                         val dir = if (f > 0) 1f else -1f
-                        drawLine(EnvViolet, Offset(cx, groundY + 14f), Offset(cx + dir * 34f, groundY + 14f), strokeWidth = 5f)
+                        drawLine(EnvViolet, Offset(cx, groundY + 14.dp.toPx()), Offset(cx + dir * 34.dp.toPx(), groundY + 14.dp.toPx()), strokeWidth = 5.dp.toPx())
                     }
                 }
 
@@ -956,27 +957,27 @@ private fun SceneCanvas(scene: Scene) {
                     val steps = 60
                     for (i in 0..steps) {
                         val p = MC_MIN_POS + (MC_MAX_POS - MC_MIN_POS) * i / steps
-                        val x = 16f + (i.toFloat() / steps) * (size.width - 32f)
-                        val y = size.height * (1f - heightAt(p).toFloat() * 0.8f) - 6f
+                        val x = 16.dp.toPx() + (i.toFloat() / steps) * (size.width - 32.dp.toPx())
+                        val y = size.height * (1f - heightAt(p).toFloat() * 0.8f) - 6.dp.toPx()
                         if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
                     }
-                    drawPath(path, trackColor, style = Stroke(width = 3f))
+                    drawPath(path, trackColor, style = Stroke(width = 3.dp.toPx()))
                     fun screenOf(p: Double): Offset {
                         val t = ((p - MC_MIN_POS) / (MC_MAX_POS - MC_MIN_POS)).toFloat()
-                        return Offset(16f + t * (size.width - 32f), size.height * (1f - heightAt(p).toFloat() * 0.8f) - 6f)
+                        return Offset(16.dp.toPx() + t * (size.width - 32.dp.toPx()), size.height * (1f - heightAt(p).toFloat() * 0.8f) - 6.dp.toPx())
                     }
                     val goal = screenOf(scene.goal)
-                    drawLine(EnvGreen, goal, Offset(goal.x, goal.y - 34f), strokeWidth = 3f)
+                    drawLine(EnvGreen, goal, Offset(goal.x, goal.y - 34.dp.toPx()), strokeWidth = 3.dp.toPx())
                     drawRoundRect(
                         EnvGreen,
-                        topLeft = Offset(goal.x, goal.y - 34f),
-                        size = Size(20f, 12f),
-                        cornerRadius = CornerRadius(2f, 2f),
+                        topLeft = Offset(goal.x, goal.y - 34.dp.toPx()),
+                        size = Size(20.dp.toPx(), 12.dp.toPx()),
+                        cornerRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx()),
                     )
                     val car = screenOf(scene.position)
-                    drawCircle(if (scene.position >= scene.goal) EnvGreen else EnvBlue, radius = 11f, center = Offset(car.x, car.y - 11f))
-                    val vLen = (scene.velocity / MC_MAX_SPEED).toFloat() * 40f
-                    drawLine(EnvAmber, Offset(car.x, car.y - 11f), Offset(car.x + vLen, car.y - 11f), strokeWidth = 4f)
+                    drawCircle(if (scene.position >= scene.goal) EnvGreen else EnvBlue, radius = 11.dp.toPx(), center = Offset(car.x, car.y - 11.dp.toPx()))
+                    val vLen = (scene.velocity / MC_MAX_SPEED).toFloat() * 40.dp.toPx()
+                    drawLine(EnvAmber, Offset(car.x, car.y - 11.dp.toPx()), Offset(car.x + vLen, car.y - 11.dp.toPx()), strokeWidth = 4.dp.toPx())
                 }
 
                 is Scene.Pendulum -> {
@@ -988,17 +989,17 @@ private fun SceneCanvas(scene: Scene) {
                         pivot.x + len * sin(scene.theta).toFloat(),
                         pivot.y - len * cos(scene.theta).toFloat(),
                     )
-                    drawCircle(trackColor, radius = len, center = pivot, style = Stroke(width = 1.5f))
+                    drawCircle(trackColor, radius = len, center = pivot, style = Stroke(width = 1.5.dp.toPx()))
                     val upright = abs(angleNorm(scene.theta)) < 0.25
-                    drawLine(if (upright) EnvGreen else EnvBlue, pivot, tip, strokeWidth = 8f)
-                    drawCircle(EnvAmber, radius = 10f, center = tip)
-                    drawCircle(bodyColor, radius = 5f, center = pivot)
+                    drawLine(if (upright) EnvGreen else EnvBlue, pivot, tip, strokeWidth = 8.dp.toPx())
+                    drawCircle(EnvAmber, radius = 10.dp.toPx(), center = tip)
+                    drawCircle(bodyColor, radius = 5.dp.toPx(), center = pivot)
                     val barW = (scene.torque / scene.torqueLimit).toFloat() * (size.width * 0.28f)
                     drawLine(
                         EnvViolet,
-                        Offset(size.width / 2f, size.height - 14f),
-                        Offset(size.width / 2f + barW, size.height - 14f),
-                        strokeWidth = 6f,
+                        Offset(size.width / 2f, size.height - 14.dp.toPx()),
+                        Offset(size.width / 2f + barW, size.height - 14.dp.toPx()),
+                        strokeWidth = 6.dp.toPx(),
                     )
                     val lay = textMeasurer.measure("torque ${"%.2f".format(scene.torque)} N·m", captionStyle)
                     drawText(lay, topLeft = Offset(12f, size.height - 30f))
@@ -1092,29 +1093,29 @@ private fun CurvePlot(spec: CurveSpec) {
                 .padding(8.dp),
         ) {
             Canvas(modifier = Modifier.fillMaxWidth().height(120.dp)) {
-                val padX = 26f
-                val padY = 12f
-                drawLine(axisColor, Offset(padX, size.height - padY), Offset(size.width - 8f, size.height - padY), strokeWidth = 2f)
-                drawLine(axisColor, Offset(padX, padY), Offset(padX, size.height - padY), strokeWidth = 2f)
+                val padX = 26.dp.toPx()
+                val padY = 12.dp.toPx()
+                drawLine(axisColor, Offset(padX, size.height - padY), Offset(size.width - 8.dp.toPx(), size.height - padY), strokeWidth = 2.dp.toPx())
+                drawLine(axisColor, Offset(padX, padY), Offset(padX, size.height - padY), strokeWidth = 2.dp.toPx())
                 spec.series.forEach { series ->
                     if (series.points.size < 2) {
                         series.points.forEachIndexed { i, v ->
-                            val x = padX + (i + 0.5f) / series.points.size * (size.width - padX - 12f)
+                            val x = padX + (i + 0.5f) / series.points.size * (size.width - padX - 12.dp.toPx())
                             val y = size.height - padY - (v / spec.yMax) * (size.height - 2 * padY)
-                            drawCircle(series.color, radius = 6f, center = Offset(x, y))
+                            drawCircle(series.color, radius = 6.dp.toPx(), center = Offset(x, y))
                         }
                         return@forEach
                     }
                     val path = Path()
                     series.points.forEachIndexed { i, v ->
-                        val x = padX + i.toFloat() / (series.points.size - 1) * (size.width - padX - 12f)
+                        val x = padX + i.toFloat() / (series.points.size - 1) * (size.width - padX - 12.dp.toPx())
                         val y = size.height - padY - (v / spec.yMax).coerceIn(0f, 1f) * (size.height - 2 * padY)
                         if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
                     }
-                    drawPath(path, series.color, style = Stroke(width = 3f))
+                    drawPath(path, series.color, style = Stroke(width = 3.dp.toPx()))
                 }
                 val lay = textMeasurer.measure(spec.xLabel, axisStyle)
-                drawText(lay, topLeft = Offset(padX + 4f, size.height - padY + 2f))
+                drawText(lay, topLeft = Offset(padX + 4.dp.toPx(), size.height - padY + 2.dp.toPx()))
             }
         }
         Row(modifier = Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {

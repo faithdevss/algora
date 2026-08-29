@@ -149,7 +149,7 @@ private fun RegressionCanvas(points: List<RegPoint>, slope: Float, intercept: Fl
     val gridColor = MaterialTheme.colorScheme.outline
 
     Canvas(modifier = Modifier.fillMaxWidth().height(200.dp)) {
-        val pad = 14f
+        val pad = 14.dp.toPx()
         val xs = points.map { it.x }
         val xMin = (xs.minOrNull() ?: 0f) - 0.3f
         val xMax = (xs.maxOrNull() ?: 1f) + 0.3f
@@ -168,18 +168,18 @@ private fun RegressionCanvas(points: List<RegPoint>, slope: Float, intercept: Fl
 
         for (i in 0..4) {
             val gy = pad + i * (size.height - 2 * pad) / 4
-            drawLine(gridColor, Offset(pad, gy), Offset(size.width - pad, gy), strokeWidth = 1f)
+            drawLine(gridColor, Offset(pad, gy), Offset(size.width - pad, gy), strokeWidth = 1.dp.toPx())
         }
 
         drawLine(
             color = FitColor,
             start = Offset(xOf(xMin), yOf(slope * xMin + intercept)),
             end = Offset(xOf(xMax), yOf(slope * xMax + intercept)),
-            strokeWidth = 6f,
+            strokeWidth = 6.dp.toPx(),
         )
 
         points.forEach { p ->
-            drawCircle(color = PointColor, radius = 7f, center = Offset(xOf(p.x), yOf(p.y)), alpha = 0.85f)
+            drawCircle(color = PointColor, radius = 7.dp.toPx(), center = Offset(xOf(p.x), yOf(p.y)), alpha = 0.85f)
         }
     }
 }

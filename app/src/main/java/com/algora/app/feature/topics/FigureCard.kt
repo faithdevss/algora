@@ -297,12 +297,12 @@ private fun GridFigure(shape: FigureShape.Grid) {
             val inset = minOf(cellW, cellH) * 0.34f
             val start = Offset(from.x + dx / length * inset, from.y + dy / length * inset)
             val end = Offset(to.x - dx / length * inset, to.y - dy / length * inset)
-            drawLine(colour, start, end, strokeWidth = 2f)
-            val headSize = 7f
+            drawLine(colour, start, end, strokeWidth = 2.dp.toPx())
+            val headSize = 7.dp.toPx()
             val ux = dx / length
             val uy = dy / length
-            drawLine(colour, end, Offset(end.x - (ux + uy) * headSize, end.y - (uy - ux) * headSize), strokeWidth = 2f)
-            drawLine(colour, end, Offset(end.x - (ux - uy) * headSize, end.y - (uy + ux) * headSize), strokeWidth = 2f)
+            drawLine(colour, end, Offset(end.x - (ux + uy) * headSize, end.y - (uy - ux) * headSize), strokeWidth = 2.dp.toPx())
+            drawLine(colour, end, Offset(end.x - (ux - uy) * headSize, end.y - (uy + ux) * headSize), strokeWidth = 2.dp.toPx())
             arrow.label?.let { label ->
                 val layout = textMeasurer.measure(label, headerStyle.copy(color = colour))
                 // Perpendicular to the arrow and scaled to the cell, so the name clears both the line
@@ -367,11 +367,11 @@ private fun GraphFigure(shape: FigureShape.Graph) {
             val uy = dy / length
             val start = Offset(from.x + ux * radius, from.y + uy * radius)
             val end = Offset(to.x - ux * radius, to.y - uy * radius)
-            drawLine(colour, start, end, strokeWidth = 2f)
+            drawLine(colour, start, end, strokeWidth = 2.dp.toPx())
             if (edge.directed) {
-                val head = 8f
-                drawLine(colour, end, Offset(end.x - (ux + uy) * head, end.y - (uy - ux) * head), strokeWidth = 2f)
-                drawLine(colour, end, Offset(end.x - (ux - uy) * head, end.y - (uy + ux) * head), strokeWidth = 2f)
+                val head = 8.dp.toPx()
+                drawLine(colour, end, Offset(end.x - (ux + uy) * head, end.y - (uy - ux) * head), strokeWidth = 2.dp.toPx())
+                drawLine(colour, end, Offset(end.x - (ux - uy) * head, end.y - (uy + ux) * head), strokeWidth = 2.dp.toPx())
             }
             edge.label?.let { label ->
                 val layout = textMeasurer.measure(label, edgeStyle)
@@ -394,7 +394,7 @@ private fun GraphFigure(shape: FigureShape.Graph) {
             val tone = toneFor.getValue(node.tone)
             val centre = centreOf(index)
             drawCircle(tone.copy(alpha = 0.24f), radius = radius, center = centre)
-            drawCircle(tone, radius = radius, center = centre, style = Stroke(width = 1.8f))
+            drawCircle(tone, radius = radius, center = centre, style = Stroke(width = 1.8.dp.toPx()))
             // Shrink a long label to fit rather than letting it hang outside the circle: `conv 3×3`
             // and `chased` both overflowed at a fixed 10sp. The circle cannot grow instead — a
             // wider one collides with its neighbours, which is the failure this pass came to fix.
@@ -458,13 +458,13 @@ private fun TreeFigure(shape: FigureShape.Tree) {
         )
 
         shape.nodes.forEachIndexed { index, node ->
-            node.parent?.let { drawLine(edgeColor, centreOf(it), centreOf(index), strokeWidth = 1.6f) }
+            node.parent?.let { drawLine(edgeColor, centreOf(it), centreOf(index), strokeWidth = 1.6.dp.toPx()) }
         }
         shape.nodes.forEachIndexed { index, node ->
             val tone = toneFor.getValue(node.tone)
             val centre = centreOf(index)
             drawCircle(tone.copy(alpha = 0.22f), radius = radius, center = centre)
-            drawCircle(tone, radius = radius, center = centre, style = Stroke(width = 1.6f))
+            drawCircle(tone, radius = radius, center = centre, style = Stroke(width = 1.6.dp.toPx()))
             val layout = textMeasurer.measure(
                 node.label,
                 nodeStyle.copy(color = if (node.tone == FigureTone.Muted) onSurface else tone),
@@ -555,11 +555,11 @@ private fun TimelineFigure(shape: FigureShape.Timeline) {
                 axisColor,
                 Offset(0f, size.height - 1f),
                 Offset(size.width, size.height - 1f),
-                strokeWidth = 1.5f,
+                strokeWidth = 1.5.dp.toPx(),
             )
             shape.marker?.let { at ->
                 val x = at / span * size.width
-                drawLine(markerColor, Offset(x, 0f), Offset(x, size.height), strokeWidth = 2.5f)
+                drawLine(markerColor, Offset(x, 0f), Offset(x, size.height), strokeWidth = 2.5.dp.toPx())
             }
         }
 
@@ -633,20 +633,21 @@ private fun PlotFigure(shape: FigureShape.Plot) {
         ) {
             // Bars carry their names under the axis; a curve plot gives that strip back to the plot.
             val bottomPad = if (shape.bars.isEmpty()) 6f else 24f
-            val leftPad = 6f
-            val plotW = size.width - leftPad - 8f
-            val plotH = size.height - bottomPad - 8f
-            val baseline = 8f + plotH
+            val leftPad = 6.dp.toPx()
+            val topPad = 8.dp.toPx()
+            val plotW = size.width - leftPad - topPad
+            val plotH = size.height - bottomPad - topPad
+            val baseline = topPad + plotH
 
-            fun at(x: Float, y: Float) = Offset(leftPad + x * plotW, 8f + (1f - y) * plotH)
+            fun at(x: Float, y: Float) = Offset(leftPad + x * plotW, topPad + (1f - y) * plotH)
 
-            drawLine(axisColor, Offset(leftPad, 8f), Offset(leftPad, baseline), strokeWidth = 1.5f)
-            drawLine(axisColor, Offset(leftPad, baseline), Offset(size.width, baseline), strokeWidth = 1.5f)
+            drawLine(axisColor, Offset(leftPad, topPad), Offset(leftPad, baseline), strokeWidth = 1.5.dp.toPx())
+            drawLine(axisColor, Offset(leftPad, baseline), Offset(size.width, baseline), strokeWidth = 1.5.dp.toPx())
 
             shape.series.forEach { series ->
                 val colour = toneFor.getValue(series.tone)
                 val effect = if (series.dashed) {
-                    PathEffect.dashPathEffect(floatArrayOf(9f, 7f))
+                    PathEffect.dashPathEffect(floatArrayOf(9.dp.toPx(), 7.dp.toPx()))
                 } else {
                     null
                 }
@@ -655,7 +656,7 @@ private fun PlotFigure(shape: FigureShape.Plot) {
                         colour,
                         at(a.x, a.y),
                         at(b.x, b.y),
-                        strokeWidth = 2.4f,
+                        strokeWidth = 2.4.dp.toPx(),
                         pathEffect = effect,
                     )
                 }
@@ -683,7 +684,7 @@ private fun PlotFigure(shape: FigureShape.Plot) {
             shape.markers.forEach { point ->
                 val colour = toneFor.getValue(point.tone)
                 val centre = at(point.x, point.y)
-                drawCircle(colour, radius = 4.5f, center = centre)
+                drawCircle(colour, radius = 4.5.dp.toPx(), center = centre)
                 point.label?.let { label ->
                     val layout = textMeasurer.measure(label, tickStyle.copy(color = colour))
                     // Above the point, and pulled back inside the canvas when it sits near the right
@@ -872,7 +873,7 @@ private fun HeatmapFigure(shape: FigureShape.Heatmap) {
                     color = outline,
                     topLeft = Offset(originX + mark.col * cell, originY + mark.row * cell),
                     size = Size(cell - 1.5f, cell - 1.5f),
-                    style = Stroke(width = 2f),
+                    style = Stroke(width = 2.dp.toPx()),
                 )
             }
         }

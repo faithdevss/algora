@@ -2423,7 +2423,7 @@ private fun GraphAlgoCanvas(def: GraphDef, frame: GraphAlgoFrame) {
                     else -> NodeMarkColors.getValue(NodeMark.IDLE)
                 }
                 drawCircle(color = color, radius = radius, center = center)
-                drawCircle(color = nodeStroke, radius = radius, center = center, style = Stroke(width = 2.5f))
+                drawCircle(color = nodeStroke, radius = radius, center = center, style = Stroke(width = 2.5.dp.toPx()))
 
                 val label = textMeasurer.measure(node.id, nodeLabelStyle)
                 drawText(

@@ -5944,7 +5944,7 @@ private fun LayerDiagram(layers: List<NetLayer>, modifier: Modifier = Modifier) 
                             color = edgeColor,
                             start = centerOf(l, i, layer.nodes.size),
                             end = centerOf(l + 1, j, layers[l + 1].nodes.size),
-                            strokeWidth = 1.5f,
+                            strokeWidth = 1.5.dp.toPx(),
                         )
                     }
                 }
@@ -5989,17 +5989,17 @@ private fun PlotCanvas(plot: CurvePlot, modifier: Modifier = Modifier) {
 
                 if (0f in plot.yRange) {
                     val zero = place(plot.xRange.start, 0f)
-                    drawLine(axisColor, Offset(0f, zero.y), Offset(size.width, zero.y), strokeWidth = 1.5f)
+                    drawLine(axisColor, Offset(0f, zero.y), Offset(size.width, zero.y), strokeWidth = 1.5.dp.toPx())
                 }
                 if (0f in plot.xRange) {
                     val zero = place(0f, plot.yRange.start)
-                    drawLine(axisColor, Offset(zero.x, 0f), Offset(zero.x, size.height), strokeWidth = 1.5f)
+                    drawLine(axisColor, Offset(zero.x, 0f), Offset(zero.x, size.height), strokeWidth = 1.5.dp.toPx())
                 }
 
                 plot.curves.forEach { curve ->
                     if (curve.points.size == 1) {
                         val p = curve.points.first()
-                        drawCircle(curve.color, radius = 7f, center = place(p.first, p.second))
+                        drawCircle(curve.color, radius = 7.dp.toPx(), center = place(p.first, p.second))
                         return@forEach
                     }
                     curve.points.zipWithNext { a, b ->
@@ -6007,12 +6007,12 @@ private fun PlotCanvas(plot: CurvePlot, modifier: Modifier = Modifier) {
                             color = curve.color,
                             start = place(a.first, a.second),
                             end = place(b.first, b.second),
-                            strokeWidth = 4f,
+                            strokeWidth = 4.dp.toPx(),
                         )
                     }
                     // Trajectories read better with their endpoint marked.
                     val last = curve.points.last()
-                    drawCircle(curve.color, radius = 5f, center = place(last.first, last.second))
+                    drawCircle(curve.color, radius = 5.dp.toPx(), center = place(last.first, last.second))
                 }
             }
         }
@@ -6060,7 +6060,7 @@ private fun MatrixView(grid: GridView, modifier: Modifier = Modifier) {
                                 Canvas(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
                                     drawRoundRect(
                                         color = OutputColor,
-                                        style = Stroke(width = 4f),
+                                        style = Stroke(width = 4.dp.toPx()),
                                         cornerRadius = androidx.compose.ui.geometry.CornerRadius(6f, 6f),
                                     )
                                 }
@@ -6089,7 +6089,7 @@ private fun NetBars(bar: NetBar, modifier: Modifier = Modifier) {
         Canvas(modifier = Modifier.fillMaxWidth().height(44.dp).padding(top = 4.dp)) {
             val slot = size.width / bar.values.size
             val mid = size.height / 2f
-            drawLine(axis, Offset(0f, mid), Offset(size.width, mid), strokeWidth = 1.5f)
+            drawLine(axis, Offset(0f, mid), Offset(size.width, mid), strokeWidth = 1.5.dp.toPx())
             bar.values.forEachIndexed { index, value ->
                 val height = (abs(value) / peak) * (size.height / 2f - 2f)
                 drawRoundRect(

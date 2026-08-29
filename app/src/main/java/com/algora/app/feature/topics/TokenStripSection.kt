@@ -6137,7 +6137,7 @@ private fun VectorBars(bar: BarRow, modifier: Modifier = Modifier) {
         Canvas(modifier = Modifier.fillMaxWidth().height(46.dp).padding(top = 4.dp)) {
             val slot = size.width / bar.values.size
             val mid = size.height / 2f
-            drawLine(color = axis, start = Offset(0f, mid), end = Offset(size.width, mid), strokeWidth = 1.5f)
+            drawLine(color = axis, start = Offset(0f, mid), end = Offset(size.width, mid), strokeWidth = 1.5.dp.toPx())
             bar.values.forEachIndexed { index, value ->
                 val height = (abs(value) / peak) * (size.height / 2f - 2f)
                 val left = index * slot + slot * 0.2f

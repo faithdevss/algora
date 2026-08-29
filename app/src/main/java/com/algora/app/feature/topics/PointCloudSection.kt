@@ -5324,13 +5324,13 @@ private fun ScatterCanvas(frame: CloudFrame) {
                     color = ring.color.copy(alpha = 0.7f),
                     radius = scale(ring.radius),
                     center = place(ring.center),
-                    style = Stroke(width = 2.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(9f, 7f))),
+                    style = Stroke(width = 2.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(9.dp.toPx(), 7.dp.toPx()))),
                 )
             }
 
             frame.ellipses.forEach { ellipse ->
                 ellipse.zipWithNext().forEach { (a, b) ->
-                    drawLine(color = AxisColor, start = place(a), end = place(b), strokeWidth = 3f)
+                    drawLine(color = AxisColor, start = place(a), end = place(b), strokeWidth = 3.dp.toPx())
                 }
             }
 
@@ -5340,7 +5340,7 @@ private fun ScatterCanvas(frame: CloudFrame) {
                     start = place(segment.from),
                     end = place(segment.to),
                     strokeWidth = if (segment.dashed) 2.5f else 3.5f,
-                    pathEffect = if (segment.dashed) PathEffect.dashPathEffect(floatArrayOf(8f, 6f)) else null,
+                    pathEffect = if (segment.dashed) PathEffect.dashPathEffect(floatArrayOf(8.dp.toPx(), 6.dp.toPx())) else null,
                 )
             }
 
@@ -5354,15 +5354,15 @@ private fun ScatterCanvas(frame: CloudFrame) {
                 val radius = if (dot.emphasis == Emphasis.ACTIVE || dot.emphasis == Emphasis.QUERY) 9f else 7f
                 drawCircle(color = color, radius = radius, center = center)
                 if (dot.emphasis == Emphasis.ACTIVE || dot.emphasis == Emphasis.QUERY) {
-                    drawCircle(color = outline, radius = radius, center = center, style = Stroke(width = 2.5f))
+                    drawCircle(color = outline, radius = radius, center = center, style = Stroke(width = 2.5.dp.toPx()))
                 }
             }
 
             // Centroids sit on top of the data and are drawn as rings so they never read as points.
             frame.centroids.forEach { centroid ->
                 val center = place(centroid.point)
-                drawCircle(color = groupColor(centroid.group), radius = 11f, center = center, style = Stroke(width = 4f))
-                drawCircle(color = outline, radius = 4f, center = center)
+                drawCircle(color = groupColor(centroid.group), radius = 11.dp.toPx(), center = center, style = Stroke(width = 4.dp.toPx()))
+                drawCircle(color = outline, radius = 4.dp.toPx(), center = center)
             }
         }
     }
