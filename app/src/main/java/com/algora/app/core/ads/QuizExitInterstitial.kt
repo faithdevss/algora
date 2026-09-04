@@ -84,9 +84,11 @@ fun rememberQuizExitInterstitial(enabled: Boolean): QuizExitInterstitial {
     var showing by remember { mutableStateOf(false) }
 
     // Warmed while the quiz is still being taken, so an eligible exit does not wait on the network.
-    // Skipped entirely for premium users and disabled surfaces: no request, no impression, no cost.
-    LaunchedEffect(enabled, state.isPremium) {
-        if (enabled && !state.isPremium) ads.preload(context)
+    // Gated on the same rule the exit itself checks: requesting an ad the gate is going to refuse
+    // anyway (too early in install life, under the free-quiz count, cap already hit, review just
+    // asked) burns a request with no chance of an impression.
+    LaunchedEffect(enabled, state) {
+        if (enabled && shouldShowInterstitial(state, System.currentTimeMillis())) ads.preload(context)
     }
 
     val controller = remember(enabled, state, activity, showing) {
