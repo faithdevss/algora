@@ -23,14 +23,14 @@ data class InterstitialState(
 )
 
 /** Completed quizzes that stay ad-free no matter what. The next one is the first that may show. */
-const val INTERSTITIAL_FREE_QUIZZES = 3
+const val INTERSTITIAL_FREE_QUIZZES = 2
 
 /** A day-0 user has not decided the app is worth anything yet; ads before that buy an uninstall. */
-const val INTERSTITIAL_MIN_INSTALL_DAYS = 2L
+const val INTERSTITIAL_MIN_INSTALL_DAYS = 1L
 
-const val INTERSTITIAL_DAILY_CAP = 3
+const val INTERSTITIAL_DAILY_CAP = 4
 
-const val INTERSTITIAL_MIN_GAP_MS = 3L * 60 * 1000
+const val INTERSTITIAL_MIN_GAP_MS = 2L * 60 * 1000
 
 fun shouldShowInterstitial(state: InterstitialState, nowMs: Long): Boolean = when {
     // The purchase's stated benefit. Non-negotiable.

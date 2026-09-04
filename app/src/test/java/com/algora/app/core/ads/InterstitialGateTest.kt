@@ -41,8 +41,8 @@ class InterstitialGateTest {
         val bingeing = eligible.copy(daysSinceInstall = 0L, quizzesFinished = 40)
 
         assertFalse(shouldShowInterstitial(bingeing, now))
-        assertFalse(shouldShowInterstitial(bingeing.copy(daysSinceInstall = 1L), now))
-        assertTrue(shouldShowInterstitial(bingeing.copy(daysSinceInstall = 2L), now))
+        assertFalse(shouldShowInterstitial(bingeing.copy(daysSinceInstall = INTERSTITIAL_MIN_INSTALL_DAYS - 1), now))
+        assertTrue(shouldShowInterstitial(bingeing.copy(daysSinceInstall = INTERSTITIAL_MIN_INSTALL_DAYS), now))
     }
 
     @Test
