@@ -3,6 +3,8 @@ import java.util.Properties
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
 }
 
 // Release line. Bump by hand only when the release is genuinely a new line; minor and patch come
@@ -188,6 +190,11 @@ dependencies {
 
     // Deferred work for the lapsed-learner reminder notification (core/notify).
     implementation("androidx.work:work-runtime-ktx:2.10.1")
+
+    // Firebase Analytics + Crashlytics. Config: app/google-services.json.
+    implementation(platform("com.google.firebase:firebase-bom:34.18.0"))
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-crashlytics")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 

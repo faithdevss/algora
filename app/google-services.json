@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "908314728845",
+    "project_id": "analytics-3c4ca",
+    "storage_bucket": "analytics-3c4ca.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:908314728845:android:08f37077aafe3d12b345c4",
+        "android_client_info": {
+          "package_name": "com.algora.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBUQdqBXKfZLTPMDPWj1W0OxmUgfGUe1V0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:908314728845:android:bf5800f56e503ef7b345c4",
+        "android_client_info": {
+          "package_name": "com.saimum.systa"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBUQdqBXKfZLTPMDPWj1W0OxmUgfGUe1V0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
