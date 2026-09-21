@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.algora.app.core.data.entitlement.EntitlementRepository
 import com.algora.app.core.data.entitlement.entitlementDataStore
+import com.algora.app.core.data.entitlement.PaidOnly
 import com.algora.app.core.data.model.Category
 import com.algora.app.core.data.model.Topic
 import com.algora.app.core.ui.theme.ScreenBottomInset
@@ -106,6 +107,7 @@ fun CategoryBrowserScreen(
                             title = topic.name,
                             isCompleted = topic.id in completedIds,
                             isLocked = topic.isPremium && !isPremium && topic.id !in adUnlocks,
+                            adUnlockable = !PaidOnly.isPaidOnlyTopic(topic.id),
                             onClick = { onTopicClick(topic.id) },
                             modifier = Modifier.padding(horizontal = ScreenGutter, vertical = 4.dp),
                             difficulty = topic.difficulty,

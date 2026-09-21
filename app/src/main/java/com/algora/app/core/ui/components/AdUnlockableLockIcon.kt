@@ -22,6 +22,9 @@ val LockAmber = SimColors.Amber
 // for 6h after a rewarded ad. So the padlock body carries a knocked-out play triangle — locked,
 // but a video is a way in.
 //
+// Practice content is the exception (see PaidOnly): an ad does not open it, so adUnlockable = false
+// draws the plain padlock and drops the triangle rather than promise a way in that isn't there.
+//
 // Built as a composite rather than an ImageVector because Icon() tints a whole vector with one
 // color; the knockout needs to be the row's own background color.
 @Composable
@@ -30,15 +33,16 @@ fun AdUnlockableLockIcon(
     modifier: Modifier = Modifier,
     tint: Color = LockAmber,
     knockoutColor: Color = MaterialTheme.colorScheme.surface,
+    adUnlockable: Boolean = true,
 ) {
     Box(modifier = modifier.size(size), contentAlignment = Alignment.Center) {
         Icon(
             imageVector = Icons.Filled.Lock,
-            contentDescription = "Premium — buy or watch an ad to open",
+            contentDescription = if (adUnlockable) "Premium — buy or watch an ad to open" else "Premium — buy to open",
             tint = tint,
             modifier = Modifier.size(size),
         )
-        Canvas(modifier = Modifier.size(size)) {
+        if (adUnlockable) Canvas(modifier = Modifier.size(size)) {
             // Material's filled Lock puts its body between ~42% and ~83% of the viewport height;
             // this centres the triangle in that body.
             val bodyCenterY = this.size.height * 0.63f

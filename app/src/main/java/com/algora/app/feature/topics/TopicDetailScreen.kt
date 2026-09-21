@@ -48,6 +48,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.horizontalScroll
+import com.algora.app.core.analytics.TopicAccessKind
+import com.algora.app.core.analytics.lockedTopicHit
+import com.algora.app.core.analytics.rememberAnalytics
+import com.algora.app.core.analytics.topicCompleted
+import com.algora.app.core.analytics.topicOpened
 import com.algora.app.core.data.PrerequisiteGraph
 import com.algora.app.core.data.TopicRegistry
 import com.algora.app.core.ui.theme.LocalDarkTheme
@@ -108,6 +113,21 @@ fun TopicDetailScreen(
 
     // One frame of nothing while DataStore answers — better than flashing paid content.
     val resolved = access ?: return
+
+    // The one place every route into topic content passes through, so one event here covers the
+    // standard page, the quiz, the behavioral bank, the system-design primer and the analysis tools
+    // alike. Keyed on the access class, not the instance: an AdUnlocked expiry changing is not a
+    // second open.
+    val analytics = rememberAnalytics()
+    LaunchedEffect(topicId, resolved::class) {
+        if (topic == null) return@LaunchedEffect
+        when (resolved) {
+            is TopicAccess.Open -> analytics.topicOpened(topic, TopicAccessKind.FREE)
+            is TopicAccess.Owned -> analytics.topicOpened(topic, TopicAccessKind.OWNED)
+            is TopicAccess.AdUnlocked -> analytics.topicOpened(topic, TopicAccessKind.AD_UNLOCKED)
+            is TopicAccess.Locked -> analytics.lockedTopicHit(topic)
+        }
+    }
 
     if (topic != null && resolved is TopicAccess.Locked) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -181,6 +201,18 @@ private fun TopicDetailContent(
 
     val isCompleted = topicId in completedIds
 
+    // Marking complete is the funnel's tail, and it is reached from five places below (quiz,
+    // behavioral bank, primer, and the two "Mark as complete" checkboxes) — routing them all
+    // through one lambda keeps the event and the write from ever drifting apart.
+    val analytics = rememberAnalytics()
+    val markCompleted: () -> Unit = {
+        scope.launch { repository.markCompleted(topicId) }
+        // Only a first finish is an event, matching ProgressRepository's own rule that re-completing
+        // a topic keeps the original date. Otherwise a quiz retried five times reads as five
+        // completions and the open → finish ratio quietly exceeds 1.
+        if (!isCompleted) analytics.topicCompleted(topic)
+    }
+
     val settings = remember { SettingsRepository(context.settingsDataStore) }
     LaunchedEffect(topicId) { settings.setLastOpened(topicId) }
     val bookmarks by settings.bookmarks.collectAsState(initial = emptySet())
@@ -194,7 +226,7 @@ private fun TopicDetailContent(
             quiz = quiz,
             onBack = onBack,
             onTopicClick = onTopicClick,
-            onFinish = { scope.launch { repository.markCompleted(topicId) } },
+            onFinish = markCompleted,
             onGoPremium = onGoPremium,
         )
         return
@@ -205,7 +237,7 @@ private fun TopicDetailContent(
         BehavioralScreen(
             bank = behavioral,
             onBack = onBack,
-            onComplete = { scope.launch { repository.markCompleted(topicId) } },
+            onComplete = markCompleted,
         )
         return
     }
@@ -215,7 +247,7 @@ private fun TopicDetailContent(
         SystemDesignScreen(
             primer = systemDesign,
             onBack = onBack,
-            onComplete = { scope.launch { repository.markCompleted(topicId) } },
+            onComplete = markCompleted,
         )
         return
     }
@@ -238,8 +270,10 @@ private fun TopicDetailContent(
                     Checkbox(
                         checked = isCompleted,
                         onCheckedChange = { checked ->
-                            scope.launch {
-                                if (checked) repository.markCompleted(topicId) else repository.markIncomplete(topicId)
+                            if (checked) {
+                                markCompleted()
+                            } else {
+                                scope.launch { repository.markIncomplete(topicId) }
                             }
                         },
                     )
@@ -304,8 +338,10 @@ private fun TopicDetailContent(
                     Checkbox(
                         checked = isCompleted,
                         onCheckedChange = { checked ->
-                            scope.launch {
-                                if (checked) repository.markCompleted(topicId) else repository.markIncomplete(topicId)
+                            if (checked) {
+                                markCompleted()
+                            } else {
+                                scope.launch { repository.markIncomplete(topicId) }
                             }
                         },
                     )

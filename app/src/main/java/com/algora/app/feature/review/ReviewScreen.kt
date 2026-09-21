@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -19,6 +21,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -33,23 +36,36 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.algora.app.core.analytics.rememberAnalytics
+import com.algora.app.core.analytics.reviewSession
 import com.algora.app.core.data.TopicRegistry
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.settings.QUIZ_CARD_PREFIX
 import com.algora.app.core.data.settings.SettingsRepository
 import com.algora.app.core.data.settings.SrsCard
+import com.algora.app.core.data.settings.parseQuestionKey
 import com.algora.app.core.data.settings.settingsDataStore
 import com.algora.app.core.ui.components.ScreenHeader
 import com.algora.app.core.ui.theme.SimColors
 import com.algora.app.core.ui.theme.SpaceGrotesk
+import com.algora.app.feature.interviewprep.quiz.QuizRegistry
+import com.algora.app.feature.interviewprep.quiz.QuizStory
+import com.algora.app.feature.topics.FigureCard
 import com.algora.app.feature.topics.content.TopicContentProvider
 import kotlinx.coroutines.launch
 
 // `prompt` is the front of the card. Takeaway cards have none — they ask the generic "recall a key
-// takeaway" — while curated deck cards carry their own question.
+// takeaway" — while curated deck cards carry their own question. Mistake cards (a missed quiz
+// question) also carry the question's story and figure, without which a picture question cannot be
+// answered, and its explanation as `detail` under the answer.
 data class ReviewCard(
     val key: String,
     val topicName: String,
     val takeaway: String,
     val prompt: String? = null,
+    val detail: String? = null,
+    val figure: Figure? = null,
+    val story: QuizStory? = null,
 )
 
 // Every takeaway across every authored topic, keyed stably as "topicId#index", plus the curated
@@ -59,6 +75,30 @@ fun allReviewCards(): List<ReviewCard> =
         val name = TopicRegistry.find(topicId)?.name ?: topicId
         content.takeaways.mapIndexed { i, t -> ReviewCard("$topicId#$i", name, t) }
     } + curatedFlashcards()
+
+// A card for every quiz question the learner has missed, resolved from the SRS keys that
+// recordQuestionResults created. Only missed questions ever get a key, so the deck grows with
+// mistakes instead of adding all ~400 questions as "new" cards. A key whose question no longer
+// exists (a set was cut) is skipped rather than shown as a blank card.
+fun quizMistakeCards(srsKeys: Collection<String>): List<ReviewCard> =
+    srsKeys.filter { it.startsWith(QUIZ_CARD_PREFIX) }.mapNotNull { cardKey ->
+        val (quizId, index) = parseQuestionKey(cardKey.removePrefix(QUIZ_CARD_PREFIX)) ?: return@mapNotNull null
+        val quiz = QuizRegistry.get(quizId) ?: return@mapNotNull null
+        val question = quiz.questions.getOrNull(index) ?: return@mapNotNull null
+        ReviewCard(
+            key = cardKey,
+            topicName = "${quiz.title} · missed question",
+            takeaway = question.options[question.correctIndex],
+            prompt = question.prompt,
+            detail = question.explanation,
+            figure = question.figure,
+            story = question.story,
+        )
+    }
+
+// The whole deck for a given SRS state: the fixed takeaway and curated cards plus the mistakes.
+fun reviewDeck(base: List<ReviewCard>, srs: Map<String, SrsCard>): List<ReviewCard> =
+    base + quizMistakeCards(srs.keys)
 
 // How many cards a "study ahead" session pulls forward when nothing is actually due.
 private const val STUDY_AHEAD_BATCH = 20
@@ -105,11 +145,12 @@ fun ReviewScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val settings = remember { SettingsRepository(context.settingsDataStore) }
     val scope = rememberCoroutineScope()
-    val allCards = remember { allReviewCards() }
+    val baseCards = remember { allReviewCards() }
     val today = System.currentTimeMillis() / 86_400_000L
 
     // null = still loading state from DataStore.
     val srsMap by settings.srs.collectAsState(initial = null)
+    val allCards = remember(srsMap) { srsMap?.let { reviewDeck(baseCards, it) } ?: baseCards }
     val introducedToday by settings.newCardsIntroduced(today).collectAsState(initial = null)
 
     // Freeze the queue once, when state first loads, so grading doesn't reshuffle mid-session.
@@ -144,6 +185,15 @@ fun ReviewScreen(onBack: () -> Unit) {
         flipped = false
         reviewed = 0
         studyingAhead = true
+    }
+
+    // A finished session is the queue running out. Keyed on that transition so sitting on the
+    // "session complete" screen cannot log it twice, and so a study-ahead run — which restarts the
+    // queue from zero — is counted as its own session, under its own mode.
+    val analytics = rememberAnalytics()
+    val sessionDone = queue?.let { it.isNotEmpty() && index >= it.size } == true
+    LaunchedEffect(sessionDone) {
+        if (sessionDone) analytics.reviewSession(reviewed, studyingAhead)
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -190,9 +240,16 @@ fun ReviewScreen(onBack: () -> Unit) {
                     color = if (flipped) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface,
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                 ) {
+                    // A mistake card with a story or figure is taller than the card, so it scrolls from
+                    // the top; every other card stays centred as before.
+                    val rich = card.story != null || card.figure != null
                     Column(
-                        modifier = Modifier.fillMaxSize().padding(24.dp),
-                        verticalArrangement = Arrangement.Center,
+                        modifier = if (rich) {
+                            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)
+                        } else {
+                            Modifier.fillMaxSize().padding(24.dp)
+                        },
+                        verticalArrangement = if (rich) Arrangement.Top else Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Text(
@@ -204,6 +261,18 @@ fun ReviewScreen(onBack: () -> Unit) {
                             textAlign = TextAlign.Center,
                         )
                         Spacer(modifier = Modifier.size(18.dp))
+                        card.story?.let { story ->
+                            Text(
+                                story.text,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(modifier = Modifier.size(12.dp))
+                        }
+                        card.figure?.let { figure ->
+                            FigureCard(figure)
+                            Spacer(modifier = Modifier.size(14.dp))
+                        }
                         if (flipped) {
                             // A deck card keeps its question visible above the answer, so the recall
                             // being graded stays on screen.
@@ -217,6 +286,15 @@ fun ReviewScreen(onBack: () -> Unit) {
                                 Spacer(modifier = Modifier.size(14.dp))
                             }
                             Text(card.takeaway, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+                            card.detail?.let { detail ->
+                                Spacer(modifier = Modifier.size(12.dp))
+                                Text(
+                                    detail,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
                         } else {
                             Text(
                                 card.prompt ?: "Recall a key takeaway",

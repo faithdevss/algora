@@ -36,32 +36,32 @@ class EntitlementAccessTest {
     fun premiumTopicIsLockedByDefault() {
         assertEquals(
             TopicAccess.Locked,
-            accessOf(isPremiumTopic = true, premiumOwned = false, unlocks = emptyMap(), topicId = "master_theorem", now = now),
+            accessOf(isPremiumTopic = true, premiumOwned = false, unlocks = emptyMap(), topicId = "growth_curve_chart", now = now),
         )
     }
 
     @Test
     fun adUnlockIsLiveBeforeExpiryAndDeadAfter() {
         val expiry = now + AD_UNLOCK_DURATION_MS
-        val unlocks = mapOf("master_theorem" to expiry)
+        val unlocks = mapOf("growth_curve_chart" to expiry)
 
         assertEquals(
             TopicAccess.AdUnlocked(expiry),
-            accessOf(true, premiumOwned = false, unlocks = unlocks, topicId = "master_theorem", now = now + 5 * hour),
+            accessOf(true, premiumOwned = false, unlocks = unlocks, topicId = "growth_curve_chart", now = now + 5 * hour),
         )
         assertEquals(
             TopicAccess.Locked,
-            accessOf(true, premiumOwned = false, unlocks = unlocks, topicId = "master_theorem", now = now + 7 * hour),
+            accessOf(true, premiumOwned = false, unlocks = unlocks, topicId = "growth_curve_chart", now = now + 7 * hour),
         )
     }
 
     @Test
     fun adUnlockDoesNotLeakToOtherTopics() {
-        val unlocks = mapOf("master_theorem" to now + hour)
+        val unlocks = mapOf("growth_curve_chart" to now + hour)
 
         assertEquals(
             TopicAccess.Locked,
-            accessOf(true, premiumOwned = false, unlocks = unlocks, topicId = "sandbox_mode", now = now),
+            accessOf(true, premiumOwned = false, unlocks = unlocks, topicId = "best_case", now = now),
         )
     }
 
@@ -69,7 +69,7 @@ class EntitlementAccessTest {
     fun ownedPremiumBeatsEverything() {
         assertEquals(
             TopicAccess.Owned,
-            accessOf(true, premiumOwned = true, unlocks = emptyMap(), topicId = "master_theorem", now = now),
+            accessOf(true, premiumOwned = true, unlocks = emptyMap(), topicId = "growth_curve_chart", now = now),
         )
     }
 
@@ -77,26 +77,26 @@ class EntitlementAccessTest {
     fun grantAdUnlock_makesTopicReadableFor6h() = runTest {
         val repository = newRepository()
 
-        repository.grantAdUnlock("master_theorem")
+        repository.grantAdUnlock("growth_curve_chart")
 
         val unlocks = repository.adUnlocks.first()
-        val expiry = unlocks.getValue("master_theorem")
+        val expiry = unlocks.getValue("growth_curve_chart")
         val remaining = expiry - System.currentTimeMillis()
         assertTrue("expected ~6h left, got ${remaining}ms", remaining > 5 * hour && remaining <= AD_UNLOCK_DURATION_MS)
         assertEquals(
             TopicAccess.AdUnlocked(expiry),
-            repository.accessFor("master_theorem", isPremiumTopic = true).first(),
+            repository.accessFor("growth_curve_chart", isPremiumTopic = true).first(),
         )
     }
 
     @Test
     fun expiredUnlockIsIgnoredOnRead() {
         // Read filtering is what actually protects content; pruning on write is only housekeeping.
-        val stale = parseUnlock(serializeUnlock("sandbox_mode", now - hour))
-        assertEquals("sandbox_mode" to now - hour, stale)
+        val stale = parseUnlock(serializeUnlock("best_case", now - hour))
+        assertEquals("best_case" to now - hour, stale)
         assertEquals(
             TopicAccess.Locked,
-            accessOf(true, premiumOwned = false, unlocks = mapOf(stale!!), topicId = "sandbox_mode", now = now),
+            accessOf(true, premiumOwned = false, unlocks = mapOf(stale!!), topicId = "best_case", now = now),
         )
     }
 
@@ -104,11 +104,11 @@ class EntitlementAccessTest {
     fun regrantingSameTopicKeepsOneEntry() = runTest {
         val repository = newRepository()
 
-        repository.grantAdUnlock("master_theorem")
-        repository.grantAdUnlock("master_theorem")
-        repository.grantAdUnlock("sandbox_mode")
+        repository.grantAdUnlock("growth_curve_chart")
+        repository.grantAdUnlock("growth_curve_chart")
+        repository.grantAdUnlock("best_case")
 
-        assertEquals(setOf("master_theorem", "sandbox_mode"), repository.adUnlocks.first().keys)
+        assertEquals(setOf("growth_curve_chart", "best_case"), repository.adUnlocks.first().keys)
     }
 
     @Test
@@ -116,10 +116,10 @@ class EntitlementAccessTest {
         val repository = newRepository()
 
         repository.setPremium(true)
-        assertEquals(TopicAccess.Owned, repository.accessFor("master_theorem", isPremiumTopic = true).first())
+        assertEquals(TopicAccess.Owned, repository.accessFor("growth_curve_chart", isPremiumTopic = true).first())
 
         // Refund / account switch path: Play says "not owned", the cache must follow.
         repository.setPremium(false)
-        assertEquals(TopicAccess.Locked, repository.accessFor("master_theorem", isPremiumTopic = true).first())
+        assertEquals(TopicAccess.Locked, repository.accessFor("growth_curve_chart", isPremiumTopic = true).first())
     }
 }

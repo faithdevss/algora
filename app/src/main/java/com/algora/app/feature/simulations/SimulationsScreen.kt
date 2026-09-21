@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import com.algora.app.core.data.CategoryRegistry
 import com.algora.app.core.data.TopicRegistry
 import com.algora.app.core.data.entitlement.EntitlementRepository
+import com.algora.app.core.data.entitlement.PaidOnly
 import com.algora.app.core.data.entitlement.entitlementDataStore
 import com.algora.app.core.data.model.Section
 import com.algora.app.core.data.model.SimulationType
@@ -225,6 +226,7 @@ fun SimulationsScreen(onTopicClick: (String) -> Unit, modifier: Modifier = Modif
                             SimulationRow(
                                 entry = entry,
                                 isLocked = entry.topic.isPremium && !isPremium && entry.topic.id !in adUnlocks,
+                                adUnlockable = !PaidOnly.isPaidOnlyTopic(entry.topic.id),
                                 onClick = { onTopicClick(entry.topic.id) },
                             )
                         }
@@ -328,7 +330,7 @@ private fun SimGroupHeader(group: SimGroup, isExpanded: Boolean, onClick: () -> 
 }
 
 @Composable
-private fun SimulationRow(entry: SimEntry, isLocked: Boolean, onClick: () -> Unit) {
+private fun SimulationRow(entry: SimEntry, isLocked: Boolean, adUnlockable: Boolean, onClick: () -> Unit) {
     val accent = Color(entry.topic.accentColor)
     Surface(
         modifier = Modifier
@@ -368,7 +370,7 @@ private fun SimulationRow(entry: SimEntry, isLocked: Boolean, onClick: () -> Uni
                         .background(LockAmber.copy(alpha = 0.16f), RoundedCornerShape(11.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    AdUnlockableLockIcon(size = 20.dp)
+                    AdUnlockableLockIcon(size = 20.dp, adUnlockable = adUnlockable)
                 }
             } else {
                 Box(

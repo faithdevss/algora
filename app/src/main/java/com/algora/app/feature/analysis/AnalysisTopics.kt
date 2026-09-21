@@ -24,7 +24,7 @@ private val exploration = AnalysisCategories.explorationGames
 private val fundamentalsTopics = listOf(
     topic("operation_counter", "Operation Counter", fundamentals, "Counts operations executed by real code."),
     topic("cost_profiler", "Cost Profiler", fundamentals, "Profiles runtime cost across input sizes."),
-    topic("parameterized_input_generator", "Parameterized Input Generator", fundamentals, "Generates inputs of controllable size and shape."),
+    topic("parameterized_input_generator", "Parameterized Input Generator", fundamentals, "Generates inputs of controllable size and shape.", isPremium = true),
 )
 
 private val growthTopics = listOf(

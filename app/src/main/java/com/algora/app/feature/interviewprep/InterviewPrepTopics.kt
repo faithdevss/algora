@@ -17,6 +17,8 @@ private fun topic(id: String, name: String, category: Category, tagline: String,
 private val patterns = InterviewPrepCategories.patterns
 private val interviewStyles = InterviewPrepCategories.interviewStyles
 private val mock = InterviewPrepCategories.mock
+private val beginnerInterview = InterviewPrepCategories.beginnerInterview
+private val advancedInterview = InterviewPrepCategories.advancedInterview
 private val topicQuizzes = InterviewPrepCategories.topicQuizzes
 private val aiInterview = InterviewPrepCategories.aiInterview
 
@@ -83,15 +85,43 @@ private val patternTopics = listOf(
 // Taglines describe the *style* a set is written in, never its provenance: these are authored
 // questions, not transcripts, and "from <company>" would claim a sourcing that does not exist.
 private val interviewStyleTopics = listOf(
-    topic("faang_set", "Big Tech Set", interviewStyles, "Written in the style of a big-tech screen — graphs, windows, heaps, binary search.", isPremium = true),
-    topic("startup_set", "Startup Set", interviewStyles, "Written in the style of a product-company screen — design, hashing, streams.", isPremium = true),
-    topic("finance_trading_set", "Finance / Trading Set", interviewStyles, "Written in the style of a quant-desk screen — latency, math, order books.", isPremium = true),
+    topic("faang_set", "Big Tech Set", interviewStyles, "Written in the style of a big-tech screen — classic patterns, then real problems at scale.", isPremium = true),
+    topic("startup_set", "Startup Set", interviewStyles, "Written in the style of a product-company screen — design and hashing, then real product problems.", isPremium = true),
+    topic("finance_trading_set", "Finance / Trading Set", interviewStyles, "Written in the style of a quant-desk screen — latency and math, then order books and pricing.", isPremium = true),
 )
 
 private val mockTopics = listOf(
     topic("timed_mock_interview", "Timed Mock Interview", mock, "Full-length interview under a countdown timer."),
+    topic("ai_ml_mock_interview", "AI/ML Mock Interview", mock, "Mixed ML, DL, NLP and RL questions under a clock."),
     topic("behavioral_question_bank", "Behavioral Question Bank", mock, "Common behavioral questions with guidance.", isPremium = true),
     topic("system_design_primer", "System Design Primer", mock, "Foundations for system design interview rounds.", isPremium = true),
+)
+
+// Each id is also its QuizRegistry key, like the subject quizzes below.
+private val beginnerInterviewTopics = listOf(
+    topic("beginner_arrays_strings_set", "Arrays & Strings Warm-up", beginnerInterview, "Indexing, two pointers, windows and counting."),
+    topic("beginner_hashing_set", "Hash Maps & Sets Warm-up", beginnerInterview, "Lookups, counting and membership in O(1)."),
+    topic("beginner_big_o_set", "Big-O Warm-up", beginnerInterview, "Read a loop, name its cost, check it fits the input."),
+    topic("beginner_linear_structures_set", "Stacks, Queues & Lists Warm-up", beginnerInterview, "Back buttons, print queues and undo."),
+    topic("beginner_recursion_search_set", "Recursion, Sorting & Search Warm-up", beginnerInterview, "Recursion, binary search variants and one-pass sorting."),
+    topic("beginner_coding_arrays_set", "Coding Round: Arrays & Hashing", beginnerInterview, "Products, triplets, Sudoku checks and matrix walks."),
+    topic("beginner_coding_lists_set", "Coding Round: Linked Lists & Stacks", beginnerInterview, "Palindromes, intersections, paths and decoding."),
+    topic("beginner_coding_trees_set", "Coding Round: Trees", beginnerInterview, "Depth, symmetry, path sums and balanced BSTs."),
+    topic("beginner_picture_set", "Picture Round: Read the Diagram", beginnerInterview, "Look at the array, tree, grid or graph and solve it."),
+    topic("beginner_story_set", "Story Round: The Food Delivery App", beginnerInterview, "Orders, routes and rider shifts at a startup."),
+)
+
+private val advancedInterviewTopics = listOf(
+    topic("advanced_graphs_set", "Advanced Graphs Round", advancedInterview, "Weighted paths, cycles, components and spanning trees.", isPremium = true),
+    topic("advanced_dp_set", "Advanced DP Round", advancedInterview, "State design, recurrences and where greedy breaks.", isPremium = true),
+    topic("advanced_data_structures_set", "Advanced Data Structures Round", advancedInterview, "Range queries, time-indexed stores and O(1) designs.", isPremium = true),
+    topic("advanced_systems_scenarios_set", "Scenario Round: Real Systems", advancedInterview, "Rate limits, logs, trends and calendars, solved.", isPremium = true),
+    topic("advanced_constraints_scenarios_set", "Scenario Round: Constraints & Trade-offs", advancedInterview, "Let n, memory and accuracy pick the algorithm.", isPremium = true),
+    topic("advanced_coding_trees_graphs_set", "Coding Round: Trees & Graphs", advancedInterview, "LCA, serialisation, word ladders and alien alphabets.", isPremium = true),
+    topic("advanced_coding_dp_set", "Coding Round: DP & Backtracking", advancedInterview, "Grid paths, partitions, regex matching and palindrome cuts.", isPremium = true),
+    topic("advanced_coding_hard_set", "Coding Round: Hard Classics", advancedInterview, "Rain water, histograms and two-array medians.", isPremium = true),
+    topic("advanced_picture_set", "Picture Round: Solve the Diagram", advancedInterview, "Weighted graphs, DP tables, heaps and windows, drawn out.", isPremium = true),
+    topic("advanced_story_set", "Story Round: On Call at StreamFlix", advancedInterview, "An outage, an error spike and a cache, one night.", isPremium = true),
 )
 
 // One quiz per subject area. Each id is also its QuizRegistry key — the detail page renders
@@ -122,17 +152,22 @@ private val quizTopics = listOf(
     topic("activation_functions_quiz", "Activation Functions Quiz", topicQuizzes, "ReLU, sigmoid, GELU and the saturation, dead-unit trade-offs."),
 )
 
-// AI-mode interview rounds, mirroring the DSA mock + system-design pair. The ML Engineer set sits
-// here rather than under Company Sets: it is scoped by role, not by an interview house style, and
-// its neighbours are the other two ML rounds.
+// AI-mode interview rounds. The AI/ML mock lives under Mock beside the DSA mock, so every timed mock
+// round is in one place. The ML Engineer set sits here rather than under Interview Styles: it is
+// scoped by role, not by an interview house style, and its neighbour is the other ML round.
 private val aiInterviewTopics = listOf(
-    topic("ai_ml_mock_interview", "AI/ML Mock Interview", aiInterview, "Mixed ML, DL, NLP and RL questions under a clock."),
     topic("ml_engineer_set", "ML Engineer Set", aiInterview, "An ML-engineer screen — modelling plus production reality.", isPremium = true),
+    topic("ai_nlp_interview_set", "NLP Interview Round", aiInterview, "Sentiment, search, entities, translation and speech.", isPremium = true),
+    topic("ai_llm_engineering_set", "LLM & GenAI Engineering Round", aiInterview, "RAG, fine-tuning, agents, evals and prompt injection.", isPremium = true),
+    topic("ai_cv_interview_set", "Computer Vision Interview Round", aiInterview, "Factories, hospitals, phones and satellites.", isPremium = true),
+    topic("ai_recsys_interview_set", "Recommender Systems Round", aiInterview, "Cold start, ranking, scale and feedback loops.", isPremium = true),
+    topic("ai_sector_interview_set", "AI Across Industries Round", aiInterview, "Healthcare, finance, retail, factories, farms, logistics.", isPremium = true),
     topic("ml_system_design_primer", "ML System Design Primer", aiInterview, "Framing, data, serving, drift and retraining.", isPremium = true),
 )
 
 object InterviewPrepTopics {
-    val topics: List<Topic> = patternTopics + interviewStyleTopics + mockTopics + quizTopics + aiInterviewTopics
+    val topics: List<Topic> = patternTopics + interviewStyleTopics + mockTopics + beginnerInterviewTopics + advancedInterviewTopics +
+        quizTopics + aiInterviewTopics
 
     fun find(topicId: String): Topic? = topics.find { it.id == topicId }
 }

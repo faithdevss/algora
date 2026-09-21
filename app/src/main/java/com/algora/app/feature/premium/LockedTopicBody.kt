@@ -44,6 +44,7 @@ import com.algora.app.core.ads.AdsProvider
 import com.algora.app.core.ui.components.AdUnlockableLockIcon
 import com.algora.app.core.ui.components.LockAmber
 import com.algora.app.core.data.entitlement.EntitlementRepository
+import com.algora.app.core.data.entitlement.PaidOnly
 import com.algora.app.core.data.entitlement.entitlementDataStore
 import com.algora.app.core.data.model.Topic
 import com.algora.app.core.ui.theme.Gradients
@@ -52,9 +53,15 @@ import kotlinx.coroutines.launch
 
 // The paywall shown in place of a premium topic's content. Two ways past it: buy premium once, or
 // watch a rewarded ad for 6h access to this one topic. Granting the unlock flips the access flow
-// TopicDetailScreen observes, so the real content swaps in without any navigation.
+// TopicDetailScreen observes, so the real content swaps in without any navigation. Practice
+// content is purchase-only (PaidOnly), so there the ad option is not offered at all.
 @Composable
-fun LockedTopicBody(topic: Topic, onGoPremium: () -> Unit, modifier: Modifier = Modifier) {
+fun LockedTopicBody(
+    topic: Topic,
+    onGoPremium: () -> Unit,
+    modifier: Modifier = Modifier,
+    adUnlockable: Boolean = !PaidOnly.isPaidOnlyTopic(topic.id),
+) {
     val context = LocalContext.current
     val activity = LocalActivity.current
     val ads = remember { AdsProvider.get(context) }
@@ -66,7 +73,7 @@ fun LockedTopicBody(topic: Topic, onGoPremium: () -> Unit, modifier: Modifier = 
     var error by remember { mutableStateOf<String?>(null) }
     var awaitingAd by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) { ads.preload(context) }
+    LaunchedEffect(adUnlockable) { if (adUnlockable) ads.preload(context) }
 
     Column(
         modifier = modifier
@@ -85,6 +92,7 @@ fun LockedTopicBody(topic: Topic, onGoPremium: () -> Unit, modifier: Modifier = 
             AdUnlockableLockIcon(
                 size = 30.dp,
                 knockoutColor = MaterialTheme.colorScheme.background,
+                adUnlockable = adUnlockable,
             )
         }
         Spacer(modifier = Modifier.height(16.dp))
@@ -121,63 +129,71 @@ fun LockedTopicBody(topic: Topic, onGoPremium: () -> Unit, modifier: Modifier = 
             )
         }
 
-        Spacer(modifier = Modifier.height(11.dp))
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(15.dp))
-                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(15.dp))
-                .clickable(enabled = activity != null && !awaitingAd) {
-                    error = null
-                    val host = activity ?: return@clickable
-                    awaitingAd = true
-                    ads.show(
-                        activity = host,
-                        onReward = {
-                            awaitingAd = false
-                            scope.launch { entitlements.grantAdUnlock(topic.id) }
-                        },
-                        onFailed = { message ->
-                            awaitingAd = false
-                            error = message
-                        },
-                    )
+        if (adUnlockable) {
+            Spacer(modifier = Modifier.height(11.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(15.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(15.dp))
+                    .clickable(enabled = activity != null && !awaitingAd) {
+                        error = null
+                        val host = activity ?: return@clickable
+                        awaitingAd = true
+                        ads.show(
+                            activity = host,
+                            onReward = {
+                                awaitingAd = false
+                                scope.launch { entitlements.grantAdUnlock(topic.id) }
+                            },
+                            onFailed = { message ->
+                                awaitingAd = false
+                                error = message
+                            },
+                        )
+                    }
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (awaitingAd && overlay == null) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    Icon(Icons.Filled.PlayCircle, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (awaitingAd && overlay == null) {
-                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-            } else {
-                Icon(Icons.Filled.PlayCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.size(10.dp))
+                Text(
+                    "Watch ad · 6h access",
+                    fontFamily = SpaceGrotesk,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                )
             }
-            Spacer(modifier = Modifier.size(10.dp))
-            Text(
-                "Watch ad · 6h access",
-                fontFamily = SpaceGrotesk,
-                fontWeight = FontWeight.Bold,
-                fontSize = 15.sp,
-            )
-        }
 
-        if (!adReady && !awaitingAd) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                "Loading an ad…",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+            if (!adReady && !awaitingAd) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Loading an ad…",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
 
-        error?.let {
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(it, fontSize = 12.5.sp, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+            error?.let {
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(it, fontSize = 12.5.sp, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            "Premium removes ads and unlocks every locked topic, lab and analysis tool — one payment, forever.",
+            if (adUnlockable) {
+                "Premium removes ads and unlocks every locked topic, lab and analysis tool — one payment, forever."
+            } else if (topic.id in PaidOnly.flagshipLessonIds) {
+                "This lesson is part of Premium — one payment, forever, with no ads."
+            } else {
+                "Interview practice is part of Premium — one payment, forever, with no ads."
+            },
             fontSize = 12.5.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,

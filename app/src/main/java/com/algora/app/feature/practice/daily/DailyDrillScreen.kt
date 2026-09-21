@@ -25,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,6 +36,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.algora.app.core.analytics.drillCompleted
+import com.algora.app.core.analytics.drillOpened
+import com.algora.app.core.analytics.rememberAnalytics
+import com.algora.app.core.data.settings.questionKey
 import com.algora.app.core.nav.ReviewRoute
 import com.algora.app.core.ui.components.ScreenHeader
 import com.algora.app.core.ui.components.resolveIcon
@@ -57,6 +62,19 @@ fun DailyDrillScreen(
     val status = rememberDrillStatus()
     var runningQuiz by remember { mutableStateOf(false) }
 
+    val analytics = rememberAnalytics()
+    LaunchedEffect(status.day) { analytics.drillOpened() }
+
+    // Completion is derived state, so it is true again on every later visit that day. Only the
+    // not-done → done transition is a finish; opening an already-finished drill sets the baseline
+    // and logs nothing, which is what keeps the open/finish ratio honest without storing a flag.
+    var wasDone by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(status.ready, status.allDone) {
+        if (!status.ready) return@LaunchedEffect
+        if (wasDone == false && status.allDone) analytics.drillCompleted()
+        wasDone = status.allDone
+    }
+
     // The question step runs the sampled set inline as a real quiz — same timer, same results
     // screen, and its attempt is what marks the step done.
     if (runningQuiz && status.questions.isNotEmpty()) {
@@ -71,6 +89,11 @@ fun DailyDrillScreen(
             // it would put an ad in front of the streak the app depends on. Sit-down quizzes carry
             // the interstitial instead.
             adsEnabled = false,
+            // Each answer reports to the set it was sampled from, so the drill moves weak spots and
+            // feeds the mistake flashcards like any other run.
+            questionKeys = drill.questions.map { questionKey(it.quizId, it.index) },
+            // Straight into the timed run: its recorded attempt is what marks the step done.
+            offerLearnMode = false,
         )
         return
     }

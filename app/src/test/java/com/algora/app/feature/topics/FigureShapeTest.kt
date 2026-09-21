@@ -10,6 +10,7 @@ import com.algora.app.feature.machinelearning.MachineLearningTopics
 import com.algora.app.feature.nlp.NlpTopics
 import com.algora.app.feature.reinforcementlearning.ReinforcementLearningTopics
 import com.algora.app.feature.topics.content.TopicContentProvider
+import com.algora.app.feature.interviewprep.quiz.QuizRegistry
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.abs
@@ -32,8 +33,12 @@ class FigureShapeTest {
         InterviewPrepTopics.topics + MachineLearningTopics.topics + DeepLearningTopics.topics +
         NlpTopics.topics + ReinforcementLearningTopics.topics
 
+    // Picture-round quiz questions draw through the same FigureCard, so they answer to the same rules.
     private val figures: List<Pair<String, Figure>> = everyTopic
-        .mapNotNull { topic -> TopicContentProvider.get(topic.id)?.figure?.let { topic.id to it } }
+        .mapNotNull { topic -> TopicContentProvider.get(topic.id)?.figure?.let { topic.id to it } } +
+        QuizRegistry.all.flatMap { (quizId, quiz) ->
+            quiz.questions.mapIndexedNotNull { i, question -> question.figure?.let { "$quizId q$i" to it } }
+        }
 
     @Test
     fun `there are figures to check`() {

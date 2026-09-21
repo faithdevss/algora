@@ -20,6 +20,7 @@ import com.algora.app.feature.practice.problems.PracticeProblem
 import com.algora.app.feature.practice.problems.ProblemRegistry
 import com.algora.app.feature.review.DAILY_NEW_CARD_LIMIT
 import com.algora.app.feature.review.allReviewCards
+import com.algora.app.feature.review.reviewDeck
 import com.algora.app.feature.review.reviewCounts
 import kotlinx.coroutines.flow.first
 
@@ -89,7 +90,7 @@ fun rememberDrillStatus(): DrillStatus {
 
     val counts = srs?.let {
         reviewCounts(
-            cards = allCards,
+            cards = reviewDeck(allCards, it),
             srs = it,
             today = today,
             newAllowance = (DAILY_NEW_CARD_LIMIT - introducedToday).coerceAtLeast(0),

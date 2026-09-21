@@ -55,6 +55,7 @@ import com.algora.app.feature.practice.daily.rememberDrillStatus
 import com.algora.app.feature.practice.problems.ProblemRegistry
 import com.algora.app.feature.review.DAILY_NEW_CARD_LIMIT
 import com.algora.app.feature.review.allReviewCards
+import com.algora.app.feature.review.reviewDeck
 import com.algora.app.feature.review.reviewCounts
 
 // Mirrors Home's QuickCard so the two screens read as the same surface: gradient tile, white icon
@@ -90,7 +91,7 @@ fun PracticeScreen(onNavigate: (String) -> Unit, modifier: Modifier = Modifier) 
         null -> "Spaced repetition — graded recall on a schedule"
         else -> {
             val remainingNew = (DAILY_NEW_CARD_LIMIT - (introducedToday ?: 0)).coerceAtLeast(0)
-            val counts = reviewCounts(cards = allCards, srs = map, today = today, newAllowance = remainingNew)
+            val counts = reviewCounts(cards = reviewDeck(allCards, map), srs = map, today = today, newAllowance = remainingNew)
             // Kept short — this sits in a half-width tile, not a full-width row.
             when {
                 counts.waiting > 0 -> "${counts.waiting} to review · ${counts.new} new"

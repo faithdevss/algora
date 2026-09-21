@@ -22,6 +22,7 @@ import com.algora.app.feature.practice.QuizCatalogScreen
 import com.algora.app.feature.practice.daily.DailyDrillScreen
 import com.algora.app.feature.practice.problems.ProblemDetailScreen
 import com.algora.app.feature.practice.problems.ProblemListScreen
+import com.algora.app.feature.practice.weakspots.WeakSpotDrillScreen
 import com.algora.app.feature.premium.PremiumScreen
 import com.algora.app.feature.progress.ProgressScreen
 import com.algora.app.feature.reinforcementlearning.ReinforcementLearningScreen
@@ -79,7 +80,19 @@ fun NavGraph(
         }
 
         composable(QuizCatalogRoute.ROUTE) {
-            QuizCatalogScreen(onQuizClick = openTopic, onBack = goBack)
+            QuizCatalogScreen(
+                onQuizClick = openTopic,
+                onBack = goBack,
+                onWeakSpotDrill = { navController.navigate(WeakSpotDrillRoute.ROUTE) },
+            )
+        }
+
+        composable(WeakSpotDrillRoute.ROUTE) {
+            WeakSpotDrillScreen(
+                onBack = goBack,
+                onTopicClick = openTopic,
+                onGoPremium = { navController.navigate(PremiumRoute.ROUTE) },
+            )
         }
 
         composable(DailyDrillRoute.ROUTE) {

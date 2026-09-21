@@ -61,7 +61,6 @@ fun ProblemListScreen(
     val solvedIds by repository.solvedProblemIds.collectAsState(initial = emptySet())
     val entitlements = remember { EntitlementRepository(context.entitlementDataStore) }
     val isPremium by entitlements.isPremium.collectAsState(initial = false)
-    val adUnlocks by entitlements.adUnlocks.collectAsState(initial = emptyMap())
 
     val total = remember { ProblemRegistry.all.size }
     val solvedCount = solvedIds.count { ProblemRegistry.get(it) != null }
@@ -130,7 +129,8 @@ fun ProblemListScreen(
             }
 
             groups.forEach { (pattern, problems) ->
-                val isLocked = pattern.isPremium && !isPremium && pattern.id !in adUnlocks
+                // Purchase-only (PaidOnly): a rewarded ad never opens a problem group.
+                val isLocked = pattern.isPremium && !isPremium
                 // A narrowed bank shows its hits directly — hiding them behind a tap would defeat the
                 // filter that just produced them. Locked groups never auto-open, filter match or not.
                 val isOpen = !isLocked && (filters.isActive || pattern.id in expanded)
@@ -142,6 +142,7 @@ fun ProblemListScreen(
                         accentColor = pattern.accentColor,
                         isExpanded = isOpen,
                         locked = isLocked,
+                        adUnlockable = false,
                         modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
                         onClick = {
                             if (isLocked) {

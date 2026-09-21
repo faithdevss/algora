@@ -32,6 +32,9 @@ object SettingsKeys {
     // Finished quiz runs (see QuizAttempt). A quiz used to score you and forget, so nothing could
     // say what you keep getting wrong.
     val QUIZ_ATTEMPTS = stringSetPreferencesKey("quiz_attempts")
+
+    // Latest right/wrong per quiz question, from any kind of run (see QuestionResult.kt).
+    val QUESTION_RESULTS = stringSetPreferencesKey("question_results")
     // The daily drill's chosen problem, pinned to the day it was chosen. Without pinning, solving it
     // would immediately reroll the pick — the drill would never show as finished.
     val DRILL_DAY = longPreferencesKey("drill_epoch_day")
@@ -46,6 +49,13 @@ object SettingsKeys {
     val REMINDERS_ENABLED = booleanPreferencesKey("study_reminders_enabled")
     val LAST_REMINDER_DAY = longPreferencesKey("last_reminder_epoch_day")
     val NOTIF_PERMISSION_ASKED = booleanPreferencesKey("notification_permission_asked")
+    // The daily reminder (core/notify/DailyReminder): its own opt-out, the local time of day the
+    // user picked for it, and the day it last posted. Separate from the keys above because the two
+    // reminders answer different questions — one nudges a lapsed learner back, the other protects a
+    // streak that is still alive — and a user may well want one without the other.
+    val DAILY_REMINDER_ENABLED = booleanPreferencesKey("daily_reminder_enabled")
+    val DAILY_REMINDER_MINUTE = intPreferencesKey("daily_reminder_minute_of_day")
+    val LAST_DAILY_REMINDER_DAY = longPreferencesKey("last_daily_reminder_epoch_day")
     // Banked streak freezes, earned by watching a rewarded ad. Spent automatically on a one-day gap
     // so a single missed day doesn't reset the streak counter.
     val STREAK_FREEZES = intPreferencesKey("streak_freezes")

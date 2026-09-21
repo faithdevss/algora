@@ -31,9 +31,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.algora.app.core.data.TopicRegistry
+import com.algora.app.core.data.entitlement.EntitlementRepository
+import com.algora.app.core.data.entitlement.entitlementDataStore
 import com.algora.app.core.data.settings.SettingsRepository
 import com.algora.app.core.data.settings.bestCorrect
 import com.algora.app.core.data.settings.bestPercent
+import com.algora.app.core.data.settings.ofLength
 import com.algora.app.core.data.settings.settingsDataStore
 import com.algora.app.core.ui.components.ScreenHeader
 import com.algora.app.core.ui.components.resolveIcon
@@ -41,6 +44,10 @@ import com.algora.app.core.ui.theme.ScreenBottomInset
 import com.algora.app.core.ui.theme.ScreenGutter
 import com.algora.app.core.ui.theme.SimColors
 import com.algora.app.feature.interviewprep.quiz.QuizRegistry
+import com.algora.app.feature.practice.weakspots.WeakSpotCard
+import com.algora.app.feature.practice.weakspots.effectiveResults
+import com.algora.app.feature.practice.weakspots.tagStats
+import com.algora.app.feature.practice.weakspots.weakestTags
 
 // Score bands mirror the results screen's 60% pass line.
 private fun scoreColor(percent: Int): Color = when {
@@ -59,7 +66,12 @@ private fun relativeDay(day: Long, today: Long): String = when (val ago = today 
 // Every timed quiz in one list. A row opens the quiz's topic page, which renders QuizScreen — the
 // same path the Interview Prep browser already uses, so premium gating stays in one place.
 @Composable
-fun QuizCatalogScreen(onQuizClick: (String) -> Unit, onBack: () -> Unit, modifier: Modifier = Modifier) {
+fun QuizCatalogScreen(
+    onQuizClick: (String) -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    onWeakSpotDrill: () -> Unit = {},
+) {
     val entries = remember { QuizRegistry.all }
 
     // Attempt history turns the catalog from a menu into a scoreboard: a row now says whether you
@@ -67,6 +79,13 @@ fun QuizCatalogScreen(onQuizClick: (String) -> Unit, onBack: () -> Unit, modifie
     val context = LocalContext.current
     val settings = remember { SettingsRepository(context.settingsDataStore) }
     val attempts by settings.quizAttempts.collectAsState(initial = emptyMap())
+    val storedResults by settings.questionResults.collectAsState(initial = emptyMap())
+    val entitlements = remember { EntitlementRepository(context.entitlementDataStore) }
+    val isPremium by entitlements.isPremium.collectAsState(initial = false)
+    // Weak spots lead the catalog: before choosing a set, the learner sees where the practice would
+    // help most, with a one-tap drill aimed at it.
+    val results = remember(storedResults, attempts) { effectiveResults(storedResults, entries, attempts) }
+    val weakest = remember(results) { weakestTags(tagStats(results, entries)) }
     val today = System.currentTimeMillis() / 86_400_000L
 
     Column(modifier = modifier.fillMaxSize()) {
@@ -81,6 +100,15 @@ fun QuizCatalogScreen(onQuizClick: (String) -> Unit, onBack: () -> Unit, modifie
             ),
         ) {
             item {
+                WeakSpotCard(
+                    weakest = weakest,
+                    answeredTotal = results.size,
+                    onDrill = onWeakSpotDrill,
+                    modifier = Modifier.padding(bottom = 14.dp),
+                )
+            }
+
+            item {
                 Text(
                     "${entries.size} timed sets — the clock auto-submits when it runs out",
                     style = MaterialTheme.typography.bodyMedium,
@@ -91,8 +119,9 @@ fun QuizCatalogScreen(onQuizClick: (String) -> Unit, onBack: () -> Unit, modifie
 
             items(entries.size) { index ->
                 val (topicId, quiz) = entries[index]
-                val locked = TopicRegistry.find(topicId)?.isPremium == true
-                val history = attempts[topicId].orEmpty()
+                // Owners see every set open; the padlock is only for sets the learner cannot start.
+                val locked = TopicRegistry.find(topicId)?.isPremium == true && !isPremium
+                val history = attempts[topicId].orEmpty().ofLength(quiz.questions.size)
                 QuizRow(
                     title = quiz.title,
                     subtitle = "${quiz.questions.size} questions · ${quiz.timeLimitSeconds / 60} min",

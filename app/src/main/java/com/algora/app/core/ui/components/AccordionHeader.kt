@@ -50,6 +50,8 @@ fun AccordionHeader(
     // lock icon instead of the expand chevron. onClick still fires — the caller decides what a tap
     // on a locked header does (usually route to the paywall instead of expanding).
     locked: Boolean = false,
+    // False for purchase-only groups (PaidOnly): the lock drops its play triangle.
+    adUnlockable: Boolean = true,
 ) {
     val accent = Color(accentColor)
     val chevronRotation by animateFloatAsState(if (isExpanded) 180f else 0f, label = "accordionChevron")
@@ -93,7 +95,7 @@ fun AccordionHeader(
             )
         }
         if (locked) {
-            AdUnlockableLockIcon(size = 17.dp)
+            AdUnlockableLockIcon(size = 17.dp, adUnlockable = adUnlockable)
         } else {
             Icon(
                 Icons.Filled.ExpandMore,

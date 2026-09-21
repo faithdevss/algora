@@ -38,7 +38,7 @@ private val misc = AlgorithmsCategories.miscAdvanced
 
 private val sortingTopics = listOf(
     topic("bubble_sort", "Bubble Sort", sorting, "Repeatedly swaps adjacent out-of-order elements."),
-    topic("selection_sort", "Selection Sort", sorting, "Repeatedly selects the minimum remaining element."),
+    topic("selection_sort", "Selection Sort", sorting, "Repeatedly selects the minimum remaining element.", isPremium = true),
     topic("insertion_sort", "Insertion Sort", sorting, "Builds a sorted prefix one element at a time."),
     topic("merge_sort", "Merge Sort", sorting, "Divide-and-conquer sort that merges sorted halves.", isPremium = true),
     topic("quick_sort", "Quick Sort", sorting, "Divide-and-conquer sort that partitions around a pivot.", isPremium = true),
@@ -66,7 +66,7 @@ private val recursionTopics = listOf(
 )
 
 private val divideConquerTopics = listOf(
-    topic("closest_pair_of_points", "Closest Pair of Points", divideConquer, "Finds the nearest pair in a plane faster than brute force."),
+    topic("closest_pair_of_points", "Closest Pair of Points", divideConquer, "Finds the nearest pair in a plane faster than brute force.", isPremium = true),
     topic("strassens_algorithm", "Strassen's Algorithm", divideConquer, "Faster-than-cubic matrix multiplication.", isPremium = true),
     topic("karatsubas_algorithm", "Karatsuba's Algorithm", divideConquer, "Sub-quadratic multiplication of large integers.", isPremium = true),
     topic("quickselect", "Quickselect", divideConquer, "Finds the k-th smallest element in linear expected time.", isPremium = true),
@@ -76,7 +76,7 @@ private val divideConquerTopics = listOf(
 
 private val greedyTopics = listOf(
     topic("fractional_knapsack", "Fractional Knapsack", greedy, "Greedy value-per-weight packing."),
-    topic("huffman_coding", "Huffman Coding", greedy, "Builds an optimal prefix-free encoding."),
+    topic("huffman_coding", "Huffman Coding", greedy, "Builds an optimal prefix-free encoding.", isPremium = true),
     topic("kruskals_mst", "Kruskal's MST", greedy, "Builds a minimum spanning tree by adding cheapest edges.", isPremium = true),
     topic("prims_mst", "Prim's MST", greedy, "Grows a minimum spanning tree from a starting node.", isPremium = true),
     topic("dijkstras_algorithm", "Dijkstra's Algorithm", greedy, "Greedy shortest paths from a single source.", isPremium = true),

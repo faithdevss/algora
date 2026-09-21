@@ -49,6 +49,11 @@ fun parseQuizAttempt(entry: String): Pair<String, QuizAttempt>? {
 // Newest first, so "last attempt" is `first()` and trimming to the cap is `take(n)`.
 fun List<QuizAttempt>.newestFirst(): List<QuizAttempt> = sortedByDescending { it.atEpochSec }
 
+// Runs recorded before a set grew were scored out of a different total. Showing them would turn an old
+// 5/5 into "Best 5/15", so a set's history only counts runs of its current length. The stored runs
+// are left alone — they simply age out of the per-quiz cap.
+fun List<QuizAttempt>.ofLength(questionCount: Int): List<QuizAttempt> = filter { it.total == questionCount }
+
 val List<QuizAttempt>.bestPercent: Int get() = maxOfOrNull { it.percent } ?: 0
 
 val List<QuizAttempt>.bestCorrect: Int get() = maxByOrNull { it.percent }?.correct ?: 0

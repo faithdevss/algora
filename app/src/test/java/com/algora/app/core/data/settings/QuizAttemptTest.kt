@@ -68,4 +68,15 @@ class QuizAttemptTest {
         assertEquals(8, kept.first().correct)
         assertTrue(kept.none { it.correct <= 3 })
     }
+
+    // A set that grew from 5 to 15 questions must not report an old perfect run as "Best 5/15".
+    @Test
+    fun `history from a shorter version of the set is ignored`() {
+        val old = attempt.copy(correct = 5, total = 5)
+        val current = attempt.copy(atEpochSec = attempt.atEpochSec + 60, correct = 9, total = 15)
+        val history = listOf(old, current).ofLength(15)
+        assertEquals(listOf(current), history)
+        assertEquals(9, history.bestCorrect)
+        assertEquals(0, listOf(old).ofLength(15).bestPercent)
+    }
 }

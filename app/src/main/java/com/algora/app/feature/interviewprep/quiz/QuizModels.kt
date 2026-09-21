@@ -1,6 +1,7 @@
 package com.algora.app.feature.interviewprep.quiz
 
 import com.algora.app.core.data.model.Difficulty
+import com.algora.app.core.data.model.Figure
 import kotlin.random.Random
 
 // A single multiple-choice practice question, tagged by pattern, with an optional cross-link back to
@@ -16,7 +17,15 @@ data class QuizQuestion(
     val explanation: String,
     val linkedTopicId: String? = null,
     val linkedTopicLabel: String? = null,
+    // A picture question: the diagram *is* the input ("here is the graph — what does BFS visit?").
+    // Drawn by the same FigureCard the topic pages use, so it must never tint the answer.
+    val figure: Figure? = null,
+    // A story round: the situation an interviewer narrates before asking. Consecutive questions
+    // share one story (and usually one figure), so the reader keeps the same world in mind.
+    val story: QuizStory? = null,
 )
+
+data class QuizStory(val title: String, val text: String)
 
 // One budget for every set, so a five-question premium set can no longer be more generous per
 // question than the free mock it is sold against. The floor keeps a one-question "retry missed" run
@@ -53,3 +62,7 @@ internal fun QuizQuestion.withShuffledOptions(random: Random = Random.Default): 
         correctIndex = order.indexOf(correctIndex),
     )
 }
+
+// How a set is run. Interview is timed and scored, with answers at the end; Learn has no clock and
+// checks each answer as it goes, so it teaches rather than measures.
+enum class QuizMode { Interview, Learn }

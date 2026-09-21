@@ -80,7 +80,7 @@ fun ProblemDetailScreen(
     val context = LocalContext.current
     val entitlements = remember { EntitlementRepository(context.entitlementDataStore) }
     val access by entitlements
-        .accessFor(pattern?.id ?: problem.patternId, pattern?.isPremium == true)
+        .accessFor(pattern?.id ?: problem.patternId, pattern?.isPremium == true, adUnlockable = false)
         .collectAsState(initial = null)
 
     val resolved = access ?: return   // one frame of nothing while DataStore answers
@@ -100,7 +100,7 @@ fun ProblemDetailScreen(
         }
         Column(modifier = modifier.fillMaxSize()) {
             DetailHeader(title = pattern.name, onBack = onBack)
-            LockedTopicBody(topic = lockedTopic, onGoPremium = onGoPremium)
+            LockedTopicBody(topic = lockedTopic, onGoPremium = onGoPremium, adUnlockable = false)
         }
         return
     }

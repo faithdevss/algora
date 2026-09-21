@@ -82,7 +82,7 @@ private val activationTopics = listOf(
 private val cnnTopics = listOf(
     topic("cnn", "CNNs", convolutional, "Convolutional networks that exploit spatial structure in images.", isPremium = true),
     topic("conv_layers", "Convolution Layers", convolutional, "Nine weights, reused everywhere — and what that buys over a dense layer.", difficulty = Difficulty.BEGINNER),
-    topic("pooling_layers", "Pooling Layers (Max/Average)", convolutional, "Downsampling with no parameters, and how much shift-tolerance it really buys.", difficulty = Difficulty.BEGINNER),
+    topic("pooling_layers", "Pooling Layers (Max/Average)", convolutional, "Downsampling with no parameters, and how much shift-tolerance it really buys.", difficulty = Difficulty.BEGINNER, isPremium = true),
     topic("padding_strides", "Padding & Strides", convolutional, "One formula for output size, and the border pixels nobody reads.", isPremium = true, difficulty = Difficulty.BEGINNER),
     topic("lenet5", "LeNet-5 (The Original)", convolutional, "61,706 parameters that read cheques for a decade.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
     topic("alexnet", "AlexNet (The Breakthrough)", convolutional, "The 2012 result that restarted the field — and where its 62M parameters sit.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
@@ -140,7 +140,7 @@ private val transformerTopics = listOf(
     topic("self_cross_attention", "Self- vs Cross-Attention", transformers, "One operation, two wirings — and the experiment that ends the RNN bottleneck story.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
     topic("multi_head_attention", "Multi-Head Attention", transformers, "Free in parameters, and what it actually buys is simultaneous reads.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
     topic("transformers", "Transformers", transformers, "Self-attention architecture behind modern LLMs.", isPremium = true),
-    topic("bert", "BERT (Bidirectional Encoder)", transformers, "Fill in the blanks — 2× the context per prediction, 6.4× fewer of them.", difficulty = Difficulty.INTERMEDIATE),
+    topic("bert", "BERT (Bidirectional Encoder)", transformers, "Fill in the blanks — 2× the context per prediction, 6.4× fewer of them.", difficulty = Difficulty.INTERMEDIATE, isPremium = true),
     topic("gpt", "GPT (Decoder-Only)", transformers, "One triangular mask, and everything that follows from it.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
     topic("t5", "T5 (Text-to-Text)", transformers, "Every task as text, and span corruption priced at 512 tokens.", isPremium = true, difficulty = Difficulty.ADVANCED),
     topic("roberta", "RoBERTa", transformers, "Same architecture, better recipe — and 0.85ᵏ is the whole masking argument.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
@@ -186,7 +186,7 @@ private val regularizationTopics = listOf(
     topic("batch_normalization", "Batch Normalization", regularization, "Re-centre and re-scale activations so deep stacks stay trainable.", isPremium = true),
     topic("layer_normalization", "Layer Normalization", regularization, "Normalize across features instead of across the batch — and batch size 1 stops being degenerate.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
     topic("group_normalization", "Group Normalization", regularization, "LayerNorm and InstanceNorm are its two endpoints — checked as an identity, not claimed.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
-    topic("early_stopping", "Early Stopping", regularization, "Stop where validation loss says to, and true generalization error is measurably better for it.", difficulty = Difficulty.BEGINNER),
+    topic("early_stopping", "Early Stopping", regularization, "Stop where validation loss says to, and true generalization error is measurably better for it.", difficulty = Difficulty.BEGINNER, isPremium = true),
 )
 
 // The doc's Specialized & Graph Networks block in full — six architectures that are not a stack of
@@ -214,7 +214,7 @@ private val specializedTopics = listOf(
 // DeepFakes then needs in order to be about something other than the software.
 private val generativeTopics = listOf(
     topic("autoencoders", "Autoencoders", generative, "Encode-then-reconstruct networks for compression and denoising.", isPremium = true),
-    topic("vae", "Variational Autoencoders (VAE)", generative, "Two changes to a bottleneck, and the units the KL term switches off.", difficulty = Difficulty.INTERMEDIATE),
+    topic("vae", "Variational Autoencoders (VAE)", generative, "Two changes to a bottleneck, and the units the KL term switches off.", difficulty = Difficulty.INTERMEDIATE, isPremium = true),
     topic("gans", "GANs", generative, "A generator and discriminator locked in an adversarial game.", isPremium = true),
     topic("dcgan", "DCGAN (Deep Convolutional GAN)", generative, "The rule that is arithmetic rather than folklore: kernel divisible by stride.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
     topic("cyclegan", "CycleGAN (Image-to-Image)", generative, "720 mappings satisfy the loss and one is right — cycle consistency removes none of them.", isPremium = true, difficulty = Difficulty.ADVANCED),

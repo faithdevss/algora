@@ -16,7 +16,7 @@ object AppShare {
 
     // The Play listing's short description, kept in step with docs/store/listing.md so the message
     // says the same thing as the page it lands on.
-    private const val PITCH = "Data structures, algorithms, ML, DL, NLP and RL — runnable labs, fully offline."
+    private const val PITCH = "Coding interview prep: DSA, system design, ML rounds and timed mock interviews."
 
     val message: String = "Algora\n$PITCH\n\n$playStoreUrl"
 

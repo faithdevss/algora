@@ -39,6 +39,8 @@ fun TopicRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     difficulty: Difficulty? = null,
+    // False for purchase-only rows (PaidOnly): the lock drops its play triangle.
+    adUnlockable: Boolean = true,
 ) {
     Surface(
         modifier = modifier
@@ -76,7 +78,7 @@ fun TopicRow(
                 DifficultyBadge(difficulty, modifier = Modifier.padding(end = 8.dp))
             }
             if (isLocked) {
-                AdUnlockableLockIcon(size = 18.dp)
+                AdUnlockableLockIcon(size = 18.dp, adUnlockable = adUnlockable)
             } else {
                 Icon(
                     imageVector = Icons.Filled.ChevronRight,

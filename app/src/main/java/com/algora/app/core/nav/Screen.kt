@@ -75,6 +75,11 @@ object QuizCatalogRoute {
     const val ROUTE = "quizzes"
 }
 
+// A drill built from the learner's weakest patterns, opened from the quiz catalog.
+object WeakSpotDrillRoute {
+    const val ROUTE = "weak_spot_drill"
+}
+
 // One mixed practice session per day: recall queue, one problem, a short sampled question set.
 object DailyDrillRoute {
     const val ROUTE = "daily_drill"

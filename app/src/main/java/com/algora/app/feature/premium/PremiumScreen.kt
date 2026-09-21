@@ -44,6 +44,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.algora.app.core.analytics.paywallView
+import com.algora.app.core.analytics.rememberAnalytics
 import com.algora.app.core.billing.BillingEvent
 import com.algora.app.core.billing.BillingProvider
 import com.algora.app.core.billing.BillingStatus
@@ -81,6 +83,11 @@ fun PremiumScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     // "Nothing to restore" is only worth saying when the user asked to restore — the same query also
     // runs silently every time this screen opens.
     var restoreRequested by remember { mutableStateOf(false) }
+
+    // Reaching the paywall is the denominator a purchase rate is measured against. Logged for
+    // owners too — a buyer reopening this screen is how "restore" traffic shows up at all.
+    val analytics = rememberAnalytics()
+    LaunchedEffect(Unit) { analytics.paywallView() }
 
     // Also the refund / account-switch check: Play is asked again every time this screen opens.
     LaunchedEffect(Unit) { billing.refresh() }

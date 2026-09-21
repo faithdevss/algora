@@ -127,6 +127,38 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         }
     }
 
+    /** Latest right/wrong per question key (quizId#index), from every kind of quiz run. */
+    val questionResults: Flow<Map<String, Boolean>> =
+        dataStore.data.map { prefs ->
+            (prefs[SettingsKeys.QUESTION_RESULTS] ?: emptySet()).mapNotNull { parseQuestionResult(it) }.toMap()
+        }
+
+    // Records the answers from one run, replacing each question's previous result. Every miss also
+    // goes into the flashcard deck in the same write: a new card is created already scheduled for
+    // tomorrow — so it skips the daily new-card allowance, mistakes are the reviews that matter
+    // most — and a card that already exists lapses the way an "Again" grade would.
+    suspend fun recordQuestionResults(results: Map<String, Boolean>) {
+        if (results.isEmpty()) return
+        val today = System.currentTimeMillis() / 86_400_000L
+        dataStore.edit { prefs ->
+            val kept = (prefs[SettingsKeys.QUESTION_RESULTS] ?: emptySet())
+                .filter { entry -> parseQuestionResult(entry)?.first !in results }
+            prefs[SettingsKeys.QUESTION_RESULTS] =
+                kept.toSet() + results.map { (key, correct) -> serializeQuestionResult(key, correct) }
+
+            val missed = results.filterValues { !it }.keys.map(::quizCardKey).toSet()
+            if (missed.isNotEmpty()) {
+                val srs = (prefs[SettingsKeys.SRS] ?: emptySet()).toMutableSet()
+                val existing = srs.filter { it.substringBefore('|') in missed }
+                    .mapNotNull { parseSrs(it) }
+                    .toMap()
+                srs.removeAll { it.substringBefore('|') in missed }
+                missed.forEach { key -> srs += sm2(existing[key], quality = 2, today = today).serialize(key) }
+                prefs[SettingsKeys.SRS] = srs
+            }
+        }
+    }
+
     /** The problem the daily drill picked, and the day it picked it. Null before the first drill. */
     val drillProblem: Flow<Pair<Long, String>?> =
         dataStore.data.map { prefs ->
@@ -167,6 +199,33 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun markReminderPosted(day: Long = System.currentTimeMillis() / 86_400_000L) {
         dataStore.edit { prefs -> prefs[SettingsKeys.LAST_REMINDER_DAY] = day }
+    }
+
+    // Daily reminder state. Also defaults on: a learning app whose spaced-repetition queue nobody
+    // is told about is a queue nobody clears. DailyReminder's own rules keep it from becoming noise.
+    val dailyReminderEnabled: Flow<Boolean> =
+        dataStore.data.map { prefs -> prefs[SettingsKeys.DAILY_REMINDER_ENABLED] ?: true }
+
+    suspend fun setDailyReminderEnabled(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[SettingsKeys.DAILY_REMINDER_ENABLED] = enabled }
+    }
+
+    /** Local minute-of-day the daily reminder fires at. Evening by default — see DailyReminder. */
+    val dailyReminderMinute: Flow<Int> =
+        dataStore.data.map { prefs ->
+            prefs[SettingsKeys.DAILY_REMINDER_MINUTE] ?: DEFAULT_DAILY_REMINDER_MINUTE
+        }
+
+    suspend fun setDailyReminderMinute(minuteOfDay: Int) {
+        dataStore.edit { prefs -> prefs[SettingsKeys.DAILY_REMINDER_MINUTE] = minuteOfDay }
+    }
+
+    /** 0 until the daily reminder has posted. Caps it at one a day whatever the worker does. */
+    val lastDailyReminderDay: Flow<Long> =
+        dataStore.data.map { prefs -> prefs[SettingsKeys.LAST_DAILY_REMINDER_DAY] ?: 0L }
+
+    suspend fun markDailyReminderPosted(day: Long) {
+        dataStore.edit { prefs -> prefs[SettingsKeys.LAST_DAILY_REMINDER_DAY] = day }
     }
 
     /** The Android 13+ notification dialog is one-shot; asking again does nothing but flicker. */
@@ -274,3 +333,6 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
 // Only recent days are ever rendered; keeping more would grow the preference set without bound.
 private const val ACTIVITY_HISTORY_DAYS = 60L
+
+/** 20:00 local. Late enough to be after the day's obligations, early enough not to wake anyone. */
+const val DEFAULT_DAILY_REMINDER_MINUTE = 20 * 60

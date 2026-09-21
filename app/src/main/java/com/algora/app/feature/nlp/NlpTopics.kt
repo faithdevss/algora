@@ -44,7 +44,7 @@ private val preprocessingTopics = listOf(
     topic("tokenization", "Tokenization", preprocessing, "Split raw text into words, subwords or characters.", difficulty = Difficulty.BEGINNER),
     topic("regex_nlp", "Regular Expressions", preprocessing, "The pattern language every tokenizer and rule extractor is written in.", isPremium = true),
     topic("stop_words", "Stop Word Removal", preprocessing, "Drop the highest-frequency words — and find out what goes with them.", difficulty = Difficulty.BEGINNER),
-    topic("stemming", "Stemming (Porter Stemmer)", preprocessing, "Chop words down to a crude root form.", difficulty = Difficulty.BEGINNER),
+    topic("stemming", "Stemming (Porter Stemmer)", preprocessing, "Chop words down to a crude root form.", difficulty = Difficulty.BEGINNER, isPremium = true),
     topic("lemmatization", "Lemmatization", preprocessing, "Map words to their dictionary lemma using morphology.", isPremium = true),
     topic("n_grams", "N-Grams", preprocessing, "Contiguous token windows, and the count model built from them.", isPremium = true),
     topic("bpe", "Byte-Pair Encoding", preprocessing, "Learn a subword vocabulary by merging the most frequent pair.", isPremium = true),
@@ -101,7 +101,7 @@ private val transformerTopics = listOf(
 private val pretrainedTopics = listOf(
     topic("llms", "LLMs", pretrained, "Transformers scaled to billions of parameters.", isPremium = true),
     // C6, cross-listed with Deep Learning. Gating follows the doc: BERT is the one free entry here.
-    topic("bert", "BERT (Encoder Only)", pretrained, "Fill in the blanks — 2× the context per prediction, 6.4× fewer of them.", difficulty = Difficulty.INTERMEDIATE),
+    topic("bert", "BERT (Encoder Only)", pretrained, "Fill in the blanks — 2× the context per prediction, 6.4× fewer of them.", difficulty = Difficulty.INTERMEDIATE, isPremium = true),
     topic("gpt", "GPT-2 (Decoder Only)", pretrained, "One triangular mask, and everything that follows from it.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
     topic("t5", "T5 (Text-to-Text)", pretrained, "Every task as text, and span corruption priced at 512 tokens.", isPremium = true, difficulty = Difficulty.ADVANCED),
     topic("roberta", "RoBERTa", pretrained, "Same architecture, better recipe — and 0.85ᵏ is the whole masking argument.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
@@ -173,7 +173,7 @@ private val beyondTransformerTopics = listOf(
 // to read it, and one that is not a metric but a benchmark — which is the distinction the last topic
 // is about. Gating is the doc's, verbatim: Perplexity and WER carry no lock, the other four do.
 private val metricTopics = listOf(
-    topic("perplexity", "Perplexity", metrics, "The only one needing no reference — and it ranks two tokenizers backwards.", difficulty = Difficulty.INTERMEDIATE),
+    topic("perplexity", "Perplexity", metrics, "The only one needing no reference — and it ranks two tokenizers backwards.", difficulty = Difficulty.INTERMEDIATE, isPremium = true),
     topic("wer", "WER (Word Error Rate)", metrics, "Unbounded above, and it scores a reversed sentence a third of a harmless one.", difficulty = Difficulty.BEGINNER),
     topic("bleu", "BLEU Score (Translation)", metrics, "Clipping, the brevity penalty, and the good paraphrase that scores exactly 0.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
     topic("rouge", "ROUGE Score (Summarization)", metrics, "Copy the whole document and recall 0.800 — the baseline recall-only reporting rewards.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),

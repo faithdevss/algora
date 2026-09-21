@@ -53,13 +53,13 @@ private val coreTopics = listOf(
     topic("doubly_linked_list", "Doubly Linked List", core, "Nodes chained both forward and backward.", isPremium = true),
     topic("stack", "Stack", core, "Last-in, first-out access at one end."),
     topic("queue", "Queue", core, "First-in, first-out access at two ends."),
-    topic("deque", "Deque (Double-Ended Queue)", core, "Push and pop at both ends in O(1)."),
+    topic("deque", "Deque (Double-Ended Queue)", core, "Push and pop at both ends in O(1).", isPremium = true),
     topic("hash_table", "Hash Table / Hash Map", core, "Key-value lookup backed by a hash function.", isPremium = true),
 )
 
 private val nonLinearTopics = listOf(
     topic("tree", "Tree", nonLinear, "Hierarchical nodes with parent/child links."),
-    topic("binary_search_tree", "Binary Search Tree", nonLinear, "Ordered binary tree for fast lookup, insert, delete."),
+    topic("binary_search_tree", "Binary Search Tree", nonLinear, "Ordered binary tree for fast lookup, insert, delete.", isPremium = true),
     topic("heap", "Heap (Min / Max)", nonLinear, "Complete binary tree keeping the smallest or largest at the root.", isPremium = true),
     topic("trie", "Trie (Prefix Tree)", nonLinear, "Tree keyed by string prefixes, built for fast lookup.", isPremium = true),
     topic(

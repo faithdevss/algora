@@ -37,6 +37,38 @@ object QuizRegistry {
         // Third AI batch (QuizContentAiTraining.kt)
         "optimizers_training_quiz" to optimizersTrainingQuiz,
         "activation_functions_quiz" to activationFunctionsQuiz,
+        // Beginner interview sets (QuizContentBeginner.kt)
+        "beginner_arrays_strings_set" to beginnerArraysStringsSet,
+        "beginner_hashing_set" to beginnerHashingSet,
+        "beginner_big_o_set" to beginnerBigOSet,
+        "beginner_linear_structures_set" to beginnerLinearStructuresSet,
+        "beginner_recursion_search_set" to beginnerRecursionSearchSet,
+        // Beginner coding rounds (QuizContentCoding.kt)
+        "beginner_coding_arrays_set" to beginnerCodingArraysSet,
+        "beginner_coding_lists_set" to beginnerCodingListsSet,
+        "beginner_coding_trees_set" to beginnerCodingTreesSet,
+        // Picture rounds (QuizContentPictures.kt)
+        "beginner_picture_set" to beginnerPictureSet,
+        // Story rounds (QuizContentStories.kt)
+        "beginner_story_set" to beginnerStorySet,
+        // Advanced interview sets (QuizContentAdvanced.kt)
+        "advanced_graphs_set" to advancedGraphsSet,
+        "advanced_dp_set" to advancedDpSet,
+        "advanced_data_structures_set" to advancedDataStructuresSet,
+        "advanced_systems_scenarios_set" to advancedSystemsScenariosSet,
+        "advanced_constraints_scenarios_set" to advancedConstraintsScenariosSet,
+        // Advanced coding rounds (QuizContentCoding.kt)
+        "advanced_coding_trees_graphs_set" to advancedCodingTreesGraphsSet,
+        "advanced_coding_dp_set" to advancedCodingDpSet,
+        "advanced_coding_hard_set" to advancedCodingHardSet,
+        "advanced_picture_set" to advancedPictureSet,
+        "advanced_story_set" to advancedStorySet,
+        // AI interview rounds by field (QuizContentAiInterview.kt)
+        "ai_nlp_interview_set" to aiNlpInterviewSet,
+        "ai_llm_engineering_set" to aiLlmEngineeringSet,
+        "ai_cv_interview_set" to aiCvInterviewSet,
+        "ai_recsys_interview_set" to aiRecsysInterviewSet,
+        "ai_sector_interview_set" to aiSectorInterviewSet,
     )
 
     fun get(topicId: String): Quiz? = quizzes[topicId]
