@@ -138,7 +138,7 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             }
         }
 
-        SettingsCard(title = "Theme", subtitle = "How Algora follows light and dark") {
+        SettingsCard(title = "Theme", subtitle = "How AlgorAI follows light and dark") {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -198,9 +198,9 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     )
                     Text(
                         if (remindersEnabled) {
-                            "You'll hear from Algora only if you go quiet for ${StudyReminder.INACTIVE_DAYS} days."
+                            "You'll hear from AlgorAI only if you go quiet for ${StudyReminder.INACTIVE_DAYS} days."
                         } else {
-                            "Algora will never send you a notification."
+                            "AlgorAI will never send you a notification."
                         },
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp,
@@ -306,7 +306,7 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             )
         }
 
-        SettingsCard(title = "Share Algora", subtitle = "Send someone the install link") {
+        SettingsCard(title = "Share AlgorAI", subtitle = "Send someone the install link") {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -330,7 +330,7 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             }
         }
 
-        SettingsCard(title = "More from the developer", subtitle = "Other apps by the Algora developer") {
+        SettingsCard(title = "More from the developer", subtitle = "Other apps by the AlgorAI developer") {
             CrossPromoRow(CrossPromoApp.Systa)
         }
 

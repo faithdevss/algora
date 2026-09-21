@@ -205,7 +205,7 @@ private fun PremiumHero(owned: Boolean) {
         }
         Spacer(modifier = Modifier.height(14.dp))
         Text(
-            "Algora Premium",
+            "AlgorAI Premium",
             color = Color.White,
             fontFamily = SpaceGrotesk,
             fontWeight = FontWeight.Bold,

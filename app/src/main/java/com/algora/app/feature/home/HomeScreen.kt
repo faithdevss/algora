@@ -138,7 +138,7 @@ fun HomeScreen(
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Welcome back", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
                     Text(
-                        "Algora",
+                        "AlgorAI",
                         color = Color.White,
                         fontFamily = SpaceGrotesk,
                         fontWeight = FontWeight.Bold,

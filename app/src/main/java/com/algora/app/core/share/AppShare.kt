@@ -16,19 +16,19 @@ object AppShare {
 
     // The Play listing's short description, kept in step with docs/store/listing.md so the message
     // says the same thing as the page it lands on.
-    private const val PITCH = "Coding interview prep: DSA, system design, ML rounds and timed mock interviews."
+    private const val PITCH = "Learn DSA and AI with interactive labs, then practise coding and ML interviews."
 
-    val message: String = "Algora\n$PITCH\n\n$playStoreUrl"
+    val message: String = "AlgorAI\n$PITCH\n\n$playStoreUrl"
 
     fun share(context: Context) {
         val send = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_SUBJECT, "Algora")
+            putExtra(Intent.EXTRA_SUBJECT, "AlgorAI")
             putExtra(Intent.EXTRA_TEXT, message)
         }
         // A chooser rather than a bare ACTION_SEND: a default the user set for some other share
         // should not silently swallow this one.
-        val chooser = Intent.createChooser(send, "Share Algora")
+        val chooser = Intent.createChooser(send, "Share AlgorAI")
         if (context !is Activity) chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         // A device with no share target at all is possible; swallowing beats crashing on an invite.
         try {

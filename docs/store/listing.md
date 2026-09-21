@@ -1,7 +1,7 @@
-# Play Store listing — Algora
+# Play Store listing — AlgorAI
 
 Copy-paste source for the Play Console listing, plus an inventory of the graphics in this folder.
-Every number quoted below is read out of the registries at build time (versionName `1.1.77`), not
+Every number quoted below is read out of the registries at build time (versionName `1.1.80`), not
 estimated: 504 authored topics each with a runnable lab, 102 practice problems, 54 timed quizzes
 (453 questions), 57 pattern guides and 2,414 flashcards.
 
@@ -16,7 +16,7 @@ misrepresentation Play can act on.
 
 | Field | Value |
 |---|---|
-| App name | `Algora: DSA & AI Learning` (25/30 chars) |
+| App name | `AlgorAI: DSA, AI & Interviews` (29/30 chars) |
 | Package | `com.algora.app` |
 | Category | Education |
 | Tags | Computer science, Programming, Interview prep, Machine learning |
@@ -25,10 +25,11 @@ misrepresentation Play can act on.
 | Contact | `hafsasultana0106@gmail.com` |
 | Privacy policy | *(host `docs/privacy-policy.md` somewhere public; fill in URL before submitting)* |
 
-**Title is the strongest search field, and it does not say "interview" yet.** If the goal is to be
-found by job-seekers, the title should carry it too. Alternates within 30 characters:
-`Algora: Coding Interview Prep` (29), `Algora: DSA & Interview Prep` (28). Either one drops "AI"
-from the title, which the short and full descriptions then have to carry — they already do.
+**The title names both halves of the app.** It is the most heavily weighted search field, so it
+carries the two subjects people learn here (DSA, AI) and the reason many of them are learning
+(interviews). An interview-only title (`Algora: Coding Interview Prep`) was tried and dropped: it
+hid the course from students and self-learners, who are most of the audience. The launcher label is
+`AlgorAI` (`app_name`); the store title and the installed name are separate on purpose.
 
 ---
 
@@ -37,14 +38,13 @@ from the title, which the short and full descriptions then have to carry — the
 Max 80 characters. Current: 79.
 
 ```
-Coding interview prep: DSA, system design, ML rounds and timed mock interviews.
+Learn DSA and AI with interactive labs, then practise coding and ML interviews.
 ```
 
-Written for the person searching for a job, not for a subject. "Coding interview prep" leads because
-it is the phrase job-seekers type, and the short description is the second-most-weighted field after
-the title. DSA, system design and ML rounds then cover the three kinds of technical round the app
-prepares for, and "timed mock interviews" names the feature that makes it prep rather than reading.
-The earlier subject list (ML, DL, NLP, RL) moved into the full description, where it still indexes.
+Learning first, interviews second — the same order the app is built in. "Learn DSA and AI" catches
+students and self-learners searching a subject; "coding and ML interviews" catches job-seekers, and
+names both kinds of technical round the app prepares for. "Interactive labs" is what sets it apart
+from reading apps.
 
 **No topic count here, deliberately.** The library grows most releases, so a number in this field is
 one more thing to re-derive before every upload and one more way to ship a stale claim. Counts live
@@ -58,11 +58,11 @@ do not have. Both are metadata-policy risks on Play.
 Alternates:
 
 ```
-Prepare for coding interviews: DSA, ML, system design and mock rounds, offline.
+Learn DSA, AI and ML with runnable labs, and prepare for coding interviews.
 ```
 
 ```
-Coding interview prep — DSA patterns, mock interviews, ML and system design.
+Learn DSA and AI with visual labs, then practise coding and ML interviews.
 ```
 
 The pitch in `core/share/AppShare.kt` is this same sentence; change both together.
@@ -71,77 +71,70 @@ The pitch in `core/share/AppShare.kt` is this same sentence; change both togethe
 
 ## Full description
 
-Max 4000 characters. Current: 4000.
+Max 4000 characters. Current: 3579.
 
-The first two lines are what Play shows before "More", so they carry the job-search wording:
-coding interview, interview prep, software engineering and machine learning jobs, and the round
-types. The subject tracks follow, so the listing still ranks for people searching a topic.
+The first lines are what Play shows before "More", so they name both halves: learn DSA and AI by
+interactive labs, then prepare for coding and ML interviews. The learning tracks come first because the course
+is most of the app; the interview section follows with its own heading, so job-seekers who expand
+the text find it immediately.
 
 ```
-Preparing for a coding interview? Algora is interview prep for software engineering and machine learning jobs: data structures and algorithms, coding patterns, system design, behavioural questions and timed mock interviews, in one app that works fully offline.
+Learn data structures, algorithms and AI through interactive labs, then prepare for coding and machine learning interviews. AlgorAI is a visual computer science course and an interview-prep app in one, and it works fully offline.
 
-Most prep apps hand you a wall of text and a code sample. Algora hands you the thing itself: a linked list you can insert into, a graph you can run BFS across, a regression line you can drag until the error stops shrinking. 504 topics, and every one has an interactive lab.
+Most apps hand you a wall of text. AlgorAI hands you the thing itself: a linked list you can insert into, a graph you can run BFS across, a regression line you can tune with sliders until the error stops shrinking. 504 topics, each with an interactive lab.
 
-CODING INTERVIEW PREP
-• 54 timed quizzes with 453 questions, under a real countdown clock
-• Beginner interview rounds, free: arrays and strings, hash maps, Big-O, stacks and queues, recursion and binary search, plus coding rounds on arrays, linked lists and trees
-• Advanced rounds: graphs, dynamic programming, advanced data structures, and hard classics such as trapping rain water and the median of two sorted arrays
-• Scenario rounds: real product problems (rate limiters, merging logs, trending hashtags, calendar clashes) solved step by step
-• Picture and story rounds: read a diagram, or follow a story (a startup lunch rush, a 3 a.m. outage), and solve it
-• Every answer explains the solution, its time and space complexity, and why the tempting wrong answer fails
-• 57 coding pattern guides, including sliding window, two pointers, fast and slow pointers, merge intervals, monotonic stack, binary search on the answer, backtracking, union-find and topological sort, each with its own lab
-• 102 coding problems grouped by pattern, with examples, constraints, progressive hints, an approach walk-through and a full Kotlin solution
-• System design and ML system design primers, 18 building blocks each
-• 20 behavioural interview questions, with what the interviewer is really testing and how to shape a STAR answer
-• Spaced-repetition flashcards for complexities, pattern triggers, ML metrics and system design recall
-
-Useful for internships, campus placements, new-grad roles and experienced software engineer, data scientist or ML engineer interviews.
-
-DSA TRACK — DATA STRUCTURES AND ALGORITHMS
+LEARN DSA — DATA STRUCTURES AND ALGORITHMS
 • Data structures: arrays, strings, linked lists, stacks, queues, hash tables, trees, heaps, tries, graphs, disjoint sets, B-trees and more
 • Algorithms: sorting, searching, recursion, dynamic programming, greedy, backtracking, graph traversal, shortest paths, string matching
 • Complexity analysis: Big-O, amortised analysis, recurrences, space/time trade-offs
 
-AI TRACK — MACHINE LEARNING, DEEP LEARNING, NLP AND RL
+LEARN AI — MACHINE LEARNING, DEEP LEARNING, NLP AND RL
 • Machine learning: regression, classification, clustering, trees and ensembles, model evaluation
-• Deep learning: backpropagation, CNNs, RNNs, transformers, training dynamics
-• NLP: tokenisation, embeddings, attention, the modern pipeline end to end
-• Reinforcement learning: bandits, Q-learning, policy gradients, DQN, exploration
+• Deep learning: backpropagation, CNNs, RNNs, transformers, diffusion models
+• NLP and LLMs: tokenisation, embeddings, attention, RAG, fine-tuning, agents
+• Reinforcement learning: bandits, Q-learning, policy gradients, DQN, PPO
 
-EVERY TOPIC IS BUILT THE SAME WAY
-1. What it is, in plain language
-2. How it works, step by step
-3. The mathematics, written out
-4. A technical deep dive with runnable code
-5. An interactive simulation you can play with
-6. Where it shows up in real systems
-7. Key takeaways worth remembering
+EVERY TOPIC, THE SAME SHAPE
+Plain-language intro, a step-by-step walkthrough, the maths written out, complete code, an interactive lab, real-world uses and key takeaways.
 
-TRACK YOUR PREP
-2,414 flashcards on an SM-2 schedule, capped at 20 new cards a day. A completion ring per track, per-category bars, a week strip of what you finished each day, and your best score on every quiz.
+PREPARE FOR INTERVIEWS
+• 54 timed quizzes with 453 questions, under a real countdown clock
+• Beginner rounds, free: arrays, hash maps, Big-O, stacks and queues, recursion, search, plus coding rounds on arrays, linked lists and trees
+• Advanced rounds: graphs, dynamic programming, advanced data structures, and hard classics such as trapping rain water
+• Scenario, picture and story rounds: real product problems, diagrams and narrated cases (a startup lunch rush, a 3 a.m. outage), solved step by step
+• AI interview rounds: NLP, LLM and GenAI engineering, computer vision, recommender systems, and AI in healthcare, finance and retail
+• Every answer explains the solution, its complexity, and why the tempting wrong answer fails
+• 57 coding pattern guides (sliding window, two pointers, merge intervals, monotonic stack, backtracking, union-find and more), each with its own lab
+• 102 coding problems grouped by pattern, with progressive hints, a walk-through and a full Kotlin solution
+• System design and ML system design primers, and 20 behavioural questions with STAR guidance
+
+For students, self-learners, campus placements, new-grad roles and experienced software engineer, data scientist or ML engineer interviews.
+
+LEARN, THEN REMEMBER
+Learn mode checks each quiz answer as you go. A weak-spot drill targets the patterns you miss most, and every miss comes back as a flashcard. 2,414 flashcards on an SM-2 schedule, a completion ring per track, a week strip of what you finished, and your best score on every quiz.
 
 WORKS ANYWHERE
 Everything is bundled in the app. No account, no sign-in, no server: study on a commute or with data switched off. Progress stays on your device. Light and dark themes, bookmarks, and optional study reminders you can switch off in Settings.
 
 PREMIUM
-Algora is free to start, with 60 lessons and 35 quiz sets open, including every beginner interview round. Premium is a single lifetime purchase, not a subscription, that unlocks every remaining topic, lab and advanced interview round and removes ads. A rewarded ad opens most locked lessons for 6 hours; interview practice needs Premium.
+AlgorAI is free to start, with 60 lessons and 35 quiz sets open, including every beginner interview round. Premium is a single lifetime purchase, not a subscription, that unlocks every remaining topic, lab and advanced interview round and removes ads. A rewarded ad opens most locked lessons for 6 hours; interview practice needs Premium.
 ```
 
 ---
 
 ## What's new (release notes)
 
-Max 500 characters. Current: 456.
+Max 500 characters. Current: 414.
 
 ```
-New: interview rounds for every level.
+New: learn mode, weak spots and AI interview rounds.
 
-• Beginner Interview: 8 free rounds on arrays, hashing, Big-O, lists, trees and more
-• Advanced Interview: graphs, DP, data structures and hard classics
-• Scenario rounds: real product problems, solved step by step
-• Big Tech, Startup and Finance sets: 30 new real-world scenarios
-• Picture and story rounds: solve the diagram or the story on screen
-• 54 timed quizzes, now 453 questions, each with a worked solution
+• Learn mode: check each answer and read why, no timer
+• Weak spots: see the patterns you miss most and drill them in one tap
+• Every missed question comes back as a flashcard
+• AI rounds: NLP, LLMs, computer vision, recommenders, industries
+• Picture and story rounds, and 10 free beginner rounds
+• 54 timed quizzes, 453 questions, each with a worked solution
 ```
 
 ---
@@ -184,12 +177,12 @@ position 9, past the point Play stops scrolling most people.
 | 3 | *`03-lab-graph-bfs.png`* | Graph visualiser mid-BFS — visited set, frontier, controls | Then hands you the controls |
 | 4 | `04-home-ai.png` | Home, AI track | ML, DL, NLP and RL, same treatment |
 | 5 | *`05-topic-detail-transformers.png`* | Transformers — the mathematics section, written out | The maths, not hand-waved |
-| 6 | `06-lab-linear-regression.png` | Regression lab fitted, with the gradient-descent code | Drag the line. Watch the error fall. |
+| 6 | `06-lab-linear-regression.png` | Regression lab fitted, with the gradient-descent code | Move the sliders. Watch the error fall. |
 | 7 | `07-problem-detail.png` | Problem with examples and prerequisite topics | Problems that link back to the theory |
 | 8 | `08-timed-quiz.png` | Timed mock interview, question 1 of 6 | Timed rounds under a real clock |
 | 9 | `09-progress.png` | Progress dashboard — ring, week strip, milestones | See the week you actually had |
 | 10 | `10-flashcards.png` | Revealed card with Again / Good / Easy | Recall on an SM-2 schedule |
-| 11 | *`11-topic-detail-dynamic-programming.png`* | Dynamic programming — deep dive with runnable Kotlin | Runnable code, not pseudocode |
+| 11 | *`11-topic-detail-dynamic-programming.png`* | Dynamic programming — deep dive with complete Kotlin | Real code, not pseudocode |
 | 12 | *`12-topic-detail-backpropagation.png`* | Backpropagation — where it shows up in real systems | Then shows you where it is used |
 | 13 | *`13-topic-detail-binary-search-tree.png`* | Binary search tree — key takeaways card | The part worth remembering |
 | 14 | `14-simulations-catalog.png` | Catalog of every lab | Every topic has one |
@@ -209,7 +202,7 @@ the visited and frontier states are both visible.
 
 Shots 2, 5, 11, 12 and 13 are five topic details, and **each one frames a different section of the
 7-section template** — that is the whole point of having five. Shot 2 is How Does It Work (§2), 5 is
-the mathematics (§3), 11 is the technical deep dive with runnable code (§4), 12 is real-world
+the mathematics (§3), 11 is the technical deep dive with complete code (§4), 12 is real-world
 applications (§6) and 13 is key takeaways (§7). Five shots of the same section would read as one
 screen photographed five times; five different sections make the argument the full description makes
 in prose, that every topic is built the same way. §5 needs no shot of its own — it is the
@@ -257,7 +250,9 @@ Open items that are not copy problems but will block or damage the release:
   only notification the app ever posts is the lapsed-learner nudge, at most one a week, with an
   opt-out switch in Settings and no notification at all until the user grants the runtime permission
   on Android 13+.
-- **In-app review is offered at 15% track completion**, once per install, from the Progress screen.
+- **In-app review is offered once per install**, at the first of three moments: 15% of the active
+  track complete or 5 different active days (checked on the Progress screen), or a timed quiz
+  finished at 80% or more (on its results screen).
   Play policy forbids incentivising, filtering or repeatedly prompting for ratings — none of which
   the implementation does, and the code must stay that way (`core/playreview/AppReviewPrompt.kt`).
 - **Privacy policy URL is still the one open blocker for this submission.** `docs/privacy-policy.md`

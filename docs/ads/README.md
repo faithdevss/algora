@@ -1,4 +1,4 @@
-# Google Ads assets — Algora
+# Google Ads assets — AlgorAI
 
 Everything a Google Ads App campaign asks for, in one place: the text that goes
 in the asset fields, and the images in `images/`.
@@ -80,11 +80,11 @@ Max 90 characters.
 |---|---|
 | `Data structures, algorithms, ML, DL, NLP and RL. Every topic ships a lab you can run.` | 85 |
 | `504 topics, pattern-grouped problems, timed quizzes and flashcards. Fully offline.` | 82 |
-| `Insert into a linked list, run BFS on a graph, drag a regression line until it fits.` | 84 |
+| `Insert into a linked list, run BFS on a graph, tune a regression line until it fits.` | 84 |
 | `Interview prep: pattern guides, timed mock rounds and worked Kotlin solutions.` | 78 |
 | `No account, no sign-in, no server. Open it on a plane and it behaves identically.` | 81 |
 
-Spare: `Every topic: plain language, the maths written out, runnable code, then a lab.` (78)
+Spare: `Every topic: plain language, the maths written out, complete code, then a lab.` (78)
 
 ---
 
