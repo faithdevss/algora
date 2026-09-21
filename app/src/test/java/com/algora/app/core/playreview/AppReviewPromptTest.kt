@@ -30,4 +30,18 @@ class AppReviewPromptTest {
     fun `the threshold is the documented 15 percent`() {
         assertTrue(AppReviewPrompt.PROGRESS_THRESHOLD_PERCENT == 15)
     }
+
+    @Test
+    fun `coming back on enough different days also qualifies`() {
+        assertFalse(AppReviewPrompt.shouldAsk(progressPercent = 0, promptedDay = null, activeDays = 4))
+        assertTrue(AppReviewPrompt.shouldAsk(progressPercent = 0, promptedDay = null, activeDays = AppReviewPrompt.ACTIVE_DAYS_THRESHOLD))
+        assertFalse(AppReviewPrompt.shouldAsk(progressPercent = 0, promptedDay = 20_000L, activeDays = 30))
+    }
+
+    @Test
+    fun `a strong quiz score qualifies, once`() {
+        assertFalse(AppReviewPrompt.shouldAskAfterQuiz(scorePercent = 79, promptedDay = null))
+        assertTrue(AppReviewPrompt.shouldAskAfterQuiz(scorePercent = AppReviewPrompt.QUIZ_SCORE_THRESHOLD_PERCENT, promptedDay = null))
+        assertFalse(AppReviewPrompt.shouldAskAfterQuiz(scorePercent = 100, promptedDay = 20_000L))
+    }
 }

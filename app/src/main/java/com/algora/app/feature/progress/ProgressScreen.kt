@@ -161,7 +161,7 @@ fun ProgressScreen(
     // stored day arrives would re-prompt someone who was already asked.
     val activity = LocalActivity.current
     val reviewPromptedDay by settings.reviewPromptedDay.collectAsState(initial = -1L)
-    LaunchedEffect(activity, overallPct, reviewPromptedDay) {
+    LaunchedEffect(activity, overallPct, reviewPromptedDay, activeDays.size) {
         val host = activity ?: return@LaunchedEffect
         if (reviewPromptedDay < 0L) return@LaunchedEffect
         AppReviewPrompt.maybeAsk(
@@ -169,6 +169,7 @@ fun ProgressScreen(
             settings = settings,
             progressPercent = overallPct,
             promptedDay = reviewPromptedDay.takeIf { it > 0L },
+            activeDays = activeDays.size,
         )
     }
 

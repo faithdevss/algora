@@ -1,6 +1,7 @@
 package com.algora.app.feature.interviewprep.quiz
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -67,6 +68,7 @@ import com.algora.app.core.data.settings.bestPercent
 import com.algora.app.core.data.settings.ofLength
 import com.algora.app.core.data.settings.questionKey
 import com.algora.app.core.data.settings.settingsDataStore
+import com.algora.app.core.playreview.AppReviewPrompt
 import com.algora.app.core.ui.components.ScreenHeader
 import com.algora.app.core.ui.theme.SimColors
 import com.algora.app.core.ui.theme.SpaceGrotesk
@@ -107,6 +109,9 @@ fun QuizScreen(
     val analytics = rememberAnalytics()
     val scope = rememberCoroutineScope()
     val attemptsByQuiz by settings.quizAttempts.collectAsState(initial = emptyMap())
+    val activity = LocalActivity.current
+    // -1 while loading, 0 when never asked (see ProgressScreen) — asking before it loads could ask twice.
+    val reviewPromptedDay by settings.reviewPromptedDay.collectAsState(initial = -1L)
     val history = attemptsByQuiz[quizId].orEmpty().ofLength(quiz.questions.size)
 
     val baseKeys = remember(quiz, quizId) {
@@ -170,6 +175,21 @@ fun QuizScreen(
                         // Scored runs only, matching what gets recorded: a missed-only drill is a
                         // subset of the set and would drag the score distribution down for free.
                         analytics.quizCompleted(quizId, result.percent, result.seconds)
+                        // A strong timed score is a good moment to ask for a rating. The short wait
+                        // lets the score land on screen before Play's sheet slides over it.
+                        val host = activity
+                        val prompted = reviewPromptedDay
+                        if (host != null && prompted >= 0L) {
+                            scope.launch {
+                                delay(1_200)
+                                AppReviewPrompt.maybeAskAfterQuiz(
+                                    activity = host,
+                                    settings = settings,
+                                    scorePercent = result.percent,
+                                    promptedDay = prompted.takeIf { it > 0L },
+                                )
+                            }
+                        }
                     }
                     onFinish()
                 }
