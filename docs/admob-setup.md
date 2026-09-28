@@ -17,7 +17,7 @@ There are no banners anywhere, and nothing renders an ad over content the user i
 
 ## Set your ids
 
-Add to `local.properties` (already gitignored, never commit it):
+Add to `android/local.properties` (already gitignored, never commit it):
 
 ```properties
 admob.appId=ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY
@@ -90,8 +90,8 @@ the interstitial the first ad surface the SDK is asked for, which is why `Mobile
 
 | File | Role |
 |---|---|
-| `app/build.gradle.kts` | Reads the ids, sets `manifestPlaceholders["admobAppId"]` and both `buildConfigField`s per build type |
-| `app/src/main/AndroidManifest.xml` | `com.google.android.gms.ads.APPLICATION_ID` = `${admobAppId}` — required, `MobileAds.initialize()` crashes at startup without it |
+| `android/app/build.gradle.kts` | Reads the ids, sets `manifestPlaceholders["admobAppId"]` and both `buildConfigField`s per build type |
+| `android/app/src/main/AndroidManifest.xml` | `com.google.android.gms.ads.APPLICATION_ID` = `${admobAppId}` — required, `MobileAds.initialize()` crashes at startup without it |
 | `core/ads/RewardedAds.kt` | `AdIds` reads both unit ids out of `BuildConfig` |
 | `core/ads/AdsProvider.kt` | App-lifetime singleton per format; the implementation comes from the source-set `AdsFactory` |
 | `core/ads/MobileAdsInit.kt` | Idempotent SDK bootstrap + the content-rating cap, shared by both formats |

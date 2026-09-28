@@ -13,7 +13,7 @@ to a tracked file before a release.
 
 ## Configure it
 
-Add to `local.properties` (already gitignored, never commit it):
+Add to `android/local.properties` (already gitignored, never commit it):
 
 ```properties
 signing.storeFile=/absolute/path/to/algora-upload.jks
@@ -25,16 +25,16 @@ signing.keyPassword=…
 `signing.keyPassword` may be omitted when the key password matches the store password — the common
 case for a keystore created by Android Studio.
 
-A relative `signing.storeFile` is resolved against the repo root. Keeping the keystore outside the
+A relative `signing.storeFile` is resolved against the Gradle root (`android/`). Keeping the keystore outside the
 repo entirely is safer: nothing to accidentally `git add -f`.
 
 Then:
 
 ```
-./gradlew bundleRelease
+cd android && ./gradlew bundleRelease
 ```
 
-`app/build/outputs/bundle/release/app-release.aab` is the Play upload artifact.
+`android/app/build/outputs/bundle/release/app-release.aab` is the Play upload artifact.
 
 ### Other ways to pass them
 
@@ -72,7 +72,7 @@ them when registering or rotating an upload certificate.
 
 ```
 $ANDROID_HOME/build-tools/<version>/apksigner verify --print-certs \
-  app/build/outputs/apk/release/app-release.apk
+  android/app/build/outputs/apk/release/app-release.apk
 ```
 
 An APK named `app-release-unsigned.apk` means the build found no keystore. Every configuration run

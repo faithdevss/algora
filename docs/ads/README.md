@@ -56,46 +56,63 @@ cannot be re-derived at upload time the way a text field can.
 
 ## Headlines
 
-Max 30 characters. Google mixes these freely, so each one sells a different
-hook rather than restating the last.
+Max 30 characters, up to five live. Google mixes these freely, so each one sells
+a different hook rather than restating the last.
 
 | Headline | Chars | Angle |
 |---|---|---|
-| `Learn DSA & AI by Doing` | 23 | method |
-| `504 Topics, 504 Labs` | 20 | scale |
+| `Watch Algorithms Run` | 20 | method |
 | `DSA, ML, DL, NLP and RL` | 23 | coverage |
-| `Coding Interview Prep` | 21 | intent |
+| `Coding & ML Interview Prep` | 26 | intent |
+| `Drill Your Weak Spots` | 21 | learning loop |
 | `Works Fully Offline` | 19 | constraint |
 
-Spares, all within the limit: `Algorithms You Can Run` (22),
-`Not a Textbook. A Lab.` (22), `Practice, Not Just Reading` (26).
+Spares, all within the limit: `Timed Mock Interview Rounds` (27),
+`Practice, Not Just Reading` (26), `Not a Textbook. A Lab.` (22),
+`No Account. No Sign-In.` (23), `504 Topics, 504 Labs` (20 — re-count first).
+
+`Learn DSA & AI by Doing` is retired: the listing dropped "learn by doing" as a
+claim the app cannot back, and the ads follow the listing. The count headline
+moved to the spares so the live set carries no figure that dates.
 
 ---
 
 ## Descriptions
 
-Max 90 characters.
+Max 90 characters, up to five live.
 
 | Description | Chars |
 |---|---|
-| `Data structures, algorithms, ML, DL, NLP and RL. Every topic ships a lab you can run.` | 85 |
-| `504 topics, pattern-grouped problems, timed quizzes and flashcards. Fully offline.` | 82 |
+| `Data structures, algorithms, ML, DL, NLP and RL. Every topic comes with a lab to run.` | 85 |
 | `Insert into a linked list, run BFS on a graph, tune a regression line until it fits.` | 84 |
-| `Interview prep: pattern guides, timed mock rounds and worked Kotlin solutions.` | 78 |
-| `No account, no sign-in, no server. Open it on a plane and it behaves identically.` | 81 |
+| `Timed coding and ML interview rounds. Every answer explains why the wrong one fails.` | 84 |
+| `Learn mode checks each answer as you go. Missed questions come back as flashcards.` | 82 |
+| `Prep for coding and ML interviews: timed rounds, pattern guides and worked solutions.` | 85 |
 
-Spare: `Every topic: plain language, the maths written out, complete code, then a lab.` (78)
+Spares: `Coding rounds, AI rounds on NLP, LLMs and vision, system design primers and STAR tips.` (86),
+`Pattern guides and problems with hints, a walk-through and a full Kotlin solution.` (82),
+`Picture and story rounds: real product problems and outages, solved step by step.` (81),
+`No account, no sign-in, no server. Study on a commute with your data switched off.` (82),
+`Every topic: plain language, the maths written out, complete code, then a lab.` (78),
+`504 topics, pattern-grouped problems, timed quizzes and flashcards. Fully offline.` (82 — re-count first).
+
+Two of the five live lines sell interview prep. The offline line moved to the
+spares because `Works Fully Offline` already carries that angle as a headline.
+
+Every line is lifted from a claim the full description in `listing.md` already
+makes, so nothing here promises more than the store page does. Interview rounds
+beyond the beginner set need Premium; none of the copy says "free", so none of
+it has to be qualified.
 
 ---
 
 ## Before the campaign goes live
 
-- **`504` is the one figure in the copy, and it dates.** Counted off
+- **`504` lives only in the spares, and it dates.** Counted off
   `TopicContentProvider.byId` at 165 commits (`1.1.65`); every topic there
   assigns a real `SimulationType`, none `NotYetAvailable`, which is what makes
-  "504 Labs" true rather than approximately true. Re-count before editing the
-  campaign, or swap `504 Topics, 504 Labs` for `Algorithms You Can Run` and take
-  the number out of the descriptions too. Note the 504 labs are 34 lab engines
+  "504 Labs" true rather than approximately true. Re-count before promoting
+  either `504` spare into the live set. Note the 504 labs are 34 lab engines
   re-parameterised, not 504 bespoke screens — "every topic ships a lab" is
   accurate, "504 unique visualisers" would not be. The B variants carry the
   number a second way, inside `Algora_28.png` itself, where the labs catalog

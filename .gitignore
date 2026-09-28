@@ -1,21 +1,28 @@
+.DS_Store
+.codegraph/
+
+# --- Android (android/) ---
 *.iml
 .gradle/
-/local.properties
+.kotlin/
+/android/local.properties
 .idea/
-.DS_Store
 build/
-/captures/
+/android/captures/
 .externalNativeBuild/
 .cxx/
 *.apk
 *.aab
 
-/certificates
+/android/certificates
 
 # Signing keys live in the repo directory but never in git.
-/keystore
+/android/keystore
 *.jks
 *.keystore
 
-# CodeGraph local index (46MB SQLite, rebuildable with `codegraph init`).
-.codegraph/
+# --- iOS (ios/) ---
+xcuserdata/
+DerivedData/
+*.xcuserstate
+/ios/build/

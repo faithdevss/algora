@@ -38,6 +38,7 @@ and `regularization`. Track C started: **C1 (NN Basics, 4)** created `dl_basics`
 | 12 | Figures for AI topics (pilot) | Done as a pilot — the figure layer grew from six shapes to nine (`Plot`, `LayerStack`, `Matrix`) and **113 of 325 AI topics carry a figure, every free-tier one included**, so a reader who has not paid sees a picture on every page they can open. The remaining 217 were measured one by one in `docs/plan/phase-12-figure-scope.md` rather than built by default — 143 build / 58 content-first / 16 never — which is what Phase 13 then cut down again. Detail in `docs/plan/phase-12-ai-figures.md` |
 | 13 | The figures that must exist | Done — of Phase 12's 143-topic backlog, **41 were load-bearing and 102 were decoration**; all 41 are built (M1–M8) and the rest stay unbuilt unless a page proves it needs one. An emulator pass over the batch caught six broken figures the tests could not see. Detail in `docs/plan/phase-13-must-have-figures.md` |
 | 14 | Interstitial after a finished quiz | Done — the app's second ad surface and its only non-opt-in one: a full-screen ad on the way *out* of a completed quiz, for non-premium users, behind `InterstitialGate` (past a 2-day **and** 4th-quiz warm-up, ≤3/day, ≥3min apart, never stacked on the Play review prompt). Flashcards and the daily drill are deliberately untaxed. Every exit from the results screen — button, header arrow **and system back** — now funnels through one gate, and the SDK bootstrap moved out of `AdMobRewardedAds` into `MobileAdsInit` because an interstitial can be the first ad surface an install ever reaches. Detail in `docs/plan/phase-14-quiz-interstitial.md` |
+| iOS | Native SwiftUI port (`ios/`, `com.saimum.algorai`) | In progress — everything except ads and payments. Phases I0–I6 in `docs/plan/ios-port.md` |
 
 
 **Per-mode shell theming (closes the last Phase-5 item):** `mode` is hoisted out of `AlgoraApp` into
@@ -151,4 +152,4 @@ Free users saw almost no ads: the only surface was opt-in rewarded video, so a n
 
 ## Verification
 
-- Per phase: standard Android build/run (`./gradlew assembleDebug` or emulator) + manual walkthrough of that phase's screens.
+- Per phase: standard Android build/run (`cd android && ./gradlew assembleDebug` or emulator) + manual walkthrough of that phase's screens.
