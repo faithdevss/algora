@@ -389,6 +389,13 @@ struct RecursionTreeLab: View {
         switch topicId {
         case "tower_of_hanoi": HanoiLab()
         case "n_queens": NQueensLab()
+        case "strassens_algorithm": StrassenLab()
+        case "karatsubas_algorithm": KaratsubaLab()
+        case "fast_power", "modular_exponentiation": NumberStoryLab(topicId: topicId)
+        case "factorial": FactorialStory()
+        case "fibonacci_recursive": RecursionTreeStory(fib: true)
+        case "permutation_generation": RecursionTreeStory(fib: false)
+        case "sudoku_solver": SudokuStory()
         default: CallTreeLab(topicId: topicId)
         }
     }
@@ -1160,5 +1167,535 @@ private struct PathSeparator: View {
 
     var body: some View {
         Text("›").font(AppFont.sans(14)).foregroundStyle(palette.muted).padding(.vertical, 6)
+    }
+}
+
+// MARK: - Recursion story labs
+// Port of RecursionStoryLabs.kt. Factorial as its call stack, Fibonacci and Permutations as call trees
+// with the stack (or the output) under them, and the Sudoku solver as a grid with the candidates for
+// the cell being tried. Yellow is the call returning or the digit being tried, blue what waits on the
+// stack, green what has returned.
+
+private enum RTone { case idle, stack, current, returned }
+
+private struct RNode { let label: String; let parent: Int? }
+
+private struct RFrame {
+    var tones: [Int: RTone] = [:]
+    var captions: [Int: String] = [:]
+    /// Call stack as labels, bottom first; the last is drawn yellow when `topCurrent`.
+    var stack: [String] = []
+    var topCurrent = false
+    var output: [(String, RTone)] = []
+    var chips: [StoryChip] = []
+    let headline: String
+    let body: String
+}
+
+private func rtColors(_ tone: RTone, _ palette: Palette) -> (Color, Color) {
+    switch tone {
+    case .idle: (palette.muted.opacity(0.22), palette.onSurface.opacity(0.75))
+    case .stack: (SimColors.blue, .white)
+    case .current: (SimColors.active, Color(hex: 0x1F1A0A))
+    case .returned: (SimColors.green, .white)
+    }
+}
+
+private let recursionLegend: [(Color, SwatchStyle, String)] = [(SimColors.active, .fill, "Returning"), (SimColors.blue, .fill, "On stack"), (SimColors.green, .fill, "Returned")]
+
+// MARK: Fibonacci
+
+private func fibStory(_ n: Int) -> (nodes: [RNode], frames: [RFrame]) {
+    var nodes: [RNode] = []
+    var arg: [Int] = []
+    func build(_ k: Int, _ parent: Int?) {
+        let id = nodes.count
+        nodes.append(RNode(label: "f(\(k))", parent: parent))
+        arg.append(k)
+        if k >= 2 { build(k - 1, id); build(k - 2, id) }
+    }
+    build(n, nil)
+    let total = nodes.count
+    let counts = Dictionary(grouping: arg, by: { $0 }).mapValues(\.count)
+    var tones: [Int: RTone] = [:], captions: [Int: String] = [:], stack: [Int] = [], frames: [RFrame] = []
+    var calls = 0
+    var computedOnce = Set<Int>()
+    func chips(_ id: Int) -> [StoryChip] {
+        let c = counts[arg[id]] ?? 1
+        return [StoryChip("calls", "\(calls) of \(total)"), StoryChip("\(nodes[id].label) computed", "\(c)×", c > 1 ? .warn : .idle)]
+    }
+    func snapshot(_ headline: String, _ body: String, top: Bool, _ id: Int) {
+        frames.append(RFrame(tones: tones, captions: captions, stack: stack.map { nodes[$0].label }, topCurrent: top, chips: chips(id), headline: headline, body: body))
+    }
+    func visit(_ id: Int) -> Int {
+        calls += 1
+        let k = arg[id]
+        stack.append(id)
+        if k < 2 {
+            tones[id] = .current
+            captions[id] = "\(k)"
+            snapshot("{\(nodes[id].label)} is a base case, so it returns \(k) at once.", "Base cases stop the recursion; every other call is built from them.", top: true, id)
+            tones[id] = .returned
+            stack.removeLast()
+            return k
+        }
+        let kids = nodes.indices.filter { nodes[$0].parent == id }
+        tones[id] = .stack
+        snapshot("\(nodes[id].label) calls \(nodes[kids[0]].label) first; \(nodes[kids[1]].label) waits its turn.",
+                 "Each call waits on the stack until both of its children have returned.", top: false, id)
+        let a = visit(kids[0]), b = visit(kids[1])
+        let v = a + b
+        tones[id] = .current
+        captions[id] = "= \(v)"
+        let body: String
+        if (counts[k] ?? 1) > 1 && !computedOnce.contains(k) {
+            body = "The other branch calls \(nodes[id].label) again, which is why plain recursion is exponential."
+        } else if computedOnce.contains(k) {
+            body = "\(nodes[id].label) was already worked out once. Plain recursion recomputes it anyway."
+        } else {
+            body = "Each call adds its two children's answers."
+        }
+        computedOnce.insert(k)
+        snapshot("\(nodes[kids[0]].label) and \(nodes[kids[1]].label) returned, so {\(nodes[id].label)} = \(a) + \(b) = \(v).", body, top: true, id)
+        tones[id] = .returned
+        captions[id] = "\(v)"
+        stack.removeLast()
+        return v
+    }
+    let answer = visit(0)
+    frames.append(RFrame(tones: tones, captions: captions, chips: [StoryChip("calls", "\(total)"), StoryChip("f(\(n))", "\(answer)", .answer)],
+                         headline: "f(\(n)) = {v:\(answer)} after \(total) calls.",
+                         body: "A memo table would need only \(n + 1) calls, one per distinct argument."))
+    return (nodes, frames)
+}
+
+// MARK: Permutations
+
+private func permStory(_ n: Int) -> (nodes: [RNode], frames: [RFrame]) {
+    let letters = Array("abcd".prefix(n)).map(String.init)
+    var nodes = [RNode(label: "·", parent: nil)]
+    var prefixOf = [""]
+    func build(_ id: Int, _ prefix: String, _ left: [String]) {
+        for l in left {
+            let c = nodes.count
+            nodes.append(RNode(label: prefix + l, parent: id))
+            prefixOf.append(prefix + l)
+            build(c, prefix + l, left.filter { $0 != l })
+        }
+    }
+    build(0, "", letters)
+    let slots = (1...n).reduce(1, *)
+    let product = (1...n).reversed().map(String.init).joined(separator: " × ")
+    var tones: [Int: RTone] = [0: .stack], out: [String] = [], frames: [RFrame] = []
+    func children(_ id: Int) -> [Int] { nodes.indices.filter { nodes[$0].parent == id } }
+    func left(_ p: String) -> [String] { letters.filter { !p.contains($0) } }
+    func output(current: Bool) -> [(String, RTone)] {
+        out.enumerated().map { ($1, current && $0 == out.count - 1 ? .current : .returned) } + Array(repeating: ("", .idle), count: slots - out.count)
+    }
+    func chips(_ p: String) -> [StoryChip] { [StoryChip("prefix", "\"\(p)\""), StoryChip("left", left(p).isEmpty ? "–" : left(p).joined(separator: " "))] }
+    frames.append(RFrame(tones: tones, output: output(current: false), chips: chips(""),
+                         headline: "Start with an empty prefix and all \(n) letters left.",
+                         body: "Each call fixes one letter, then recurses on the letters that remain."))
+    func visit(_ id: Int) {
+        let p = prefixOf[id]
+        if left(p).isEmpty {
+            out.append(p)
+            tones[id] = .current
+            let parent = nodes[id].parent.map { prefixOf[$0] } ?? ""
+            frames.append(RFrame(tones: tones, output: output(current: true), chips: chips(parent),
+                                 headline: "{\(p)} is complete. Emit it and return to \(parent.isEmpty ? "the root" : parent).",
+                                 body: "Each level fixes one more letter from the ones left, so \(n) letters give \(slots) leaves."))
+            tones[id] = .returned
+            return
+        }
+        if id != 0 {
+            tones[id] = .stack
+            frames.append(RFrame(tones: tones, output: output(current: false), chips: chips(p),
+                                 headline: "Fix {\(String(p.last!))} next: the prefix is \"\(p)\", with \(left(p).joined(separator: ", ")) left.",
+                                 body: "The call stays on the stack until every ordering that starts with \"\(p)\" is out."))
+        }
+        for c in children(id) { visit(c) }
+        tones[id] = .returned
+        if id != 0 && prefixOf[id].count == 1 && n > 2 {
+            frames.append(RFrame(tones: tones, output: output(current: false), chips: chips(""),
+                                 headline: "Every ordering starting with {\(p)} is out, so return to the root.",
+                                 body: "The root then tries the next first letter."))
+        }
+    }
+    visit(0)
+    frames.append(RFrame(tones: tones, output: output(current: false), chips: [StoryChip("orderings", "\(slots)", .answer)],
+                         headline: "All {v:\(slots)} orderings are out: \(product).",
+                         body: "n! leaves, each reached by one root-to-leaf path, so the work grows as O(n · n!)."))
+    return (nodes, frames)
+}
+
+/// Leaf-slot layout: leaves take consecutive slots, a parent centres over its children.
+private func treeLayout(_ nodes: [RNode]) -> (x: [Double], depth: [Int], leaves: Int, maxDepth: Int) {
+    var kids: [Int: [Int]] = [:]
+    for (i, n) in nodes.enumerated() { if let p = n.parent { kids[p, default: []].append(i) } }
+    var x = [Double](repeating: 0, count: nodes.count), depth = [Int](repeating: 0, count: nodes.count)
+    var slot = 0
+    func place(_ id: Int, _ d: Int) {
+        depth[id] = d
+        let cs = kids[id] ?? []
+        if cs.isEmpty { x[id] = Double(slot); slot += 1; return }
+        cs.forEach { place($0, d + 1) }
+        x[id] = (x[cs.first!] + x[cs.last!]) / 2
+    }
+    place(0, 0)
+    return (x, depth, slot, depth.max() ?? 0)
+}
+
+private struct RTreeView: View {
+    let nodes: [RNode]
+    let frame: RFrame
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        let layout = treeLayout(nodes)
+        let rowGap: CGFloat = 60
+        Canvas { ctx, size in
+            let slotW = size.width / CGFloat(max(layout.leaves, 1))
+            func at(_ i: Int) -> CGPoint { CGPoint(x: (CGFloat(layout.x[i]) + 0.5) * slotW, y: 18 + CGFloat(layout.depth[i]) * rowGap) }
+            for (i, n) in nodes.enumerated() {
+                guard let p = n.parent else { continue }
+                let tone = frame.tones[i] ?? .idle
+                let color: Color = tone == .returned ? SimColors.green : tone == .idle ? palette.muted.opacity(0.45) : SimColors.blue
+                var path = Path(); path.move(to: at(p)); path.addLine(to: at(i))
+                ctx.stroke(path, with: .color(color), lineWidth: tone == .idle ? 1.2 : 2)
+            }
+            for (i, n) in nodes.enumerated() {
+                let c = at(i)
+                let (fill, ink) = rtColors(frame.tones[i] ?? .idle, palette)
+                let text = ctx.resolve(Text(n.label).font(AppFont.mono(12, .bold)).foregroundColor(ink))
+                let s = text.measure(in: CGSize(width: 200, height: 40))
+                let w = min(max(s.width + 14, 32), slotW - 4), h: CGFloat = 28
+                let rect = CGRect(x: c.x - w / 2, y: c.y - h / 2, width: w, height: h)
+                ctx.fill(Path(roundedRect: rect, cornerRadius: 7), with: .color(palette.surface))
+                ctx.fill(Path(roundedRect: rect, cornerRadius: 7), with: .color(fill))
+                ctx.draw(text, at: c)
+                if let cap = frame.captions[i] {
+                    let tone = frame.tones[i] ?? .idle
+                    let capInk = tone == .current ? StoryTone.active.ink(palette) : StoryTone.done.ink(palette)
+                    ctx.draw(ctx.resolve(Text(cap).font(AppFont.mono(11, .bold)).foregroundColor(capInk)), at: CGPoint(x: c.x, y: rect.maxY + 9))
+                }
+            }
+        }
+        .frame(height: 54 + CGFloat(layout.maxDepth) * rowGap)
+    }
+}
+
+private struct RSlotRow: View {
+    let slots: [(String, RTone)]
+    var height: CGFloat = 40
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(slots.indices, id: \.self) { i in
+                let (text, tone) = slots[i]
+                let shape = RoundedRectangle(cornerRadius: 9)
+                if text.isEmpty {
+                    shape.strokeBorder(palette.muted.opacity(0.35), style: StrokeStyle(lineWidth: 1.2, dash: [4, 3]))
+                        .frame(maxWidth: .infinity).frame(height: height)
+                } else {
+                    let (fill, ink) = rtColors(tone, palette)
+                    Text(text).font(AppFont.mono(14, .bold)).foregroundStyle(ink).lineLimit(1).minimumScaleFactor(0.6)
+                        .frame(maxWidth: .infinity).frame(height: height)
+                        .background(fill, in: shape)
+                }
+            }
+        }
+    }
+}
+
+private struct RSectionLabel: View {
+    let text: String
+    var note: String? = nil
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        HStack {
+            Text(text).font(AppFont.sans(12, .semibold)).tracking(1).foregroundStyle(palette.muted)
+            Spacer(minLength: 8)
+            if let note { Text(note).font(AppFont.sans(13)).foregroundStyle(palette.muted) }
+        }
+    }
+}
+
+/// Fibonacci and Permutations: a size stepper, the call tree, then the stack or the output.
+private struct RecursionTreeStory: View {
+    let fib: Bool
+    @State private var n: Int
+    @State private var playback: PlaybackState
+
+    init(fib: Bool) {
+        self.fib = fib
+        let start = fib ? 4 : 3
+        _n = State(initialValue: start)
+        _playback = State(initialValue: PlaybackState(stepCount: (fib ? fibStory(start) : permStory(start)).frames.count, speedMs: 900))
+    }
+
+    var body: some View {
+        let story = fib ? fibStory(n) : permStory(n)
+        let frame = story.frames[min(playback.index, story.frames.count - 1)]
+        let range = fib ? 1...5 : 2...3
+        VStack(alignment: .leading, spacing: 0) {
+            LabCard {
+                StoryStepperRow(stepper: StoryStepper(label: fib ? "n" : "letters", value: n, canDecrease: n > range.lowerBound, canIncrease: n < range.upperBound) { d in
+                    n = min(max(n + d, range.lowerBound), range.upperBound)
+                    playback = PlaybackState(stepCount: (fib ? fibStory(n) : permStory(n)).frames.count, speedMs: 900)
+                })
+                RTreeView(nodes: story.nodes, frame: frame).padding(.top, 12)
+                if fib {
+                    RSectionLabel(text: "CALL STACK").padding(.top, 10)
+                    RSlotRow(slots: frame.stack.enumerated().map { ($1, frame.topCurrent && $0 == frame.stack.count - 1 ? .current : .stack) }
+                        + Array(repeating: ("", .idle), count: max(n, 1) - frame.stack.count)).padding(.top, 8)
+                } else {
+                    RSectionLabel(text: "OUTPUT", note: (1...n).reversed().map(String.init).joined(separator: " × ") + " = \((1...n).reduce(1, *))").padding(.top, 10)
+                    RSlotRow(slots: frame.output).padding(.top, 8)
+                }
+                StoryLegendRow(items: fib ? recursionLegend : [(SimColors.active, .fill, "Emitting"), (SimColors.blue, .fill, "On stack"), (SimColors.green, .fill, "Returned")])
+                    .padding(.top, 14)
+            }
+            StoryChips(chips: frame.chips).padding(.top, 16)
+            LabStoryNarration(headline: frame.headline, body: frame.body).padding(.top, 16)
+            PlaybackTransport(state: playback, captions: story.frames.map { storyPlain($0.headline) })
+        }
+    }
+}
+
+// MARK: Factorial
+
+private struct FactRow { let call: String; let expr: String; let value: String; let tone: RTone }
+private struct FactFrame { let rows: [FactRow]; let chips: [StoryChip]; let headline: String; let body: String }
+
+private func factorialStory(_ n: Int) -> [FactFrame] {
+    var frames: [FactFrame] = []
+    var value = [Int](repeating: 0, count: n + 1)
+    /// Rows from fact(n) down to `deepest`. Frames below `returning` have returned; `returning` itself is
+    /// handing its value up; nil means the calls are still going down.
+    func rows(deepest: Int, returning: Int?) -> [FactRow] {
+        (deepest...n).reversed().map { k -> FactRow in
+            let done = FactRow(call: "fact(\(k))", expr: k == 1 ? "base case" : "\(k) × \(value[k - 1])", value: "\(value[k])", tone: .returned)
+            if let returning, k < returning { return done }
+            if let returning, k == returning { return FactRow(call: done.call, expr: done.expr, value: done.value, tone: .current) }
+            return FactRow(call: "fact(\(k))", expr: k == 1 ? "base case" : "\(k) × fact(\(k - 1))", value: "…", tone: .stack)
+        }
+    }
+    for k in stride(from: n, through: 2, by: -1) {
+        frames.append(FactFrame(rows: rows(deepest: k, returning: nil), chips: [StoryChip("depth", "\(n - k + 1)")],
+                                headline: "fact(\(k)) needs {fact(\(k - 1))} first, so it waits.",
+                                body: "Nothing is multiplied on the way down. Each frame parks with its own k."))
+    }
+    value[1] = 1
+    frames.append(FactFrame(rows: rows(deepest: 1, returning: 1), chips: [StoryChip("depth", "\(n)"), StoryChip("fact(1)", "1")],
+                            headline: "{fact(1)} is the base case: it returns 1 without recursing.",
+                            body: "The stack is now \(n) frames deep, one per pending multiplication."))
+    for k in stride(from: 2, through: n, by: 1) {
+        value[k] = k * value[k - 1]
+        let steps = k + 1 <= n ? (k + 1...n).map { "\($0) × \((1..<$0).reduce(1, *))" } : []
+        let rest = steps.count > 1 ? steps.dropLast().joined(separator: ", ") + " and " + steps.last! : steps.first ?? ""
+        frames.append(FactFrame(rows: rows(deepest: 1, returning: k), chips: [StoryChip("depth", "\(n - k + 1)"), StoryChip("fact(\(k))", "\(value[k])")],
+                                headline: "fact(\(k - 1)) returned \(value[k - 1]), so {fact(\(k))} returns \(k) × \(value[k - 1]) = \(value[k]).",
+                                body: rest.isEmpty ? "That was the last frame waiting." : "Each frame waits on the one below it. Next, \(rest) give \((1...n).reduce(1, *))."))
+    }
+    frames.append(FactFrame(rows: rows(deepest: 1, returning: n + 1), chips: [StoryChip("fact(\(n))", "\(value[n])", .answer), StoryChip("frames", "\(n)")],
+                            headline: "fact(\(n)) = {v:\(value[n])}.",
+                            body: "n frames on the way down, n multiplications on the way up: O(n) time and O(n) stack."))
+    return frames
+}
+
+private struct FactorialStory: View {
+    @State private var n = 5
+    @State private var playback = PlaybackState(stepCount: factorialStory(5).count, speedMs: 900)
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        let frames = factorialStory(n)
+        let frame = frames[min(playback.index, frames.count - 1)]
+        VStack(alignment: .leading, spacing: 0) {
+            LabCard {
+                StoryStepperRow(stepper: StoryStepper(label: "n", value: n, canDecrease: n > 1, canIncrease: n < 8) { d in
+                    n = min(max(n + d, 1), 8)
+                    playback = PlaybackState(stepCount: factorialStory(n).count, speedMs: 900)
+                })
+                RSectionLabel(text: "CALL STACK", note: "deepest call last").padding(.top, 16)
+                VStack(spacing: 6) {
+                    ForEach(frame.rows.indices, id: \.self) { i in
+                        let row = frame.rows[i]
+                        let base: Color = row.tone == .current ? SimColors.active : row.tone == .returned ? SimColors.green : SimColors.blue
+                        let ink: Color = row.tone == .current ? StoryTone.active.ink(palette) : row.tone == .returned ? StoryTone.done.ink(palette) : StoryTone.path.ink(palette)
+                        HStack(spacing: 0) {
+                            Text(row.call).frame(width: 92, alignment: .leading)
+                            Text(row.expr).foregroundStyle(palette.onSurface.opacity(0.85))
+                            Spacer(minLength: 8)
+                            Text(row.value).fontWeight(.bold)
+                        }
+                        .font(AppFont.mono(14))
+                        .foregroundStyle(ink)
+                        .padding(.horizontal, 14)
+                        .frame(height: 38)
+                        .background(base.opacity(palette.dark ? 0.2 : 0.14), in: RoundedRectangle(cornerRadius: 9))
+                    }
+                }
+                .padding(.top, 8)
+                StoryLegendRow(items: [(SimColors.active, .fill, "Returning"), (SimColors.blue, .fill, "Waiting"), (SimColors.green, .fill, "Returned")]).padding(.top, 14)
+            }
+            StoryChips(chips: frame.chips).padding(.top, 16)
+            LabStoryNarration(headline: frame.headline, body: frame.body).padding(.top, 16)
+            PlaybackTransport(state: playback, captions: frames.map { storyPlain($0.headline) })
+        }
+    }
+}
+
+// MARK: Sudoku
+
+private enum SudTone { case given, placed, trying, dead }
+private enum CandTone { case untried, conflict, fits }
+private struct SudFrame {
+    let grid: [[Int]]
+    let tones: [[SudTone]]
+    let cell: (Int, Int)?
+    let cands: [(Int, CandTone, String?)]
+    let chips: [StoryChip]
+    let headline: String
+    let body: String
+}
+
+private func sudokuStory(_ puzzle: [[Int]]) -> [SudFrame] {
+    let n = puzzle.count, box = n == 4 ? 2 : 3
+    var g = puzzle
+    let empties = (0..<n).flatMap { r in (0..<n).filter { puzzle[r][$0] == 0 }.map { (r, $0) } }
+    var frames: [SudFrame] = []
+    var backtracks = 0
+    func tones(current: (Int, Int)?, dead: Bool = false) -> [[SudTone]] {
+        (0..<n).map { r in (0..<n).map { c in
+            if let current, current == (r, c) { return dead ? .dead : .trying }
+            return puzzle[r][c] != 0 ? .given : .placed
+        } }
+    }
+    func clash(_ r: Int, _ c: Int, _ d: Int) -> String? {
+        if (0..<n).contains(where: { $0 != c && g[r][$0] == d }) { return "row \(r)" }
+        if (0..<n).contains(where: { $0 != r && g[$0][c] == d }) { return "col \(c)" }
+        let br = r / box * box, bc = c / box * box
+        for i in br..<(br + box) { for j in bc..<(bc + box) where (i, j) != (r, c) && g[i][j] == d { return "box" } }
+        return nil
+    }
+    func depth() -> Int { empties.filter { g[$0.0][$0.1] != 0 }.count }
+    func name(_ r: Int, _ c: Int) -> String { "r\(r)c\(c)" }
+    func chips() -> [StoryChip] { [StoryChip("depth", "\(depth())"), StoryChip("backtracks", "\(backtracks)")] }
+    frames.append(SudFrame(grid: g, tones: tones(current: nil), cell: nil, cands: [], chips: chips(),
+                           headline: "Fill the empty cells left to right, top to bottom, trying 1 to \(n) in each.",
+                           body: "A digit fits if its row, column and box do not already have it."))
+    func solve(_ k: Int) -> Bool {
+        if k == empties.count { return true }
+        let (r, c) = empties[k]
+        var cands: [(Int, CandTone, String?)] = (1...n).map { ($0, .untried, nil) }
+        var failed: [Int] = []
+        for d in 1...n {
+            if let why = clash(r, c, d) { cands[d - 1] = (d, .conflict, why); continue }
+            g[r][c] = d
+            cands[d - 1] = (d, .fits, "fits")
+            let taken = cands.filter { $0.1 == .conflict }
+            let lead: String
+            if !failed.isEmpty { lead = "\(failed.map(String.init).joined(separator: " and ")) led to a dead end, so " }
+            else if taken.count == 1 { lead = "\(taken[0].0) is already in \(taken[0].2 == "box" ? "the box" : taken[0].2 == nil ? "use" : (taken[0].2!.hasPrefix("row") ? "row \(r)" : "column \(c)")), so " }
+            else if taken.count > 1 { lead = "\(taken.map { "\($0.0)" }.joined(separator: " and ")) are taken, so " }
+            else { lead = "" }
+            frames.append(SudFrame(grid: g, tones: tones(current: (r, c)), cell: (r, c), cands: cands, chips: chips(),
+                                   headline: lead + "{\(name(r, c))} tries \(d), which fits.",
+                                   body: "If a later cell runs out of digits, it backtracks here."))
+            if solve(k + 1) { return true }
+            g[r][c] = 0
+            failed.append(d)
+            cands[d - 1] = (d, .conflict, "dead end")
+        }
+        backtracks += 1
+        frames.append(SudFrame(grid: g, tones: tones(current: (r, c), dead: true), cell: (r, c), cands: cands, chips: chips(),
+                               headline: "No digit fits at {w:\(name(r, c))}, so the solver backtracks.",
+                               body: "The most recent guess is undone and moves on to its next digit."))
+        return false
+    }
+    _ = solve(0)
+    frames.append(SudFrame(grid: g, tones: tones(current: nil), cell: nil, cands: [], chips: [StoryChip("placed", "\(empties.count)"), StoryChip("backtracks", "\(backtracks)", .answer)],
+                           headline: "Solved: {v:\(empties.count)} cells filled after \(backtracks) backtrack\(backtracks == 1 ? "" : "s").",
+                           body: "Backtracking is depth-first search over choices: guess, check the constraints, and undo only the most recent guess when stuck."))
+    return frames
+}
+
+private let sudoku4: [[Int]] = [[1, 0, 0, 4], [0, 4, 0, 0], [0, 0, 0, 0], [4, 0, 2, 3]]
+private let sudoku9: [[Int]] = {
+    let s = ["534678912", "672195348", "198342567", "859761423", "426853791", "713924856", "961537284", "287419635", "345286179"]
+    var g = s.map { $0.map { Int(String($0))! } }
+    for (r, c) in [(0, 2), (1, 4), (2, 6), (3, 3), (4, 4), (5, 5), (6, 2), (7, 7), (8, 0)] { g[r][c] = 0 }
+    return g
+}()
+
+private struct SudokuStory: View {
+    private let tabs: [(String, [SudFrame])] = [("4 × 4", sudokuStory(sudoku4)), ("9 × 9", sudokuStory(sudoku9))]
+    @State private var tab = 0
+    @State private var playback = PlaybackState(stepCount: sudokuStory(sudoku4).count, speedMs: 900)
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        let frames = tabs[tab].1
+        let frame = frames[min(playback.index, frames.count - 1)]
+        let n = frame.grid.count
+        let gap: CGFloat = n == 4 ? 8 : 3
+        VStack(alignment: .leading, spacing: 0) {
+            LabCard {
+                LabSegments(labels: tabs.map(\.0), selected: Binding(get: { tab }, set: { i in
+                    guard i != tab else { return }
+                    tab = i
+                    playback = PlaybackState(stepCount: tabs[i].1.count, speedMs: 900)
+                }))
+                VStack(spacing: gap) {
+                    ForEach(0..<n, id: \.self) { r in
+                        HStack(spacing: gap) {
+                            ForEach(0..<n, id: \.self) { c in
+                                let v = frame.grid[r][c]
+                                let tone = frame.tones[r][c]
+                                let (fill, ink): (Color, Color) = switch tone {
+                                case .given: (palette.muted.opacity(0.2), palette.onSurface)
+                                case .placed: (SimColors.blue, .white)
+                                case .trying: (SimColors.active, Color(hex: 0x1F1A0A))
+                                case .dead: (SimColors.red.opacity(0.2), StoryTone.warn.ink(palette))
+                                }
+                                Text(v == 0 ? "" : "\(v)").font(AppFont.sans(n == 4 ? 20 : 14, .bold)).foregroundStyle(v == 0 && tone == .placed ? .clear : ink)
+                                    .frame(maxWidth: .infinity).frame(height: n == 4 ? 52 : 30)
+                                    .background(v == 0 && tone == .placed ? palette.muted.opacity(0.12) : fill, in: RoundedRectangle(cornerRadius: n == 4 ? 9 : 5))
+                                    .padding(.trailing, n == 9 && c % 3 == 2 && c < 8 ? 3 : 0)
+                            }
+                        }
+                        .padding(.bottom, n == 9 && r % 3 == 2 && r < 8 ? 3 : 0)
+                    }
+                }
+                .padding(.top, 14)
+                if let cell = frame.cell {
+                    RSectionLabel(text: "CANDIDATES FOR r\(cell.0)c\(cell.1)", note: "row · column · box").padding(.top, 14)
+                    HStack(spacing: n == 4 ? 6 : 3) {
+                        ForEach(frame.cands.indices, id: \.self) { i in
+                            let (d, tone, why) = frame.cands[i]
+                            let shape = RoundedRectangle(cornerRadius: 8)
+                            HStack(spacing: 5) {
+                                Text("\(d)").font(AppFont.mono(n == 4 ? 16 : 13, .bold))
+                                if n == 4, let why { Text(why).font(AppFont.mono(11)) }
+                            }
+                            .foregroundStyle(tone == .fits ? Color(hex: 0x1F1A0A) : tone == .conflict ? StoryTone.warn.ink(palette) : palette.onSurface)
+                            .lineLimit(1).minimumScaleFactor(0.6)
+                            .frame(maxWidth: .infinity).frame(height: 40)
+                            .background(tone == .fits ? SimColors.active : tone == .conflict ? SimColors.red.opacity(0.16) : palette.muted.opacity(0.2), in: shape)
+                            .overlay { if tone == .conflict { shape.strokeBorder(SimColors.red.opacity(0.8), lineWidth: 1.2) } }
+                        }
+                    }
+                    .padding(.top, 8)
+                }
+                StoryLegendRow(items: [(SimColors.active, .fill, "Trying"), (SimColors.blue, .fill, "Placed"), (SimColors.red, .fill, "Conflict")]).padding(.top, 14)
+            }
+            StoryChips(chips: frame.chips).padding(.top, 16)
+            LabStoryNarration(headline: frame.headline, body: frame.body).padding(.top, 16)
+            PlaybackTransport(state: playback, captions: frames.map { storyPlain($0.headline) })
+        }
     }
 }

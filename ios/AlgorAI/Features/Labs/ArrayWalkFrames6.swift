@@ -24,76 +24,91 @@ private func runSchedule(_ jobs: [Job], _ slotCount: Int) -> Schedule {
 }
 
 func jobSequencingFrames() -> [WalkFrame] {
-    let jobs = [Job(id: "J1", deadline: 2, profit: 100), Job(id: "J2", deadline: 1, profit: 19), Job(id: "J3", deadline: 2, profit: 27),
-                Job(id: "J4", deadline: 1, profit: 25), Job(id: "J5", deadline: 3, profit: 15)]
+    let jobs = [Job(id: "J1", deadline: 1, profit: 27), Job(id: "J2", deadline: 1, profit: 25), Job(id: "J3", deadline: 2, profit: 100),
+                Job(id: "J4", deadline: 1, profit: 19), Job(id: "J5", deadline: 3, profit: 15)]
     let slotCount = jobs.map(\.deadline).max()!
     let byProfit = jobs.sortedByDescending { $0.profit }
     var frames: [WalkFrame] = []
+    let legend: [(StoryTone, String)] = [(.active, "Considering"), (.done, "Scheduled"), (.warn, "Skipped")]
 
-    func jobRow(_ current: Int, _ taken: Set<String>, _ rejected: Set<String>) -> [CellView] {
-        byProfit.enumerated().map { i, job in
-            CellView("\(job.profit)", i == current ? .active : taken.contains(job.id) ? .done : rejected.contains(job.id) ? .dim : .idle)
+    /// result[id] is a scheduled job's slot, or 0 once it has been skipped.
+    func frame(_ result: [String: Int], _ considering: String?, _ slots: [String?], _ chips: [StoryChip], _ headline: String, _ body: String) {
+        let rows = byProfit.map { job -> StoryTableRow in
+            let slot = result[job.id]
+            let text: String, tone: StoryTone
+            if job.id == considering { text = job.deadline == 1 ? "slot 1 full" : "slots 1–\(job.deadline) full"; tone = .active }
+            else if slot == nil { text = "—"; tone = .idle }
+            else if slot == 0 { text = "skipped"; tone = .warn }
+            else { text = "slot \(slot!)"; tone = .done }
+            return StoryTableRow(values: [job.id, "\(job.profit)", "\(job.deadline)", text], tone: tone)
         }
+        let story = GreedyStory(
+            title: "BY PROFIT, HIGH TO LOW", note: "latest free slot ≤ deadline",
+            sections: [
+                StorySection(table: StoryTable(headers: ["JOB", "PROFIT", "DUE", "RESULT"], weights: [1, 1.2, 1, 1.7], rows: rows)),
+                StorySection(label: "SLOTS", note: (1...slotCount).map(String.init).joined(separator: " · "),
+                             cells: (1...slotCount).map { s in slots[s].map { StoryCell($0, .done) } ?? StoryCell("", .empty) }),
+            ],
+            legend: legend, chips: chips, headline: headline, body: body)
+        frames.append(WalkFrame(status: story.status, cells: [], story: story))
     }
-    func slotRow(_ slots: [String?], active: Int? = nil) -> [CellView] {
-        (1...slotCount).map { s in CellView(slots[s] ?? "·", s == active ? .active : slots[s] != nil ? .result : .dim) }
-    }
-
-    var allPointers: [Int: String] = [:]
-    for i in byProfit.indices { allPointers[i] = "d\(byProfit[i].deadline)" }
-    frames.append(WalkFrame(
-        status: "Five jobs, each with a deadline and a profit; one unit of time per job and \(slotCount) slots. " +
-            "Sorted by profit, highest first — the greedy claim is that considering them in this order is enough.",
-        cells: jobRow(-1, [], []), pointers: allPointers,
-        aux: slotRow([String?](repeating: nil, count: slotCount + 1)), auxLabel: "slots 1..\(slotCount)"))
 
     var slots = [String?](repeating: nil, count: slotCount + 1)
-    var taken = Set<String>(), rejected = Set<String>()
+    var result: [String: Int] = [:]
     var profit = 0
-    for (i, job) in byProfit.enumerated() {
-        var placed: Int? = nil
-        for s in stride(from: min(job.deadline, slotCount), through: 1, by: -1) where slots[s] == nil {
-            slots[s] = job.id
-            profit += job.profit
-            placed = s
-            break
-        }
-        if placed != nil { taken.insert(job.id) } else { rejected.insert(job.id) }
-        frames.append(WalkFrame(
-            status: placed != nil
-                ? "\(job.id) (profit \(job.profit), deadline \(job.deadline)) goes in slot \(placed!) — the latest free " +
-                    "slot at or before its deadline. Taking the latest one keeps the early slots open for jobs " +
-                    "that have no other option."
-                : "\(job.id) (profit \(job.profit), deadline \(job.deadline)) is dropped: every slot up to " +
-                    "\(job.deadline) is already held by a job worth more. Nothing later can rescue it, so the decision is final.",
-            cells: jobRow(i, taken, rejected), pointers: [i: "d\(job.deadline)"],
-            aux: slotRow(slots, active: placed), auxLabel: "slots 1..\(slotCount)", readout: "profit = \(profit)"))
-    }
+    frame(result, nil, slots, [StoryChip("profit", "0")], "Sort the jobs by {profit}, highest first.",
+          "Each job takes one slot and has to finish by its due slot. There are \(slotCount) slots and \(jobs.count) jobs, so some won't make it.")
 
-    let deadlineFirst = runSchedule(jobs.sortedBy { $0.deadline }, slotCount)
-    frames.append(WalkFrame(
-        status: "Greedy by profit finishes at \(profit), running \(taken.sorted().joined(separator: ", ")). The ordering " +
-            "is doing real work here — the same algorithm fed jobs sorted by deadline instead scores " +
-            "\(deadlineFirst.profit), because it spends slot 1 on \(deadlineFirst.slots[1] ?? "null") before it has seen " +
-            "what else wants that slot.",
-        cells: jobRow(-1, taken, rejected), aux: slotRow(deadlineFirst.slots),
-        auxLabel: "deadline-first schedule — profit \(deadlineFirst.profit)",
-        readout: "profit-first \(profit) vs deadline-first \(deadlineFirst.profit)"))
+    var pendingSkip: String? = nil
+    for job in byProfit {
+        if let id = pendingSkip { result[id] = 0 }
+        pendingSkip = nil
+        let placed = stride(from: min(job.deadline, slotCount), through: 1, by: -1).first { slots[$0] == nil }
+        if let placed {
+            slots[placed] = job.id
+            result[job.id] = placed
+            profit += job.profit
+            frame(result, nil, slots, [StoryChip("profit", "\(profit)")],
+                  placed == job.deadline ? "{m:\(job.id)} takes slot \(placed), right at its deadline."
+                      : "{m:\(job.id)} is due by slot \(job.deadline), and slot \(placed) is the latest one free.",
+                  placed > 1 ? "Taking the latest free slot keeps the earlier ones open for jobs due sooner."
+                      : "It goes there, for \(job.profit). Profit so far: \(profit).")
+        } else {
+            let holders = (1...min(job.deadline, slotCount)).compactMap { slots[$0] }
+            frame(result, job.id, slots, [StoryChip("profit", "\(profit)")],
+                  job.deadline == 1 ? "{\(job.id)} is due by slot 1, and \(holders[0]) already holds it."
+                      : "{\(job.id)} is due by slot \(job.deadline), and \(holders.joined(separator: " and ")) hold every slot up to it.",
+                  "So \(job.id) is skipped. Each job takes the latest free slot before its deadline.")
+            pendingSkip = job.id
+        }
+    }
+    if let id = pendingSkip { result[id] = 0 }
+
+    let kept = byProfit.filter { (result[$0.id] ?? 0) > 0 }.map(\.id).sorted()
+    let lost = byProfit.filter { result[$0.id] == 0 }.map(\.id).sorted()
+    frame(result, nil, slots, [StoryChip("profit", "\(profit)", .done)],
+          "Done: \(kept.dropLast().joined(separator: ", ")) and \(kept.last!) earn {m:\(profit)}.",
+          "\(lost.joined(separator: " and ")) lost their slot to jobs worth more. Every slot is used.")
 
     var best = 0
-    func permute(_ chosen: [Job], _ remaining: [Int]) {
-        let result = runSchedule(chosen, slotCount)
-        if result.log.allSatisfy({ $0.1 != nil }) { best = max(best, result.profit) }
-        for idx in remaining { permute(chosen + [jobs[idx]], remaining.filter { $0 != idx }) }
+    func permute(_ chosen: [Job], _ remaining: [Job]) {
+        let run = runSchedule(chosen, slotCount)
+        if run.log.allSatisfy({ $0.1 != nil }) { best = max(best, run.profit) }
+        for job in remaining { permute(chosen + [job], remaining.filter { $0 != job }) }
     }
-    permute([], Array(jobs.indices))
-    frames.append(WalkFrame(
-        status: "Checked against brute force — every subset in every order, keeping only the ones where each job " +
-            "lands in a slot: the optimum is \(best). Greedy matched it. That is the exchange argument in action, " +
-            "and it holds for every instance, not just this one.",
-        cells: jobRow(-1, taken, rejected), aux: slotRow(slots), auxLabel: "greedy schedule — profit \(profit)",
-        readout: "greedy \(profit) · brute-force optimum \(best)"))
+    permute([], jobs)
+    frame(result, nil, slots, [StoryChip("greedy", "\(profit)", .done), StoryChip("best", "\(best)", .answer)],
+          "No schedule beats {v:\(best)}.",
+          "Trying every set of jobs in every order, the best feasible profit is \(best). Going by profit is safe: a job only ever loses its slot to one worth more.")
     return frames
+}
+
+/// "⅔" for 2/3, plain "a/b" for anything without its own glyph.
+private func fractionGlyph(_ num: Int, _ den: Int) -> String {
+    var a = num, b = den
+    while b != 0 { (a, b) = (b, a % b) }
+    let key = "\(num / a)/\(den / a)"
+    return ["1/2": "½", "1/3": "⅓", "2/3": "⅔", "1/4": "¼", "3/4": "¾"][key] ?? key
 }
 
 func fractionalKnapsackFrames() -> [WalkFrame] {
@@ -102,69 +117,87 @@ func fractionalKnapsackFrames() -> [WalkFrame] {
     let capacity = 50
     let order = values.indices.sortedByDescending { Double(values[$0]) / Double(weights[$0]) }
     var frames: [WalkFrame] = []
+    func ratio(_ i: Int) -> String { fx(Double(values[i]) / Double(weights[i]), 1) }
+    let legend: [(StoryTone, String)] = [(.active, "Taking part"), (.done, "Taken whole"), (.warn, "Won't fit"), (.answer, "0/1 best")]
 
-    func itemRow(_ current: Int, _ taken: Set<Int>, partial: Int? = nil) -> [CellView] {
-        order.enumerated().map { pos, idx in
-            CellView("\(values[idx])/\(weights[idx])", pos == current ? .active : idx == partial ? .result : taken.contains(idx) ? .done : .idle)
+    func table(_ tones: [Int: StoryTone]) -> StorySection {
+        StorySection(table: StoryTable(headers: ["ITEM", "VALUE", "KG", "PER KG"], weights: [1, 1.2, 1, 1.3],
+                                       rows: order.map { StoryTableRow(values: ["\($0 + 1)", "\(values[$0])", "\(weights[$0])", ratio($0)], tone: tones[$0] ?? .idle) }))
+    }
+    func frame(_ sections: [StorySection], _ chips: [StoryChip], _ headline: String, _ body: String) {
+        let story = GreedyStory(title: "BY VALUE PER KG", note: "capacity \(capacity) kg", sections: sections, legend: legend,
+                                chips: chips, headline: headline, body: body)
+        frames.append(WalkFrame(status: story.status, cells: [], story: story))
+    }
+    /// The sack as blocks by kilogram: whole items, then the part being taken, then the room still free.
+    func sack(_ whole: [Int], _ part: (Int, Int)?) -> StorySection {
+        let used = whole.reduce(0) { $0 + weights[$1] } + (part?.1 ?? 0)
+        let free = capacity - used
+        var blocks = whole.map { StoryBlock(text: "\($0 + 1)", weight: CGFloat(weights[$0]), tone: .done) }
+        if case let (i, kg)? = part { blocks.append(StoryBlock(text: "\(fractionGlyph(kg, weights[i])) of \(i + 1)", weight: CGFloat(kg), tone: .active)) }
+        if free > 0 { blocks.append(StoryBlock(text: "\(free) kg free", weight: CGFloat(free), tone: .empty)) }
+        return StorySection(label: "SACK", note: "\(used) kg", blocks: blocks)
+    }
+
+    frame([table([:]), sack([], nil)], [StoryChip("value", "0"), StoryChip("room", "\(capacity) kg")],
+          "Rank the items by {value per kg}: " + order.map(ratio).joined(separator: ", ") + ".",
+          "Items can be cut, so the densest kilogram is always the best one to take next. The sack holds \(capacity) kg.")
+
+    var whole: [Int] = []
+    var gains: [Int] = []
+    var room = capacity
+    for (pos, i) in order.enumerated() {
+        let tones = Dictionary(uniqueKeysWithValues: whole.map { ($0, StoryTone.done) })
+        if weights[i] <= room {
+            whole.append(i)
+            gains.append(values[i])
+            room -= weights[i]
+            let next = pos + 1 < order.count ? order[pos + 1] : nil
+            frame([table(tones.merging([i: .done]) { $1 }), sack(whole, nil)],
+                  [StoryChip("value", gains.map(String.init).joined(separator: " + ")), StoryChip("room", "\(room) kg")],
+                  "Item \(i + 1) fits whole: {m:\(weights[i]) kg} for \(values[i]).",
+                  "\(room) kg of room is left." + (next.map { " Next is item \($0 + 1) at \(ratio($0)) per kg." } ?? ""))
+        } else {
+            frame([table(tones.merging([i: .active]) { $1 }), sack(whole, nil)],
+                  [StoryChip("value", gains.map(String.init).joined(separator: " + ")), StoryChip("room", "\(room) kg")],
+                  "Item \(i + 1) weighs \(weights[i]) kg, but only {\(room) kg} of room is left.",
+                  "A 0/1 knapsack would have to skip it. Here it can be cut.")
+            let gained = values[i] * room / weights[i]
+            gains.append(gained)
+            frame([table(tones.merging([i: .active]) { $1 }), sack(whole, (i, room))],
+                  [StoryChip("value", gains.map(String.init).joined(separator: " + ")), StoryChip("room", "0 kg")],
+                  "\(room) kg of room is left, so take {\(fractionGlyph(room, weights[i])) of item \(i + 1)} for \(gained).",
+                  "Items go in by value per kg, so only the last one is ever split. The total is \(gains.reduce(0, +)).")
+            break
         }
     }
 
-    var ratioPointers: [Int: String] = [:]
-    for i in order.indices { ratioPointers[i] = fx(Double(values[order[i]]) / Double(weights[order[i]]), 0) }
-
-    frames.append(WalkFrame(
-        status: "Three items and a sack that holds \(capacity) kg. Sorted by value per kg — " +
-            order.map { fx(Double(values[$0]) / Double(weights[$0]), 0) }.joined(separator: ", ") +
-            " — because when items divide, density is the only thing worth ranking on.",
-        cells: itemRow(-1, []), pointers: ratioPointers, readout: "capacity \(capacity) kg"))
-
-    var left = Double(capacity)
-    var total = 0.0
-    var taken = Set<Int>()
-    for (pos, idx) in order.enumerated() {
-        let take = min(Double(weights[idx]), left)
-        let gained = Double(values[idx]) * take / Double(weights[idx])
-        total += gained
-        left -= take
-        let whole = take == Double(weights[idx])
-        if whole { taken.insert(idx) }
-        frames.append(WalkFrame(
-            status: whole
-                ? "Item \(idx + 1) is worth \(values[idx]) at \(weights[idx]) kg — take all of it. Remaining capacity \(fx(left, 0)) kg."
-                : "Only \(fx(left + take, 0)) kg of room is left and item \(idx + 1) weighs " +
-                    "\(weights[idx]) kg, so take the fraction \(fx(take, 0))/\(weights[idx]) of it for " +
-                    "\(fx(gained, 0)). This step is the one 0/1 knapsack is not allowed to make.",
-            cells: itemRow(pos, taken, partial: whole ? nil : idx), pointers: ratioPointers,
-            readout: "value \(fx(total, 0)) · \(fx(left, 0)) kg left"))
-    }
-
-    frames.append(WalkFrame(
-        status: "Total \(fx(total, 0)) with the sack exactly full. No exchange can improve it: swapping " +
-            "any kilogram for one from a lower-density item strictly loses value, and the sack is never left " +
-            "with unused room. That is the proof, not a spot check.",
-        cells: itemRow(-1, taken, partial: order.last), readout: "optimal value \(fx(total, 0))"))
-
-    var greedy01 = 0
-    var room = capacity
-    var taken01 = Set<Int>()
-    for idx in order where weights[idx] <= room {
-        greedy01 += values[idx]
-        room -= weights[idx]
-        taken01.insert(idx)
-    }
-    var dp = [Int](repeating: 0, count: capacity + 1)
-    for i in values.indices {
-        for c in stride(from: capacity, through: weights[i], by: -1) { dp[c] = max(dp[c], dp[c - weights[i]] + values[i]) }
-    }
-    frames.append(WalkFrame(
-        status: "Forbid the fraction and the same ordering breaks. Density-greedy takes items " +
-            taken01.sorted().map { "\($0 + 1)" }.joined(separator: ", ") +
-            " for \(greedy01) and leaves \(room) kg unusable; the DP optimum is \(dp[capacity]), from items 2 and 3. " +
-            "Greedy is not \"usually close\" here — it is wrong by \(dp[capacity] - greedy01).",
-        cells: order.map { idx in CellView("\(values[idx])/\(weights[idx])", taken01.contains(idx) ? .done : .dim) },
-        pointers: ratioPointers,
-        aux: [CellView("\(greedy01)", .active), CellView("\(dp[capacity])", .result)], auxLabel: "0/1 greedy vs 0/1 optimum",
-        readout: "divisible → greedy optimal · indivisible → greedy off by \(dp[capacity] - greedy01)"))
+    // The same ranking with cutting forbidden, against the best 0/1 packing.
+    var taken01: [Int] = []
+    var room01 = capacity
+    for i in order where weights[i] <= room01 { taken01.append(i); room01 -= weights[i] }
+    let greedy01 = taken01.reduce(0) { $0 + values[$1] }
+    let best01 = (0..<(1 << values.count))
+        .map { mask in values.indices.filter { mask & (1 << $0) != 0 } }
+        .filter { set in set.reduce(0) { $0 + weights[$1] } <= capacity }
+        .max { a, b in a.reduce(0) { $0 + values[$1] } < b.reduce(0) { $0 + values[$1] } }!
+    let bestValue = best01.reduce(0) { $0 + values[$1] }
+    let skipped = order.filter { !taken01.contains($0) }
+    var greedyBlocks = taken01.map { StoryBlock(text: "\($0 + 1)", weight: CGFloat(weights[$0]), tone: .done) }
+    if room01 > 0 { greedyBlocks.append(StoryBlock(text: "\(room01) kg wasted", weight: CGFloat(room01), tone: .empty)) }
+    var bestBlocks = best01.sorted { order.firstIndex(of: $0)! < order.firstIndex(of: $1)! }
+        .map { StoryBlock(text: "\($0 + 1)", weight: CGFloat(weights[$0]), tone: .answer) }
+    let bestFree = capacity - best01.reduce(0) { $0 + weights[$1] }
+    if bestFree > 0 { bestBlocks.append(StoryBlock(text: "\(bestFree) kg free", weight: CGFloat(bestFree), tone: .empty)) }
+    var tones: [Int: StoryTone] = [:]
+    taken01.forEach { tones[$0] = .done }
+    skipped.forEach { tones[$0] = .warn }
+    frame([table(tones),
+           StorySection(label: "0/1 GREEDY", note: "\(greedy01)", blocks: greedyBlocks),
+           StorySection(label: "0/1 BEST", note: "\(bestValue)", blocks: bestBlocks)],
+          [StoryChip("greedy", "\(greedy01)", .warn), StoryChip("best", "\(bestValue)", .answer)],
+          "Forbid the cut and greedy stalls at {w:\(greedy01)}.",
+          "Item \(skipped.map { "\($0 + 1)" }.joined(separator: ", ")) no longer fits, so \(room01) kg sits empty. The best 0/1 packing is items \(best01.sorted().map { "\($0 + 1)" }.joined(separator: " and ")) for \(bestValue), so ranking by value per kg only works when items can be split.")
     return frames
 }
 

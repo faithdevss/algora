@@ -64,6 +64,9 @@ private class WalkFrame(
     // the tail back to the node it points at.
     val loopBack: Pair<Int, Int>? = null,
     val intervals: List<IntervalView>? = null,
+    // Non-null draws the step-by-step story card (Coin Change, Fractional Knapsack, Job Sequencing)
+    // instead of the cell rows; the cells are then empty.
+    val story: GreedyStory? = null,
 )
 
 private class WalkConfig(
@@ -732,97 +735,142 @@ private fun activitySelectionFrames(): List<WalkFrame> {
 }
 
 // Greedy and DP on the same {1,3,4} / target 6 instance, so the two-coin answer greed misses is
-// visible rather than asserted.
+// visible rather than asserted. Drawn as the story card: the greedy picks, the optimal split, and the
+// dp row that finds it.
 private fun coinChangeGreedyFrames(): List<WalkFrame> {
-    val coins = listOf(4, 3, 1)          // descending — greedy's consumption order
+    val coins = listOf(1, 3, 4)
     val target = 6
     val frames = mutableListOf<WalkFrame>()
 
-    // The row is the amount axis 0..6; the pointer is what greed still has left to make.
-    fun amountRow(remaining: Int) = (0..target).map { a ->
-        CellView(
-            a.toString(),
-            when {
-                a == remaining -> CellMark.ACTIVE
-                a > remaining -> CellMark.DIM
-                else -> CellMark.IDLE
-            },
-        )
+    val greedy = mutableListOf<Int>()
+    var left = target
+    while (left > 0) {
+        val coin = coins.filter { it <= left }.max()
+        greedy += coin
+        left -= coin
     }
 
-    frames += WalkFrame(
-        status = "On {1, 5, 10, 25}, greedy change is correct: 68¢ becomes 25+25+10+5+1+1+1 and no shorter answer exists. " +
-            "That is a fact about the coins, not about the algorithm.",
-        cells = (0..target).map { CellView(it.toString(), CellMark.IDLE) },
-        readout = "now try {1, 3, 4} at 6",
-    )
-
-    var remaining = target
-    val taken = mutableListOf<Int>()
-    frames += WalkFrame(
-        status = "Coins {1, 3, 4}, target 6. Greedy takes the largest coin that fits, repeatedly.",
-        cells = amountRow(remaining),
-        pointers = mapOf(remaining to "left"),
-    )
-    while (remaining > 0) {
-        val before = remaining
-        val coin = coins.first { it <= remaining }
-        taken += coin
-        remaining -= coin
-        frames += WalkFrame(
-            status = "Largest coin that fits in $before is $coin — take it. Remaining $remaining, coins used ${taken.size}.",
-            cells = amountRow(remaining),
-            pointers = mapOf(remaining to "left"),
-            readout = "greedy: ${taken.joinToString(" + ")} = ${taken.size} coins",
-        )
-    }
-    val greedyCount = taken.size
-
-    // Same instance, tabulated.
-    val unreachable = target + 1
+    // dp[a] = fewest coins that make exactly a; via[a] = the coin that got it there.
+    val unreachable = Int.MAX_VALUE
     val dp = IntArray(target + 1) { unreachable }
+    val via = IntArray(target + 1)
     dp[0] = 0
-    fun dpRow(upTo: Int, active: Int? = null) = (0..target).map { a ->
-        CellView(
-            if (dp[a] == unreachable) "∞" else dp[a].toString(),
-            when {
-                a == active -> CellMark.ACTIVE
-                a <= upTo -> CellMark.WINDOW
-                else -> CellMark.DIM
-            },
-        )
-    }
-
-    frames += WalkFrame(
-        status = "Greed answered $greedyCount coins. Now tabulate: dp[a] is the fewest coins that make exactly a.",
-        cells = (0..target).map { CellView(it.toString(), CellMark.IDLE) },
-        aux = dpRow(0),
-        auxLabel = "dp (fewest coins)",
-    )
     for (a in 1..target) {
-        var bestCoin = 0
         for (coin in coins) {
-            if (coin <= a && dp[a - coin] + 1 < dp[a]) {
+            if (coin <= a && dp[a - coin] != unreachable && dp[a - coin] + 1 < dp[a]) {
                 dp[a] = dp[a - coin] + 1
-                bestCoin = coin
+                via[a] = coin
             }
         }
-        frames += WalkFrame(
-            status = "dp[$a] = 1 + dp[${a - bestCoin}] = ${dp[a]}, taking a $bestCoin.",
-            cells = (0..target).map { CellView(it.toString(), if (it == a) CellMark.ACTIVE else if (it < a) CellMark.WINDOW else CellMark.IDLE) },
-            pointers = mapOf(a to "a"),
-            aux = dpRow(a - 1, active = a),
-            auxLabel = "dp (fewest coins)",
+    }
+    val optimal = mutableListOf<Int>()
+    var rest = target
+    while (rest > 0) { optimal += via[rest]; rest -= via[rest] }
+
+    val legend = listOf(
+        StoryTone.Warn to "Greedy pick",
+        StoryTone.Active to "Filling",
+        StoryTone.Path to "Tabulated",
+        StoryTone.Answer to "Optimal",
+    )
+
+    fun frame(taken: Int, filled: Int, active: Int?, solved: Boolean, chips: List<StoryChip>, headline: String, body: String) {
+        val picks = greedy.take(taken)
+        val remaining = target - picks.sum()
+        val story = GreedyStory(
+            title = "COINS {${coins.joinToString(", ")}} · AMOUNT $target",
+            note = "not canonical",
+            sections = listOf(
+                StorySection(
+                    label = "GREEDY",
+                    note = if (taken == 0) null else "$taken coin${if (taken == 1) "" else "s"}",
+                    blocks = picks.map { StoryBlock("$it", it.toFloat(), StoryTone.Warn) } +
+                        listOfNotNull(StoryBlock("$remaining left", remaining.toFloat(), StoryTone.Empty).takeIf { remaining > 0 }),
+                ),
+                StorySection(
+                    label = "OPTIMAL",
+                    note = if (solved) "${optimal.size} coins" else null,
+                    blocks = if (solved) optimal.map { StoryBlock("$it", it.toFloat(), StoryTone.Answer) }
+                    else listOf(StoryBlock("?", target.toFloat(), StoryTone.Empty)),
+                ),
+                StorySection(
+                    label = "DP · FEWEST COINS",
+                    note = "amount 0–$target",
+                    cells = (0..target).map { a ->
+                        when {
+                            a > filled -> StoryCell("", StoryTone.Empty, "$a")
+                            a == active -> StoryCell("${dp[a]}", StoryTone.Active, "$a")
+                            solved && a == target -> StoryCell("${dp[a]}", StoryTone.Answer, "$a")
+                            else -> StoryCell("${dp[a]}", StoryTone.Path, "$a")
+                        }
+                    },
+                ),
+            ),
+            legend = legend,
+            chips = chips,
+            headline = headline,
+            body = body,
         )
+        frames += WalkFrame(status = story.status, cells = emptyList(), story = story)
     }
 
-    frames += WalkFrame(
-        status = "dp[6] = ${dp[target]} — the split 3 + 3. Greed took ${taken.joinToString(" + ")}, $greedyCount coins, because taking the 4 " +
-            "left a remainder that only 1s can fill. The rule never had to be wrong; these denominations are simply not canonical.",
-        cells = (0..target).map { CellView(it.toString(), if (it == target) CellMark.RESULT else CellMark.DIM) },
-        aux = dpRow(target, active = target),
-        auxLabel = "dp (fewest coins)",
-        readout = "greedy $greedyCount coins · optimal ${dp[target]} coins",
+    frame(
+        0, -1, null, false, listOf(StoryChip("left", "$target")),
+        "Greedy grabs the {largest coin} that fits, again and again.",
+        "It never looks back. With coins like 1, 5, 10 and 25 that is always right, but these coins are " +
+            "${coins.dropLast(1).joinToString(", ")} and ${coins.last()}.",
+    )
+    greedy.forEachIndexed { i, coin ->
+        val before = target - greedy.take(i).sum()
+        val after = before - coin
+        val count = i + 1
+        val chips = listOf(StoryChip("greedy", "$count", StoryTone.Warn), StoryChip("left", "$after"))
+        when {
+            i == 0 -> frame(
+                count, -1, null, false, chips,
+                "Greedy takes {$coin}, the largest coin that fits in $before.",
+                "$after is left, and every coin bigger than $after is now too big.",
+            )
+            after > 0 -> frame(
+                count, -1, null, false, chips,
+                "Only a {$coin} fits in $before.",
+                "$after left to make.",
+            )
+            else -> frame(
+                count, -1, null, false, chips,
+                "Another {$coin} makes $target: ${greedy.size} coins in all.",
+                "Greedy is done, and it never checked whether fewer coins could work.",
+            )
+        }
+    }
+    frame(
+        greedy.size, 0, 0, false,
+        listOf(StoryChip("greedy", "${greedy.size}", StoryTone.Warn), StoryChip("dp[0]", "0", StoryTone.Path)),
+        "Now the table: {dp[0] = 0}, since 0 needs no coins.",
+        "dp[a] is the fewest coins that make exactly a. Every entry is built from a smaller one.",
+    )
+    for (a in 1..target) {
+        val coin = via[a]
+        frame(
+            greedy.size, a, a, false,
+            listOf(StoryChip("greedy", "${greedy.size}", StoryTone.Warn), StoryChip("dp[$a]", "${dp[a]}", StoryTone.Path)),
+            if (a == coin) "{dp[$a] = 1}: a single $coin." else "{dp[$a] = ${dp[a]}}: a $coin on top of dp[${a - coin}].",
+            "Try each coin: " + coins.filter { it <= a }.joinToString("; ") { "$it leaves ${a - it}, so ${dp[a - it] + 1}" } +
+                ". Keep the smallest.",
+        )
+    }
+    val solvedChips = listOf(StoryChip("greedy", "${greedy.size}", StoryTone.Warn), StoryChip("optimal", "${dp[target]}", StoryTone.Answer))
+    frame(
+        greedy.size, target, null, true, solvedChips,
+        "{v:${optimal.joinToString(" + ")}} makes $target with ${optimal.size} coins.",
+        "Walk the table back from dp[$target]: it used a ${optimal[0]}, and dp[${target - optimal[0]}] used " +
+            "another ${optimal[1]}.",
+    )
+    frame(
+        greedy.size, target, null, true, solvedChips,
+        "Greedy takes ${greedy[0]} first, and the remaining ${target - greedy[0]} needs two 1s.",
+        "dp[$target] finds ${optimal.joinToString(" + ")} instead. Greedy only works when the coin system is " +
+            "canonical, and {${coins.joinToString(", ")}} isn't.",
     )
     return frames
 }
@@ -1571,94 +1619,121 @@ private class WalkRng(private var state: Int) {
     }
 }
 
+private fun ordinal(n: Int): String = "$n" + when {
+    n % 100 in 11..13 -> "TH"
+    n % 10 == 1 -> "ST"
+    n % 10 == 2 -> "ND"
+    n % 10 == 3 -> "RD"
+    else -> "TH"
+}
+
+// Lomuto partitions around the last value in range; each round keeps only the side that holds index k.
+// Drawn as the story card: blue is still in play, red is discarded for good, yellow is the pivot.
 private fun quickselectFrames(): List<WalkFrame> {
-    val a = intArrayOf(7, 2, 9, 4, 1, 8, 3, 6).copyOf()
-    val target = 3   // 0-indexed: the 4th smallest
-    val sorted = a.sortedArray()
+    val original = intArrayOf(7, 2, 9, 4, 1, 8, 3, 6)
+    val a = original.copyOf()
+    val k = 2
     val frames = mutableListOf<WalkFrame>()
     var comparisons = 0
+    val legend = listOf(
+        StoryTone.Active to "Pivot",
+        StoryTone.Path to "Still in play",
+        StoryTone.Done to "Below pivot",
+        StoryTone.Warn to "Discarded",
+        StoryTone.Answer to "Answer",
+    )
 
-    // `lo`..`hi` is the live range; everything outside it has been ruled out for good.
-    fun row(lo: Int, hi: Int, pivotIndex: Int?, scan: Int?, boundary: Int?, done: Int? = null) =
-        a.mapIndexed { i, v ->
-            CellView(
-                v.toString(),
-                when {
-                    i == done -> CellMark.RESULT
-                    i < lo || i > hi -> CellMark.DIM
-                    i == pivotIndex -> CellMark.RESULT
-                    i == scan -> CellMark.ACTIVE
-                    boundary != null && i < boundary -> CellMark.WINDOW
-                    else -> CellMark.IDLE
-                },
-            )
+    fun frame(
+        lo: Int, hi: Int, pivot: Int?, scan: Int?, boundary: Int?, answer: Int?,
+        chips: List<StoryChip>, headline: String, body: String,
+    ) {
+        val cells = a.indices.map { i ->
+            val tone = when {
+                i == answer -> StoryTone.Answer
+                i == pivot -> StoryTone.Active
+                i < lo || i > hi -> StoryTone.Warn
+                boundary != null && i in lo until boundary -> StoryTone.Done
+                else -> StoryTone.Path
+            }
+            when (i) {
+                scan -> StoryCell("${a[i]}", tone, "j", StoryTone.Active)
+                k -> StoryCell("${a[i]}", tone, "k", StoryTone.Path)
+                else -> StoryCell("${a[i]}", tone, "$i")
+            }
         }
+        val story = GreedyStory(
+            title = "FIND k = $k · ${ordinal(k + 1)} SMALLEST",
+            note = if (answer != null) "found" else "range $lo–$hi",
+            sections = listOf(StorySection(cells = cells)),
+            legend = legend,
+            chips = chips,
+            headline = headline,
+            body = body,
+        )
+        frames += WalkFrame(status = story.status, cells = emptyList(), story = story)
+    }
+    fun inPlay(lo: Int, hi: Int) = StoryChip("in play", "${hi - lo + 1} of ${a.size}")
 
-    frames += WalkFrame(
-        status = "Find the ${target + 1}th smallest value without sorting. Sorting would order all ${a.size} " +
-            "elements; quickselect only ever descends into the side that can still contain the answer.",
-        cells = row(0, a.lastIndex, null, null, null),
-        readout = "target: rank ${target + 1} of ${a.size}",
+    frame(
+        0, a.lastIndex, null, null, null, null, listOf(StoryChip("k", "$k"), inPlay(0, a.lastIndex)),
+        "Find what sorts into index {p:$k}, without sorting.",
+        "That is the ${ordinal(k + 1).lowercase()} smallest value. Quickselect partitions around a pivot and keeps only the side " +
+            "that holds index $k.",
     )
 
     var lo = 0
     var hi = a.lastIndex
-    var answer = -1
-    while (lo <= hi) {
+    var answer: Int? = null
+    while (answer == null) {
         val pivot = a[hi]
-        frames += WalkFrame(
-            status = "Partition a[$lo..$hi] around the pivot ${pivot}. Everything smaller is swapped to the front.",
-            cells = row(lo, hi, hi, null, null),
-            pointers = mapOf(hi to "pivot"),
+        frame(
+            lo, hi, hi, null, lo, null, listOf(StoryChip("pivot", "$pivot", StoryTone.Active), inPlay(lo, hi)),
+            "Partition $lo–$hi around the last value, {$pivot}.",
+            "Anything smaller than $pivot is swapped to the front of the range; the rest stay behind it.",
         )
         var boundary = lo
         for (j in lo until hi) {
             comparisons++
-            val smaller = a[j] < pivot
+            val value = a[j]
+            val smaller = value < pivot
             if (smaller) {
-                val t = a[boundary]; a[boundary] = a[j]; a[j] = t
+                a[j] = a[boundary].also { a[boundary] = a[j] }
                 boundary++
             }
-            frames += WalkFrame(
-                status = if (smaller) {
-                    "${a[boundary - 1]} < $pivot — swap it into the smaller-than-pivot block, which now holds " +
-                        "${boundary - lo}."
-                } else {
-                    "${a[j]} ≥ $pivot — leave it where it is."
-                },
-                cells = row(lo, hi, hi, j, boundary),
-                pointers = mapOf(j to "j", hi to "pivot"),
+            frame(
+                lo, hi, hi, if (smaller) boundary - 1 else j, boundary, null,
+                listOf(StoryChip("pivot", "$pivot", StoryTone.Active), StoryChip("below", "${boundary - lo}", StoryTone.Done)),
+                if (smaller) "{$value} < $pivot, so it joins the front block." else "{$value} ≥ $pivot, so it stays put.",
+                if (smaller) "${boundary - lo} value${if (boundary - lo == 1) " is" else "s are"} now below the pivot."
+                else "Only values below the pivot move.",
             )
         }
-        val t = a[boundary]; a[boundary] = a[hi]; a[hi] = t
-
+        a[hi] = a[boundary].also { a[boundary] = a[hi] }
         when {
-            boundary == target -> {
-                answer = a[boundary]
-                frames += WalkFrame(
-                    status = "The pivot lands at index $boundary, which is exactly the rank we wanted. Its final " +
-                        "position is its answer — no further work, and the two sides were never sorted.",
-                    cells = row(lo, hi, null, null, null, done = boundary),
-                    readout = "${target + 1}th smallest = $answer, found in $comparisons comparisons",
+            boundary == k -> {
+                answer = boundary
+                frame(
+                    lo, hi, null, null, null, boundary,
+                    listOf(StoryChip("answer", "${a[boundary]}", StoryTone.Answer), StoryChip("comparisons", "$comparisons")),
+                    "Pivot {v:${a[boundary]}} settles at index $boundary, exactly the index we want.",
+                    "So ${a[boundary]} is the ${ordinal(k + 1).lowercase()} smallest. Neither side was ever sorted.",
                 )
-                lo = boundary + 1
-                hi = boundary   // ends the loop
             }
-            boundary > target -> {
-                frames += WalkFrame(
-                    status = "The pivot settles at index $boundary, above the rank we want, so the answer lies to " +
-                        "its left. Indices $boundary..$hi are discarded and never looked at again.",
-                    cells = row(lo, boundary - 1, null, null, null),
-                    readout = "${boundary - lo} of ${a.size} still in play",
+            boundary > k -> {
+                frame(
+                    lo, boundary - 1, boundary, null, null, null,
+                    listOf(StoryChip("pivot", "$pivot → index $boundary", StoryTone.Idle), inPlay(lo, boundary - 1)),
+                    "Pivot {$pivot} settles at index $boundary. We want index $k, so go left.",
+                    "Indices $boundary–$hi are discarded and never looked at again. Only one side is ever searched.",
                 )
                 hi = boundary - 1
             }
             else -> {
-                frames += WalkFrame(
-                    status = "The pivot settles at index $boundary, below the rank we want, so the answer lies to " +
-                        "its right. Everything from $lo up to and including $boundary is discarded.",
-                    cells = row(boundary + 1, hi, null, null, null),
-                    readout = "${hi - boundary} of ${a.size} still in play",
+                frame(
+                    boundary + 1, hi, boundary, null, null, null,
+                    listOf(StoryChip("pivot", "$pivot → index $boundary", StoryTone.Idle), inPlay(boundary + 1, hi)),
+                    "Pivot {$pivot} settles at index $boundary. We want index $k, so go right.",
+                    "Indices $lo–$boundary are discarded and never looked at again. Only one side is ever searched.",
                 )
                 lo = boundary + 1
             }
@@ -1667,94 +1742,112 @@ private fun quickselectFrames(): List<WalkFrame> {
 
     // What the same array costs to sort, counted the same way.
     var sortComparisons = 0
-    run {
-        val b = intArrayOf(7, 2, 9, 4, 1, 8, 3, 6)
-        for (i in 1 until b.size) {
-            var j = i
-            while (j > 0) {
-                sortComparisons++
-                if (b[j - 1] <= b[j]) break
-                val t2 = b[j - 1]; b[j - 1] = b[j]; b[j] = t2
-                j--
-            }
+    val b = original.copyOf()
+    for (i in 1 until b.size) {
+        var j = i
+        while (j > 0) {
+            sortComparisons++
+            if (b[j - 1] <= b[j]) break
+            b[j - 1] = b[j].also { b[j] = b[j - 1] }
+            j--
         }
     }
-
-    frames += WalkFrame(
-        status = "Quickselect answered in $comparisons comparisons. Sorting the same array to read off index " +
-            "$target takes $sortComparisons — and sorting computes the other ${a.size - 1} ranks nobody asked " +
-            "for. Expected cost is linear because each round discards a constant fraction: n + n/2 + n/4 … ≈ 2n.",
-        cells = sorted.mapIndexed { i, v -> CellView(v.toString(), if (i == target) CellMark.RESULT else CellMark.DIM) },
-        readout = "$comparisons comparisons vs $sortComparisons to sort",
+    frame(
+        lo, hi, null, null, null, answer,
+        listOf(StoryChip("quickselect", "$comparisons", StoryTone.Answer), StoryChip("sort", "$sortComparisons")),
+        "{v:${a[answer!!]}} found in $comparisons comparisons; sorting takes $sortComparisons.",
+        "Sorting orders every value. Quickselect follows one side each round, n + n/2 + n/4 … ≈ 2n on average.",
     )
     return frames
 }
 
+// Median of medians: groups of five, each sorted, their middles, and the middle of those as the pivot.
 private fun medianOfMediansFrames(): List<WalkFrame> {
     val a = listOf(12, 3, 17, 8, 1, 20, 6, 14, 9, 2, 18, 11, 5, 15, 7)
     val groups = a.chunked(5)
-    val medians = groups.map { it.sorted()[it.size / 2] }
+    val sortedGroups = groups.map { it.sorted() }
+    val medians = sortedGroups.map { it[it.size / 2] }
     val pivot = medians.sorted()[medians.size / 2]
     val below = a.count { it < pivot }
     val above = a.count { it > pivot }
+    val floor = 100 * 3 / 10
     val frames = mutableListOf<WalkFrame>()
+    val legend = listOf(
+        StoryTone.Active to "Group median",
+        StoryTone.Answer to "Pivot",
+        StoryTone.Path to "Below pivot",
+    )
 
-    fun row(mark: (Int) -> CellMark) = a.mapIndexed { i, v -> CellView(v.toString(), mark(i)) }
+    fun frame(
+        title: String,
+        note: String,
+        rows: List<List<Int>>,
+        tone: (Int, Int) -> StoryTone,
+        mediansRow: List<StoryBlock>?,
+        chips: List<StoryChip>,
+        headline: String,
+        body: String,
+    ) {
+        val grid = StorySection(grid = rows.mapIndexed { g, row ->
+            StoryGridLine("g${g + 1}", row.mapIndexed { i, v -> StoryCell("$v", tone(v, i)) })
+        })
+        val story = GreedyStory(
+            title = title,
+            note = note,
+            sections = listOfNotNull(grid, mediansRow?.let { StorySection(label = "MEDIANS", note = "median of these = pivot", blocks = it) }),
+            legend = legend,
+            chips = chips,
+            headline = headline,
+            body = body,
+        )
+        frames += WalkFrame(status = story.status, cells = emptyList(), story = story)
+    }
+    val title = "${groups.size} GROUPS OF 5 · EACH SORTED"
+    val pending = medians.map { StoryBlock("", 1f, StoryTone.Empty) }
 
-    frames += WalkFrame(
-        status = "Quickselect is linear *on average*, but a badly chosen pivot splits off one element at a time " +
-            "and costs O(n²). Median of medians picks a pivot with a guaranteed split, making the worst case " +
-            "linear too.",
-        cells = row { CellMark.IDLE },
-        readout = "${a.size} elements, in groups of 5",
+    frame(
+        "${groups.size} GROUPS OF 5", "${a.size} values", groups, { _, _ -> StoryTone.Idle }, null,
+        listOf(StoryChip("values", "${a.size}")),
+        "A bad pivot makes quickselect {w:O(n²)}.",
+        "Median of medians picks a pivot that is guaranteed to split well, so even the worst case is linear.",
     )
-    frames += WalkFrame(
-        status = "Split into ${groups.size} groups of 5. Each group is small and fixed-size, so sorting one is " +
-            "constant work — ${groups.size} groups is O(n) in total.",
-        cells = row { if ((it / 5) % 2 == 0) CellMark.WINDOW else CellMark.IDLE },
-        aux = groups.flatMap { g -> g.sorted().map { CellView(it.toString(), CellMark.DIM) } },
-        auxLabel = "each group, sorted",
+    frame(
+        title, "median = middle", sortedGroups, { _, _ -> StoryTone.Idle }, pending,
+        listOf(StoryChip("groups", "${groups.size}")),
+        "Sort each group of {5}.",
+        "Five values is constant work, so sorting every group is O(n) in total.",
     )
-    frames += WalkFrame(
-        status = "Take each group's median: ${medians.joinToString(", ")}. These ${medians.size} values are the " +
-            "only ones that matter for choosing the pivot.",
-        cells = row { CellMark.DIM },
-        aux = groups.flatMap { g ->
-            g.sorted().mapIndexed { i, v ->
-                CellView(v.toString(), if (i == g.size / 2) CellMark.ACTIVE else CellMark.DIM)
-            }
-        },
-        auxLabel = "group medians highlighted",
+    frame(
+        title, "median = middle", sortedGroups, { _, i -> if (i == 2) StoryTone.Active else StoryTone.Idle },
+        medians.map { StoryBlock("$it", 1f, StoryTone.Active) },
+        listOf(StoryChip("medians", medians.joinToString(", "))),
+        "Each group's middle value is its {median}: ${medians.joinToString(", ")}.",
+        "Only these ${medians.size} values matter for picking the pivot.",
     )
-    frames += WalkFrame(
-        status = "The pivot is the median of those medians: $pivot. Finding it is a recursive quickselect on a " +
-            "list one fifth the size, which is what keeps the recursion affordable.",
-        cells = row { if (a[it] == pivot) CellMark.RESULT else CellMark.DIM },
-        aux = medians.map { CellView(it.toString(), if (it == pivot) CellMark.RESULT else CellMark.WINDOW) },
-        auxLabel = "the ${medians.size} medians",
-        readout = "pivot = $pivot",
+    frame(
+        title, "median = middle", sortedGroups,
+        { v, i -> if (i != 2) StoryTone.Idle else if (v == pivot) StoryTone.Answer else StoryTone.Active },
+        medians.map { StoryBlock("$it", 1f, if (it == pivot) StoryTone.Answer else StoryTone.Active) },
+        listOf(StoryChip("pivot", "$pivot", StoryTone.Answer), StoryChip("below", "≥ $floor%")),
+        "The medians are ${medians.dropLast(1).joinToString(", ")} and ${medians.last()}, so the pivot is {v:$pivot}.",
+        "At least $floor% of the elements are below $pivot and $floor% above, so every split is guaranteed to be fair.",
     )
-    frames += WalkFrame(
-        status = "Partitioning on $pivot puts $below elements below it and $above above — the smaller side is " +
-            "${"%.0f".format(100.0 * minOf(below, above) / a.size)}% of the array, so that is what gets thrown " +
-            "away this round. Half the groups have a median on each side of the pivot, and in each of those at " +
-            "least three of five elements fall the same way, so at least 3n/10 is discarded no matter what the " +
-            "input is. That floor is what turns the worst case linear.",
-        cells = row {
-            when {
-                a[it] == pivot -> CellMark.RESULT
-                a[it] < pivot -> CellMark.WINDOW
-                else -> CellMark.IDLE
-            }
-        },
-        readout = "$below below · $above above — guaranteed floor is ${3 * a.size / 10}",
+    frame(
+        title, "median = middle", sortedGroups,
+        { v, _ -> if (v == pivot) StoryTone.Answer else if (v < pivot) StoryTone.Path else StoryTone.Idle },
+        medians.map { StoryBlock("$it", 1f, if (it == pivot) StoryTone.Answer else if (it < pivot) StoryTone.Path else StoryTone.Idle) },
+        listOf(StoryChip("below", "$below", StoryTone.Path), StoryChip("above", "$above")),
+        "Partition on {v:$pivot}: $below below, $above above.",
+        "Half the groups have a median ≤ $pivot, and each of those has 3 values ≤ its median, so at least 3n/10 " +
+            "land on each side.",
     )
-    frames += WalkFrame(
-        status = "The catch is the constant. Grouping, sorting each group and recursing to find the pivot all cost " +
-            "real time, so in practice a random pivot is faster and median of medians is reserved for when a " +
-            "worst-case bound actually has to hold.",
-        cells = row { if (a[it] == pivot) CellMark.RESULT else CellMark.DIM },
-        readout = "guaranteed O(n) — at a constant factor you pay on every input",
+    frame(
+        title, "median = middle", sortedGroups, { v, _ -> if (v == pivot) StoryTone.Answer else StoryTone.Idle },
+        medians.map { StoryBlock("$it", 1f, if (it == pivot) StoryTone.Answer else StoryTone.Idle) },
+        listOf(StoryChip("worst case", "O(n)", StoryTone.Done)),
+        "Guaranteed {m:O(n)}, at a price.",
+        "Grouping, sorting and recursing for the pivot all cost time, so a random pivot is faster in practice. " +
+            "This one is for when the worst case has to hold.",
     )
     return frames
 }
@@ -2172,101 +2265,124 @@ private fun runSchedule(jobs: List<Job>, slotCount: Int): Schedule {
 
 private fun jobSequencingFrames(): List<WalkFrame> {
     val jobs = listOf(
-        Job("J1", 2, 100),
-        Job("J2", 1, 19),
-        Job("J3", 2, 27),
-        Job("J4", 1, 25),
+        Job("J1", 1, 27),
+        Job("J2", 1, 25),
+        Job("J3", 2, 100),
+        Job("J4", 1, 19),
         Job("J5", 3, 15),
     )
     val slotCount = jobs.maxOf { it.deadline }
     val byProfit = jobs.sortedByDescending { it.profit }
     val frames = mutableListOf<WalkFrame>()
 
-    fun jobRow(current: Int, taken: Set<String>, rejected: Set<String>) =
-        byProfit.mapIndexed { i, job ->
-            CellView(
-                job.profit.toString(),
-                when {
-                    i == current -> CellMark.ACTIVE
-                    job.id in taken -> CellMark.DONE
-                    job.id in rejected -> CellMark.DIM
-                    else -> CellMark.IDLE
-                },
-            )
-        }
-
-    fun slotRow(slots: Array<String?>, active: Int? = null) =
-        (1..slotCount).map { s ->
-            CellView(slots[s] ?: "·", if (s == active) CellMark.ACTIVE else if (slots[s] != null) CellMark.RESULT else CellMark.DIM)
-        }
-
-    frames += WalkFrame(
-        status = "Five jobs, each with a deadline and a profit; one unit of time per job and $slotCount slots. " +
-            "Sorted by profit, highest first — the greedy claim is that considering them in this order is enough.",
-        cells = jobRow(-1, emptySet(), emptySet()),
-        pointers = byProfit.indices.associateWith { "d${byProfit[it].deadline}" },
-        aux = slotRow(arrayOfNulls(slotCount + 1)),
-        auxLabel = "slots 1..$slotCount",
+    val legend = listOf(
+        StoryTone.Active to "Considering",
+        StoryTone.Done to "Scheduled",
+        StoryTone.Warn to "Skipped",
     )
 
-    val slots = arrayOfNulls<String>(slotCount + 1)
-    val taken = mutableSetOf<String>()
-    val rejected = mutableSetOf<String>()
-    var profit = 0
-    byProfit.forEachIndexed { i, job ->
-        var placed: Int? = null
-        for (s in minOf(job.deadline, slotCount) downTo 1) {
-            if (slots[s] == null) { slots[s] = job.id; profit += job.profit; placed = s; break }
+    // result[id] is a scheduled job's slot, or 0 once it has been skipped.
+    fun frame(result: Map<String, Int>, considering: String?, slots: Array<String?>, chips: List<StoryChip>, headline: String, body: String) {
+        val rows = byProfit.map { job ->
+            val slot = result[job.id]
+            val (text, tone) = when {
+                job.id == considering -> (if (job.deadline == 1) "slot 1 full" else "slots 1–${job.deadline} full") to StoryTone.Active
+                slot == null -> "—" to StoryTone.Idle
+                slot == 0 -> "skipped" to StoryTone.Warn
+                else -> "slot $slot" to StoryTone.Done
+            }
+            StoryTableRow(listOf(job.id, "${job.profit}", "${job.deadline}", text), tone)
         }
-        if (placed != null) taken += job.id else rejected += job.id
-        frames += WalkFrame(
-            status = if (placed != null) {
-                "${job.id} (profit ${job.profit}, deadline ${job.deadline}) goes in slot $placed — the latest free " +
-                    "slot at or before its deadline. Taking the latest one keeps the early slots open for jobs " +
-                    "that have no other option."
-            } else {
-                "${job.id} (profit ${job.profit}, deadline ${job.deadline}) is dropped: every slot up to " +
-                    "${job.deadline} is already held by a job worth more. Nothing later can rescue it, so the " +
-                    "decision is final."
-            },
-            cells = jobRow(i, taken, rejected),
-            pointers = mapOf(i to "d${job.deadline}"),
-            aux = slotRow(slots, placed),
-            auxLabel = "slots 1..$slotCount",
-            readout = "profit = $profit",
+        val story = GreedyStory(
+            title = "BY PROFIT, HIGH TO LOW",
+            note = "latest free slot ≤ deadline",
+            sections = listOf(
+                StorySection(table = StoryTable(listOf("JOB", "PROFIT", "DUE", "RESULT"), listOf(1f, 1.2f, 1f, 1.7f), rows)),
+                StorySection(
+                    label = "SLOTS",
+                    note = (1..slotCount).joinToString(" · "),
+                    cells = (1..slotCount).map { s -> slots[s]?.let { StoryCell(it, StoryTone.Done) } ?: StoryCell("", StoryTone.Empty) },
+                ),
+            ),
+            legend = legend,
+            chips = chips,
+            headline = headline,
+            body = body,
         )
+        frames += WalkFrame(status = story.status, cells = emptyList(), story = story)
     }
 
-    val deadlineFirst = runSchedule(jobs.sortedBy { it.deadline }, slotCount)
-    frames += WalkFrame(
-        status = "Greedy by profit finishes at $profit, running ${taken.sorted().joinToString(", ")}. The ordering " +
-            "is doing real work here — the same algorithm fed jobs sorted by deadline instead scores " +
-            "${deadlineFirst.profit}, because it spends slot 1 on ${deadlineFirst.slots[1]} before it has seen " +
-            "what else wants that slot.",
-        cells = jobRow(-1, taken, rejected),
-        aux = slotRow(deadlineFirst.slots),
-        auxLabel = "deadline-first schedule — profit ${deadlineFirst.profit}",
-        readout = "profit-first $profit vs deadline-first ${deadlineFirst.profit}",
+    val slots = arrayOfNulls<String>(slotCount + 1)
+    val result = mutableMapOf<String, Int>()
+    var profit = 0
+    frame(
+        result, null, slots, listOf(StoryChip("profit", "0")),
+        "Sort the jobs by {profit}, highest first.",
+        "Each job takes one slot and has to finish by its due slot. There are $slotCount slots and ${jobs.size} jobs, " +
+            "so some won't make it.",
+    )
+
+    var pendingSkip: String? = null
+    byProfit.forEach { job ->
+        pendingSkip?.let { result[it] = 0 }
+        pendingSkip = null
+        val placed = (minOf(job.deadline, slotCount) downTo 1).firstOrNull { slots[it] == null }
+        if (placed != null) {
+            slots[placed] = job.id
+            result[job.id] = placed
+            profit += job.profit
+            frame(
+                result, null, slots, listOf(StoryChip("profit", "$profit")),
+                if (placed == job.deadline) "{m:${job.id}} takes slot $placed, right at its deadline."
+                else "{m:${job.id}} is due by slot ${job.deadline}, and slot $placed is the latest one free.",
+                if (placed > 1) "Taking the latest free slot keeps the earlier ones open for jobs due sooner."
+                else "It goes there, for ${job.profit}. Profit so far: $profit.",
+            )
+        } else {
+            val holders = (1..minOf(job.deadline, slotCount)).mapNotNull { slots[it] }
+            frame(
+                result, job.id, slots, listOf(StoryChip("profit", "$profit")),
+                if (job.deadline == 1) "{${job.id}} is due by slot 1, and ${holders[0]} already holds it."
+                else "{${job.id}} is due by slot ${job.deadline}, and ${holders.joinToString(" and ")} hold every slot up to it.",
+                "So ${job.id} is skipped. Each job takes the latest free slot before its deadline.",
+            )
+            pendingSkip = job.id
+        }
+    }
+    pendingSkip?.let { result[it] = 0 }
+
+    val kept = byProfit.filter { (result[it.id] ?: 0) > 0 }.map { it.id }.sorted()
+    val lost = byProfit.filter { result[it.id] == 0 }.map { it.id }.sorted()
+    frame(
+        result, null, slots, listOf(StoryChip("profit", "$profit", StoryTone.Done)),
+        "Done: ${kept.dropLast(1).joinToString(", ")} and ${kept.last()} earn {m:$profit}.",
+        "${lost.joinToString(" and ")} lost their slot to jobs worth more. Every slot is used.",
     )
 
     var best = 0
-    val ids = jobs.indices.toList()
-    fun permute(chosen: List<Job>, remaining: List<Int>) {
-        val result = runSchedule(chosen, slotCount)
-        if (result.log.all { it.second != null }) best = maxOf(best, result.profit)
-        remaining.forEach { idx -> permute(chosen + jobs[idx], remaining - idx) }
+    fun permute(chosen: List<Job>, remaining: List<Job>) {
+        val run = runSchedule(chosen, slotCount)
+        if (run.log.all { it.second != null }) best = maxOf(best, run.profit)
+        remaining.forEach { permute(chosen + it, remaining - it) }
     }
-    permute(emptyList(), ids)
-    frames += WalkFrame(
-        status = "Checked against brute force — every subset in every order, keeping only the ones where each job " +
-            "lands in a slot: the optimum is $best. Greedy matched it. That is the exchange argument in action, " +
-            "and it holds for every instance, not just this one.",
-        cells = jobRow(-1, taken, rejected),
-        aux = slotRow(slots),
-        auxLabel = "greedy schedule — profit $profit",
-        readout = "greedy $profit · brute-force optimum $best",
+    permute(emptyList(), jobs)
+    frame(
+        result, null, slots, listOf(StoryChip("greedy", "$profit", StoryTone.Done), StoryChip("best", "$best", StoryTone.Answer)),
+        "No schedule beats {v:$best}.",
+        "Trying every set of jobs in every order, the best feasible profit is $best. Going by profit is safe: a job " +
+            "only ever loses its slot to one worth more.",
     )
     return frames
+}
+
+// "⅔" for 2/3, plain "a/b" for anything without its own glyph.
+private fun fractionGlyph(num: Int, den: Int): String {
+    var a = num
+    var b = den
+    while (b != 0) { a = b.also { b = a % b } }
+    val n = num / a
+    val d = den / a
+    return mapOf("1/2" to "½", "1/3" to "⅓", "2/3" to "⅔", "1/4" to "¼", "3/4" to "¾")["$n/$d"] ?: "$n/$d"
 }
 
 private fun fractionalKnapsackFrames(): List<WalkFrame> {
@@ -2275,89 +2391,117 @@ private fun fractionalKnapsackFrames(): List<WalkFrame> {
     val capacity = 50
     val order = values.indices.sortedByDescending { values[it].toDouble() / weights[it] }
     val frames = mutableListOf<WalkFrame>()
+    fun ratio(i: Int) = "%.1f".format(values[i].toDouble() / weights[i])
 
-    fun itemRow(current: Int, taken: Set<Int>, partial: Int? = null) =
-        order.mapIndexed { pos, idx ->
-            CellView(
-                "${values[idx]}/${weights[idx]}",
-                when {
-                    pos == current -> CellMark.ACTIVE
-                    idx == partial -> CellMark.RESULT
-                    idx in taken -> CellMark.DONE
-                    else -> CellMark.IDLE
-                },
-            )
-        }
-
-    val ratioPointers = order.indices.associateWith { "%.0f".format(values[order[it]].toDouble() / weights[order[it]]) }
-
-    frames += WalkFrame(
-        status = "Three items and a sack that holds $capacity kg. Sorted by value per kg — " +
-            order.joinToString(", ") { "%.0f".format(values[it].toDouble() / weights[it]) } +
-            " — because when items divide, density is the only thing worth ranking on.",
-        cells = itemRow(-1, emptySet()),
-        pointers = ratioPointers,
-        readout = "capacity $capacity kg",
+    val legend = listOf(
+        StoryTone.Active to "Taking part",
+        StoryTone.Done to "Taken whole",
+        StoryTone.Warn to "Won't fit",
+        StoryTone.Answer to "0/1 best",
     )
 
-    var left = capacity.toDouble()
-    var total = 0.0
-    val taken = mutableSetOf<Int>()
-    order.forEachIndexed { pos, idx ->
-        val take = minOf(weights[idx].toDouble(), left)
-        val gained = values[idx] * take / weights[idx]
-        total += gained
-        left -= take
-        val whole = take == weights[idx].toDouble()
-        if (whole) taken += idx
-        frames += WalkFrame(
-            status = if (whole) {
-                "Item ${idx + 1} is worth ${values[idx]} at ${weights[idx]} kg — take all of it. " +
-                    "Remaining capacity ${"%.0f".format(left)} kg."
-            } else {
-                "Only ${"%.0f".format(left + take)} kg of room is left and item ${idx + 1} weighs " +
-                    "${weights[idx]} kg, so take the fraction ${"%.0f".format(take)}/${weights[idx]} of it for " +
-                    "${"%.0f".format(gained)}. This step is the one 0/1 knapsack is not allowed to make."
+    fun table(tones: Map<Int, StoryTone>) = StorySection(
+        table = StoryTable(
+            headers = listOf("ITEM", "VALUE", "KG", "PER KG"),
+            weights = listOf(1f, 1.2f, 1f, 1.3f),
+            rows = order.map { i ->
+                StoryTableRow(listOf("${i + 1}", "${values[i]}", "${weights[i]}", ratio(i)), tones[i] ?: StoryTone.Idle)
             },
-            cells = itemRow(pos, taken, partial = if (whole) null else idx),
-            pointers = ratioPointers,
-            readout = "value ${"%.0f".format(total)} · ${"%.0f".format(left)} kg left",
+        ),
+    )
+
+    fun frame(sections: List<StorySection>, chips: List<StoryChip>, headline: String, body: String) {
+        val story = GreedyStory("BY VALUE PER KG", "capacity $capacity kg", sections, legend, chips, headline, body)
+        frames += WalkFrame(status = story.status, cells = emptyList(), story = story)
+    }
+
+    // The sack as blocks by kilogram: whole items, then the part being taken, then the room still free.
+    fun sack(whole: List<Int>, part: Pair<Int, Int>?): StorySection {
+        val used = whole.sumOf { weights[it] } + (part?.second ?: 0)
+        val free = capacity - used
+        return StorySection(
+            label = "SACK",
+            note = "$used kg",
+            blocks = whole.map { StoryBlock("${it + 1}", weights[it].toFloat(), StoryTone.Done) } +
+                listOfNotNull(part?.let { (i, kg) -> StoryBlock("${fractionGlyph(kg, weights[i])} of ${i + 1}", kg.toFloat(), StoryTone.Active) }) +
+                listOfNotNull(StoryBlock("$free kg free", free.toFloat(), StoryTone.Empty).takeIf { free > 0 }),
         )
     }
 
-    frames += WalkFrame(
-        status = "Total ${"%.0f".format(total)} with the sack exactly full. No exchange can improve it: swapping " +
-            "any kilogram for one from a lower-density item strictly loses value, and the sack is never left " +
-            "with unused room. That is the proof, not a spot check.",
-        cells = itemRow(-1, taken, partial = order.last()),
-        readout = "optimal value ${"%.0f".format(total)}",
+    frame(
+        listOf(table(emptyMap()), sack(emptyList(), null)),
+        listOf(StoryChip("value", "0"), StoryChip("room", "$capacity kg")),
+        "Rank the items by {value per kg}: " + order.joinToString(", ") { ratio(it) } + ".",
+        "Items can be cut, so the densest kilogram is always the best one to take next. The sack holds $capacity kg.",
     )
 
-    var greedy01 = 0
+    val whole = mutableListOf<Int>()
+    val gains = mutableListOf<Int>()
     var room = capacity
-    val taken01 = mutableSetOf<Int>()
-    order.forEach { idx ->
-        if (weights[idx] <= room) { greedy01 += values[idx]; room -= weights[idx]; taken01 += idx }
+    for (i in order) {
+        val tones = whole.associateWith { StoryTone.Done }
+        if (weights[i] <= room) {
+            whole += i
+            gains += values[i]
+            room -= weights[i]
+            val next = order.getOrNull(order.indexOf(i) + 1)
+            frame(
+                listOf(table(tones + (i to StoryTone.Done)), sack(whole, null)),
+                listOf(StoryChip("value", gains.joinToString(" + ")), StoryChip("room", "$room kg")),
+                "Item ${i + 1} fits whole: {m:${weights[i]} kg} for ${values[i]}.",
+                "$room kg of room is left." + (next?.let { " Next is item ${it + 1} at ${ratio(it)} per kg." } ?: ""),
+            )
+        } else {
+            frame(
+                listOf(table(tones + (i to StoryTone.Active)), sack(whole, null)),
+                listOf(StoryChip("value", gains.joinToString(" + ")), StoryChip("room", "$room kg")),
+                "Item ${i + 1} weighs ${weights[i]} kg, but only {$room kg} of room is left.",
+                "A 0/1 knapsack would have to skip it. Here it can be cut.",
+            )
+            val gained = values[i] * room / weights[i]
+            gains += gained
+            frame(
+                listOf(table(tones + (i to StoryTone.Active)), sack(whole, i to room)),
+                listOf(StoryChip("value", gains.joinToString(" + ")), StoryChip("room", "0 kg")),
+                "$room kg of room is left, so take {${fractionGlyph(room, weights[i])} of item ${i + 1}} for $gained.",
+                "Items go in by value per kg, so only the last one is ever split. The total is ${gains.sum()}.",
+            )
+            break
+        }
     }
-    val dp = IntArray(capacity + 1)
-    values.indices.forEach { i ->
-        for (c in capacity downTo weights[i]) dp[c] = maxOf(dp[c], dp[c - weights[i]] + values[i])
-    }
-    frames += WalkFrame(
-        status = "Forbid the fraction and the same ordering breaks. Density-greedy takes items " +
-            taken01.sorted().joinToString(", ") { "${it + 1}" } +
-            " for $greedy01 and leaves $room kg unusable; the DP optimum is ${dp[capacity]}, from items 2 and 3. " +
-            "Greedy is not \"usually close\" here — it is wrong by ${dp[capacity] - greedy01}.",
-        cells = order.mapIndexed { pos, idx ->
-            CellView("${values[idx]}/${weights[idx]}", if (idx in taken01) CellMark.DONE else CellMark.DIM)
-        },
-        pointers = ratioPointers,
-        aux = listOf(
-            CellView(greedy01.toString(), CellMark.ACTIVE),
-            CellView(dp[capacity].toString(), CellMark.RESULT),
+
+    // The same ranking with cutting forbidden, against the best 0/1 packing.
+    val taken01 = mutableListOf<Int>()
+    var room01 = capacity
+    order.forEach { i -> if (weights[i] <= room01) { taken01 += i; room01 -= weights[i] } }
+    val greedy01 = taken01.sumOf { values[it] }
+    val best01 = (0 until (1 shl values.size))
+        .map { mask -> values.indices.filter { mask and (1 shl it) != 0 } }
+        .filter { set -> set.sumOf { weights[it] } <= capacity }
+        .maxBy { set -> set.sumOf { values[it] } }
+    val bestValue = best01.sumOf { values[it] }
+    val skipped = order.filter { it !in taken01 }
+    frame(
+        listOf(
+            table(taken01.associateWith { StoryTone.Done } + skipped.associateWith { StoryTone.Warn }),
+            StorySection(
+                label = "0/1 GREEDY",
+                note = "$greedy01",
+                blocks = taken01.map { StoryBlock("${it + 1}", weights[it].toFloat(), StoryTone.Done) } +
+                    listOfNotNull(StoryBlock("$room01 kg wasted", room01.toFloat(), StoryTone.Empty).takeIf { room01 > 0 }),
+            ),
+            StorySection(
+                label = "0/1 BEST",
+                note = "$bestValue",
+                blocks = best01.sortedBy { order.indexOf(it) }.map { StoryBlock("${it + 1}", weights[it].toFloat(), StoryTone.Answer) } +
+                    listOfNotNull((capacity - best01.sumOf { weights[it] }).takeIf { it > 0 }?.let { StoryBlock("$it kg free", it.toFloat(), StoryTone.Empty) }),
+            ),
         ),
-        auxLabel = "0/1 greedy vs 0/1 optimum",
-        readout = "divisible → greedy optimal · indivisible → greedy off by ${dp[capacity] - greedy01}",
+        listOf(StoryChip("greedy", "$greedy01", StoryTone.Warn), StoryChip("best", "$bestValue", StoryTone.Answer)),
+        "Forbid the cut and greedy stalls at {w:$greedy01}.",
+        "Item ${skipped.joinToString(", ") { "${it + 1}" }} no longer fits, so $room01 kg sits empty. The best 0/1 " +
+            "packing is items ${best01.sorted().joinToString(" and ") { "${it + 1}" }} for $bestValue, so ranking by " +
+            "value per kg only works when items can be split.",
     )
     return frames
 }
@@ -5426,21 +5570,13 @@ private val walkConfigs = mapOf(
     "quickselect" to WalkConfig(
         intro = "Partition, then recurse into one side only. The comparison count at the end is the argument for " +
             "why selecting is cheaper than sorting.",
-        legend = listOf(
-            ActiveFill to "Comparing",
-            WindowFill to "Below pivot",
-            ResultFill to "Pivot · answer",
-        ),
+        legend = emptyList(),
         build = ::quickselectFrames,
     ),
     "median_of_medians" to WalkConfig(
         intro = "A pivot chosen so its split is guaranteed rather than hoped for — and the measured split it " +
             "produces on this input.",
-        legend = listOf(
-            ActiveFill to "Group median",
-            WindowFill to "Below pivot",
-            ResultFill to "Pivot",
-        ),
+        legend = emptyList(),
         build = ::medianOfMediansFrames,
     ),
     "mos_algorithm" to WalkConfig(
@@ -5487,21 +5623,13 @@ private val walkConfigs = mapOf(
     "job_sequencing" to WalkConfig(
         intro = "Highest profit first, each job dropped into the latest slot that still meets its deadline. The " +
             "final frames check the greedy answer against every other schedule.",
-        legend = listOf(
-            ActiveFill to "Considering",
-            DoneFill to "Scheduled",
-            ResultFill to "Slot filled",
-        ),
+        legend = emptyList(),
         build = ::jobSequencingFrames,
     ),
     "fractional_knapsack" to WalkConfig(
         intro = "Sort by value per kilogram, fill greedily, split the last item. Then the same greedy is turned " +
             "loose on the indivisible version to show exactly where the argument breaks.",
-        legend = listOf(
-            ActiveFill to "Considering",
-            DoneFill to "Taken whole",
-            ResultFill to "Taken in part",
-        ),
+        legend = emptyList(),
         build = ::fractionalKnapsackFrames,
     ),
     "activity_selection" to WalkConfig(
@@ -5517,11 +5645,7 @@ private val walkConfigs = mapOf(
     "coin_change_greedy" to WalkConfig(
         intro = "Greedy change-making and the DP table, on the same {1, 3, 4} coins and the same target of 6. Greed " +
             "commits to the 4 and pays three coins; the table finds 3 + 3.",
-        legend = listOf(
-            ActiveFill to "Remaining amount",
-            WindowFill to "Tabulated",
-            ResultFill to "Answer",
-        ),
+        legend = emptyList(),
         build = ::coinChangeGreedyFrames,
     ),
     "naive_string_search" to WalkConfig(
@@ -5627,7 +5751,7 @@ internal val arrayWalkTopicIds: Set<String> get() = walkConfigs.keys
 internal fun arrayWalkFrameCount(topicId: String): Int {
     val frames = walkConfigFor(topicId).build()
     frames.forEachIndexed { index, frame ->
-        require(frame.cells.isNotEmpty()) { "$topicId frame $index draws no cells" }
+        require(frame.cells.isNotEmpty() || frame.story != null) { "$topicId frame $index draws no cells" }
         require(frame.status.isNotBlank()) { "$topicId frame $index has no status line" }
         frame.aux?.let {
             require(it.size <= frame.cells.size) {
@@ -5651,10 +5775,23 @@ internal fun arrayWalkFrameCount(topicId: String): Int {
 
 @Composable
 fun ArrayWalkSection(topicId: String) {
+    when (topicId) {
+        in numberStoryTopicIds -> return NumberStorySection(topicId)
+        "string" -> return StringLabSection()
+        "list_adt" -> return ListAdtLabSection()
+    }
     val config = remember(topicId) { walkConfigFor(topicId) }
     val frames = remember(config) { config.build() }
     val playback = rememberPlaybackState(key = config, stepCount = frames.size, initialSpeedMs = 650f)
     val frame = frames[playback.index.coerceIn(0, frames.lastIndex)]
+
+    frame.story?.let { story ->
+        Column(modifier = Modifier.fillMaxWidth()) {
+            LabIntro(config.intro, Modifier.padding(bottom = 12.dp))
+            GreedyStoryLab(story, playback, frames.map { it.status })
+        }
+        return
+    }
 
     // Laid out like the other redesigned labs (docs/ios-design/Simulations iOS.html): the intro above
     // the card, the cells and legend in it, then the readout as chips and the step's narration under it.

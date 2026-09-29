@@ -20,22 +20,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.UnfoldMore
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,44 +32,39 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.algora.app.core.ui.theme.IBMPlexMono
-import com.algora.app.core.ui.theme.LocalDarkTheme
 import com.algora.app.core.ui.theme.SimColors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// Stack, queue, deque and singly linked list as sandboxes (docs/ios-design): pick an operation,
-// read it as a sentence ("Push [40]", "Insert [40] at [index 1 ⌄]"), see what it touches on the
-// stage before running it. The four share one state holder — they differ only in which ends are open
+// Stack, queue, deque and singly linked list as sandboxes (docs mocks): pick an operation, set its
+// value and end, see what it touches on the stage before running it with a button named after it
+// ("Enqueue →", "Push back →"). The four share one state holder — they differ only in which ends are open
 // and how the items are drawn. On the sim-only screen the controls are pinned to the bottom and reset
 // sits in the nav bar.
 
@@ -117,7 +101,9 @@ private class LinearSandbox(val kind: LinearKind, private val scope: CoroutineSc
     var busy by mutableStateOf(false)
     var showingResult by mutableStateOf(false)
     var status by mutableStateOf("")
+    // The finished op's cost ("O(1)") and, for a list, the hops it walked.
     var cost by mutableStateOf("")
+    var hopsDone by mutableStateOf<Int?>(null)
     var markIndex by mutableStateOf<Int?>(null)
     var markKind by mutableStateOf(LinearMark.Cursor)
     private var job: Job? = null
@@ -171,6 +157,7 @@ private class LinearSandbox(val kind: LinearKind, private val scope: CoroutineSc
         if (busy) return
         showingResult = false
         cost = ""
+        hopsDone = null
     }
 
     fun canSelect(i: Int) = kind == LinearKind.List && !busy && (if (op == LinearOp.Insert) i <= n else i < n)
@@ -192,31 +179,69 @@ private class LinearSandbox(val kind: LinearKind, private val scope: CoroutineSc
         else -> n
     }
 
-    val chips: String
+    /** size, the end in use (with where it moves), and the cost; a list shows hops instead of an end. */
+    val chipList: List<StoryChip>
         get() = buildList {
-            when (kind) {
-                LinearKind.Stack -> { add("size = $n"); add("top = ${show(if (n > 0) n - 1 else null)}") }
-                LinearKind.Queue -> { add("size = $n"); add("front = ${show(if (n > 0) 0 else null)}") }
-                LinearKind.Deque -> {
-                    add("size = $n")
-                    add("front = ${show(if (n > 0) 0 else null)}")
-                    add("back = ${show(if (n > 0) n - 1 else null)}")
-                }
-                LinearKind.List -> { add("length = $n"); if (previewing) add("hops = $hops") }
+            val live = previewing && blockReason == null
+            val size = when {
+                live && op.adds -> "$n → ${n + 1}"
+                live && op.removes -> "$n → ${n - 1}"
+                else -> "$n"
             }
-            if (previewing) {
+            add(StoryChip(if (kind == LinearKind.List) "length" else "size", size))
+            fun moved(key: String, now: Int?, next: String) =
+                add(StoryChip(key, if (live && op != LinearOp.Peek) "${show(now)} → $next" else show(now)))
+            when (kind) {
+                LinearKind.Stack -> moved("top", if (n > 0) n - 1 else null, if (op.adds) value else show(if (n > 1) n - 2 else null))
+                LinearKind.Queue ->
+                    if (op.adds && n > 0) add(StoryChip("front", show(0)))
+                    else moved("front", if (n > 0) 0 else null, if (op.adds) value else show(if (n > 1) 1 else null))
+                LinearKind.Deque -> {
+                    val at = if (end == End.Front) 0 else n - 1
+                    val inner = if (end == End.Front) 1 else n - 2
+                    moved(end.label, if (n > 0) at else null, if (op.adds) value else show(if (n > 1) inner else null))
+                }
+                LinearKind.List -> if (live) add(StoryChip("hops", "$hops")) else hopsDone?.let { add(StoryChip("hops", "$it")) }
+            }
+            if (live) {
                 add(
-                    "cost = " + when {
-                        kind != LinearKind.List -> "O(1)"
-                        op == LinearOp.Search -> "O(n)"
-                        hops == 0 -> "O(1)"
-                        else -> "O(i)"
-                    },
+                    StoryChip(
+                        "cost",
+                        when {
+                            kind != LinearKind.List -> "O(1)"
+                            op == LinearOp.Search -> "O(n)"
+                            hops == 0 -> "O(1)"
+                            else -> "O(i)"
+                        },
+                    ),
                 )
             } else if (cost.isNotEmpty()) {
-                add(cost)
+                add(StoryChip("cost", cost))
             }
-        }.joinToString(" · ")
+        }
+
+    // The narration split for the story layout: its first sentence as the headline, the rest under it.
+    val headline get() = lead(caption).first
+    val body get() = lead(caption).second
+
+    private fun lead(text: String): Pair<String, String> {
+        val dot = text.indexOf(". ")
+        return if (dot < 0) text to "" else text.substring(0, dot + 1) to text.substring(dot + 2)
+    }
+
+    /** What the button says it will do. */
+    val actionTitle get() = if (kind == LinearKind.Deque) "${op.label} ${end.label}" else op.label
+
+    fun stepValue(delta: Int) {
+        valueInput = "${(valueInput.toIntOrNull() ?: 0) + delta}"
+        edited()
+    }
+
+    fun stepIndex(delta: Int) {
+        if (busy) return
+        selected = (target + delta).coerceIn(0, (n - 1).coerceAtLeast(0))
+        edited()
+    }
 
     val caption get() = if (previewing) preview else status
 
@@ -237,7 +262,7 @@ private class LinearSandbox(val kind: LinearKind, private val scope: CoroutineSc
                 LinearKind.Queue -> when (op) {
                     LinearOp.Enqueue ->
                         if (n == 0) "Enqueue $v into the empty queue. It is both front and back."
-                        else "Enqueue $v joins behind ${items[n - 1]}. ${items[0]} is still first out. First in, first out: work happens only at the two ends."
+                        else "Enqueue $v joins behind ${items[n - 1]}. ${items[0]} is still next out. A queue only ever touches its two ends."
                     LinearOp.Dequeue -> "Dequeue removes ${items[0]} from the front. " +
                         (if (n == 1) "The queue becomes empty." else "${items[1]} is next in line.") + " Nothing else moves."
                     else -> "Peek reads ${items[0]} at the front without removing it. Nothing moves, O(1)."
@@ -246,8 +271,8 @@ private class LinearSandbox(val kind: LinearKind, private val scope: CoroutineSc
                     LinearOp.Push -> {
                         if (n == 0) return "Push $v into the empty deque. It is both front and back."
                         val old = if (end == End.Front) items[0] else items[n - 1]
-                        "Push $v at the ${end.label}. The ${end.label} pointer moves from $old to $v. " +
-                            "Four operations where a queue has two. Nothing in the middle ever shifts."
+                        "Push $v at the ${end.label}. The ${end.label} moves from $old to $v and nothing in the middle shifts. " +
+                            "Unlike a queue, both ends take pushes and pops."
                     }
                     LinearOp.Pop -> {
                         val gone = if (end == End.Front) items[0] else items[n - 1]
@@ -297,6 +322,7 @@ private class LinearSandbox(val kind: LinearKind, private val scope: CoroutineSc
     private fun fail(message: String) {
         status = message
         cost = ""
+        hopsDone = null
         showingResult = true
     }
 
@@ -335,7 +361,7 @@ private class LinearSandbox(val kind: LinearKind, private val scope: CoroutineSc
                     LinearKind.Queue -> "Enqueued $v at the back. It leaves after everything already waiting."
                     else -> "Pushed $v at the ${end.label}. Nothing in the middle moved."
                 }
-                cost = "cost = O(1)"
+                cost = "O(1)"
                 tick(); tick()
             }
             LinearOp.Pop, LinearOp.Dequeue -> {
@@ -350,7 +376,7 @@ private class LinearSandbox(val kind: LinearKind, private val scope: CoroutineSc
                     LinearKind.Queue -> "Dequeued $gone from the front. " + if (n > 0) "${items[0]} is next." else "The queue is empty."
                     else -> "Popped $gone from the ${end.label}. Only that end changed."
                 }
-                cost = "cost = O(1)"
+                cost = "O(1)"
             }
             else -> {
                 val i = endIndex ?: 0
@@ -361,7 +387,7 @@ private class LinearSandbox(val kind: LinearKind, private val scope: CoroutineSc
                     else -> end.label.replaceFirstChar { it.uppercase() }
                 }
                 status = "$which is ${items[i]}. Peek left the ${kind.noun} unchanged."
-                cost = "cost = O(1)"
+                cost = "O(1)"
                 tick(); tick(); tick()
             }
         }
@@ -381,7 +407,8 @@ private class LinearSandbox(val kind: LinearKind, private val scope: CoroutineSc
                 mark(t, LinearMark.Write)
                 status = if (t == 0) "Inserted $v at the head. One link and the head pointer, no walk."
                 else "Inserted $v after ${items[t - 1]} in $t hop${if (t == 1) "" else "s"}. Two pointer writes did the rest."
-                cost = "hops = $t · cost = ${if (t == 0) "O(1)" else "O(i)"}"
+                cost = if (t == 0) "O(1)" else "O(i)"
+                hopsDone = t
                 tick(); tick()
             }
             LinearOp.Delete -> {
@@ -397,7 +424,8 @@ private class LinearSandbox(val kind: LinearKind, private val scope: CoroutineSc
                 mark(null)
                 status = if (t == 0) "Deleted the head $gone. The head pointer moved on, no walk."
                 else "Deleted $gone. ${items[t - 1]} now links past it in one pointer write."
-                cost = "hops = $t · cost = ${if (t == 0) "O(1)" else "O(i)"}"
+                cost = if (t == 0) "O(1)" else "O(i)"
+                hopsDone = t
             }
             else -> {
                 for (i in items.indices) {
@@ -407,13 +435,15 @@ private class LinearSandbox(val kind: LinearKind, private val scope: CoroutineSc
                     if (items[i] == v) {
                         mark(i, LinearMark.Write)
                         status = "Found $v at node $i after ${i + 1} comparison${if (i == 0) "" else "s"}. A list can only be searched by walking."
-                        cost = "hops = $i · cost = O(n)"
+                        cost = "O(n)"
+                        hopsDone = i
                         tick(); tick()
                         return
                     }
                 }
                 status = "$v is not in the list. A miss walks every node."
-                cost = "hops = $n · cost = O(n)"
+                cost = "O(n)"
+                hopsDone = n
             }
         }
     }
@@ -431,6 +461,7 @@ private class LinearSandbox(val kind: LinearKind, private val scope: CoroutineSc
         showingResult = false
         status = ""
         cost = ""
+        hopsDone = null
     }
 }
 
@@ -494,8 +525,8 @@ private fun LinearCard(content: @Composable () -> Unit) {
 @Composable
 private fun LinearNarration(model: LinearSandbox, modifier: Modifier) {
     Column(modifier) {
-        ReadoutChips(model.chips)
-        LabCaption(model.caption, Modifier.padding(top = 14.dp).heightIn(min = 78.dp))
+        StoryChips(model.chipList)
+        LabStoryNarration(model.headline, model.body, Modifier.padding(top = 16.dp).heightIn(min = 96.dp))
     }
 }
 
@@ -635,7 +666,7 @@ private fun RowStage(model: LinearSandbox, incoming: Boolean) {
     val isDeque = model.kind == LinearKind.Deque
     val pushFront = isDeque && model.end == End.Front
     val cells = model.n + if (incoming) 1 else 0
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth().padding(top = 50.dp, bottom = 24.dp)) {
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val gap = 8.dp
         val slots = maxOf(cells, 4)
         // Cells shrink to fit up to a floor; past that the row scrolls sideways.
@@ -644,12 +675,12 @@ private fun RowStage(model: LinearSandbox, incoming: Boolean) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
           Column(modifier = Modifier.horizontalScroll(scroll), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                if (incoming && pushFront) IncomingBox(model.value, w, 58.dp)
+                if (incoming && pushFront) IncomingBox(model.value, w, 50.dp)
                 model.items.indices.forEach { i ->
                     val isEnd = if (isDeque) i == model.endIndex else i == 0
-                    ValueBox("${model.items[i]}", cellStyle(model, i, isEnd), w, 58.dp)
+                    ValueBox("${model.items[i]}", cellStyle(model, i, isEnd), w, 50.dp)
                 }
-                if (incoming && !pushFront) IncomingBox(model.value, w, 58.dp)
+                if (incoming && !pushFront) IncomingBox(model.value, w, 50.dp)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
                 if (incoming && pushFront) Tag("new", accent, Modifier.width(w))
@@ -662,16 +693,17 @@ private fun RowStage(model: LinearSandbox, incoming: Boolean) {
                         isBack -> "back"
                         else -> ""
                     }
+                    // The end in use (a queue's front) is yellow, the other named end blue.
                     val lit = if (isDeque) i == model.endIndex else isFront
-                    Tag(label, if (lit) SimColors.Active else muted, Modifier.width(w))
+                    Tag(label, if (lit) StoryTone.Active.ink() else StoryTone.Path.ink(), Modifier.width(w))
                 }
                 if (incoming && !pushFront) Tag("new", accent, Modifier.width(w))
             }
           }
-            Row(modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) {
-                Text(if (isDeque) "⇄ open end" else "← leaves here", fontSize = 14.sp, color = muted)
+            Row(modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                Text(if (isDeque) "⇄ open end" else "← leaves at the front", fontSize = 14.sp, color = muted)
                 Spacer(Modifier.weight(1f))
-                Text(if (isDeque) "open end ⇄" else "joins here ←", fontSize = 14.sp, color = muted)
+                Text(if (isDeque) "open end ⇄" else "joins at the back ←", fontSize = 14.sp, color = muted)
             }
         }
     }
@@ -751,7 +783,7 @@ private fun LinearLegend(model: LinearSandbox, modifier: Modifier) {
     val accent = MaterialTheme.colorScheme.primary
     val endLabel = when (model.kind) {
         LinearKind.Stack -> "Top"
-        LinearKind.Queue -> "Front"
+        LinearKind.Queue -> "Next out"
         LinearKind.Deque -> "End in use"
         LinearKind.List -> "Walk to"
     }
@@ -764,7 +796,7 @@ private fun LinearLegend(model: LinearSandbox, modifier: Modifier) {
     Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
         LegendEntry(SimColors.Active, endLabel, dashed = false)
         LegendEntry(SimColors.Blue, bodyLabel, dashed = false)
-        if (model.op.removes) LegendEntry(SimColors.Red, "Leaving", dashed = false) else LegendEntry(accent, "Incoming", dashed = true)
+        if (model.op.removes) LegendEntry(SimColors.Red, "Leaving", dashed = false) else LegendEntry(accent, "Preview", dashed = true)
     }
 }
 
@@ -795,162 +827,47 @@ private fun LegendEntry(color: Color, label: String, dashed: Boolean) {
 
 // ── Controls ─────────────────────────────────────────────────────────────────
 
+/** The op picker, the end or position as an inline segmented row, then the value and a button named after the op. */
 @Composable
 private fun LinearControls(model: LinearSandbox) {
-    // The keyboard pans the whole screen up, hiding the stage; Run and Done close it so the result
-    // is visible.
+    // The keyboard pans the whole screen up, hiding the stage; running closes it so the result is visible.
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
-    val dismissKeyboard = { focus.clearFocus(); keyboard?.hide(); Unit }
-    val accent = MaterialTheme.colorScheme.primary
-    val muted = MaterialTheme.colorScheme.onSurfaceVariant
-    val dark = LocalDarkTheme.current
-    var menuOpen by remember { mutableStateOf(false) }
-    val connector = when {
-        model.kind == LinearKind.Deque && model.op == LinearOp.Push -> "to"
-        model.kind == LinearKind.Deque && model.op == LinearOp.Pop -> "from"
-        model.kind == LinearKind.Deque -> "at"
-        model.kind == LinearKind.List && model.op == LinearOp.Insert -> "at"
-        else -> null
-    }
-    val hasMenu = model.kind == LinearKind.Deque || (model.kind == LinearKind.List && model.op != LinearOp.Search)
-    val positionLabel = when {
-        model.kind == LinearKind.Deque -> model.end.label
-        model.op == LinearOp.Insert && model.pos == ListPos.Head -> "head"
-        model.op == LinearOp.Insert && model.pos == ListPos.Tail -> "tail"
-        else -> "index ${model.target}"
-    }
-    val hint = when (model.kind) {
-        LinearKind.Stack -> "Pop and Peek take no value. The field hides and Run acts on the top."
-        LinearKind.Queue ->
-            if (model.n > 0) "Dequeue removes ${model.items[0]} from the front. Peek reads it without removing it."
-            else "Dequeue and Peek act on the front."
-        LinearKind.Deque -> "Menu: Front · Back. That one choice is what makes it a deque."
-        LinearKind.List -> "Menu: Head · Tail · Index. Or tap a node to set the index."
-    }
-
-    Column {
-        model.blockReason?.takeIf { !model.busy }?.let { LabNotice(it, Modifier.padding(bottom = 12.dp)) }
-        // Segmented op picker.
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(34.dp)
-                .background(SimColors.Tint, RoundedCornerShape(9.dp))
-                .padding(2.dp),
-        ) {
-            model.ops.forEach { op ->
-                val on = op == model.op
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(30.dp)
-                        .clip(RoundedCornerShape(7.dp))
-                        .background(if (on) (if (dark) Color(0xFF636366) else Color.White) else Color.Transparent)
-                        .clickable { model.op = op; model.edited() },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(op.label, fontSize = 14.sp, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium)
-                }
+    val hasField = model.op.adds || model.op == LinearOp.Search || (model.kind == LinearKind.List && model.op == LinearOp.Delete)
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        model.blockReason?.takeIf { !model.busy }?.let { LabNotice(it) }
+        LabSegments(model.ops.map { it.label }, model.ops.indexOf(model.op)) {
+            if (!model.busy) { model.op = model.ops[it]; model.edited() }
+        }
+        if (model.kind == LinearKind.Deque) {
+            LabOptionRow("End", listOf("Front", "Back"), if (model.end == End.Front) 0 else 1, enabled = !model.busy) {
+                model.end = if (it == 0) End.Front else End.Back
+                model.edited()
             }
         }
-
-        // The op as a sentence, with a compact Run button.
-        Row(
-            modifier = Modifier
-                .padding(top = 12.dp)
-                .fillMaxWidth()
-                .height(60.dp)
-                .background(SimColors.Tint.copy(alpha = 0.14f), RoundedCornerShape(16.dp))
-                .padding(start = 16.dp, end = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(model.op.label, fontSize = 17.sp, color = muted)
-            if (model.op.adds || model.op == LinearOp.Search) {
-                BasicTextField(
-                    value = model.valueInput,
-                    onValueChange = { input ->
-                        val sign = if (input.startsWith("-")) "-" else ""
-                        model.valueInput = sign + input.filter(Char::isDigit).take(4)
-                        model.edited()
-                    },
-                    singleLine = true,
-                    textStyle = TextStyle(
-                        fontFamily = IBMPlexMono,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 17.sp,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    ),
-                    cursorBrush = SolidColor(accent),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { dismissKeyboard() }),
-                    modifier = Modifier
-                        .width(56.dp)
-                        .height(36.dp)
-                        .clip(RoundedCornerShape(9.dp))
-                        .background(SimColors.Tint)
-                        .drawBehind {
-                            drawRect(accent, topLeft = Offset(4.dp.toPx(), size.height - 2.dp.toPx()), size = Size(size.width - 8.dp.toPx(), 2.dp.toPx()))
-                        }
-                        .padding(top = 7.dp),
-                )
-            }
-            if (connector != null) Text(connector, fontSize = 17.sp, color = muted)
-            if (hasMenu) {
-                Box {
-                    Row(
-                        modifier = Modifier
-                            .height(36.dp)
-                            .widthIn(min = 44.dp)
-                            .clip(RoundedCornerShape(9.dp))
-                            .background(accent.copy(alpha = 0.18f))
-                            .clickable(enabled = !model.busy) { menuOpen = true }
-                            .padding(start = 12.dp, end = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(positionLabel, color = accent, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                        Icon(Icons.Filled.UnfoldMore, contentDescription = null, tint = accent, modifier = Modifier.padding(start = 4.dp).size(16.dp))
-                    }
-                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                        val items: List<Triple<String, Boolean, () -> Unit>> = when {
-                            model.kind == LinearKind.Deque -> listOf(
-                                Triple("Front", model.end == End.Front) { model.end = End.Front },
-                                Triple("Back", model.end == End.Back) { model.end = End.Back },
-                            )
-                            model.op == LinearOp.Insert -> listOf(
-                                Triple("Head", model.pos == ListPos.Head) { model.pos = ListPos.Head },
-                                Triple("Index ${model.selected.coerceAtMost(model.n)}", model.pos == ListPos.Index) { model.pos = ListPos.Index },
-                                Triple("Tail", model.pos == ListPos.Tail) { model.pos = ListPos.Tail },
-                            )
-                            else -> (0 until model.n.coerceAtLeast(1)).map { i ->
-                                Triple("Index $i", model.target == i) { model.selected = i }
-                            }
-                        }
-                        items.forEach { (label, checked, onClick) ->
-                            DropdownMenuItem(
-                                text = { Text(label) },
-                                trailingIcon = if (checked) ({ Icon(Icons.Filled.Check, contentDescription = null) }) else null,
-                                onClick = { onClick(); model.edited(); menuOpen = false },
-                            )
-                        }
-                    }
-                }
-            }
-            Spacer(Modifier.weight(1f))
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(accent.copy(alpha = if (model.canRun) 1f else 0.4f))
-                    .clickable(enabled = !model.busy, onClickLabel = "Run") { dismissKeyboard(); model.runOp() },
-                contentAlignment = Alignment.Center,
+        if (model.kind == LinearKind.List && model.op == LinearOp.Insert) {
+            LabOptionRow(
+                "At",
+                listOf("Head", "Index ${model.selected.coerceAtMost(model.n)}", "Tail"),
+                model.pos.ordinal,
+                enabled = !model.busy,
             ) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = "Run", tint = Color.White, modifier = Modifier.size(24.dp))
+                model.pos = ListPos.entries[it]
+                model.edited()
             }
         }
-
-        Text(hint, fontSize = 13.sp, color = muted, modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (model.op.adds || model.op == LinearOp.Search) {
+                LabValueStepper("Value", model.valueInput, { model.valueInput = it; model.edited() }, Modifier.weight(1f)) { model.stepValue(it) }
+            } else if (model.kind == LinearKind.List && model.op == LinearOp.Delete) {
+                LabValueStepper(
+                    "Index", "${model.target}", {}, Modifier.weight(1f),
+                    canDecrease = model.target > 0, canIncrease = model.target < model.n - 1, editable = false,
+                ) { model.stepIndex(it) }
+            }
+            LabActionButton(model.actionTitle, if (hasField) Modifier else Modifier.weight(1f), enabled = model.canRun) {
+                if (!model.busy) { focus.clearFocus(); keyboard?.hide(); model.runOp() }
+            }
+        }
     }
 }

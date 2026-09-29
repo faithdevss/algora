@@ -83,7 +83,7 @@ private val sectionMeta = linkedMapOf(
     Section.DATA_STRUCTURES to SectionMeta("Data Structures", "stack", 0xFF10B981),
     Section.ALGORITHMS to SectionMeta("Algorithms", "chip", 0xFF3B82F6),
     Section.ANALYSIS to SectionMeta("Analysis", "trend", 0xFF8B5CF6),
-    Section.INTERVIEW_PREP to SectionMeta("Interview Prep", "target", 0xFFF59E0B),
+    Section.INTERVIEW_PREP to SectionMeta("Coding Patterns", "target", 0xFFF59E0B),
     Section.ML to SectionMeta("Machine Learning", "robot", 0xFF6366F1),
     Section.DL to SectionMeta("Deep Learning", "network", 0xFFEC4899),
     Section.NLP to SectionMeta("NLP", "globe", 0xFF14B8A6),
@@ -239,6 +239,24 @@ fun SimulationsScreen(onTopicClick: (String) -> Unit, modifier: Modifier = Modif
 
 // Sections keep sectionMeta's order; categories and rows keep the order the content provider and the
 // category lists already publish, so the catalog matches the browser tabs row for row.
+private const val PATTERNS_CATEGORY = "interview_patterns"
+
+private fun patternGroupName(type: SimulationType): String = when (type) {
+    SimulationType.ArrayWalkPlayer -> "Array Walk"
+    SimulationType.BitBoardPlayer -> "Bit Board"
+    SimulationType.GraphAlgorithmPlayer -> "Graph"
+    SimulationType.PathfindingGrid -> "Grid"
+    SimulationType.TreeVisualizer -> "Tree"
+    SimulationType.RecursionTreeVisualizer -> "Recursion"
+    SimulationType.DpGridVisualizer -> "DP Table"
+    SimulationType.SortingVisualizer -> "Sorting"
+    SimulationType.SearchVisualizer -> "Search"
+    SimulationType.HashingVisualizer -> "Hashing"
+    SimulationType.LinkedStructurePlayer -> "Linked Structure"
+    SimulationType.GameSearchPlayer -> "Game Search"
+    else -> "Other"
+}
+
 private fun buildGroups(): List<SimGroup> {
     val entriesBySection = LinkedHashMap<Section, LinkedHashMap<String, MutableList<SimEntry>>>()
 
@@ -246,7 +264,9 @@ private fun buildGroups(): List<SimGroup> {
         val topic = TopicRegistry.find(topicId) ?: return@forEach
         val category = CategoryRegistry.find(topic.categoryId)
         val section = category?.section ?: Section.ALGORITHMS
-        val categoryName = category?.name ?: "Other"
+        // The coding patterns are one content category of 50+ topics, so here they split by the kind of lab
+        // they run instead.
+        val categoryName = if (topic.categoryId == PATTERNS_CATEGORY) patternGroupName(type) else category?.name ?: "Other"
         entriesBySection
             .getOrPut(section) { LinkedHashMap() }
             .getOrPut(categoryName) { mutableListOf() }

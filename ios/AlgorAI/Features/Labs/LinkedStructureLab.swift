@@ -465,3 +465,231 @@ private struct LinkedStage: View {
         }
     }
 }
+
+// MARK: - Doubly linked list story
+// Port of DoublyLinkedLab.kt. Insert, delete and reverse as three storyboards over one row of nodes.
+// Each gap holds two arrows, next above and prev below; a pointer that skips a node is drawn as an arc
+// over (next) or under (prev) the row, labelled with the field being written.
+
+private enum DllTone { case idle, hand, rewired, fresh }
+private enum DllStyle { case plain, removed, rewired }
+private struct DllNode { let label: String; var tone: DllTone = .idle; var tag: String? = nil }
+/// One pointer. `from` and `to` are row positions; `next` draws it above the row, prev below.
+private struct DllLink { let from: Int; let to: Int; let next: Bool; var style: DllStyle = .plain; var label: String? = nil }
+
+private struct DllFrame {
+    let nodes: [DllNode]
+    let links: [DllLink]
+    let formula: String
+    let chips: [StoryChip]
+    let headline: String
+    let body: String
+}
+
+/// Both pointers between each neighbouring pair, except the ones a step replaces.
+private func dllChain(_ count: Int, except: Set<Int> = []) -> [DllLink] {
+    (0..<(count - 1)).filter { !except.contains($0) }.flatMap { [DllLink(from: $0, to: $0 + 1, next: true), DllLink(from: $0 + 1, to: $0, next: false)] }
+}
+
+private func dllNodes(_ values: [Int], _ tones: [Int: DllTone] = [:], tags: [Int: String]? = nil) -> [DllNode] {
+    values.enumerated().map { i, v in
+        DllNode(label: "\(v)", tone: tones[i] ?? .idle, tag: tags.map { $0[i] } ?? (i == 0 ? "head" : i == values.count - 1 ? "tail" : nil))
+    }
+}
+
+private func dllDelete() -> [DllFrame] {
+    let v = [10, 20, 30, 40]
+    let writes = [StoryChip("pointer writes", "0"), StoryChip("cost", "O(1)")]
+    return [
+        DllFrame(nodes: dllNodes(v, [2: .hand]), links: dllChain(4), formula: "delete(node 30)", chips: writes,
+                 headline: "You hold a pointer to {30}. Deleting it means joining its two neighbours.",
+                 body: "The handle could be a cache entry, or whatever an earlier insert returned."),
+        DllFrame(nodes: dllNodes(v, [1: .rewired, 2: .hand, 3: .rewired]), links: dllChain(4), formula: "30.prev = {p:20}   30.next = {p:40}", chips: writes,
+                 headline: "30.prev and 30.next hand over both neighbours, {p:20} and {p:40}.",
+                 body: "No search: the node already knows who is on either side of it."),
+        DllFrame(nodes: dllNodes(v, [1: .rewired, 2: .hand, 3: .rewired]),
+                 links: dllChain(4, except: [1]) + [DllLink(from: 1, to: 2, next: true, style: .removed), DllLink(from: 2, to: 1, next: false),
+                                                    DllLink(from: 1, to: 3, next: true, style: .rewired, label: "20.next")],
+                 formula: "20.next = {p:40}", chips: [StoryChip("pointer writes", "1"), StoryChip("cost", "O(1)")],
+                 headline: "Write 20.next = {p:40}. Walking forward now skips 30.",
+                 body: "The old 20 → 30 link is dropped, but 30 still points at its neighbours."),
+        DllFrame(nodes: dllNodes(v, [1: .rewired, 2: .hand, 3: .rewired]),
+                 links: dllChain(4, except: [1, 2]) + [DllLink(from: 1, to: 2, next: true, style: .removed), DllLink(from: 2, to: 1, next: false, style: .removed),
+                                                       DllLink(from: 2, to: 3, next: true, style: .removed), DllLink(from: 3, to: 2, next: false, style: .removed),
+                                                       DllLink(from: 1, to: 3, next: true, style: .rewired, label: "20.next"),
+                                                       DllLink(from: 3, to: 1, next: false, style: .rewired, label: "40.prev")],
+                 formula: "20.next = {p:40}   40.prev = {p:20}", chips: [StoryChip("pointer writes", "2"), StoryChip("cost", "O(1)")],
+                 headline: "Holding 30, both neighbours are one hop away, so it unlinks in 2 writes.",
+                 body: "That is what the prev pointer buys: a singly linked list has to walk from the head to find 20."),
+        DllFrame(nodes: dllNodes([10, 20, 40], [1: .rewired, 2: .rewired]), links: dllChain(3), formula: "10 ⇄ 20 ⇄ 40",
+                 chips: [StoryChip("pointer writes", "2"), StoryChip("cost", "O(1)", .answer)],
+                 headline: "30 is unlinked. The list reads {v:10 ⇄ 20 ⇄ 40} both ways.",
+                 body: "Nothing shifted and nothing walked, so delete-given-a-node is O(1) however long the list is."),
+    ]
+}
+
+private func dllInsert() -> [DllFrame] {
+    // The new node sits in its slot from the start; the old 20 ⇄ 30 pair arcs around it until rewired.
+    let v = [10, 20, 25, 30, 40]
+    let tags: [Int: String] = [0: "head", 2: "new", 4: "tail"]
+    let outer = [DllLink(from: 1, to: 3, next: true), DllLink(from: 3, to: 1, next: false)]
+    let rest = dllChain(5, except: [1, 2])
+    func chips(_ n: Int) -> [StoryChip] { [StoryChip("pointer writes", "\(n)"), StoryChip("cost", "O(1)")] }
+    return [
+        DllFrame(nodes: dllNodes(v, [1: .hand, 2: .fresh], tags: tags), links: rest + outer, formula: "insertAfter(node 20, 25)", chips: chips(0),
+                 headline: "Insert {25} after 20, with 20 already in hand.",
+                 body: "The new node is allocated on its own. Nothing in the list moves to make room."),
+        DllFrame(nodes: dllNodes(v, [1: .hand, 2: .fresh], tags: tags),
+                 links: rest + outer + [DllLink(from: 2, to: 1, next: false, style: .rewired), DllLink(from: 2, to: 3, next: true, style: .rewired)],
+                 formula: "25.prev = {p:20}   25.next = {p:30}", chips: chips(2),
+                 headline: "First the new node points outward: 25.prev = {p:20}, 25.next = {p:30}.",
+                 body: "Setting its own fields first means the list is never broken halfway through."),
+        DllFrame(nodes: dllNodes(v, [1: .hand, 2: .fresh], tags: tags),
+                 links: rest + [DllLink(from: 1, to: 3, next: true, style: .removed), DllLink(from: 3, to: 1, next: false),
+                                DllLink(from: 2, to: 1, next: false, style: .rewired), DllLink(from: 2, to: 3, next: true, style: .rewired),
+                                DllLink(from: 1, to: 2, next: true, style: .rewired)],
+                 formula: "20.next = {p:25}", chips: chips(3),
+                 headline: "Then 20.next = {p:25}. Walking forward now reaches the new node.",
+                 body: "The old 20 → 30 pointer is replaced, not deleted separately."),
+        DllFrame(nodes: dllNodes(v, [1: .hand, 2: .fresh], tags: tags),
+                 links: rest + [DllLink(from: 1, to: 3, next: true, style: .removed), DllLink(from: 3, to: 1, next: false, style: .removed),
+                                DllLink(from: 2, to: 1, next: false, style: .rewired), DllLink(from: 2, to: 3, next: true, style: .rewired),
+                                DllLink(from: 1, to: 2, next: true, style: .rewired), DllLink(from: 3, to: 2, next: false, style: .rewired)],
+                 formula: "30.prev = {p:25}", chips: chips(4),
+                 headline: "Last, 30.prev = {p:25}: four writes and the node is in.",
+                 body: "A singly linked list needs two writes here but cannot insert before a node without walking to it."),
+        DllFrame(nodes: dllNodes(v, [2: .rewired], tags: tags), links: dllChain(5), formula: "10 ⇄ 20 ⇄ 25 ⇄ 30 ⇄ 40",
+                 chips: [StoryChip("pointer writes", "4"), StoryChip("cost", "O(1)", .answer)],
+                 headline: "25 is linked both ways: {v:10 ⇄ 20 ⇄ 25 ⇄ 30 ⇄ 40}.",
+                 body: "O(1) once you hold 20. Finding 20 in the first place is still a walk, O(n)."),
+    ]
+}
+
+private func dllReverse() -> [DllFrame] {
+    let v = [10, 20, 30, 40]
+    var frames = [DllFrame(nodes: dllNodes(v), links: dllChain(4), formula: "reverse()", chips: [StoryChip("swapped", "0 of 4"), StoryChip("cost", "O(n)")],
+                           headline: "Reversing swaps next and prev inside every node.",
+                           body: "No node moves in memory. Only the two pointers in each node trade places.")]
+    for i in 0..<v.count {
+        var tones: [Int: DllTone] = [i: .hand]
+        for j in 0..<i { tones[j] = .rewired }
+        frames.append(DllFrame(nodes: dllNodes(v, tones), links: dllChain(4), formula: "swap(\(v[i]).next, \(v[i]).prev)",
+                               chips: [StoryChip("swapped", "\(i + 1) of \(v.count)"), StoryChip("pointer writes", "\(2 * (i + 1))")],
+                               headline: "Swap {\(v[i])}'s pointers: next becomes prev, prev becomes next.",
+                               body: i == 0 ? "The old head's prev was null, so its next is now null: it will be the tail."
+                                   : i == v.count - 1 ? "The old tail's next was null, so it becomes the new head." : "Each node takes two writes, so the pass is O(n)."))
+    }
+    let r = Array(v.reversed())
+    frames.append(DllFrame(nodes: dllNodes(r, Dictionary(uniqueKeysWithValues: r.indices.map { ($0, DllTone.rewired) })), links: dllChain(4),
+                           formula: "head = {v:40}   tail = {v:10}", chips: [StoryChip("pointer writes", "8"), StoryChip("cost", "O(n)", .answer)],
+                           headline: "Swap head and tail, and the list reads {v:40 ⇄ 30 ⇄ 20 ⇄ 10}.",
+                           body: "Two writes per node plus the two ends. The same loop over a singly linked list has to carry a prev variable along."))
+    return frames
+}
+
+struct DoublyLinkedLab: View {
+    private let tabs: [(String, [DllFrame], [(Color, SwatchStyle, String)])] = [
+        ("Insert", dllInsert(), [(SimColors.active, .fill, "Node in hand"), (SimColors.answer, .dashed, "New node"), (SimColors.blue, .fill, "Pointer rewired"), (SimColors.red, .fill, "Link removed")]),
+        ("Delete", dllDelete(), [(SimColors.active, .fill, "Node in hand"), (SimColors.blue, .fill, "Pointer rewired"), (SimColors.red, .fill, "Link removed")]),
+        ("Reverse", dllReverse(), [(SimColors.active, .fill, "Swapping"), (SimColors.blue, .fill, "Swapped")]),
+    ]
+    @State private var tab = 1
+    @State private var playback = PlaybackState(stepCount: 5, speedMs: 900)
+
+    var body: some View {
+        let frames = tabs[tab].1
+        let frame = frames[min(playback.index, frames.count - 1)]
+        VStack(alignment: .leading, spacing: 0) {
+            LabCard {
+                LabSegments(labels: tabs.map(\.0), selected: Binding(get: { tab }, set: { select($0) }))
+                DllStage(frame: frame)
+                    .frame(height: 170)
+                    .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 14))
+                    .padding(.top, 14)
+                StoryFormula(text: frame.formula).padding(.top, 12)
+                StoryLegendRow(items: tabs[tab].2).padding(.top, 14)
+            }
+            StoryChips(chips: frame.chips).padding(.top, 16)
+            LabStoryNarration(headline: frame.headline, body: frame.body).padding(.top, 16)
+            PlaybackTransport(state: playback, captions: frames.map { storyPlain($0.headline) })
+        }
+    }
+
+    private func select(_ i: Int) {
+        guard i != tab else { return }
+        tab = i
+        playback = PlaybackState(stepCount: tabs[i].1.count, speedMs: 900)
+    }
+}
+
+private struct DllStage: View {
+    let frame: DllFrame
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        Canvas { ctx, size in
+            let n = frame.nodes.count
+            let w: CGFloat = 50, h: CGFloat = 44
+            let pad: CGFloat = 12
+            let step = (size.width - 2 * pad - w) / CGFloat(max(n - 1, 1))
+            let cy = size.height / 2 - 6
+            func cx(_ i: Int) -> CGFloat { pad + w / 2 + CGFloat(i) * step }
+            func color(_ s: DllStyle) -> Color { s == .removed ? SimColors.red : s == .rewired ? SimColors.blue : palette.muted.opacity(0.7) }
+            func arrowHead(_ tip: CGPoint, _ angle: CGFloat, _ c: Color) {
+                var p = Path()
+                p.move(to: tip)
+                p.addLine(to: CGPoint(x: tip.x - 7 * cos(angle - 0.45), y: tip.y - 7 * sin(angle - 0.45)))
+                p.addLine(to: CGPoint(x: tip.x - 7 * cos(angle + 0.45), y: tip.y - 7 * sin(angle + 0.45)))
+                p.closeSubpath()
+                ctx.fill(p, with: .color(c))
+            }
+            // Links first, so the tiles sit on top of them.
+            for link in frame.links {
+                let c = color(link.style)
+                let stroke = StrokeStyle(lineWidth: link.style == .plain ? 1.5 : 2, dash: link.style == .removed ? [4, 3] : [])
+                let dir: CGFloat = link.to > link.from ? 1 : -1
+                if abs(link.to - link.from) == 1 {
+                    let y = cy + (link.next ? -7 : 7)
+                    let a = CGPoint(x: cx(link.from) + dir * (w / 2 + 3), y: y)
+                    let b = CGPoint(x: cx(link.to) - dir * (w / 2 + 3), y: y)
+                    var p = Path(); p.move(to: a); p.addLine(to: b)
+                    ctx.stroke(p, with: .color(c), style: stroke)
+                    arrowHead(b, dir > 0 ? 0 : .pi, c)
+                } else {
+                    // A pointer that skips nodes arcs over (next) or under (prev) the row.
+                    let sign: CGFloat = link.next ? -1 : 1
+                    let a = CGPoint(x: cx(link.from), y: cy + sign * h / 2)
+                    let b = CGPoint(x: cx(link.to), y: cy + sign * h / 2)
+                    let control = CGPoint(x: (a.x + b.x) / 2, y: cy + sign * (h / 2 + 52))
+                    var p = Path(); p.move(to: a); p.addQuadCurve(to: b, control: control)
+                    ctx.stroke(p, with: .color(c), style: stroke)
+                    arrowHead(b, atan2(b.y - control.y, b.x - control.x), c)
+                    if let label = link.label {
+                        let text = ctx.resolve(Text(label).font(AppFont.mono(12, .bold)).foregroundColor(StoryTone.path.ink(palette)))
+                        let apex = CGPoint(x: control.x, y: (a.y + 2 * control.y + b.y) / 4 + sign * 10)
+                        ctx.draw(text, at: apex)
+                    }
+                }
+            }
+            for (i, node) in frame.nodes.enumerated() {
+                let rect = CGRect(x: cx(i) - w / 2, y: cy - h / 2, width: w, height: h)
+                let tile = Path(roundedRect: rect, cornerRadius: 9)
+                let (fill, ink): (Color, Color) = switch node.tone {
+                case .idle: (palette.muted.opacity(0.22), palette.onSurface)
+                case .hand: (SimColors.active, Color(hex: 0x1F1A0A))
+                case .rewired: (SimColors.blue.opacity(0.3), palette.onSurface)
+                case .fresh: (SimColors.answer.opacity(0.2), StoryTone.answer.ink(palette))
+                }
+                ctx.fill(tile, with: .color(palette.surface))
+                ctx.fill(tile, with: .color(fill))
+                if node.tone == .rewired { ctx.stroke(tile, with: .color(SimColors.blue), lineWidth: 1.5) }
+                if node.tone == .fresh { ctx.stroke(tile, with: .color(SimColors.answer), style: StrokeStyle(lineWidth: 1.5, dash: [4, 3])) }
+                ctx.draw(ctx.resolve(Text(node.label).font(AppFont.mono(17, .bold)).foregroundColor(ink)), at: CGPoint(x: rect.midX, y: rect.midY))
+                if let tag = node.tag {
+                    let ink = node.tone == .fresh ? StoryTone.answer.ink(palette) : palette.muted
+                    ctx.draw(ctx.resolve(Text(tag).font(AppFont.mono(11)).foregroundColor(ink)), at: CGPoint(x: rect.midX, y: rect.maxY + 12))
+                }
+            }
+        }
+    }
+}

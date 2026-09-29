@@ -6,14 +6,11 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -23,45 +20,46 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.algora.app.core.ui.theme.IBMPlexMono
 import com.algora.app.core.ui.theme.SimColors
 
 // ── DP tabulation grid ───────────────────────────────────────────────────────
 // Fills a DP table cell-by-cell (one PlaybackTransport step each), then, for 2-D problems, walks the
 // traceback path. Each frame snapshots the values written so far + the active/traced cells.
 
-// One candidate in a cell's recurrence — edit distance's replace/delete/insert, LCS's match/up/left —
-// shown as a card under the grid, the chosen one outlined.
+// One candidate in a cell's recurrence — edit distance's replace/delete/insert — shown as a card under
+// the grid, the chosen one outlined.
 private class DpOption(val arrow: String, val name: String, val formula: String, val chosen: Boolean)
-
-private enum class DpTone { NEUTRAL, ALERT, GOOD }
-
-private class DpChip(val label: String, val value: String, val tone: DpTone = DpTone.NEUTRAL)
-
-// Headline in three parts so the middle (the value just written) can take the active yellow.
-private class DpHeadline(val lead: String, val emphasis: String, val tail: String)
 
 private class DpFrame(
     val values: Map<Int, String>,   // cellKey -> written value
     val active: Int?,               // cell being written or traced now
     val traced: Set<Int>,           // traceback cells revealed so far
     val status: String,
-    // The rest is the narrated design (docs/ios-design/Simulations iOS.html). A table that leaves it
-    // empty still gets the grid; the headline falls back to `status`.
+    // The rest is the narrated design (docs mocks). A table that leaves it empty still gets the grid;
+    // the headline falls back to `status`.
     val reads: Set<Int> = emptySet(),
     val options: List<DpOption> = emptyList(),
-    val chips: List<DpChip> = emptyList(),
-    val headline: DpHeadline? = null,
+    val chips: List<StoryChip> = emptyList(),
+    // `{…}` marks the term drawn in its tone's colour (see LabStory).
+    val headline: String? = null,
     val body: String? = null,
+    // The recurrence with this cell's numbers, in a strip under the grid.
+    val formula: String? = null,
+    // Labelled lines of arithmetic under the grid: matrix chain's splits, Fibonacci's call count.
+    val formulaRows: List<StoryFormulaRow> = emptyList(),
+    // Cells holding the answer, in violet.
+    val answer: Set<Int> = emptySet(),
+    // Tiles under the grid spelling out the result (LCS's letters).
+    val strip: List<StoryCell> = emptyList(),
+    // Replaces the config's header note for this step ("d(1,3) = 25").
+    val note: String? = null,
+    // Several cells written in one step (matrix chain's diagonal of zeros).
+    val actives: Set<Int> = emptySet(),
 )
 
 private class DpConfig(
@@ -74,11 +72,20 @@ private class DpConfig(
     val build: () -> List<DpFrame>,
     // Card heading, e.g. "CAT → CUT". A table with one shows it in place of the intro paragraph.
     val title: String? = null,
+    // Right of the heading; defaults to dp[i] / dp[i][j].
+    val note: String? = null,
+    // Equal tiles over the grid naming the inputs (matrix chain's "A1 10×30").
+    val pills: List<String> = emptyList(),
+    // In display order; an entry shows only while its tone is on screen.
+    val legend: List<Pair<StoryTone, String>> = DpLegend,
 )
 
-private val ActiveCell = SimColors.Active
-private val FilledCell = SimColors.Blue
-private val TracedCell = SimColors.Green
+private val DpLegend = listOf(
+    StoryTone.Active to "Current",
+    StoryTone.Path to "Reads from",
+    StoryTone.Done to "Traceback",
+    StoryTone.Answer to "Answer",
+)
 
 private class DpBuilder(val rows: Int, val cols: Int) {
     val frames = mutableListOf<DpFrame>()
@@ -88,15 +95,45 @@ private class DpBuilder(val rows: Int, val cols: Int) {
         r: Int,
         c: Int,
         value: String,
-        status: String,
+        status: String = "",
         reads: Set<Int> = emptySet(),
         options: List<DpOption> = emptyList(),
-        chips: List<DpChip> = emptyList(),
-        headline: DpHeadline? = null,
+        chips: List<StoryChip> = emptyList(),
+        headline: String? = null,
         body: String? = null,
+        formula: String? = null,
+        formulaRows: List<StoryFormulaRow> = emptyList(),
+        note: String? = null,
     ) {
         values[key(r, c)] = value
-        frames.add(DpFrame(values.toMap(), key(r, c), emptySet(), status, reads, options, chips, headline, body))
+        frames.add(
+            DpFrame(
+                values.toMap(), key(r, c), emptySet(), status.ifEmpty { storyPlain(headline.orEmpty()) },
+                reads, options, chips, headline, body, formula, formulaRows, note = note,
+            ),
+        )
+    }
+    // A step that writes nothing new: an intro, a closing answer, a whole traceback at once.
+    fun frame(
+        headline: String,
+        body: String,
+        active: Int? = null,
+        actives: Set<Int> = emptySet(),
+        traced: Set<Int> = emptySet(),
+        reads: Set<Int> = emptySet(),
+        answer: Set<Int> = emptySet(),
+        chips: List<StoryChip> = emptyList(),
+        formula: String? = null,
+        formulaRows: List<StoryFormulaRow> = emptyList(),
+        strip: List<StoryCell> = emptyList(),
+        note: String? = null,
+    ) {
+        frames.add(
+            DpFrame(
+                values.toMap(), active, traced, storyPlain(headline), reads, emptyList(), chips, headline, body,
+                formula, formulaRows, answer, strip, note, actives,
+            ),
+        )
     }
     fun trace(cells: List<Int>, statusFor: (Int) -> String) {
         val traced = mutableSetOf<Int>()
@@ -107,16 +144,39 @@ private class DpBuilder(val rows: Int, val cols: Int) {
     }
 }
 
-// dp[i] = dp[i-1] + dp[i-2], filled left to right. 1-D, no traceback.
+// dp[i] = dp[i-1] + dp[i-2], filled left to right. 1-D, no traceback. The call count is what the naive
+// recursion would spend on the same f(i), the thing the table saves.
 private fun fibonacciDpFrames(): List<DpFrame> {
     val n = 9
     val b = DpBuilder(rows = 1, cols = n + 1)
     val dp = LongArray(n + 1)
+    val calls = IntArray(n + 1)
     for (i in 0..n) {
         dp[i] = if (i < 2) i.toLong() else dp[i - 1] + dp[i - 2]
-        val status = if (i < 2) "dp[$i] = $i  (base case)"
-        else "dp[$i] = dp[${i - 1}] + dp[${i - 2}] = ${dp[i]}"
-        b.fill(0, i, dp[i].toString(), status)
+        calls[i] = if (i < 2) 1 else calls[i - 1] + calls[i - 2] + 1
+        if (i < 2) {
+            b.fill(
+                0, i, "${dp[i]}",
+                chips = listOf(StoryChip("i", "$i")),
+                formula = "dp[$i] = {${dp[i]}}",
+                headline = "dp[$i] = {${dp[i]}} is a base case, written without looking anything up.",
+                body = if (i == 0) "The recurrence needs two earlier cells, so the first two are given."
+                else "With dp[0] and dp[1] in place, every later cell has both of its inputs.",
+            )
+        } else {
+            b.fill(
+                0, i, "${dp[i]}",
+                reads = setOf(i - 1, i - 2),
+                chips = listOf(StoryChip("i", "$i")),
+                formula = "dp[$i] = {p:${dp[i - 1]}} + {p:${dp[i - 2]}} = {${dp[i]}}",
+                formulaRows = listOf(
+                    StoryFormulaRow("recursive f($i)", "${calls[i]} calls"),
+                    StoryFormulaRow("table", "${i + 1} cells, each once"),
+                ),
+                headline = "dp[$i] adds the two cells before it: ${dp[i - 1]} + ${dp[i - 2]} = {${dp[i]}}.",
+                body = "Each value is computed once and reused, compared with ${calls[i]} calls for the recursive version.",
+            )
+        }
     }
     return b.frames
 }
@@ -134,7 +194,7 @@ private fun editDistanceFrames(): List<DpFrame> {
             val status: String
             val from = "\"${a.take(i)}\""
             val to = "\"${bWord.take(j)}\""
-            val chips = mutableListOf(DpChip("i", "$i"), DpChip("j", "$j"))
+            val chips = mutableListOf(StoryChip("i", "$i"), StoryChip("j", "$j"))
             var reads = emptySet<Int>()
             var options = emptyList<DpOption>()
             val body: String
@@ -171,10 +231,10 @@ private fun editDistanceFrames(): List<DpFrame> {
                         DpOption("←", "insert", "${dp[i][j - 1]} + 1 = $left", pick == 2),
                     )
                     reads = setOf(bld.key(i - 1, j - 1), bld.key(i - 1, j), bld.key(i, j - 1))
-                    chips += DpChip(
+                    chips += StoryChip(
                         "${a[i - 1]} vs ${bWord[j - 1]}",
                         if (match) "match" else "differ",
-                        if (match) DpTone.GOOD else DpTone.ALERT,
+                        if (match) StoryTone.Done else StoryTone.Warn,
                     )
                     val ties = listOf(diag, up, left).count { it == v }
                     val moveName = listOf(if (match) "Keeping the letter" else "Replacing", "Deleting", "Inserting")[pick]
@@ -198,11 +258,8 @@ private fun editDistanceFrames(): List<DpFrame> {
                 reads = reads,
                 options = options,
                 chips = chips,
-                headline = DpHeadline(
-                    "dp[$i][$j] = ",
-                    "${dp[i][j]}",
-                    ": turning ${if (i == 0) "\"\"" else from} into ${if (j == 0) "\"\"" else to} takes ${edits(dp[i][j])}.",
-                ),
+                headline = "dp[$i][$j] = {${dp[i][j]}}: turning ${if (i == 0) "\"\"" else from} into " +
+                    "${if (j == 0) "\"\"" else to} takes ${edits(dp[i][j])}.",
                 body = body,
             )
         }
@@ -231,70 +288,69 @@ private fun lcsFrames(): List<DpFrame> {
     val cols = bWord.length + 1
     val bld = DpBuilder(rows, cols)
     val dp = Array(rows) { IntArray(cols) }
-    fun letters(n: Int) = if (n == 1) "1 letter" else "$n letters"
     for (i in 0 until rows) {
         for (j in 0 until cols) {
-            val status: String
-            val chips = mutableListOf(DpChip("i", "$i"), DpChip("j", "$j"))
-            var reads = emptySet<Int>()
-            var options = emptyList<DpOption>()
-            val body: String
-            dp[i][j] = when {
-                i == 0 || j == 0 -> {
-                    status = "dp[$i][$j] = 0  (empty prefix)"
-                    body = "One side is empty, so nothing can be shared."
-                    0
-                }
-                a[i - 1] == bWord[j - 1] -> {
-                    val v = dp[i - 1][j - 1] + 1
-                    status = "'${a[i - 1]}' matches → dp[${i - 1}][${j - 1}] + 1 = $v"
-                    reads = setOf(bld.key(i - 1, j - 1))
-                    options = listOf(DpOption("↖", "match", "${dp[i - 1][j - 1]} + 1 = $v", true))
-                    chips += DpChip("${a[i - 1]} vs ${bWord[j - 1]}", "match", DpTone.GOOD)
-                    body = "'${a[i - 1]}' ends both prefixes, so it joins the best subsequence of what came before them."
-                    v
-                }
-                else -> {
-                    val up = dp[i - 1][j]
-                    val left = dp[i][j - 1]
-                    val v = maxOf(up, left)
-                    status = "no match → max(up, left) = $v"
-                    reads = setOf(bld.key(i - 1, j), bld.key(i, j - 1))
-                    options = listOf(
-                        DpOption("↑", "drop '${a[i - 1]}'", "$up", up >= left),
-                        DpOption("←", "drop '${bWord[j - 1]}'", "$left", left > up),
-                    )
-                    chips += DpChip("${a[i - 1]} vs ${bWord[j - 1]}", "differ", DpTone.ALERT)
-                    body = "The last letters differ, so one of them is not in the subsequence. Keep whichever drop leaves more."
-                    v
-                }
+            if (i == 0 || j == 0) {
+                bld.fill(
+                    i, j, "0",
+                    chips = listOf(StoryChip("prefix", if (i == 0) "ε" else "\"${a.take(i)}\""), StoryChip("vs", if (j == 0) "ε" else "\"${bWord.take(j)}\"")),
+                    headline = "An empty prefix shares {0} letters with anything.",
+                    body = "Row ε and column ε stay zero, so every other cell has a neighbour to read.",
+                )
+                continue
             }
-            bld.fill(
-                i, j, dp[i][j].toString(), status,
-                reads = reads,
-                options = options,
-                chips = chips,
-                headline = DpHeadline(
-                    "dp[$i][$j] = ",
-                    "${dp[i][j]}",
-                    ": \"${a.take(i)}\" and \"${bWord.take(j)}\" share ${letters(dp[i][j])} in order.",
-                ),
-                body = body,
-            )
+            val x = a[i - 1]
+            val y = bWord[j - 1]
+            val pair = StoryChip("$x vs $y", if (x == y) "match" else "differ", if (x == y) StoryTone.Done else StoryTone.Warn)
+            val prefixes = StoryChip("prefixes", "${a.take(i)} · ${bWord.take(j)}")
+            if (x == y) {
+                dp[i][j] = dp[i - 1][j - 1] + 1
+                bld.fill(
+                    i, j, "${dp[i][j]}",
+                    reads = setOf(bld.key(i - 1, j - 1)),
+                    chips = listOf(pair, prefixes),
+                    formula = "diagonal {p:${dp[i - 1][j - 1]}} + 1 = {${dp[i][j]}}",
+                    headline = "'$x' ends both prefixes, so it extends the diagonal: {${dp[i][j]}}.",
+                    body = "A match joins the best subsequence of everything before both letters.",
+                )
+            } else {
+                val up = dp[i - 1][j]
+                val left = dp[i][j - 1]
+                dp[i][j] = maxOf(up, left)
+                bld.fill(
+                    i, j, "${dp[i][j]}",
+                    reads = setOf(bld.key(i - 1, j), bld.key(i, j - 1)),
+                    chips = listOf(pair, prefixes),
+                    formula = "max( up {p:$up} , left {p:$left} ) = {${dp[i][j]}}",
+                    headline = "'$x' and '$y' differ, so the better neighbour carries: {${dp[i][j]}}.",
+                    body = "One of the two letters is not in the subsequence. Keep whichever drop leaves more.",
+                )
+            }
         }
     }
+    // Every step back from the corner: diagonals are matched letters, the rest skip one.
     var i = rows - 1
     var j = cols - 1
-    val path = mutableListOf(bld.key(i, j))
+    val path = mutableListOf<Int>()
+    val letters = StringBuilder()
     while (i > 0 && j > 0) {
+        path += bld.key(i, j)
         when {
-            a[i - 1] == bWord[j - 1] -> { i--; j-- }
+            a[i - 1] == bWord[j - 1] -> { letters.append(a[i - 1]); i--; j-- }
             dp[i - 1][j] >= dp[i][j - 1] -> i--
             else -> j--
         }
-        path.add(bld.key(i, j))
     }
-    bld.trace(path.reversed()) { "Traceback — matched characters. LCS length = ${dp[rows - 1][cols - 1]}." }
+    val lcs = letters.reverse().toString().uppercase()
+    val corner = bld.key(rows - 1, cols - 1)
+    bld.frame(
+        headline = "Following the diagonals back spells out $lcs.",
+        body = "Each diagonal step is a matched letter.",
+        traced = path.toSet() - corner,
+        answer = setOf(corner),
+        chips = listOf(StoryChip("LCS", lcs), StoryChip("length", "${lcs.length}", StoryTone.Answer)),
+        strip = lcs.map { StoryCell(it.toString(), StoryTone.Done) },
+    )
     return bld.frames
 }
 
@@ -304,6 +360,8 @@ private const val INF = Int.MAX_VALUE / 2
 
 private fun coinFmt(x: Int): String = if (x >= INF) "∞" else x.toString()
 
+private fun countWord(n: Int): String = if (n < 6) listOf("zero", "one", "two", "three", "four", "five")[n] else "$n"
+
 // dp[i][a] = fewest coins for amount a using the first i denominations (unbounded).
 private fun coinChangeFrames(): List<DpFrame> {
     val coins = coinChangeCoins
@@ -312,33 +370,97 @@ private fun coinChangeFrames(): List<DpFrame> {
     val cols = amount + 1
     val bld = DpBuilder(rows, cols)
     val dp = Array(rows) { IntArray(cols) { INF } }
+    // What greedy (largest coin first) spends on the target, for the closing contrast.
+    var greedyLeft = amount
+    val greedy = mutableListOf<Int>()
+    for (coin in coins.sortedDescending()) while (greedyLeft >= coin) { greedy += coin; greedyLeft -= coin }
+    // The coins the table settles on, known up front so the last cell can name them.
+    fun used(): List<Int> {
+        var i = rows - 1
+        var a = cols - 1
+        val out = mutableListOf<Int>()
+        while (a > 0 && i > 0) if (dp[i][a] == dp[i - 1][a]) i-- else { out += coins[i - 1]; a -= coins[i - 1] }
+        return out
+    }
     for (i in 0 until rows) {
         for (a in 0 until cols) {
-            val status: String
-            dp[i][a] = when {
-                a == 0 -> { status = "dp[$i][0] = 0  (amount 0 needs no coins)"; 0 }
-                i == 0 -> { status = "dp[0][$a] = ∞  (no coins available)"; INF }
-                else -> {
-                    val skip = dp[i - 1][a]
-                    val coin = coins[i - 1]
-                    val use = if (coin <= a && dp[i][a - coin] < INF) dp[i][a - coin] + 1 else INF
-                    val v = minOf(skip, use)
-                    status = "coin ${coins[i - 1]}: min(skip ${coinFmt(skip)}, use ${coinFmt(use)}) = ${coinFmt(v)}"
-                    v
-                }
+            val chips = listOf(StoryChip("coin", if (i == 0) "none" else "${coins[i - 1]}"), StoryChip("amount", "$a"))
+            if (a == 0) {
+                dp[i][0] = 0
+                bld.fill(
+                    i, 0, "0", chips = chips,
+                    headline = "Making 0 takes {0} coins.",
+                    body = if (i == 0) "Row ε has no coins at all, so every other amount in it is out of reach."
+                    else "Every row starts from zero: no coins make nothing.",
+                )
+                continue
             }
-            bld.fill(i, a, coinFmt(dp[i][a]), status)
+            if (i == 0) {
+                bld.fill(
+                    0, a, "∞", chips = chips,
+                    headline = "With no coins, $a is out of reach: {∞}.",
+                    body = "∞ marks an amount this row cannot make.",
+                )
+                continue
+            }
+            val coin = coins[i - 1]
+            val skip = dp[i - 1][a]
+            if (coin > a) {
+                dp[i][a] = skip
+                bld.fill(
+                    i, a, coinFmt(skip), chips = chips,
+                    reads = setOf(bld.key(i - 1, a)),
+                    formula = "$coin > $a, keep {p:${coinFmt(skip)}}",
+                    headline = "A $coin is too big for $a, so the row above carries down: {${coinFmt(skip)}}.",
+                    body = "Without room for this coin, the answer is whatever the smaller coins managed.",
+                )
+                continue
+            }
+            val rest = dp[i][a - coin]
+            val use = if (rest < INF) rest + 1 else INF
+            dp[i][a] = minOf(skip, use)
+            val v = coinFmt(dp[i][a])
+            val last = i == rows - 1 && a == cols - 1
+            val headline = when {
+                use < skip && skip >= INF -> "A $coin reaches $a: 1 + ${coinFmt(rest)} = {$v} coins."
+                use < skip -> "Using a $coin: 1 + ${coinFmt(rest)} = {$v} coins, fewer than ${coinFmt(skip)}."
+                use == skip -> "Using a $coin ties with skipping it: {$v} either way."
+                else -> "Using a $coin costs 1 + ${coinFmt(rest)} = ${coinFmt(use)} coins. Skipping it keeps {$v}."
+            }
+            val body = if (last) {
+                val coinsUsed = used()
+                "So $a takes ${countWord(coinsUsed.size)} coins, ${coinsUsed.joinToString(" + ")}. That is the answer greedy missed."
+            } else {
+                "Each cell is the fewer of skipping this coin or using one more of it. The use reads from the same row, since coins repeat."
+            }
+            bld.fill(
+                i, a, v, chips = chips,
+                reads = setOf(bld.key(i - 1, a), bld.key(i, a - coin)),
+                formula = "min( skip {p:${coinFmt(skip)}} , use 1 + {p:${coinFmt(rest)}} ) = {$v}",
+                headline = headline,
+                body = body,
+            )
         }
     }
+    val corner = bld.key(rows - 1, cols - 1)
     if (dp[rows - 1][cols - 1] < INF) {
         var i = rows - 1
         var a = cols - 1
-        val path = mutableListOf(bld.key(i, a))
+        val path = mutableSetOf<Int>()
         while (a > 0 && i > 0) {
+            path += bld.key(i, a)
             if (dp[i][a] == dp[i - 1][a]) i-- else a -= coins[i - 1]
-            path.add(bld.key(i, a))
         }
-        bld.trace(path.reversed()) { "Traceback — coins used. Minimum = ${dp[rows - 1][cols - 1]}." }
+        path += bld.key(i, a)
+        val coinsUsed = used()
+        bld.frame(
+            headline = "${coinsUsed.joinToString(" + ")} makes $amount with {v:${coinsUsed.size}} coins.",
+            body = "Greedy grabs the ${greedy.first()} first and needs ${greedy.joinToString(" + ")}, ${greedy.size} coins. " +
+                "The table tried every coin at every amount.",
+            traced = path - corner,
+            answer = setOf(corner),
+            chips = listOf(StoryChip("coins", coinsUsed.joinToString(" + ")), StoryChip("count", "${coinsUsed.size}", StoryTone.Answer)),
+        )
     }
     return bld.frames
 }
@@ -355,40 +477,78 @@ private fun knapsackFrames(): List<DpFrame> {
     val dp = Array(rows) { IntArray(cols) }
     for (i in 0 until rows) {
         for (w in 0 until cols) {
-            val status: String
-            dp[i][w] = when {
-                i == 0 || w == 0 -> { status = "dp[$i][$w] = 0  (no items or no capacity)"; 0 }
-                knapWeights[i - 1] <= w -> {
-                    val skip = dp[i - 1][w]
-                    val take = dp[i - 1][w - knapWeights[i - 1]] + knapValues[i - 1]
-                    val v = maxOf(skip, take)
-                    status = "item $i (wt ${knapWeights[i - 1]}, val ${knapValues[i - 1]}): max(skip $skip, take $take) = $v"
-                    v
-                }
-                else -> { status = "item $i too heavy → carry dp[${i - 1}][$w] = ${dp[i - 1][w]}"; dp[i - 1][w] }
+            val chips = listOf(StoryChip("item", if (i == 0) "none" else "$i"), StoryChip("capacity", "$w"))
+            if (i == 0 || w == 0) {
+                bld.fill(
+                    i, w, "0", chips = chips,
+                    headline = if (i == 0) "No items yet: capacity $w holds {0}." else "Capacity 0 holds nothing: {0}.",
+                    body = if (i == 0) "Row ε is the baseline every item is measured against."
+                    else "Column 0 stays zero, so a take that uses up the whole room reads a real cell.",
+                )
+                continue
             }
-            bld.fill(i, w, dp[i][w].toString(), status)
+            val weight = knapWeights[i - 1]
+            val value = knapValues[i - 1]
+            val skip = dp[i - 1][w]
+            if (weight > w) {
+                dp[i][w] = skip
+                bld.fill(
+                    i, w, "$skip", chips = chips,
+                    reads = setOf(bld.key(i - 1, w)),
+                    formula = "item $i too heavy, keep {p:$skip}",
+                    headline = "Item $i weighs $weight, more than $w. The row above carries: {$skip}.",
+                    body = "An item that does not fit leaves the answer to the items before it.",
+                )
+                continue
+            }
+            val room = dp[i - 1][w - weight]
+            val take = value + room
+            dp[i][w] = maxOf(skip, take)
+            val v = dp[i][w]
+            bld.fill(
+                i, w, "$v", chips = chips,
+                reads = setOf(bld.key(i - 1, w), bld.key(i - 1, w - weight)),
+                formula = "max( skip {p:$skip} , take $value + {p:$room} ) = {$v}",
+                headline = when {
+                    take > skip -> "Taking item $i leaves room ${w - weight}, worth $room. $value + $room = {$v} beats $skip."
+                    take == skip -> "Taking item $i ties with skipping it: {$v}."
+                    else -> "Skipping item $i keeps {$v}. Taking it only makes $take."
+                },
+                body = "Each cell picks the better of skipping the item or taking it once.",
+            )
         }
     }
     var i = rows - 1
     var w = cols - 1
-    val path = mutableListOf(bld.key(i, w))
-    while (i > 0 && w >= 0) {
-        if (dp[i][w] == dp[i - 1][w]) {
-            i--
-        } else {
-            w -= knapWeights[i - 1]
-            i--
-        }
-        if (w < 0) break
-        path.add(bld.key(i, w))
+    val path = mutableSetOf<Int>()
+    val taken = mutableListOf<Int>()
+    while (i > 0) {
+        path += bld.key(i, w)
+        if (dp[i][w] != dp[i - 1][w]) { taken += i; w -= knapWeights[i - 1] }
+        i--
     }
-    bld.trace(path.reversed()) { "Traceback — items chosen. Max value = ${dp[rows - 1][cols - 1]}." }
+    val corner = bld.key(rows - 1, cols - 1)
+    val best = dp[rows - 1][cols - 1]
+    val names = taken.reversed()
+    bld.frame(
+        headline = "Items ${names.joinToString(" and ")} fill the sack for {v:$best}.",
+        body = "Where a cell differs from the one above it, that item was taken; step left by its weight.",
+        traced = path - corner,
+        answer = setOf(corner),
+        chips = listOf(StoryChip("take", names.joinToString(" + ")), StoryChip("value", "$best", StoryTone.Answer)),
+    )
     return bld.frames
 }
 
 private val rodPrices = intArrayOf(1, 5, 8, 9, 10)
 private const val ROD_LENGTH = 5
+
+// "1", "1 and 2", "1 to 3": the piece lengths a row allows.
+private fun rodPieces(upTo: Int) = when (upTo) {
+    1 -> "1"
+    2 -> "1 and 2"
+    else -> "1 to $upTo"
+}
 
 // dp[i][l] = best revenue for a rod of length l cutting only pieces of length <= i.
 private fun rodCuttingFrames(): List<DpFrame> {
@@ -398,29 +558,68 @@ private fun rodCuttingFrames(): List<DpFrame> {
     val dp = Array(rows) { IntArray(cols) }
     for (i in 0 until rows) {
         for (l in 0 until cols) {
-            val status: String
-            dp[i][l] = when {
-                i == 0 || l == 0 -> { status = "dp[$i][$l] = 0  (no piece length, or no rod left)"; 0 }
-                i <= l -> {
-                    val skip = dp[i - 1][l]
-                    val cut = dp[i][l - i] + rodPrices[i - 1]
-                    val v = maxOf(skip, cut)
-                    status = "length $i (price ${rodPrices[i - 1]}): max(skip $skip, cut $cut) = $v"
-                    v
-                }
-                else -> { status = "piece $i longer than rod $l → carry dp[${i - 1}][$l] = ${dp[i - 1][l]}"; dp[i - 1][l] }
+            val chips = listOf(StoryChip("piece", if (i == 0) "none" else "$i"), StoryChip("rod", "$l"))
+            if (i == 0 || l == 0) {
+                bld.fill(
+                    i, l, "0", chips = chips,
+                    headline = if (i == 0) "No pieces allowed: a rod of $l sells for {0}." else "A rod of 0 sells for {0}.",
+                    body = "Each row allows one more piece length than the row above it.",
+                )
+                continue
             }
-            bld.fill(i, l, dp[i][l].toString(), status)
+            val price = rodPrices[i - 1]
+            val skip = dp[i - 1][l]
+            if (i > l) {
+                dp[i][l] = skip
+                bld.fill(
+                    i, l, "$skip", chips = chips,
+                    reads = setOf(bld.key(i - 1, l)),
+                    formula = "piece $i > rod $l, keep {p:$skip}",
+                    headline = "A $i is longer than the rod, so the row above carries: {$skip}.",
+                    body = "Only pieces that fit can change the answer.",
+                )
+                continue
+            }
+            val rest = dp[i][l - i]
+            val cut = price + rest
+            dp[i][l] = maxOf(skip, cut)
+            val v = dp[i][l]
+            bld.fill(
+                i, l, "$v", chips = chips,
+                reads = setOf(bld.key(i - 1, l), bld.key(i, l - i)),
+                formula = "max( skip {p:$skip} , cut $price + {p:$rest} ) = {$v}",
+                headline = when {
+                    cut > skip && l == i -> "Selling the whole $l as one piece earns \$$price: {$v}."
+                    cut > skip -> "Cut a $i for \$$price and sell the leftover ${l - i} for \$$rest: {$v}."
+                    cut == skip -> "Cutting a $i ties with skipping it: {$v}."
+                    else -> "Skipping keeps {$v}. Cutting a $i only makes $cut."
+                },
+                body = if (cut > skip && i > 1) {
+                    "That beats $skip from pieces of ${rodPieces(i - 1)} only. Pieces can repeat, so the take reads from the same row."
+                } else {
+                    "Pieces can repeat, so the take reads from the same row."
+                },
+            )
         }
     }
     var i = rows - 1
     var l = cols - 1
-    val path = mutableListOf(bld.key(i, l))
+    val path = mutableSetOf<Int>()
+    val cuts = mutableListOf<Int>()
     while (i > 0 && l > 0) {
-        if (dp[i][l] == dp[i - 1][l]) i-- else l -= i
-        path.add(bld.key(i, l))
+        path += bld.key(i, l)
+        if (dp[i][l] == dp[i - 1][l]) i-- else { cuts += i; l -= i }
     }
-    bld.trace(path.reversed()) { "Traceback — the cuts chosen. Best revenue = ${dp[rows - 1][cols - 1]}." }
+    val corner = bld.key(rows - 1, cols - 1)
+    val best = dp[rows - 1][cols - 1]
+    val pieces = cuts.sorted()
+    bld.frame(
+        headline = "Pieces of ${pieces.joinToString(" and ")} sell for {v:\$$best}.",
+        body = "Where a cell beats the one above it, that piece was cut; step left by its length.",
+        traced = path - corner,
+        answer = setOf(corner),
+        chips = listOf(StoryChip("cuts", pieces.joinToString(" + ")), StoryChip("revenue", "\$$best", StoryTone.Answer)),
+    )
     return bld.frames
 }
 
@@ -450,26 +649,87 @@ private fun lisFrames(): List<DpFrame> {
 
 private val chainDims = intArrayOf(10, 30, 5, 60)
 
-// dp[i][j] = fewest scalar multiplications to multiply matrices i..j. Filled by chain length,
-// so the table populates diagonally rather than row by row.
+private fun chainName(i: Int, j: Int) = (i..j).joinToString(" ") { "A${it + 1}" }
+
+// A split written as parentheses: "(A1 A2) A3". A lone matrix needs none.
+private fun chainGroup(i: Int, j: Int) = if (i == j) "A${i + 1}" else "(${chainName(i, j)})"
+
+// dp[i][j] = fewest scalar multiplications to multiply matrices i..j. Filled by chain length, so the
+// table populates diagonally rather than row by row; a chain of three tries its splits one at a time.
 private fun matrixChainFrames(): List<DpFrame> {
     val n = chainDims.size - 1
+    val p = chainDims
     val bld = DpBuilder(rows = n, cols = n)
     val dp = Array(n) { IntArray(n) }
-    for (i in 0 until n) bld.fill(i, i, "0", "dp[$i][$i] = 0  (a single matrix needs no multiplication)")
+    for (i in 0 until n) bld.values[bld.key(i, i)] = "0"
+    bld.frame(
+        headline = "A single matrix costs {0}: there is nothing to multiply.",
+        body = "The table fills by chain length, so every shorter chain is ready before a longer one needs it.",
+        actives = (0 until n).map { bld.key(it, it) }.toSet(),
+        chips = listOf(StoryChip("length", "1")),
+    )
     for (len in 2..n) {
         for (i in 0..n - len) {
             val j = i + len - 1
+            val tried = mutableListOf<Triple<Int, Int, Int>>()   // split k, join cost, total
             var best = Int.MAX_VALUE
             var split = i
             for (k in i until j) {
-                val cost = dp[i][k] + dp[k + 1][j] + chainDims[i] * chainDims[k + 1] * chainDims[j + 1]
-                if (cost < best) { best = cost; split = k }
+                val join = p[i] * p[k + 1] * p[j + 1]
+                val total = dp[i][k] + dp[k + 1][j] + join
+                tried += Triple(k, join, total)
+                // Every split after the first gets its own step, so the comparison is visible.
+                val better = total < best
+                if (better) { best = total; split = k }
+                val rows = tried.map { (tk, tj, tt) ->
+                    val current = tk == k
+                    val left = if (current) "{p:${dp[i][tk]}}" else "${dp[i][tk]}"
+                    val right = if (current) "{p:${dp[tk + 1][j]}}" else "${dp[tk + 1][j]}"
+                    StoryFormulaRow("k = ${tk + 1}", "$left + $right + $tj = ${if (current) "{$tt}" else "$tt"}")
+                }
+                val chips = mutableListOf(StoryChip("length", "$len"))
+                val headline: String
+                val body: String
+                if (len == 2) {
+                    headline = "${chainName(i, j)} has one split: ${p[i]} × ${p[k + 1]} × ${p[j + 1]} = {$total}."
+                    body = "m[i][j] is the cheapest way to multiply Ai through Aj."
+                } else if (k == i) {
+                    headline = "Splitting after A${k + 1} costs {$total}."
+                    body = "${chainGroup(i, k)} ${chainGroup(k + 1, j)}: the two sides' ${dp[i][k]} and ${dp[k + 1][j]}, plus " +
+                        "${p[i]} × ${p[k + 1]} × ${p[j + 1]} = $join to join them."
+                } else {
+                    val times = tried.first().third / total
+                    headline = if (better) {
+                        "Splitting after A${k + 1} costs {$total}" + if (times == 6) ", six times cheaper." else "."
+                    } else {
+                        "Splitting after A${k + 1} costs $total, more than {$best}."
+                    }
+                    body = "Only the upper triangle is used: m[i][j] is the cheapest way to multiply Ai through Aj."
+                    chips[0] = StoryChip("best split", "${chainGroup(i, split)} ${chainGroup(split + 1, j)}")
+                }
+                dp[i][j] = best
+                bld.fill(
+                    i, j, "$total",
+                    reads = setOf(bld.key(i, k), bld.key(k + 1, j)),
+                    chips = chips,
+                    formulaRows = rows,
+                    headline = headline,
+                    body = body,
+                )
             }
-            dp[i][j] = best
-            bld.fill(i, j, best.toString(), "dp[$i][$j] = $best  (best split after matrix $split)")
+            bld.values[bld.key(i, j)] = "$best"
         }
     }
+    val corner = bld.key(0, n - 1)
+    var split = 0
+    for (k in 0 until n - 1) if (dp[0][k] + dp[k + 1][n - 1] + p[0] * p[k + 1] * p[n] == dp[0][n - 1]) { split = k; break }
+    val order = "${chainGroup(0, split)} ${chainGroup(split + 1, n - 1)}"
+    bld.frame(
+        headline = "$order takes {v:${dp[0][n - 1]}} multiplications.",
+        body = "The corner cell covers the whole chain. The order of the multiplications changes the cost, never the product.",
+        answer = setOf(corner),
+        chips = listOf(StoryChip("best split", order), StoryChip("cost", "${dp[0][n - 1]}", StoryTone.Answer)),
+    )
     return bld.frames
 }
 
@@ -532,13 +792,12 @@ private fun subsetSumFrames(): List<DpFrame> {
 // ── Bitmask DP: Held-Karp travelling salesman over 4 cities ──────────────────
 
 // Only masks that contain the start city 0 are reachable, so the grid shows those 8 rows.
-private val tspMasks = (0 until 16).filter { it and 1 == 1 }
+// Rows in the order the table fills them: by how many cities are visited, then by the set.
+private val tspMasks = (0 until 16).filter { it and 1 == 1 }.sortedWith(compareBy({ Integer.bitCount(it) }, { it }))
 
-private fun tspMaskLabel(row: Int): String {
-    val mask = tspMasks[row]
-    val members = (0 until 4).filter { mask and (1 shl it) != 0 }
-    return members.joinToString(",", prefix = "{", postfix = "}")
-}
+private fun tspSet(mask: Int): String = (0 until 4).filter { mask and (1 shl it) != 0 }.joinToString(",", prefix = "{", postfix = "}")
+
+private fun tspMaskLabel(row: Int): String = if (tspMasks[row] == 15) "all" else tspSet(tspMasks[row])
 
 private fun bitmaskDpFrames(): List<DpFrame> {
     val n = 4
@@ -555,80 +814,93 @@ private fun bitmaskDpFrames(): List<DpFrame> {
     val from = Array(1 shl n) { IntArray(n) { -1 } }
 
     fun row(mask: Int) = tspMasks.indexOf(mask)
+    // A set inside a headline, its braces escaped so they are not read as a colour mark.
+    fun set(mask: Int) = "\\" + tspSet(mask)
 
+    b.frame(
+        headline = "Four cities, starting from 0. A row is the set visited so far, a column the city the route ends at.",
+        body = "That is 2ⁿ·n cells to fill instead of n! whole tours to compare.",
+        note = "4 cities",
+    )
     dp[1][0] = 0
-    b.fill(row(1), 0, "0", "Start at city 0 with only city 0 visited: dp[{0}][0] = 0. Every tour begins here.")
+    b.fill(
+        row(1), 0, "0",
+        chips = listOf(StoryChip("dp", "0")),
+        headline = "The route starts at city 0, having travelled {0}.",
+        body = "Every other cell extends a shorter route by one city.",
+        note = "start",
+    )
 
-    // Masks only grow, so ascending numeric order is already a valid processing order.
     for (mask in tspMasks) {
-        for (last in 0 until n) {
+        for (last in 1 until n) {
             if (mask and (1 shl last) == 0) continue
-            if (mask == 1 && last == 0) continue
-            if (last == 0) continue                      // city 0 is only re-entered when closing the tour
-
             val without = mask and (1 shl last).inv()
-            var best = inf
-            var bestPrev = -1
-            for (prev in 0 until n) {
-                if (without and (1 shl prev) == 0) continue
-                if (dp[without][prev] >= inf) continue
-                val candidate = dp[without][prev] + cost[prev][last]
-                if (candidate < best) {
-                    best = candidate
-                    bestPrev = prev
-                }
-            }
-            if (best >= inf) continue
-
+            // Every city the shorter route could have ended at, cheapest first.
+            val options = (0 until n)
+                .filter { without and (1 shl it) != 0 && dp[without][it] < inf }
+                .map { prev -> prev to dp[without][prev] + cost[prev][last] }
+                .sortedBy { it.second }
+            if (options.isEmpty()) continue
+            val (prev, best) = options.first()
             dp[mask][last] = best
-            from[mask][last] = bestPrev
+            from[mask][last] = prev
+            val body = if (options.size > 1) {
+                val (other, alt) = options[1]
+                "That beats ending at $other first: ${dp[without][other]} + ${cost[other][last]} = $alt."
+            } else {
+                "Each cell is the shortest route through that set, ending at that city."
+            }
             b.fill(
-                row(mask), last, best.toString(),
-                "dp[${tspMaskLabel(row(mask))}][$last] = dp[${tspMaskLabel(row(without))}][$bestPrev] + " +
-                    "cost[$bestPrev][$last] = ${dp[without][bestPrev]} + ${cost[bestPrev][last]} = $best. " +
-                    "The subset is one bit larger than the row it read from.",
+                row(mask), last, "$best",
+                reads = setOf(b.key(row(without), prev)),
+                chips = listOf(StoryChip("dp", "${dp[without][prev]} + ${cost[prev][last]} = $best")),
+                headline = "Reach $last from ${set(without)} ending at $prev: ${dp[without][prev]} + ${cost[prev][last]} = {$best}.",
+                body = body,
+                note = "d($prev,$last) = ${cost[prev][last]}",
             )
         }
     }
 
-    var bestLast = 1
-    var bestTotal = inf
-    for (last in 1 until n) {
-        val total = dp[full][last] + cost[last][0]
-        if (total < bestTotal) {
-            bestTotal = total
-            bestLast = last
-        }
-    }
+    // Closing the tour: every end city of the full set, plus the road home.
+    val closes = (1 until n).map { last -> last to dp[full][last] + cost[last][0] }
+    val (bestLast, bestTotal) = closes.minBy { it.second }
+    b.frame(
+        headline = "Back to 0 from each end of the full set. The cheapest tour costs {v:$bestTotal}.",
+        body = "The last row holds every city; adding the road home to 0 turns each cell into a whole tour.",
+        reads = (1 until n).map { b.key(row(full), it) }.toSet(),
+        formulaRows = closes.map { (last, total) ->
+            val won = last == bestLast
+            StoryFormulaRow(
+                "end at $last",
+                if (won) "{p:${dp[full][last]}} + ${cost[last][0]} = {v:$total}" else "${dp[full][last]} + ${cost[last][0]} = $total",
+            )
+        },
+        note = "back to 0",
+    )
 
     // Walk the choices back to recover the tour, tracing the cells that produced it.
     val tour = mutableListOf<Int>()
+    val traced = mutableSetOf<Int>()
     var mask = full
     var last = bestLast
-    val traced = mutableListOf<Int>()
-    while (last != -1 && mask != 0) {
+    while (last != -1) {
         traced += b.key(row(mask), last)
         tour += last
         val prev = from[mask][last]
         mask = mask and (1 shl last).inv()
         last = prev
-        if (last == 0) {
-            traced += b.key(row(mask), 0)
-            tour += 0
-            break
-        }
     }
     tour.reverse()
-    traced.reverse()
-
     val tourText = (tour + 0).joinToString(" → ")
-    b.trace(traced) { cell ->
-        val cellMask = tspMasks[cell / 4]
-        val cellLast = cell % 4
-        "Traceback: dp[${tspMaskLabel(tspMasks.indexOf(cellMask))}][$cellLast]. Closing the tour costs " +
-            "cost[$bestLast][0] = ${cost[bestLast][0]}, giving $tourText for a total of $bestTotal — " +
-            "found by filling 20 cells instead of enumerating 6 tours, a gap that becomes 2ⁿ·n² vs n! as n grows."
-    }
+    val corner = b.key(row(full), bestLast)
+    b.frame(
+        headline = "Tour $tourText costs {v:$bestTotal}.",
+        body = "Each cell points back at the one it read from. ${b.frames.size - 2} cells stood in for 6 tours, and the gap grows as 2ⁿ·n² against n!.",
+        traced = traced - corner,
+        answer = setOf(corner),
+        chips = listOf(StoryChip("tour", tourText), StoryChip("cost", "$bestTotal", StoryTone.Answer)),
+        note = "traceback",
+    )
 
     return b.frames
 }
@@ -638,61 +910,85 @@ private const val PARTITION_TOTAL = 22
 private const val PARTITION_HALF = PARTITION_TOTAL / 2
 
 // Partition reduces to subset-sum at half the total, so the table is the subset-sum table with the
-// target derived rather than given. The status text carries the reduction, not just the recurrence.
+// target derived rather than given.
 private fun partitionFrames(): List<DpFrame> {
+    val items = partitionItems
     val target = PARTITION_HALF
-    val b = DpBuilder(rows = partitionItems.size + 1, cols = target + 1)
-    val dp = Array(partitionItems.size + 1) { BooleanArray(target + 1) }
-
-    dp[0][0] = true
-    b.fill(0, 0, "T", "Total is $PARTITION_TOTAL — even, so a split is not ruled out. Each half must sum to $target. dp[0][0] = true: the empty subset makes 0.")
-    for (t in 1..target) {
-        b.fill(0, t, "·", "dp[0][$t] = false — nothing chosen yet, so $t is out of reach.")
+    val b = DpBuilder(rows = items.size + 1, cols = target + 1)
+    val dp = Array(items.size + 1) { BooleanArray(target + 1) }
+    fun mark(x: Boolean) = if (x) "T" else "–"
+    // The subset behind a true cell, read back up the table, and the items it leaves out.
+    fun split(row: Int, sum: Int): Pair<List<Int>, List<Int>> {
+        val chosen = mutableListOf<Int>()
+        var t = sum
+        for (i in row downTo 1) if (!dp[i - 1][t]) { chosen += items[i - 1]; t -= items[i - 1] }
+        val picked = chosen.reversed()
+        val rest = items.toMutableList().also { r -> picked.forEach { r.remove(it) } }
+        return picked to rest
     }
+    fun braces(xs: List<Int>) = "{${xs.joinToString(", ")}}"
 
-    for (i in 1..partitionItems.size) {
-        val item = partitionItems[i - 1]
+    for (i in 0..items.size) {
         for (t in 0..target) {
-            val skip = dp[i - 1][t]
-            val take = t >= item && dp[i - 1][t - item]
-            dp[i][t] = skip || take
-            val status = when {
-                take && skip -> "dp[$i][$t]: reachable both ways — without the $item, or by taking it on top of ${t - item}."
-                take -> "dp[$i][$t] = true by taking the $item: ${t - item} was already reachable."
-                skip -> "dp[$i][$t] = true without the $item — the earlier items already reach $t."
-                else -> "dp[$i][$t] = false: $t is unreachable from the first $i item(s)."
+            val chips = listOf(StoryChip("item", if (i == 0) "none" else "${items[i - 1]}"), StoryChip("sum", "$t"))
+            if (i == 0) {
+                dp[0][t] = t == 0
+                b.fill(
+                    0, t, mark(t == 0), chips = chips,
+                    headline = if (t == 0) "The empty subset makes 0: {T}." else "With no items, $t is out of reach: {–}.",
+                    body = if (t == 0) "The total is $PARTITION_TOTAL, even, so each half must reach $target."
+                    else "Each cell asks whether some of the items so far add up to exactly that sum.",
+                )
+                continue
             }
-            b.fill(i, t, if (dp[i][t]) "T" else "·", status)
+            val item = items[i - 1]
+            val skip = dp[i - 1][t]
+            val fits = t >= item
+            val take = fits && dp[i - 1][t - item]
+            dp[i][t] = skip || take
+            val headline = when {
+                !fits && skip -> "The $item is too big for $t, and the row above already reaches it: {T}."
+                !fits -> "The $item is too big for $t, and nothing smaller reaches it: {–}."
+                skip -> "$t was already reachable without the $item: {T}."
+                take && t == item -> "dp[${i - 1}][0] is true, so {$item} on its own reaches $t."
+                take -> "dp[${i - 1}][${t - item}] is true, so adding the {$item} reaches $t."
+                else -> "Neither skipping nor taking the $item reaches $t: {–}."
+            }
+            val firstHit = t == target && dp[i][t] && !skip
+            val body = if (firstHit) {
+                val (half, rest) = split(i, t)
+                "A subset sums to half of $PARTITION_TOTAL, so the array splits evenly: ${braces(half)} and ${braces(rest)}."
+            } else {
+                "A cell is true if the row above is, or if taking this item lands on a true cell."
+            }
+            b.fill(
+                i, t, mark(dp[i][t]), chips = chips,
+                reads = if (fits) setOf(b.key(i - 1, t), b.key(i - 1, t - item)) else setOf(b.key(i - 1, t)),
+                formula = if (fits) "skip {p:${mark(skip)}} or take {p:${mark(dp[i - 1][t - item])}} → {${mark(dp[i][t])}}"
+                else "$item > $t, keep {p:${mark(skip)}}",
+                headline = headline,
+                body = body,
+            )
         }
     }
 
-    val chosen = mutableListOf<Int>()
-    val path = mutableListOf<Int>()
+    // Read the chosen items back: a true cell whose row above is false must have taken its item.
+    val path = mutableSetOf<Int>()
     var t = target
-    for (i in partitionItems.size downTo 1) {
+    for (i in items.size downTo 1) {
         path += b.key(i, t)
-        if (!dp[i - 1][t]) {
-            chosen += partitionItems[i - 1]
-            t -= partitionItems[i - 1]
-        }
+        if (!dp[i - 1][t]) t -= items[i - 1]
     }
     path += b.key(0, t)
-    val first = chosen.reversed()
-    val second = partitionItems.toMutableList().also { rest -> first.forEach { rest.remove(it) } }
-
-    b.trace(path) { cell ->
-        val r = cell / (target + 1)
-        val c = cell % (target + 1)
-        if (r == 0) {
-            "Split found: {${first.joinToString(", ")}} = $target and {${second.joinToString(", ")}} = $target. " +
-                "The table is O(n·T/2) cells — pseudo-polynomial, which is why this stays NP-complete."
-        } else {
-            "At dp[$r][$c]: " + (
-                if (!dp[r - 1][c]) "unreachable without the ${partitionItems[r - 1]}, so it goes in the first half."
-                else "still reachable without the ${partitionItems[r - 1]}, so it goes in the second half."
-                )
-        }
-    }
+    val (half, rest) = split(items.size, target)
+    val corner = b.key(items.size, target)
+    b.frame(
+        headline = "\\${braces(half)} and \\${braces(rest)} both sum to {v:$target}.",
+        body = "The table has n × ${target + 1} cells. That is pseudo-polynomial: fine for small sums, which is why partition stays NP-complete.",
+        traced = path - corner,
+        answer = setOf(corner),
+        chips = listOf(StoryChip("halves", "${half.sum()} + ${rest.sum()}"), StoryChip("each", "$target", StoryTone.Answer)),
+    )
     return b.frames
 }
 
@@ -703,58 +999,63 @@ private const val LCSUB_B = "zabcdw"
 // best neighbour forward. Every zero in this grid is the contiguity requirement being enforced.
 private fun longestCommonSubstringFrames(): List<DpFrame> {
     val a = LCSUB_A
-    val b = LCSUB_B
+    val w = LCSUB_B
     val rows = a.length + 1
-    val cols = b.length + 1
-    val bld = DpBuilder(rows, cols)
+    val cols = w.length + 1
+    val b = DpBuilder(rows, cols)
     val dp = Array(rows) { IntArray(cols) }
     var best = 0
     var endI = 0
     var endJ = 0
-
     for (i in 0 until rows) {
         for (j in 0 until cols) {
-            val status: String
+            val chips = listOf(StoryChip("i", "$i"), StoryChip("j", "$j"), StoryChip("best", "$best", StoryTone.Answer))
             if (i == 0 || j == 0) {
-                status = "dp[$i][$j] = 0 — an empty prefix shares no suffix with anything."
-            } else if (a[i - 1] == b[j - 1]) {
+                b.fill(
+                    i, j, "0", chips = chips, headline = "An empty prefix shares no suffix with anything: {0}.",
+                    body = "Row ε and column ε stay zero, so every run has somewhere to start from.",
+                )
+                continue
+            }
+            val x = a[i - 1]
+            val y = w[j - 1]
+            if (x == y) {
                 dp[i][j] = dp[i - 1][j - 1] + 1
-                status = "'${a[i - 1]}' == '${b[j - 1]}' → dp[${i - 1}][${j - 1}] + 1 = ${dp[i][j]}. The run grows by one."
-                if (dp[i][j] > best) {
-                    best = dp[i][j]
+                val v = dp[i][j]
+                val run = a.substring(i - v, i)
+                val isBest = v > best
+                if (isBest) {
+                    best = v
                     endI = i
                     endJ = j
                 }
+                b.fill(
+                    i, j, "$v", reads = setOf(b.key(i - 1, j - 1)),
+                    chips = listOf(StoryChip("i", "$i"), StoryChip("j", "$j"), StoryChip("best", "$best", StoryTone.Answer)),
+                    headline = "dp[$i][$j] = {$v}: the run \"$run\" ends here" + if (isBest) ", a new best." else ".",
+                    body = "A mismatch resets to 0, unlike subsequence DP, so only the diagonal carries a run.",
+                    formula = "'$x' = '$y' → dp[${i - 1}][${j - 1}] + 1 = {p:${dp[i - 1][j - 1]}} + 1 = {$v}",
+                )
             } else {
-                status = "'${a[i - 1]}' ≠ '${b[j - 1]}' → 0. Not max(up, left) — that would be LCS, and it would let the " +
-                    "run survive a gap. Zero here is what makes the answer contiguous."
+                b.fill(
+                    i, j, "0", chips = chips, headline = "'$x' ≠ '$y', so the run breaks: {0}.",
+                    body = "Not max(up, left): that would be subsequence DP, which lets a run survive a gap.",
+                    formula = "'$x' ≠ '$y' → {0}",
+                )
             }
-            bld.fill(i, j, dp[i][j].toString(), status)
         }
     }
-
-    // The answer sits wherever the maximum landed, so the traceback starts there rather than at the
-    // bottom-right corner — reading the corner is the standard mistake and returns the common suffix.
-    val path = mutableListOf<Int>()
-    var i = endI
-    var j = endJ
-    repeat(best) {
-        path += bld.key(i, j)
-        i--
-        j--
-    }
-    bld.trace(path) { cell ->
-        val r = cell / cols
-        val c = cell % cols
-        val remaining = dp[r][c]
-        if (remaining == 1) {
-            "Back to the start of the run: \"${a.substring(endI - best, endI)}\", length $best. The maximum was at " +
-                "dp[$endI][$endJ], not at dp[${rows - 1}][${cols - 1}] — the corner only ever holds the common suffix."
-        } else {
-            "dp[$r][$c] = $remaining, so '${a[r - 1]}' is part of the run; step diagonally back."
-        }
-    }
-    return bld.frames
+    val path = (0 until best).map { b.key(endI - it, endJ - it) }.toSet()
+    val corner = b.key(endI, endJ)
+    val run = a.substring(endI - best, endI)
+    b.frame(
+        headline = "The longest common substring is {v:$run}, length $best.",
+        body = "Its run peaks at dp[$endI][$endJ], not in the corner: the answer is the largest cell anywhere.",
+        traced = path - corner, answer = setOf(corner),
+        chips = listOf(StoryChip("substring", run, StoryTone.Answer), StoryChip("length", "$best")),
+        formula = "max cell = dp[$endI][$endJ] = {v:$best}",
+    )
+    return b.frames
 }
 
 // ── Interview-prep pattern guides ────────────────────────────────────────────
@@ -1149,9 +1450,11 @@ private val dpConfigs = mapOf(
     ),
     "fibonacci_dp" to DpConfig(
         rows = 1, cols = 10,
-        rowHeader = { "dp" }, colHeader = { it.toString() }, corner = "i",
+        rowHeader = { "dp" }, colHeader = { it.toString() }, corner = "",
         intro = "Bottom-up Fibonacci: each cell is the sum of the two before it — computed once, left to right. No recursion, no repeated work.",
         build = ::fibonacciDpFrames,
+        title = "BOTTOM-UP",
+        note = "dp[i] = dp[i-1] + dp[i-2]",
     ),
     "edit_distance" to DpConfig(
         rows = 4, cols = 4,
@@ -1170,6 +1473,12 @@ private val dpConfigs = mapOf(
         intro = "Longest common subsequence of \"abcbd\" and \"acbd\". On a match the diagonal grows; otherwise carry the best neighbour. Traceback recovers the subsequence.",
         build = ::lcsFrames,
         title = "ABCBD · ACBD",
+        legend = listOf(
+            StoryTone.Active to "Current",
+            StoryTone.Path to "Reads from",
+            StoryTone.Done to "Traceback",
+            StoryTone.Answer to "Length",
+        ),
     ),
     "coin_change" to DpConfig(
         rows = coinChangeCoins.size + 1, cols = COIN_CHANGE_AMOUNT + 1,
@@ -1178,6 +1487,9 @@ private val dpConfigs = mapOf(
         corner = "¢",
         intro = "Fewest coins to make each amount, using denominations {1, 3, 4}. Each row adds a coin type; ∞ means unreachable. Traceback shows which coins make the target.",
         build = ::coinChangeFrames,
+        title = "COINS {1, 3, 4}",
+        note = "fewest coins",
+        legend = DpLegend.dropLast(1) + (StoryTone.Answer to "Fewest"),
     ),
     "rod_cutting" to DpConfig(
         rows = rodPrices.size + 1, cols = ROD_LENGTH + 1,
@@ -1186,6 +1498,9 @@ private val dpConfigs = mapOf(
         corner = "len",
         intro = "Rod cutting — prices (1,5,8,9,10) for lengths 1..5. Each row allows one more piece length; the traceback shows which cuts produce the best revenue.",
         build = ::rodCuttingFrames,
+        title = "PIECE PRICES",
+        note = rodPrices.withIndex().joinToString(" ") { (i, p) -> "${i + 1}:\$$p" },
+        legend = DpLegend.dropLast(1) + (StoryTone.Answer to "Best"),
     ),
     "longest_increasing_subsequence" to DpConfig(
         rows = 1, cols = lisInput.size,
@@ -1199,26 +1514,32 @@ private val dpConfigs = mapOf(
         rows = chainDims.size - 1, cols = chainDims.size - 1,
         rowHeader = { "A${it + 1}" },
         colHeader = { "A${it + 1}" },
-        corner = "i\\j",
+        corner = "",
         intro = "Matrix chain with dimensions 10×30, 30×5, 5×60. The table fills along diagonals — by chain length — so every sub-chain is solved before the chains that contain it. Cells below the diagonal stay empty.",
         build = ::matrixChainFrames,
+        title = "DIMENSIONS",
+        note = "p = ${chainDims.joinToString(", ")}",
+        pills = (0 until chainDims.size - 1).map { "A${it + 1} ${chainDims[it]}×${chainDims[it + 1]}" },
     ),
     "knapsack_01" to DpConfig(
         rows = knapWeights.size + 1, cols = KNAP_CAPACITY + 1,
-        rowHeader = { if (it == 0) "ε" else knapWeights[it - 1].toString() },
+        rowHeader = { if (it == 0) "ε" else "${knapWeights[it - 1]}, \$${knapValues[it - 1]}" },
         colHeader = { it.toString() },
-        corner = "wt",
+        corner = "cap →",
         intro = "0/1 knapsack — items (wt, val) = (1,6), (2,10), (3,12), capacity 5. Each cell is the best value achievable; the traceback marks the items chosen.",
         build = ::knapsackFrames,
+        title = "ITEMS (w, \$)",
+        note = "cap $KNAP_CAPACITY",
     ),
     "bitmask_dp" to DpConfig(
         rows = 8, cols = 4,
         rowHeader = { tspMaskLabel(it) },
         colHeader = { "at $it" },
-        corner = "visited",
+        corner = "",
         intro = "Held-Karp TSP over four cities. A row is a subset of visited cities encoded as a bitmask, a " +
             "column is the city you are standing on — 2ⁿ·n states instead of n! tours.",
         build = ::bitmaskDpFrames,
+        title = "VISITED SET × ENDS AT",
     ),
     "subset_sum" to DpConfig(
         rows = 5, cols = 10,
@@ -1233,10 +1554,12 @@ private val dpConfigs = mapOf(
         rows = partitionItems.size + 1, cols = PARTITION_HALF + 1,
         rowHeader = { if (it == 0) "ε" else partitionItems[it - 1].toString() },
         colHeader = { it.toString() },
-        corner = "item",
+        corner = "",
         intro = "Can {1, 5, 11, 5} be split into two equal halves? The total is 22, so the question becomes whether " +
             "any subset reaches exactly 11 — subset-sum with the target derived from the input rather than given.",
         build = ::partitionFrames,
+        title = "{${partitionItems.joinToString(", ")}} · SUM $PARTITION_TOTAL",
+        note = "target $PARTITION_HALF",
     ),
     "longest_common_substring" to DpConfig(
         rows = LCSUB_A.length + 1, cols = LCSUB_B.length + 1,
@@ -1246,6 +1569,13 @@ private val dpConfigs = mapOf(
         intro = "Longest common substring of \"$LCSUB_A\" and \"$LCSUB_B\". A cell is the longest common *suffix* of the two " +
             "prefixes, so a mismatch resets it to zero — and the answer is the largest cell anywhere, not the corner.",
         build = ::longestCommonSubstringFrames,
+        title = "ABCDXY · ZABCDW",
+        legend = listOf(
+            StoryTone.Active to "Current",
+            StoryTone.Path to "Reads from",
+            StoryTone.Done to "Run",
+            StoryTone.Answer to "Longest",
+        ),
     ),
 )
 
@@ -1266,28 +1596,22 @@ internal fun dpGridFrameCount(topicId: String): Int {
     return frames.size
 }
 
-// Built to docs/ios-design/Simulations iOS.html (Edit Distance): the table in a card with the cell
-// being written in yellow and the cells it reads in solid blue, the recurrence's candidates as cards
-// under it, then i/j chips, a headline with the new value, and a sentence on why that candidate won.
+// The DP story card (docs mocks for Coin Change, Knapsack, LCS, Matrix Chain…): the table with written
+// cells in grey, the cell being written in yellow and the cells it reads in solid blue, then the
+// recurrence with this cell's numbers, a legend of only what is on screen, value chips, and a headline
+// whose key number takes the cell's colour. Cells a table never writes (matrix chain's lower triangle)
+// are left out; cells still to come are dim tiles.
 
-// Dark text on the yellow current cell: white on #F5C542 is unreadable.
-private val OnActiveCell = Color(0xFF1F1A0A)
-
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DpGridSection(topicId: String) {
     val config = remember(topicId) { dpConfigFor(topicId) }
     val frames = remember(config) { config.build() }
-    // Not every table has a traceback pass (1-D tables, and interval DP like matrix chain), nor names
-    // the cells it reads, so the legend follows what the frames actually contain.
-    val hasTraceback = remember(frames) { frames.any { it.traced.isNotEmpty() } }
-    val hasReads = remember(frames) { frames.any { it.reads.isNotEmpty() } }
+    // Every cell some step writes; the rest of the rectangle is never part of the table.
+    val used = remember(frames) { frames.flatMapTo(HashSet()) { it.values.keys } }
     val playback = rememberPlaybackState(key = config, stepCount = frames.size)
     val frame = frames[playback.index.coerceIn(0, frames.lastIndex)]
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     val onSurface = MaterialTheme.colorScheme.onSurface
-    // The mock's yellow is for a dark card; on white it needs to be darker to stay legible as text.
-    val highlight = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) ActiveCell else Color(0xFFB7791F)
 
     Column(modifier = Modifier.fillMaxWidth()) {
         if (config.title == null) {
@@ -1309,72 +1633,87 @@ fun DpGridSection(topicId: String) {
                         fontWeight = FontWeight.SemiBold,
                         letterSpacing = 0.8.sp,
                         color = muted,
+                        maxLines = 1,
                         modifier = Modifier.weight(1f),
                     )
                     Text(
-                        if (config.rows == 1) "dp[i]" else "dp[i][j]",
-                        fontFamily = FontFamily.Monospace,
+                        frame.note ?: config.note ?: if (config.rows == 1) "dp[i]" else "dp[i][j]",
+                        fontFamily = IBMPlexMono,
                         fontSize = 13.sp,
                         color = muted,
+                        maxLines = 1,
+                        modifier = Modifier.padding(start = 10.dp),
                     )
                 }
 
-                DpGrid(config = config, frame = frame, highlight = highlight, modifier = Modifier.padding(top = 12.dp))
-
-                if (frame.options.isNotEmpty()) {
+                if (config.pills.isNotEmpty()) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        frame.options.forEach { OptionCard(it, highlight, Modifier.weight(1f)) }
+                        config.pills.forEach { pill ->
+                            Box(
+                                modifier = Modifier.weight(1f).height(40.dp).tile(StoryTone.Idle, 9.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(pill, fontFamily = IBMPlexMono, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = onSurface, maxLines = 1)
+                            }
+                        }
                     }
                 }
 
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    DpLegend(ActiveCell, "Current")
-                    if (hasReads) DpLegend(FilledCell, "Reads from")
-                    DpLegend(FilledCell.copy(alpha = 0.22f), "Filled", border = FilledCell.copy(alpha = 0.55f))
-                    if (hasTraceback) DpLegend(TracedCell, "Traceback")
+                DpGrid(config = config, frame = frame, used = used, modifier = Modifier.padding(top = 12.dp))
+
+                if (frame.strip.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        frame.strip.forEach { cell ->
+                            Box(
+                                modifier = Modifier.weight(1f).height(42.dp).tile(cell.tone, 10.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(cell.text, fontFamily = IBMPlexMono, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = tileColors(cell.tone).second)
+                            }
+                        }
+                    }
                 }
+
+                if (frame.options.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        frame.options.forEach { OptionCard(it, Modifier.weight(1f)) }
+                    }
+                }
+                frame.formula?.let { StoryFormula(it, Modifier.padding(top = 12.dp)) }
+                if (frame.formulaRows.isNotEmpty()) {
+                    StoryFormulaRows(frame.formulaRows, Modifier.padding(top = if (frame.formula == null) 12.dp else 6.dp))
+                }
+
+                val present = cellTones(frame, used).values.toSet()
+                StoryLegendRow(
+                    config.legend.filter { it.first in present }.map { Triple(it.first.color(), SwatchStyle.Fill, it.second) },
+                    Modifier.padding(top = 14.dp),
+                )
             }
         }
 
         val chips = frame.chips.ifEmpty {
             val key = frame.active ?: return@ifEmpty emptyList()
             if (config.rows == 1) {
-                listOf(DpChip("i", "${key % config.cols}"))
+                listOf(StoryChip("i", "${key % config.cols}"))
             } else {
-                listOf(DpChip("i", "${key / config.cols}"), DpChip("j", "${key % config.cols}"))
+                listOf(StoryChip("i", "${key / config.cols}"), StoryChip("j", "${key % config.cols}"))
             }
         }
-        if (chips.isNotEmpty()) {
-            FlowRow(
-                modifier = Modifier.padding(top = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                chips.forEach { DpStepChip(it) }
-            }
-        }
+        StoryChips(chips, Modifier.padding(top = 16.dp))
 
         val headline = frame.headline
         if (headline != null) {
-            Text(
-                buildAnnotatedString {
-                    append(headline.lead)
-                    withStyle(SpanStyle(color = highlight)) { append(headline.emphasis) }
-                    append(headline.tail)
-                },
-                fontSize = 20.sp,
-                lineHeight = 26.sp,
-                fontWeight = FontWeight.Bold,
-                color = onSurface,
-                modifier = Modifier.padding(top = 16.dp),
-            )
+            LabStoryNarration(headline, frame.body.orEmpty(), Modifier.padding(top = 16.dp))
         } else {
             // Tables without narration show their one-line status as the headline, a size down —
             // several run to two sentences.
@@ -1387,59 +1726,45 @@ fun DpGridSection(topicId: String) {
                 modifier = Modifier.padding(top = 16.dp),
             )
         }
-        frame.body?.let { body ->
-            Text(
-                body,
-                fontSize = 15.sp,
-                lineHeight = 22.sp,
-                color = muted,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-        }
 
         PlaybackTransport(playback, captions = frames.map { it.status })
     }
 }
 
-@Composable
-private fun DpLegend(color: Color, label: String, border: Color? = null) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            modifier = Modifier
-                .size(11.dp)
-                .background(color, RoundedCornerShape(3.dp))
-                .then(if (border != null) Modifier.border(1.dp, border, RoundedCornerShape(3.dp)) else Modifier),
-        )
-        Text(
-            label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 7.dp),
-        )
+// Each written or still-to-come cell's tone. Unwritten cells are Empty; cells outside [used] are absent.
+private fun cellTones(frame: DpFrame, used: Set<Int>): Map<Int, StoryTone> =
+    used.associateWith { key ->
+        when {
+            key == frame.active || key in frame.actives -> StoryTone.Active
+            key in frame.answer -> StoryTone.Answer
+            key in frame.traced -> StoryTone.Done
+            key in frame.reads -> StoryTone.Path
+            key in frame.values -> StoryTone.Idle
+            else -> StoryTone.Empty
+        }
     }
-}
 
 @Composable
-private fun OptionCard(option: DpOption, highlight: Color, modifier: Modifier = Modifier) {
+private fun OptionCard(option: DpOption, modifier: Modifier = Modifier) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     val shape = RoundedCornerShape(10.dp)
     Column(
         modifier = modifier
-            .background(if (option.chosen) ActiveCell.copy(alpha = 0.12f) else muted.copy(alpha = 0.12f), shape)
-            .then(if (option.chosen) Modifier.border(1.5.dp, ActiveCell, shape) else Modifier)
+            .background(if (option.chosen) SimColors.Active.copy(alpha = 0.12f) else SimColors.Tint, shape)
+            .then(if (option.chosen) Modifier.border(1.5.dp, SimColors.Active, shape) else Modifier)
             .padding(horizontal = 10.dp, vertical = 8.dp),
     ) {
         Text(
             "${option.arrow} ${option.name}",
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
-            color = if (option.chosen) highlight else muted,
+            color = if (option.chosen) StoryTone.Active.ink() else muted,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
         Text(
             option.formula,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = IBMPlexMono,
             fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
@@ -1450,62 +1775,38 @@ private fun OptionCard(option: DpOption, highlight: Color, modifier: Modifier = 
 }
 
 @Composable
-private fun DpStepChip(chip: DpChip) {
-    val background = when (chip.tone) {
-        DpTone.ALERT -> SimColors.Red.copy(alpha = 0.18f)
-        DpTone.GOOD -> SimColors.Green.copy(alpha = 0.18f)
-        DpTone.NEUTRAL -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f)
-    }
-    Row(
-        modifier = Modifier
-            .background(background, RoundedCornerShape(10.dp))
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(chip.label, fontFamily = FontFamily.Monospace, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(
-            chip.value,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(start = 8.dp),
-        )
-    }
-}
-
-@Composable
-private fun DpGrid(config: DpConfig, frame: DpFrame, highlight: Color, modifier: Modifier = Modifier) {
+private fun DpGrid(config: DpConfig, frame: DpFrame, used: Set<Int>, modifier: Modifier = Modifier) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
-    val onSurface = MaterialTheme.colorScheme.onSurface
-    val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    // The mock's roomy 4×4 squares only fit small tables; wider ones step down so ten columns still
-    // fit a phone.
+    // Roomy squares only fit small tables; wider ones step down so twelve columns still fit a phone.
+    // Tall tables (bitmask's eight sets) step down too, so the card stays on one screen.
     val cellHeight = when {
-        config.cols <= 5 -> 48.dp
-        config.cols <= 7 -> 40.dp
-        else -> 34.dp
+        config.cols <= 5 && config.rows <= 6 -> 42.dp
+        config.cols <= 7 && config.rows <= 6 -> 38.dp
+        config.cols <= 10 -> 34.dp
+        else -> 28.dp
     }
-    val gap = if (config.cols <= 5) 8.dp else 4.dp
+    val gap = if (config.cols <= 7) 6.dp else 4.dp
     val fontSize = when {
         config.cols <= 5 -> 16.sp
-        config.cols <= 7 -> 14.sp
+        config.cols <= 7 -> 15.sp
+        config.cols <= 10 -> 13.sp
         else -> 12.sp
     }
-    val shape = RoundedCornerShape(if (config.cols <= 5) 10.dp else 6.dp)
-    // Single letters (ε, c, a) get a narrow gutter; longer labels (w2·v3, hold) get room for themselves.
+    val radius = if (config.cols <= 7) 9.dp else 6.dp
+    // Single letters (ε, c, a) get a narrow gutter; longer labels ({0,1,3}, 3, $12) get room for themselves.
     val headerWidth = remember(config) {
         val longest = (0 until config.rows).maxOf { config.rowHeader(it).length }
-        if (longest <= 2) 28.dp else (longest * 7 + 8).coerceAtMost(64).dp
+        if (longest <= 2) 28.dp else (longest * 8 + 6).coerceAtMost(72).dp
     }
+    val tones = cellTones(frame, used)
     val activeRow = frame.active?.let { it / config.cols }
     val activeCol = frame.active?.let { it % config.cols }
 
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(gap)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
-            HeaderLabel(config.corner, activeLine = false, highlight = highlight, modifier = Modifier.width(headerWidth))
+            HeaderLabel(config.corner, activeLine = false, start = true, modifier = Modifier.width(headerWidth))
             for (c in 0 until config.cols) {
-                HeaderLabel(config.colHeader(c), c == activeCol, highlight, Modifier.weight(1f))
+                HeaderLabel(config.colHeader(c), c == activeCol, modifier = Modifier.weight(1f))
             }
         }
         for (r in 0 until config.rows) {
@@ -1514,40 +1815,25 @@ private fun DpGrid(config: DpConfig, frame: DpFrame, highlight: Color, modifier:
                 horizontalArrangement = Arrangement.spacedBy(gap),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                HeaderLabel(config.rowHeader(r), r == activeRow, highlight, Modifier.width(headerWidth))
+                HeaderLabel(config.rowHeader(r), r == activeRow, start = true, modifier = Modifier.width(headerWidth))
                 for (c in 0 until config.cols) {
                     val key = r * config.cols + c
-                    val value = frame.values[key]
-                    val fill: Color
-                    val border: Color?
-                    val text: Color
-                    when {
-                        key == frame.active -> { fill = ActiveCell; border = null; text = OnActiveCell }
-                        key in frame.traced -> { fill = TracedCell; border = null; text = Color.White }
-                        key in frame.reads -> { fill = FilledCell; border = null; text = Color.White }
-                        value != null -> {
-                            fill = FilledCell.copy(alpha = if (dark) 0.22f else 0.14f)
-                            border = FilledCell.copy(alpha = 0.55f)
-                            text = onSurface
+                    val tone = tones[key]
+                    val cell = Modifier.weight(1f).height(cellHeight)
+                    when (tone) {
+                        null -> Spacer(cell)
+                        // A slot still to fill: a dim tile, quieter than a written cell.
+                        StoryTone.Empty -> Box(cell.background(muted.copy(alpha = 0.08f), RoundedCornerShape(radius)))
+                        else -> Box(cell.tile(tone, radius), contentAlignment = Alignment.Center) {
+                            Text(
+                                frame.values[key].orEmpty(),
+                                fontFamily = IBMPlexMono,
+                                fontSize = fontSize,
+                                fontWeight = FontWeight.Bold,
+                                color = tileColors(tone).second,
+                                maxLines = 1,
+                            )
                         }
-                        else -> { fill = muted.copy(alpha = 0.12f); border = null; text = onSurface }
-                    }
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(cellHeight)
-                            .background(fill, shape)
-                            .then(if (border != null) Modifier.border(1.5.dp, border, shape) else Modifier),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            value.orEmpty(),
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = fontSize,
-                            fontWeight = FontWeight.Bold,
-                            color = text,
-                            maxLines = 1,
-                        )
                     }
                 }
             }
@@ -1555,16 +1841,17 @@ private fun DpGrid(config: DpConfig, frame: DpFrame, highlight: Color, modifier:
     }
 }
 
+
 // Row and column labels; the current cell's row and column light up in the active yellow.
 @Composable
-private fun HeaderLabel(text: String, activeLine: Boolean, highlight: Color, modifier: Modifier = Modifier) {
-    Box(modifier = modifier.height(24.dp), contentAlignment = Alignment.Center) {
+private fun HeaderLabel(text: String, activeLine: Boolean, modifier: Modifier = Modifier, start: Boolean = false) {
+    Box(modifier = modifier.height(22.dp), contentAlignment = if (start) Alignment.CenterStart else Alignment.Center) {
         Text(
             text,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 14.sp,
-            fontWeight = if (activeLine) FontWeight.Bold else FontWeight.Medium,
-            color = if (activeLine) highlight else MaterialTheme.colorScheme.onSurfaceVariant,
+            fontFamily = IBMPlexMono,
+            fontSize = 13.sp,
+            fontWeight = if (activeLine) FontWeight.Bold else FontWeight.Normal,
+            color = if (activeLine) StoryTone.Active.ink() else MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
         )
     }

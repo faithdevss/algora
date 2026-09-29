@@ -1,9 +1,9 @@
 import SwiftUI
 
 // Ports of LinkedListSimulationSection.kt, StackSimulationSection.kt, QueueSimulationSection.kt and
-// DequeSimulationSection.kt, laid out as the sandboxes in docs/ios-design: pick an operation, read it
-// as a sentence ("Push [40]", "Insert [40] at [index 1 ⌄]"), see what it touches on the stage before
-// running it. The four share one model — they differ only in which ends are open and how the items
+// DequeSimulationSection.kt, laid out as the sandboxes in the docs mocks: pick an operation, set its
+// value and end, see what it touches on the stage before running it with a button named after it
+// ("Enqueue →", "Push back →"). The four share one model — they differ only in which ends are open and how the items
 // are drawn. On the sim-only screen the controls are pinned to the bottom and reset sits in the nav bar.
 
 private let initialItems = [10, 20, 30]
@@ -36,7 +36,9 @@ private final class LinearSandbox {
     var busy = false
     var showingResult = false
     var status = ""
+    /// The finished op's cost ("O(1)") and, for a list, the hops it walked.
     var cost = ""
+    var hopsDone: Int?
     var markIndex: Int?
     var markKind = LinearMark.cursor
     private var job: Task<Void, Never>?
@@ -108,22 +110,49 @@ private final class LinearSandbox {
 
     private func show(_ i: Int?) -> String { i.map { "\(items[$0])" } ?? "–" }
 
-    var chips: String {
-        var parts: [String]
+    /// size, the end in use (with where it moves), and the cost; a list shows hops instead of an end.
+    var chipList: [StoryChip] {
+        let live = previewing && blockReason == nil
+        let sizeKey = kind == .list ? "length" : "size"
+        var out = [StoryChip(sizeKey, live && op.adds ? "\(n) → \(n + 1)" : live && op.removes ? "\(n) → \(n - 1)" : "\(n)")]
+        func moved(_ key: String, _ now: Int?, _ next: String) {
+            out.append(StoryChip(key, live && op != .peek ? "\(show(now)) → \(next)" : show(now)))
+        }
         switch kind {
-        case .stack: parts = ["size = \(n)", "top = \(show(n > 0 ? n - 1 : nil))"]
-        case .queue: parts = ["size = \(n)", "front = \(show(n > 0 ? 0 : nil))"]
-        case .deque: parts = ["size = \(n)", "front = \(show(n > 0 ? 0 : nil))", "back = \(show(n > 0 ? n - 1 : nil))"]
+        case .stack: moved("top", n > 0 ? n - 1 : nil, op.adds ? value : show(n > 1 ? n - 2 : nil))
+        case .queue:
+            if op.adds && n > 0 { out.append(StoryChip("front", show(0))) }
+            else { moved("front", n > 0 ? 0 : nil, op.adds ? value : show(n > 1 ? 1 : nil)) }
+        case .deque:
+            let at = end == .front ? 0 : n - 1
+            let inner = end == .front ? 1 : n - 2
+            moved(end.rawValue, n > 0 ? at : nil, op.adds ? value : show(n > 1 ? inner : nil))
         case .list:
-            parts = ["length = \(n)"]
-            if previewing { parts.append("hops = \(hops)") }
+            if live { out.append(StoryChip("hops", "\(hops)")) } else if let hopsDone { out.append(StoryChip("hops", "\(hopsDone)")) }
         }
-        if previewing {
-            parts.append("cost = \(previewCost)")
-        } else if !cost.isEmpty {
-            parts.append(cost)
-        }
-        return parts.joined(separator: " · ")
+        if live { out.append(StoryChip("cost", previewCost)) } else if !cost.isEmpty { out.append(StoryChip("cost", cost)) }
+        return out
+    }
+
+    /// The narration split for the story layout: its first sentence as the headline, the rest under it.
+    var headline: String { Self.lead(caption).0 }
+    var body: String { Self.lead(caption).1 }
+
+    private static func lead(_ text: String) -> (String, String) {
+        guard let dot = text.range(of: ". ") else { return (text, "") }
+        return (String(text[..<text.index(after: dot.lowerBound)]), String(text[dot.upperBound...]))
+    }
+
+    /// What the button says it will do.
+    var actionTitle: String {
+        kind == .deque ? "\(op.rawValue) \(end.rawValue)" : op.rawValue
+    }
+
+    func stepValue(_ delta: Int) { valueInput = "\((Int(valueInput) ?? 0) + delta)" }
+
+    func stepIndex(_ delta: Int) {
+        guard !busy else { return }
+        selected = min(max(target + delta, 0), max(n - 1, 0))
     }
 
     private var hops: Int {
@@ -158,7 +187,7 @@ private final class LinearSandbox {
             return "Peek reads \(items[n - 1]) without removing it. The stack is unchanged, and it costs O(1)."
         case (.queue, .enqueue):
             return n == 0 ? "Enqueue \(v) into the empty queue. It is both front and back."
-                : "Enqueue \(v) joins behind \(items[n - 1]). \(items[0]) is still first out. First in, first out: work happens only at the two ends."
+                : "Enqueue \(v) joins behind \(items[n - 1]). \(items[0]) is still next out. A queue only ever touches its two ends."
         case (.queue, .dequeue):
             return "Dequeue removes \(items[0]) from the front. " + (n == 1 ? "The queue becomes empty." : "\(items[1]) is next in line.")
                 + " Nothing else moves."
@@ -167,7 +196,7 @@ private final class LinearSandbox {
         case (.deque, .push):
             guard n > 0 else { return "Push \(v) into the empty deque. It is both front and back." }
             let old = end == .front ? items[0] : items[n - 1]
-            return "Push \(v) at the \(end.rawValue). The \(end.rawValue) pointer moves from \(old) to \(v). Four operations where a queue has two. Nothing in the middle ever shifts."
+            return "Push \(v) at the \(end.rawValue). The \(end.rawValue) moves from \(old) to \(v) and nothing in the middle shifts. Unlike a queue, both ends take pushes and pops."
         case (.deque, .pop):
             let gone = end == .front ? items[0] : items[n - 1]
             let next = n == 1 ? nil : (end == .front ? items[1] : items[n - 2])
@@ -207,11 +236,12 @@ private final class LinearSandbox {
         guard !busy else { return }
         showingResult = false
         cost = ""
+        hopsDone = nil
     }
 
     private func tick() async { try? await Task.sleep(for: .milliseconds(stepMs)) }
     private func mark(_ i: Int?, _ kind: LinearMark = .cursor) { markIndex = i; markKind = kind }
-    private func fail(_ message: String) { status = message; cost = ""; showingResult = true }
+    private func fail(_ message: String) { status = message; cost = ""; hopsDone = nil; showingResult = true }
 
     private func run(_ block: @escaping @MainActor () async -> Void) {
         guard !busy else { return }
@@ -242,7 +272,7 @@ private final class LinearSandbox {
             status = kind == .stack ? "Pushed \(v). It is the new top, and nothing below moved."
                 : kind == .queue ? "Enqueued \(v) at the back. It leaves after everything already waiting."
                 : "Pushed \(v) at the \(end.rawValue). Nothing in the middle moved."
-            cost = "cost = O(1)"
+            cost = "O(1)"
             await tick()
             await tick()
         case .pop, .dequeue:
@@ -257,12 +287,12 @@ private final class LinearSandbox {
             status = kind == .stack ? "Popped \(gone). " + (n > 0 ? "\(items[n - 1]) is the top again." : "The stack is empty.")
                 : kind == .queue ? "Dequeued \(gone) from the front. " + (n > 0 ? "\(items[0]) is next." : "The queue is empty.")
                 : "Popped \(gone) from the \(end.rawValue). Only that end changed."
-            cost = "cost = O(1)"
+            cost = "O(1)"
         default:
             let i = endIndex ?? 0
             mark(i)
             status = "\(kind == .stack ? "Top" : kind == .queue ? "Front" : end.rawValue.capitalized) is \(items[i]). Peek left the \(noun) unchanged."
-            cost = "cost = O(1)"
+            cost = "O(1)"
             await tick()
             await tick()
             await tick()
@@ -284,7 +314,8 @@ private final class LinearSandbox {
             mark(t, .write)
             status = t == 0 ? "Inserted \(v) at the head. One link and the head pointer, no walk."
                 : "Inserted \(v) after \(items[t - 1]) in \(t) hop\(t == 1 ? "" : "s"). Two pointer writes did the rest."
-            cost = "hops = \(t) · cost = " + (t == 0 ? "O(1)" : "O(i)")
+            cost = t == 0 ? "O(1)" : "O(i)"
+            hopsDone = t
             await tick()
             await tick()
         case .delete:
@@ -303,7 +334,8 @@ private final class LinearSandbox {
             mark(nil)
             status = t == 0 ? "Deleted the head \(gone). The head pointer moved on, no walk."
                 : "Deleted \(gone). \(items[t - 1]) now links past it in one pointer write."
-            cost = "hops = \(t) · cost = " + (t == 0 ? "O(1)" : "O(i)")
+            cost = t == 0 ? "O(1)" : "O(i)"
+            hopsDone = t
         default:
             for i in items.indices {
                 mark(i)
@@ -313,14 +345,16 @@ private final class LinearSandbox {
                 if items[i] == v {
                     mark(i, .write)
                     status = "Found \(v) at node \(i) after \(i + 1) comparison\(i == 0 ? "" : "s"). A list can only be searched by walking."
-                    cost = "hops = \(i) · cost = O(n)"
+                    cost = "O(n)"
+                    hopsDone = i
                     await tick()
                     await tick()
                     return
                 }
             }
             status = "\(v) is not in the list. A miss walks every node."
-            cost = "hops = \(n) · cost = O(n)"
+            cost = "O(n)"
+            hopsDone = n
         }
     }
 
@@ -336,6 +370,7 @@ private final class LinearSandbox {
         showingResult = false
         status = ""
         cost = ""
+        hopsDone = nil
     }
 
     func cancel() { job?.cancel() }
@@ -510,39 +545,38 @@ private struct LinearStage: View {
               ScrollView(.horizontal, showsIndicators: false) {
                VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: gap) {
-                    if incoming && pushFront { incomingBox(width: w, height: 58) }
+                    if incoming && pushFront { incomingBox(width: w, height: 50) }
                     ForEach(model.items.indices, id: \.self) { i in
                         let isEnd = isDeque ? i == model.endIndex : i == 0
                         let (fill, fg, border) = style(i, isEnd: isEnd)
-                        box("\(model.items[i])", fill: fill, fg: fg, border: border, width: w, height: 58)
+                        box("\(model.items[i])", fill: fill, fg: fg, border: border, width: w, height: 50)
                     }
-                    if incoming && !pushFront { incomingBox(width: w, height: 58) }
+                    if incoming && !pushFront { incomingBox(width: w, height: 50) }
                 }
                 HStack(spacing: gap) {
                     if incoming && pushFront { tag("new", palette.primary).frame(width: w) }
                     ForEach(model.items.indices, id: \.self) { i in
                         let isFront = i == 0, isBack = i == model.n - 1
                         let label = isFront && isBack ? "front·back" : isFront ? "front" : isBack ? "back" : ""
+                        // The end in use (a queue's front) is yellow, the other named end blue.
                         let lit = isDeque ? i == model.endIndex : isFront
-                        tag(label, lit ? SimColors.active : palette.muted).lineLimit(1).minimumScaleFactor(0.6).frame(width: w)
+                        tag(label, lit ? StoryTone.active.ink(palette) : StoryTone.path.ink(palette)).lineLimit(1).minimumScaleFactor(0.6).frame(width: w)
                     }
                     if incoming && !pushFront { tag("new", palette.primary).frame(width: w) }
                 }
                }
               }
                 HStack {
-                    Text(isDeque ? "⇄ open end" : "← leaves here")
+                    Text(isDeque ? "⇄ open end" : "← leaves at the front")
                     Spacer()
-                    Text(isDeque ? "open end ⇄" : "joins here ←")
+                    Text(isDeque ? "open end ⇄" : "joins at the back ←")
                 }
                 .font(AppFont.sans(14))
                 .foregroundStyle(palette.muted)
-                .padding(.top, 10)
+                .padding(.top, 6)
             }
         }
-        .frame(height: 130)
-        .padding(.top, 50)
-        .padding(.bottom, 24)
+        .frame(height: 108)
     }
 
     // Singly linked list: nodes joined by links, null at the end; the incoming node sits dashed in
@@ -600,7 +634,7 @@ private struct LinearStage: View {
     private var legend: some View {
         let endLabel = switch model.kind {
         case .stack: "Top"
-        case .queue: "Front"
+        case .queue: "Next out"
         case .deque: "End in use"
         case .list: "Walk to"
         }
@@ -616,10 +650,7 @@ private struct LinearStage: View {
             if model.op.removes {
                 LegendItem(color: SimColors.red, label: "Leaving")
             } else {
-                HStack(spacing: 6) {
-                    RoundedRectangle(cornerRadius: 3).stroke(palette.primary, style: StrokeStyle(lineWidth: 1.5, dash: [3, 2])).frame(width: 10, height: 10)
-                    Text("Incoming").font(AppFont.sans(13)).foregroundStyle(palette.onSurface.opacity(0.75))
-                }
+                StorySwatch(color: palette.primary, style: .dashed, label: "Preview")
             }
             Spacer(minLength: 0)
         }
@@ -630,121 +661,48 @@ private struct LinearNarration: View {
     let model: LinearSandbox
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            ReadoutChips(text: model.chips)
-            LabCaption(text: model.caption).frame(minHeight: 72, alignment: .top)
+        VStack(alignment: .leading, spacing: 16) {
+            StoryChips(chips: model.chipList)
+            LabStoryNarration(headline: model.headline, body: model.body).frame(minHeight: 96, alignment: .top)
         }
     }
 }
 
 // MARK: - Controls
 
+/// The op picker, the end or position as an inline segmented row, then the value and a button named
+/// after the op.
 private struct LinearControls: View {
     @Bindable var model: LinearSandbox
-    @FocusState private var editingValue: Bool
-    @Environment(\.palette) private var palette
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let reason = model.blockReason, !model.busy { LabNotice(text: reason) }
-            ChipPicker(options: model.ops.map { ($0, $0.rawValue) }, selection: $model.op)
-            HStack(spacing: 8) {
-                Text(model.op.rawValue).font(AppFont.sans(17)).foregroundStyle(palette.muted)
-                if model.op.adds || model.op == .search { valueToken }
-                if let connector { Text(connector).font(AppFont.sans(17)).foregroundStyle(palette.muted) }
-                if model.kind == .deque || (model.kind == .list && model.op != .search) { positionMenu }
-                Spacer(minLength: 0)
-                Button {
-                    editingValue = false
-                    model.runOp()
-                } label: {
-                    Image(systemName: "play.fill").font(.system(size: 16, weight: .bold)).foregroundStyle(.white)
-                        .frame(width: 44, height: 44)
-                        .background(palette.primary.opacity(model.canRun ? 1 : 0.4), in: Circle())
-                }
-                .buttonStyle(.plain)
-                .disabled(model.busy)
-                .accessibilityLabel("Run")
-            }
-            .padding(.leading, 16)
-            .padding(.trailing, 8)
-            .frame(height: 60)
-            .background(SimColors.tint.opacity(0.6), in: RoundedRectangle(cornerRadius: 16))
-            Text(hint).font(AppFont.sans(13)).foregroundStyle(palette.muted).padding(.horizontal, 4)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    private var connector: String? {
-        switch (model.kind, model.op) {
-        case (.deque, .push): "to"
-        case (.deque, .pop): "from"
-        case (.deque, .peek): "at"
-        case (.list, .insert): "at"
-        default: nil
-        }
-    }
-
-    private var hint: String {
-        switch model.kind {
-        case .stack: "Pop and Peek take no value. The field hides and Run acts on the top."
-        case .queue: model.n > 0 ? "Dequeue removes \(model.items[0]) from the front. Peek reads it without removing it." : "Dequeue and Peek act on the front."
-        case .deque: "Menu: Front · Back. That one choice is what makes it a deque."
-        case .list: "Menu: Head · Tail · Index. Or tap a node to set the index."
-        }
-    }
-
-    private var valueToken: some View {
-        TextField("?", text: $model.valueInput)
-            .font(AppFont.mono(17, .semibold))
-            .keyboardType(.numbersAndPunctuation)
-            .focused($editingValue)
-            .multilineTextAlignment(.center)
-            .fixedSize()
-            .frame(minWidth: 28)
-            .padding(.horizontal, 10)
-            .frame(height: 36)
-            .background(SimColors.tint, in: RoundedRectangle(cornerRadius: 9))
-            .overlay(alignment: .bottom) { Rectangle().fill(palette.primary).frame(height: 2).padding(.horizontal, 4) }
-            .clipShape(RoundedRectangle(cornerRadius: 9))
-    }
-
-    private var positionMenu: some View {
-        Menu {
+            LabSegments(labels: model.ops.map(\.rawValue),
+                        selected: Binding(get: { model.ops.firstIndex(of: model.op) ?? 0 }, set: { if !model.busy { model.op = model.ops[$0] } }))
             if model.kind == .deque {
-                Button { model.end = .front } label: { menuLabel("Front", model.end == .front) }
-                Button { model.end = .back } label: { menuLabel("Back", model.end == .back) }
-            } else if model.op == .insert {
-                Button { model.pos = .head } label: { menuLabel("Head", model.pos == .head) }
-                Button { model.pos = .index } label: { menuLabel("Index \(min(model.selected, model.n))", model.pos == .index) }
-                Button { model.pos = .tail } label: { menuLabel("Tail", model.pos == .tail) }
-            } else {
-                ForEach(0..<max(model.n, 1), id: \.self) { i in
-                    Button { model.selected = i } label: { menuLabel("Index \(i)", model.target == i) }
+                LabOptionRow(label: "End", options: ["Front", "Back"], selected: model.end == .front ? 0 : 1, enabled: !model.busy) {
+                    model.end = $0 == 0 ? .front : .back
                 }
             }
-        } label: {
-            HStack(spacing: 6) {
-                Text(positionLabel).font(AppFont.sans(17, .semibold)).lineLimit(1)
-                Image(systemName: "chevron.up.chevron.down").font(.system(size: 11, weight: .semibold))
+            if model.kind == .list && model.op == .insert {
+                LabOptionRow(label: "At", options: ["Head", "Index \(min(model.selected, model.n))", "Tail"],
+                             selected: model.pos == .head ? 0 : model.pos == .index ? 1 : 2, enabled: !model.busy) {
+                    model.pos = $0 == 0 ? .head : $0 == 1 ? .index : .tail
+                }
             }
-            .foregroundStyle(palette.primary)
-            .padding(.leading, 12)
-            .padding(.trailing, 8)
-            .frame(height: 36)
-            .background(palette.primary.opacity(0.18), in: RoundedRectangle(cornerRadius: 9))
+            HStack(spacing: 12) {
+                if model.op.adds || model.op == .search {
+                    LabValueStepper(label: "Value", text: $model.valueInput) { model.stepValue($0) }
+                } else if model.kind == .list && model.op == .delete {
+                    LabValueStepper(label: "Index", text: .constant("\(model.target)"), canDecrease: model.target > 0,
+                                    canIncrease: model.target < model.n - 1, editable: false) { model.stepIndex($0) }
+                }
+                LabActionButton(title: model.actionTitle, enabled: model.canRun, fill: !hasField) { model.runOp() }
+                    .disabled(model.busy)
+            }
         }
-        .disabled(model.busy)
     }
 
-    private var positionLabel: String {
-        if model.kind == .deque { return model.end.rawValue }
-        if model.op == .insert && model.pos == .head { return "head" }
-        if model.op == .insert && model.pos == .tail { return "tail" }
-        return "index \(model.target)"
-    }
-
-    @ViewBuilder private func menuLabel(_ text: String, _ checked: Bool) -> some View {
-        if checked { Label(text, systemImage: "checkmark") } else { Text(text) }
-    }
+    private var hasField: Bool { model.op.adds || model.op == .search || (model.kind == .list && model.op == .delete) }
 }

@@ -2,6 +2,7 @@ package com.algora.app.feature.topics
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,19 +11,22 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.algora.app.core.ui.theme.IBMPlexMono
 import com.algora.app.core.ui.theme.SimColors
 import kotlin.math.abs
 
@@ -33,6 +37,9 @@ import kotlin.math.abs
 //
 // The point the frames are built to show: Dijkstra expands blindly in all directions, A* aims at the
 // goal with the same guarantee, and D* reuses an existing plan when the map changes.
+//
+// Drawn as the story card (docs mock for Dijkstra): each reached cell carries its distance, the
+// frontier is dashed, the goal is ringed, and a step's headline names the cell it expands.
 
 private const val GRID_ROWS = 6
 private const val GRID_COLS = 8
@@ -44,30 +51,48 @@ private class PathFrame(
     val path: Set<Int>,
     val walls: Set<Int>,
     val status: String,
-)
+    // The number drawn in a cell: its distance from S so far.
+    val dist: Map<Int, Int> = emptyMap(),
+    // A hand-written step: `{…}` in the headline takes the current cell's colour. Null narrates [status].
+    val headline: String? = null,
+    val body: String = "",
+    val chips: List<StoryChip> = emptyList(),
+) {
+    val caption: String get() = headline?.let { storyPlain(it) + if (body.isEmpty()) "" else " $body" } ?: status
+}
+
+private class PathVariant(val label: String, val build: () -> List<PathFrame>)
 
 private class PathConfig(
     val intro: String,
     val build: () -> List<PathFrame>,
+    val title: String = "",
+    val note: String = "",
+    // Tabs over the grid (Dijkstra / A*), and which one the topic opens on.
+    val variants: List<PathVariant> = emptyList(),
+    val initialTab: Int = 0,
+    // Whether G is a goal to ring; the flood-fill patterns use the markers for other things.
+    val goal: Boolean = true,
+    val pathLabel: String = "Path",
+    val wallLabel: String? = null,
 )
 
 private val VisitedCell = SimColors.Blue
-private val FrontierCell = SimColors.Violet
 private val CurrentCell = SimColors.Active
 private val PathCell = SimColors.Green
-private val WallCell = SimColors.Wall
-private val StartCell = Color(0xFF0EA5E9)
-private val GoalCell = Color(0xFFF97316)
+private val GoalRing = SimColors.Answer
 
 private fun key(r: Int, c: Int) = r * GRID_COLS + c
 private fun rowOf(k: Int) = k / GRID_COLS
 private fun colOf(k: Int) = k % GRID_COLS
+private fun rc(k: Int) = "(${rowOf(k)}, ${colOf(k)})"
 
 private val START = key(2, 0)
 private val GOAL = key(2, 7)
 
 // A wall column with one gap, so a blind search wastes effort exploring the wrong side of it.
 private val baseWalls = setOf(key(0, 4), key(1, 4), key(2, 4), key(4, 4), key(5, 4))
+private val wallGap = key(3, 4)
 
 private fun neighbours(k: Int, walls: Set<Int>): List<Int> {
     val r = rowOf(k)
@@ -82,7 +107,8 @@ private fun manhattan(a: Int, b: Int) = abs(rowOf(a) - rowOf(b)) + abs(colOf(a) 
 
 /**
  * One best-first search, parameterised by [heuristic]. Zero heuristic = Dijkstra (uniform cost);
- * Manhattan distance = A*. Records a frame per expansion, then walks the path back.
+ * Manhattan distance = A*. Records a frame per expansion, after its neighbours are relaxed, then
+ * walks the path back.
  */
 private fun searchFrames(
     walls: Set<Int>,
@@ -91,18 +117,42 @@ private fun searchFrames(
     frames: MutableList<PathFrame> = mutableListOf(),
     startNote: String? = null,
 ): List<PathFrame> {
+    val informed = heuristic(START) > 0
     val dist = HashMap<Int, Int>()
     val cameFrom = HashMap<Int, Int>()
     val visited = linkedSetOf<Int>()
     val open = linkedSetOf(START)
     dist[START] = 0
+    var gapSeen = false
 
-    startNote?.let { frames.add(PathFrame(emptySet(), setOf(START), null, emptySet(), walls, it)) }
+    fun labels() = dist.filterKeys { it in visited || it in open }
+    fun chips(current: Int?): List<StoryChip> {
+        val done = visited.size - if (current != null) 1 else 0
+        return if (informed && current != null) {
+            val g = dist.getValue(current)
+            listOf(StoryChip("g", "$g"), StoryChip("f", "${g + heuristic(current)}"), StoryChip("visited", "$done"))
+        } else {
+            listOf(StoryChip("dist", "${current?.let { dist.getValue(it) } ?: 0}"), StoryChip("visited", "$done"), StoryChip("frontier", "${open.size}"))
+        }
+    }
+
+    startNote?.let {
+        frames.add(
+            PathFrame(
+                emptySet(), setOf(START), null, emptySet(), walls, it,
+                dist = labels(),
+                headline = "Start at {S} with distance 0.",
+                body = it,
+                chips = chips(null),
+            ),
+        )
+    }
 
     while (open.isNotEmpty()) {
         val current = open.minByOrNull { dist.getValue(it) + heuristic(it) }!!
         open.remove(current)
         visited.add(current)
+        val d = dist.getValue(current)
 
         if (current == GOAL) {
             val path = linkedSetOf(GOAL)
@@ -113,30 +163,56 @@ private fun searchFrames(
             }
             frames.add(
                 PathFrame(
-                    visited.toSet(), open.toSet(), current, path,
+                    visited.toSet(), open.toSet(), null, path,
                     walls,
                     "Goal reached. $label expanded ${visited.size} cells; the path is ${path.size - 1} steps.",
+                    dist = labels(),
+                    headline = "Reach {m:G} at distance $d.",
+                    body = "$label expanded ${visited.size} cells to get here. The green path is a shortest " +
+                        "route back to S, ${path.size - 1} steps long.",
+                    chips = listOf(StoryChip("dist", "$d", StoryTone.Done), StoryChip("visited", "${visited.size}")),
                 ),
             )
             return frames
         }
 
-        frames.add(
-            PathFrame(
-                visited.toSet(), open.toSet(), current, emptySet(), walls,
-                "Expand (${rowOf(current)}, ${colOf(current)}) — cost so far ${dist.getValue(current)}" +
-                    if (heuristic(current) > 0) ", estimate to goal ${heuristic(current)}" else "",
-            ),
-        )
-
+        val added = mutableListOf<Int>()
         neighbours(current, walls).forEach { next ->
-            val candidate = dist.getValue(current) + 1
+            val candidate = d + 1
             if (candidate < (dist[next] ?: Int.MAX_VALUE)) {
                 dist[next] = candidate
                 cameFrom[next] = current
+                if (next !in visited && next !in open) added += next
                 if (next !in visited) open.add(next)
             }
         }
+
+        val h = heuristic(current)
+        val throughGap = wallGap in added && wallGap !in walls && !gapSeen
+        if (throughGap) gapSeen = true
+        val headline = (if (informed) "Expand {${rc(current)}}: g = $d, f = ${d + h}." else "Expand {${rc(current)}} at distance $d.") +
+            if (throughGap) " It borders the only gap in the wall." else ""
+        val body = when {
+            throughGap && informed -> "The gap cell joins the frontier at ${d + 1}. Its estimate says G is just past " +
+                "the wall, so A* heads straight through."
+            throughGap -> "The gap cell joins the frontier at ${d + 1}. $label doesn't know where G is, so it keeps " +
+                "spreading in every direction."
+            added.isEmpty() -> "Nothing new joins the frontier: every neighbour is a wall or already reached."
+            informed -> "${added.size} new cell${if (added.size == 1) " joins" else "s join"} the frontier. The lowest f goes " +
+                "next, so cells toward G come first."
+            else -> "${added.size} new cell${if (added.size == 1) " joins" else "s join"} the frontier at ${d + 1}. Every cell " +
+                "at distance $d is finished before any at ${d + 1}."
+        }
+        frames.add(
+            PathFrame(
+                visited.toSet() - current, open.toSet(), current, emptySet(), walls,
+                "Expand ${rc(current)} — cost so far $d" + if (h > 0) ", estimate to goal $h" else "",
+                dist = labels(),
+                headline = headline,
+                body = body,
+                chips = chips(current),
+            ),
+        )
     }
     frames.add(PathFrame(visited.toSet(), emptySet(), null, emptySet(), walls, "No path exists."))
     return frames
@@ -146,14 +222,15 @@ private fun dijkstraFrames(): List<PathFrame> = searchFrames(
     walls = baseWalls,
     heuristic = { 0 },
     label = "Dijkstra",
-    startNote = "Dijkstra expands whichever reachable cell is cheapest so far — no idea where the goal is, so it spreads outward in every direction.",
+    startNote = "Dijkstra always expands the closest cell it hasn't finished. It has no idea where G is.",
 )
 
 private fun aStarFrames(): List<PathFrame> = searchFrames(
     walls = baseWalls,
     heuristic = { manhattan(it, GOAL) },
     label = "A*",
-    startNote = "A* ranks cells by cost-so-far + estimated distance to the goal. The estimate never overshoots, so the path is still optimal — it just gets there having opened far fewer cells.",
+    startNote = "A* expands the cell with the lowest f = g + h, where h counts the grid steps left to G. " +
+        "h never overshoots, so the path is still the shortest.",
 )
 
 // D*: plan once, then a wall appears on the committed path and only the affected region is replanned.
@@ -235,6 +312,7 @@ private fun ucsFrames(): List<PathFrame> {
                 visited.toSet(), open.toSet(), current, path, walls,
                 "Goal popped at cost ${dist.getValue(GOAL)} after ${visited.size} expansions. It was first generated at cost " +
                     "${goalFirstSeenAt ?: dist.getValue(GOAL)} — testing at generation time would have returned that path and called it done.",
+                dist = dist.filterKeys { it in visited || it in open || it == GOAL },
             )
             return frames
         }
@@ -257,6 +335,7 @@ private fun ucsFrames(): List<PathFrame> {
             visited.toSet(), open.toSet(), current, emptySet(), walls,
             "Pop (${rowOf(current)}, ${colOf(current)}) at cost ${dist.getValue(current)} — that cost is now final. " +
                 if (generated.isEmpty()) "Its successors are all settled or already cheaper." else "Successors: ${generated.joinToString("; ")}.",
+            dist = dist.filterKeys { it in visited || it in open },
         )
     }
     frames += PathFrame(visited.toSet(), emptySet(), null, emptySet(), walls, "No path exists.")
@@ -373,7 +452,8 @@ private fun multiSourceBfsFrames(): List<PathFrame> {
 
     frames += PathFrame(
         emptySet(), frontier, null, emptySet(), rotWalls,
-        "Both sources are seeded into the queue at distance 0 *before* the loop starts. That initialisation is the " +
+        dist = dist.toMap(),
+        status = "Both sources are seeded into the queue at distance 0 *before* the loop starts. That initialisation is the " +
             "entire pattern — the loop below is ordinary BFS and never learns there was more than one source.",
     )
 
@@ -395,6 +475,7 @@ private fun multiSourceBfsFrames(): List<PathFrame> {
             "Minute $round: the whole frontier advances one step together, claiming ${next.size} cell(s). A cell is " +
                 "marked the moment it is queued, so the wave that got there first keeps it — no comparison between " +
                 "sources is ever needed.",
+            dist = dist.toMap(),
         )
         frontier = next
     }
@@ -406,6 +487,7 @@ private fun multiSourceBfsFrames(): List<PathFrame> {
         "Everything reachable is claimed after ${farthest.value} minute(s) — the answer is the largest distance " +
             "assigned, and ${if (unreached.isEmpty()) "no cell was left out" else "${unreached.size} walled-off cell(s) were never reached, which is the case that returns −1"}. " +
             "Running a separate BFS per source and taking the minimum gives the same numbers for k times the work.",
+        dist = dist.toMap(),
     )
     return frames
 }
@@ -483,39 +565,61 @@ private fun islandCountFrames(): List<PathFrame> {
     return frames
 }
 
+// Dijkstra and A* share one grid and one pair of tabs, so either topic can flip to the other and compare.
+private val searchTabs = listOf(PathVariant("Dijkstra", ::dijkstraFrames), PathVariant("A*", ::aStarFrames))
+
 private val pathConfigs = mapOf(
     "multi_source_bfs_pattern" to PathConfig(
         intro = "Two rotten oranges spreading at once — the S and G markers are the seeds, not a start and a goal. " +
             "Every cell is claimed by whichever wave reaches it first, so one sweep answers all of them.",
         build = ::multiSourceBfsFrames,
+        title = "TWO SOURCES",
+        note = "minutes to reach",
+        goal = false,
+        pathLabel = "Last reached",
     ),
     "matrix_islands_pattern" to PathConfig(
         intro = "Counting islands by flood fill. Dark cells are water, and each fill consumes one whole region before " +
             "the outer scan moves on — the number of fills started is the answer.",
         build = ::islandCountFrames,
+        title = "ISLANDS",
+        note = "flood fill",
+        goal = false,
+        pathLabel = "Island done",
+        wallLabel = "Water",
     ),
     "dijkstras_algorithm" to PathConfig(
         intro = "Dijkstra on a walled grid, every step costing 1. With no sense of direction it expands in rings until the goal happens to fall inside one.",
         build = ::dijkstraFrames,
+        variants = searchTabs,
+        initialTab = 0,
     ),
     "a_star_search" to PathConfig(
         intro = "A* on the same grid and the same walls. Adding a Manhattan-distance estimate to the priority pulls the search straight at the goal — compare the number of expanded cells with Dijkstra's.",
         build = ::aStarFrames,
+        variants = searchTabs,
+        initialTab = 1,
     ),
     "d_star_algorithm" to PathConfig(
         intro = "D* is A* for a map that changes underneath you: plan, start driving, discover an obstacle, then repair the affected part of the plan instead of starting over.",
         build = ::dStarFrames,
+        title = "PLAN, THEN REPAIR",
+        note = "f = g + h",
     ),
     "uniform_cost_search" to PathConfig(
         intro = "UCS is Dijkstra's relaxation with a goal test bolted on and the graph generated as it goes. The two " +
             "approaches to the goal charge a toll, so the goal is generated cheaply-looking-expensive long before the " +
             "real answer arrives — which is exactly why the test happens on pop.",
         build = ::ucsFrames,
+        title = "UNIFORM COST",
+        note = "toll $TOLL into G",
     ),
     "ida_star" to PathConfig(
         intro = "The same map and the same Manhattan heuristic as A*, but no frontier: a depth-first search bounded by " +
             "f = g + h, restarted at the smallest f it had to prune. Watch the threshold rise and the search start over.",
         build = ::idaStarFrames,
+        title = "ITERATIVE DEEPENING",
+        note = "f ≤ threshold",
     ),
 )
 
@@ -525,110 +629,130 @@ private fun pathConfigFor(topicId: String): PathConfig =
 internal val pathfindingTopicIds: Set<String> get() = pathConfigs.keys
 
 internal fun pathfindingFrameCount(topicId: String): Int {
-    val frames = pathConfigFor(topicId).build()
-    frames.forEach { frame ->
-        val cells = frame.visited + frame.frontier + frame.path + frame.walls + listOfNotNull(frame.current)
-        require(cells.all { it in 0 until GRID_ROWS * GRID_COLS }) { "$topicId references a cell outside the grid" }
+    val config = pathConfigFor(topicId)
+    val builds = if (config.variants.isEmpty()) listOf(config.build) else config.variants.map { it.build }
+    return builds.sumOf { build ->
+        val frames = build()
+        frames.forEach { frame ->
+            val cells = frame.visited + frame.frontier + frame.path + frame.walls + listOfNotNull(frame.current) + frame.dist.keys
+            require(cells.all { it in 0 until GRID_ROWS * GRID_COLS }) { "$topicId references a cell outside the grid" }
+            require(frame.caption.isNotBlank()) { "$topicId has a frame with no caption" }
+        }
+        frames.size
     }
-    return frames.size
 }
 
 @Composable
 fun PathfindingGridSection(topicId: String) {
     val config = remember(topicId) { pathConfigFor(topicId) }
-    val frames = remember(config) { config.build() }
-    val playback = rememberPlaybackState(key = config, stepCount = frames.size, initialSpeedMs = 400f)
+    var tab by remember(config) { mutableIntStateOf(config.initialTab) }
+    val frames = remember(config, tab) { (config.variants.getOrNull(tab)?.build ?: config.build)() }
+    val playback = rememberPlaybackState(key = config to tab, stepCount = frames.size, initialSpeedMs = 400f)
     val frame = frames[playback.index.coerceIn(0, frames.lastIndex)]
 
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            LabIntro(config.intro)
+    Column(modifier = Modifier.fillMaxWidth()) {
+        LabIntro(config.intro, Modifier.padding(bottom = 12.dp))
 
-            Grid(frame = frame, modifier = Modifier.padding(top = 14.dp))
-
-            LabCaption(frame.status, Modifier.padding(top = 14.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                PathLegend(CurrentCell, "Expanding")
-                PathLegend(FrontierCell, "Frontier")
-                PathLegend(VisitedCell, "Visited")
-                PathLegend(PathCell, "Path")
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                if (config.variants.isNotEmpty()) {
+                    LabSegments(config.variants.map { it.label }, tab) { tab = it }
+                } else {
+                    StoryHeader(config.title, config.note)
+                }
+                Grid(frame, config, Modifier.padding(top = 14.dp))
+                val muted = MaterialTheme.colorScheme.onSurfaceVariant
+                StoryLegendRow(
+                    listOfNotNull(
+                        Triple(CurrentCell, SwatchStyle.Fill, "Expanding").takeIf { frame.current != null },
+                        Triple(VisitedCell, SwatchStyle.Fill, "Visited").takeIf { frame.visited.isNotEmpty() },
+                        Triple(VisitedCell, SwatchStyle.Dashed, "Frontier").takeIf { frame.frontier.isNotEmpty() },
+                        Triple(PathCell, SwatchStyle.Fill, config.pathLabel).takeIf { frame.path.isNotEmpty() },
+                        config.wallLabel?.let { Triple(muted.copy(alpha = 0.45f), SwatchStyle.Fill, it) },
+                        Triple(GoalRing, SwatchStyle.Ring, "Goal").takeIf { config.goal && GOAL !in frame.path },
+                    ),
+                    Modifier.padding(top = 14.dp),
+                )
             }
-
-            PlaybackTransport(playback, captions = frames.map { it.status })
         }
+
+        StoryChips(frame.chips, Modifier.padding(top = 16.dp))
+        val narration = Modifier.padding(top = 16.dp)
+        if (frame.headline != null) {
+            LabStoryNarration(frame.headline, frame.body, narration)
+        } else {
+            LabNarration(frame.status, narration)
+        }
+
+        PlaybackTransport(playback, captions = frames.map { it.caption })
     }
 }
 
 @Composable
-private fun PathLegend(color: Color, label: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(modifier = Modifier.size(10.dp).background(color, CircleShape))
-        Text(
-            label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 4.dp),
-        )
-    }
-}
-
-@Composable
-private fun Grid(frame: PathFrame, modifier: Modifier = Modifier) {
+private fun Grid(frame: PathFrame, config: PathConfig, modifier: Modifier = Modifier) {
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val gap = 6.dp
     Column(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(GRID_COLS.toFloat() / GRID_ROWS),
-        verticalArrangement = Arrangement.spacedBy(3.dp),
+        verticalArrangement = Arrangement.spacedBy(gap),
     ) {
         for (r in 0 until GRID_ROWS) {
             Row(
                 modifier = Modifier.fillMaxWidth().weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                horizontalArrangement = Arrangement.spacedBy(gap),
             ) {
                 for (c in 0 until GRID_COLS) {
                     val k = key(r, c)
-                    // Start/goal markers stay visible through every search state except the final
-                    // path, which is the one thing worth reading over them.
-                    val color = when {
-                        k in frame.walls -> WallCell
+                    val shape = RoundedCornerShape(8.dp)
+                    val wall = k in frame.walls
+                    val frontier = k in frame.frontier && k != frame.current
+                    val fill = when {
+                        wall -> muted.copy(alpha = 0.45f)
                         k in frame.path -> PathCell
                         k == frame.current -> CurrentCell
-                        k == START -> StartCell
-                        k == GOAL -> GoalCell
-                        k in frame.frontier -> FrontierCell
-                        k in frame.visited -> VisitedCell.copy(alpha = 0.55f)
-                        else -> VisitedCell.copy(alpha = 0.10f)
+                        k in frame.visited -> VisitedCell
+                        frontier -> VisitedCell.copy(alpha = 0.08f)
+                        else -> SimColors.Tint
                     }
+                    val ink = when {
+                        k == frame.current && k !in frame.path -> Color(0xFF1F1A0A)
+                        k in frame.path || k in frame.visited -> Color.White
+                        frontier -> StoryTone.Path.ink()
+                        k == GOAL && config.goal -> GoalRing
+                        else -> MaterialTheme.colorScheme.onSurface
+                    }
+                    val ringed = k == GOAL && config.goal && !wall && fill == SimColors.Tint
                     Box(
                         // weight gives the width; the row's height comes from the grid's aspect
                         // ratio, so the cell must fill it or it collapses to its text height.
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
-                            .background(color, RoundedCornerShape(5.dp)),
+                            .background(if (ringed) Color.Transparent else fill, shape)
+                            .then(
+                                when {
+                                    ringed -> Modifier.border(2.dp, GoalRing, shape)
+                                    frontier && !wall -> Modifier.dashedOutline(VisitedCell, 8.dp, 3.dp, 2.5.dp, 1.5.dp)
+                                    else -> Modifier
+                                },
+                            ),
                         contentAlignment = Alignment.Center,
                     ) {
-                        val marker = when (k) {
-                            START -> "S"
-                            GOAL -> "G"
-                            else -> null
+                        val text = when {
+                            wall -> null
+                            k == START -> "S"
+                            k == GOAL -> "G"
+                            else -> frame.dist[k]?.toString()
                         }
-                        if (marker != null) {
-                            Text(
-                                marker,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                            )
+                        if (text != null) {
+                            Text(text, fontFamily = IBMPlexMono, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = ink, maxLines = 1)
                         }
                     }
                 }

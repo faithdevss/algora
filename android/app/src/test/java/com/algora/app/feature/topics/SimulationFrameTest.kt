@@ -25,6 +25,26 @@ class SimulationFrameTest {
         check("ArrayWalk", arrayWalkTopicIds, ::arrayWalkFrameCount)
 
     @Test
+    fun `every text story builds frames inside its columns`() =
+        check("TextStory", textStoryTopicIds, ::textStoryFrameCount)
+
+    @Test
+    fun `every number story builds frames`() =
+        check("NumberStory", numberStoryTopicIds, ::numberStoryFrameCount)
+
+    @Test
+    fun `every recursion story builds frames at every size`() =
+        check("RecursionStory", recursionStoryTopicIds, ::recursionStoryFrameCount)
+
+    @Test
+    fun `every geometry story builds frames`() =
+        check("Geometry", geometryTopicIds, ::geometryFrameCount)
+
+    @Test
+    fun `every bit story builds frames as wide as their header`() =
+        check("BitStory", bitStoryTopicIds, ::bitStoryFrameCount)
+
+    @Test
     fun `every dp-grid config builds frames inside its declared table`() =
         check("DpGrid", dpGridTopicIds, ::dpGridFrameCount)
 

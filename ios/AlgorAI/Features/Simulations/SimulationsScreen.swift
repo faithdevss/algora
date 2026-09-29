@@ -72,12 +72,30 @@ private let sectionMeta: [(Section, String, String, Int64)] = [
     (.DATA_STRUCTURES, "Data Structures", "stack", 0xFF10_B981),
     (.ALGORITHMS, "Algorithms", "chip", 0xFF3B_82F6),
     (.ANALYSIS, "Analysis", "trend", 0xFF8B_5CF6),
-    (.INTERVIEW_PREP, "Interview Prep", "target", 0xFFF5_9E0B),
+    (.INTERVIEW_PREP, "Coding Patterns", "target", 0xFFF5_9E0B),
     (.ML, "Machine Learning", "robot", 0xFF63_66F1),
     (.DL, "Deep Learning", "network", 0xFFEC_4899),
     (.NLP, "NLP", "globe", 0xFF14_B8A6),
     (.RL, "Reinforcement Learning", "game", 0xFFF5_9E0B),
 ]
+
+private func patternGroupName(_ type: SimulationType) -> String {
+    switch type {
+    case .ArrayWalkPlayer: "Array Walk"
+    case .BitBoardPlayer: "Bit Board"
+    case .GraphAlgorithmPlayer: "Graph"
+    case .PathfindingGrid: "Grid"
+    case .TreeVisualizer: "Tree"
+    case .RecursionTreeVisualizer: "Recursion"
+    case .DpGridVisualizer: "DP Table"
+    case .SortingVisualizer: "Sorting"
+    case .SearchVisualizer: "Search"
+    case .HashingVisualizer: "Hashing"
+    case .LinkedStructurePlayer: "Linked Structure"
+    case .GameSearchPlayer: "Game Search"
+    default: "Other"
+    }
+}
 
 private let simGroups: [SimGroup] = {
     let content = ContentStore.shared
@@ -86,7 +104,9 @@ private let simGroups: [SimGroup] = {
         guard let topic = content.topic(topicId) else { continue }
         let category = content.category(topic.categoryId)
         let section = category?.section ?? .ALGORITHMS
-        let name = category?.name ?? "Other"
+        // The coding patterns are one content category of 50+ topics, so here they split by the kind of lab
+        // they run instead.
+        let name = topic.categoryId == "interview_patterns" ? patternGroupName(type) : category?.name ?? "Other"
         var list = bySection[section] ?? []
         let entry = SimEntry(topic: topic, label: simLabel(type))
         if let i = list.firstIndex(where: { $0.0 == name }) { list[i].1.append(entry) } else { list.append((name, [entry])) }

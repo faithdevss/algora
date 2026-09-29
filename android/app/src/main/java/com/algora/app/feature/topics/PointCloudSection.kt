@@ -5228,6 +5228,7 @@ private fun cloudConfigFor(topicId: String): CloudConfig =
 internal val pointCloudTopicIds: Set<String> get() = cloudConfigs.keys
 
 internal fun pointCloudFrameCount(topicId: String): Int {
+    if (topicId == "closest_pair_of_points") return closestPairFrameCount()
     val frames = cloudConfigFor(topicId).build()
     frames.forEach { frame ->
         // The canvas maps [0,1] onto the plot area; anything outside silently draws off-frame.
@@ -5243,7 +5244,11 @@ internal fun pointCloudFrameCount(topicId: String): Int {
 fun PointCloudSection(topicId: String) {
     // The k-d tree has its own design in docs/ios-design/Simulations iOS.html (a K-D / Quadtree toggle
     // over the plot, chips and a narrated headline); every other point-cloud topic shares the scatter lab.
-    if (topicId == "kd_tree") KdTreeLab() else ScatterLab(topicId)
+    when (topicId) {
+        "kd_tree" -> KdTreeLab()
+        "closest_pair_of_points" -> ClosestPairLab()
+        else -> ScatterLab(topicId)
+    }
 }
 
 @Composable

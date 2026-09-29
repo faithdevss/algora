@@ -184,6 +184,10 @@ struct LabIntro: View {
 
 // MARK: - Playback
 
+/// Every lab's per-step delay is stretched by this at 1×, so a step's narration can be read before the
+/// next one lands. The rate buttons still scale from here.
+private let playbackPace = 2.0
+
 /// Step index + play/pause + speed for any precomputed-snapshot lab.
 @MainActor
 @Observable
@@ -335,7 +339,7 @@ struct LabTransportBar: View {
         // Speed is read fresh each tick so a rate change takes effect live.
         .task(id: state.playing) {
             while state.playing {
-                try? await Task.sleep(for: .milliseconds(Int(state.speedMs / state.rate)))
+                try? await Task.sleep(for: .milliseconds(Int(state.speedMs * playbackPace / state.rate)))
                 guard !Task.isCancelled, state.playing else { return }
                 if state.index < state.stepCount - 1 { state.index += 1 } else { state.playing = false }
             }

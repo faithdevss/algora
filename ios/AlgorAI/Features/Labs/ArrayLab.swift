@@ -439,10 +439,10 @@ private struct ArrayNarration: View {
 
 // MARK: - Controls
 
-/// Segmented op picker, the op as a sentence with a 44pt Run button, and the hint line.
+/// The op picker, where an insert lands as an inline segmented row, then the value (or index) and a
+/// button named after the op.
 private struct ArrayControls: View {
     @Bindable var model: ArraySandbox
-    @FocusState private var editingValue: Bool
     @Environment(\.palette) private var palette
 
     var body: some View {
@@ -451,31 +451,28 @@ private struct ArrayControls: View {
                 if let reason = model.blockReason { LabNotice(text: reason) }
                 else if let note = model.growNotice { LabNotice(text: note, kind: .info) }
             }
-            ChipPicker(options: ArrayOp.allCases.map { ($0, $0.rawValue) }, selection: $model.op)
-            HStack(spacing: 8) {
-                Text(verb).font(AppFont.sans(17)).foregroundStyle(palette.muted)
-                if model.op == .insert || model.op == .search { valueToken }
-                if model.op == .insert { Text("at").font(AppFont.sans(17)).foregroundStyle(palette.muted) }
-                if model.op != .search { positionMenu }
-                Spacer(minLength: 0)
-                Button {
-                    editingValue = false
-                    model.runOp()
-                } label: {
-                    Image(systemName: "play.fill").font(.system(size: 16, weight: .bold)).foregroundStyle(.white)
-                        .frame(width: 44, height: 44)
-                        .background(palette.primary.opacity(model.busy || model.blockReason != nil ? 0.4 : 1), in: Circle())
+            LabSegments(labels: ArrayOp.allCases.map(\.rawValue),
+                        selected: Binding(get: { ArrayOp.allCases.firstIndex(of: model.op) ?? 0 },
+                                          set: { if !model.busy { model.op = ArrayOp.allCases[$0] } }))
+            if model.op == .insert {
+                LabOptionRow(label: "At", options: ["Head", "Index \(min(model.selected, model.size))", "Tail"],
+                             selected: model.pos == .head ? 0 : model.pos == .index ? 1 : 2, enabled: !model.busy) {
+                    model.pos = $0 == 0 ? .head : $0 == 1 ? .index : .tail
                 }
-                .buttonStyle(.plain)
-                .disabled(model.busy)
-                .accessibilityLabel("Run")
             }
-            .padding(.leading, 16)
-            .padding(.trailing, 8)
-            .frame(height: 60)
-            .background(SimColors.tint.opacity(0.6), in: RoundedRectangle(cornerRadius: 16))
-            Text(model.op == .search || model.op == .insert ? "Tap a cell to change the index. Tap \(model.value) to type a value." : "Tap a cell to change the index.")
-                .font(AppFont.sans(13)).foregroundStyle(palette.muted).padding(.horizontal, 4)
+            HStack(spacing: 12) {
+                if model.op == .insert || model.op == .search {
+                    LabValueStepper(label: "Value", text: $model.valueInput) { model.valueInput = "\((Int(model.valueInput) ?? 0) + $0)" }
+                } else {
+                    LabValueStepper(label: "Index", text: .constant("\(model.target)"), canDecrease: model.target > 0,
+                                    canIncrease: model.target < model.size - 1, editable: false) { model.select(model.target + $0) }
+                }
+                LabActionButton(title: verb, enabled: !model.busy && model.blockReason == nil) { model.runOp() }
+                    .disabled(model.busy)
+            }
+            if model.op == .insert && model.pos == .index {
+                Text("Tap a cell to move the index.").font(AppFont.sans(13)).foregroundStyle(palette.muted).padding(.horizontal, 4)
+            }
         }
     }
 
@@ -484,57 +481,7 @@ private struct ArrayControls: View {
         case .insert: "Insert"
         case .delete: "Delete"
         case .access: "Read"
-        case .search: "Find"
+        case .search: "Search"
         }
-    }
-
-    private var valueToken: some View {
-        TextField("?", text: $model.valueInput)
-            .font(AppFont.mono(17, .semibold))
-            .keyboardType(.numbersAndPunctuation)
-            .focused($editingValue)
-            .multilineTextAlignment(.center)
-            .fixedSize()
-            .frame(minWidth: 28)
-            .padding(.horizontal, 10)
-            .frame(height: 36)
-            .background(SimColors.tint, in: RoundedRectangle(cornerRadius: 9))
-            .overlay(alignment: .bottom) { Rectangle().fill(palette.primary).frame(height: 2).padding(.horizontal, 4) }
-            .clipShape(RoundedRectangle(cornerRadius: 9))
-    }
-
-    /// A native pull-down instead of an Index field: Head / Index i / Tail for inserts, the live
-    /// indices otherwise.
-    private var positionMenu: some View {
-        Menu {
-            if model.op == .insert {
-                Button { model.pos = .head } label: { menuLabel("Head", model.pos == .head) }
-                Button { model.pos = .index } label: { menuLabel("Index \(min(model.selected, model.size))", model.pos == .index) }
-                Button { model.pos = .tail } label: { menuLabel("Tail", model.pos == .tail) }
-            } else {
-                ForEach(0..<max(model.size, 1), id: \.self) { i in
-                    Button { model.selected = i } label: { menuLabel("Index \(i)", model.target == i) }
-                }
-            }
-        } label: {
-            HStack(spacing: 6) {
-                Text(positionLabel).font(AppFont.sans(17, .semibold)).lineLimit(1)
-                Image(systemName: "chevron.up.chevron.down").font(.system(size: 11, weight: .semibold))
-            }
-            .foregroundStyle(palette.primary)
-            .padding(.leading, 12)
-            .padding(.trailing, 8)
-            .frame(height: 36)
-            .background(palette.primary.opacity(0.18), in: RoundedRectangle(cornerRadius: 9))
-        }
-        .disabled(model.busy)
-    }
-
-    private var positionLabel: String {
-        model.op == .insert && model.pos == .head ? "head" : model.op == .insert && model.pos == .tail ? "tail" : "index \(model.target)"
-    }
-
-    @ViewBuilder private func menuLabel(_ text: String, _ checked: Bool) -> some View {
-        if checked { Label(text, systemImage: "checkmark") } else { Text(text) }
     }
 }

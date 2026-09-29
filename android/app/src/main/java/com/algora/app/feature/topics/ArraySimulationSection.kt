@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -17,23 +16,10 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.UnfoldMore
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -41,30 +27,24 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.algora.app.core.ui.theme.IBMPlexMono
@@ -422,48 +402,46 @@ fun ArraySimulationSection() {
     }
 
     val controls: @Composable () -> Unit = {
-        Column {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (!busy) {
                 when {
-                    blockReason != null -> LabNotice(blockReason, Modifier.padding(bottom = 12.dp))
-                    growNotice != null -> LabNotice(growNotice, Modifier.padding(bottom = 12.dp), blocked = false)
+                    blockReason != null -> LabNotice(blockReason)
+                    growNotice != null -> LabNotice(growNotice, blocked = false)
                 }
             }
-            OpSegments(op) { op = it; clearResult() }
-            SentenceRow(
-                op = op,
-                value = valueInput,
-                onValueChange = { input ->
-                    // Keep a single leading minus so negative values are expressible.
-                    val sign = if (input.startsWith("-")) "-" else ""
-                    valueInput = sign + input.filter(Char::isDigit).take(4)
-                    clearResult()
-                },
-                positionLabel = when {
-                    op == ArrayOp.Insert && pos == InsertPos.Head -> "head"
-                    op == ArrayOp.Insert && pos == InsertPos.Tail -> "tail"
-                    else -> "index $target"
-                },
-                menuItems = if (op == ArrayOp.Insert) {
-                    listOf(
-                        Triple("Head", pos == InsertPos.Head) { pos = InsertPos.Head; clearResult() },
-                        Triple("Index ${selected.coerceAtMost(size)}", pos == InsertPos.Index) { pos = InsertPos.Index; clearResult() },
-                        Triple("Tail", pos == InsertPos.Tail) { pos = InsertPos.Tail; clearResult() },
-                    )
+            LabSegments(ArrayOp.entries.map { it.label }, op.ordinal) { if (!busy) { op = ArrayOp.entries[it]; clearResult() } }
+            if (op == ArrayOp.Insert) {
+                LabOptionRow(
+                    "At",
+                    listOf("Head", "Index ${selected.coerceAtMost(size)}", "Tail"),
+                    pos.ordinal,
+                    enabled = !busy,
+                ) { pos = InsertPos.entries[it]; clearResult() }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (op == ArrayOp.Insert || op == ArrayOp.Search) {
+                    LabValueStepper("Value", valueInput, { valueInput = it; clearResult() }, Modifier.weight(1f)) {
+                        valueInput = "${(valueInput.toIntOrNull() ?: 0) + it}"
+                        clearResult()
+                    }
                 } else {
-                    (0 until size.coerceAtLeast(1)).map { i -> Triple("Index $i", target == i) { selected = i; clearResult() } }
-                },
-                busy = busy,
-                dimmed = blockReason != null,
-                onRun = ::runOp,
-            )
-            Text(
-                if (op == ArrayOp.Insert || op == ArrayOp.Search) "Tap a cell to change the index. Tap $value to type a value."
-                else "Tap a cell to change the index.",
-                fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 12.dp),
-            )
+                    LabValueStepper(
+                        "Index", "$target", {}, Modifier.weight(1f),
+                        canDecrease = target > 0, canIncrease = target < size - 1, editable = false,
+                    ) { if (!busy) { selected = (target + it).coerceIn(0, (size - 1).coerceAtLeast(0)); clearResult() } }
+                }
+                LabActionButton(if (op == ArrayOp.Search) "Search" else op.verb, enabled = !busy && blockReason == null) {
+                    if (!busy) runOp()
+                }
+            }
+            if (op == ArrayOp.Insert && pos == InsertPos.Index) {
+                Text(
+                    "Tap a cell to move the index.",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 4.dp),
+                )
+            }
         }
     }
 
@@ -647,133 +625,6 @@ private fun ArrayStage(
                     }
                 }
             }
-        }
-    }
-}
-
-/** Insert / Delete / Access / Search as a segmented control. */
-@Composable
-private fun OpSegments(selected: ArrayOp, onSelect: (ArrayOp) -> Unit) {
-    val dark = LocalDarkTheme.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(34.dp)
-            .background(SimColors.Tint, RoundedCornerShape(9.dp))
-            .padding(2.dp),
-    ) {
-        ArrayOp.entries.forEach { op ->
-            val on = op == selected
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .height(30.dp)
-                    .clip(RoundedCornerShape(7.dp))
-                    .background(if (on) (if (dark) Color(0xFF636366) else Color.White) else Color.Transparent)
-                    .clickable { onSelect(op) },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(op.label, fontSize = 14.sp, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium)
-            }
-        }
-    }
-}
-
-/** "Insert [42] at [index 2 ⌄]" with a compact Run button. */
-@Composable
-private fun SentenceRow(
-    op: ArrayOp,
-    value: String,
-    onValueChange: (String) -> Unit,
-    positionLabel: String,
-    menuItems: List<Triple<String, Boolean, () -> Unit>>,
-    busy: Boolean,
-    dimmed: Boolean,
-    onRun: () -> Unit,
-) {
-    // The keyboard pans the whole screen up, hiding the stage; Run and Done close it so the result
-    // is visible.
-    val focus = LocalFocusManager.current
-    val keyboard = LocalSoftwareKeyboardController.current
-    val dismissKeyboard = { focus.clearFocus(); keyboard?.hide(); Unit }
-    val accent = MaterialTheme.colorScheme.primary
-    val muted = MaterialTheme.colorScheme.onSurfaceVariant
-    var menuOpen by remember { mutableStateOf(false) }
-    Row(
-        modifier = Modifier
-            .padding(top = 12.dp)
-            .fillMaxWidth()
-            .height(60.dp)
-            .background(SimColors.Tint.copy(alpha = 0.14f), RoundedCornerShape(16.dp))
-            .padding(start = 16.dp, end = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(op.verb, fontSize = 17.sp, color = muted)
-        if (op == ArrayOp.Insert || op == ArrayOp.Search) {
-            BasicTextField(
-                value = value,
-                onValueChange = onValueChange,
-                singleLine = true,
-                textStyle = TextStyle(
-                    fontFamily = IBMPlexMono,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 17.sp,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurface,
-                ),
-                cursorBrush = SolidColor(accent),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { dismissKeyboard() }),
-                modifier = Modifier
-                    .width(56.dp)
-                    .height(36.dp)
-                    .clip(RoundedCornerShape(9.dp))
-                    .background(SimColors.Tint)
-                    .drawBehind {
-                        drawRect(accent, topLeft = Offset(4.dp.toPx(), size.height - 2.dp.toPx()), size = Size(size.width - 8.dp.toPx(), 2.dp.toPx()))
-                    }
-                    .padding(top = 7.dp),
-            )
-        }
-        if (op == ArrayOp.Insert) Text("at", fontSize = 17.sp, color = muted)
-        if (op != ArrayOp.Search) {
-            Box {
-                Row(
-                    modifier = Modifier
-                        .height(36.dp)
-                        .widthIn(min = 44.dp)
-                        .clip(RoundedCornerShape(9.dp))
-                        .background(accent.copy(alpha = 0.18f))
-                        .clickable(enabled = !busy) { menuOpen = true }
-                        .padding(start = 12.dp, end = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(positionLabel, color = accent, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                    Icon(Icons.Filled.UnfoldMore, contentDescription = null, tint = accent, modifier = Modifier.padding(start = 4.dp).size(16.dp))
-                }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    menuItems.forEach { (label, checked, onClick) ->
-                        DropdownMenuItem(
-                            text = { Text(label) },
-                            trailingIcon = if (checked) ({ Icon(Icons.Filled.Check, contentDescription = null) }) else null,
-                            onClick = { onClick(); menuOpen = false },
-                        )
-                    }
-                }
-            }
-        }
-        Spacer(Modifier.weight(1f))
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-                .background(accent.copy(alpha = if (busy || dimmed) 0.4f else 1f))
-                .clickable(enabled = !busy, onClickLabel = "Run") { dismissKeyboard(); onRun() },
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Filled.PlayArrow, contentDescription = "Run", tint = Color.White, modifier = Modifier.size(24.dp))
         }
     }
 }

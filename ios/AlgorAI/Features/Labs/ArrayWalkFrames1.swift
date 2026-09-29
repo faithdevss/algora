@@ -465,64 +465,96 @@ func activitySelectionFrames() -> [WalkFrame] {
     return frames
 }
 
-// Greedy and DP on the same {1,3,4} / target 6 instance, so the two-coin answer greed misses is visible.
+// Greedy and DP on the same {1,3,4} / target 6 instance, so the two-coin answer greed misses is
+// visible rather than asserted. Drawn as the story card: the greedy picks, the optimal split, and the
+// dp row that finds it.
 func coinChangeGreedyFrames() -> [WalkFrame] {
-    let coins = [4, 3, 1]
+    let coins = [1, 3, 4]
     let target = 6
     var frames: [WalkFrame] = []
 
-    func amountRow(_ remaining: Int) -> [CellView] {
-        (0...target).map { a in CellView("\(a)", a == remaining ? .active : a > remaining ? .dim : .idle) }
+    var greedy: [Int] = []
+    var left = target
+    while left > 0 {
+        let coin = coins.filter { $0 <= left }.max()!
+        greedy.append(coin)
+        left -= coin
     }
 
-    frames.append(WalkFrame(
-        status: "On {1, 5, 10, 25}, greedy change is correct: 68¢ becomes 25+25+10+5+1+1+1 and no shorter answer exists. " +
-            "That is a fact about the coins, not about the algorithm.",
-        cells: (0...target).map { CellView("\($0)", .idle) }, readout: "now try {1, 3, 4} at 6"))
-
-    var remaining = target
-    var taken: [Int] = []
-    frames.append(WalkFrame(status: "Coins {1, 3, 4}, target 6. Greedy takes the largest coin that fits, repeatedly.",
-                            cells: amountRow(remaining), pointers: [remaining: "left"]))
-    while remaining > 0 {
-        let before = remaining
-        let coin = coins.first { $0 <= remaining }!
-        taken.append(coin)
-        remaining -= coin
-        frames.append(WalkFrame(
-            status: "Largest coin that fits in \(before) is \(coin) — take it. Remaining \(remaining), coins used \(taken.count).",
-            cells: amountRow(remaining), pointers: [remaining: "left"],
-            readout: "greedy: \(taken.map(String.init).joined(separator: " + ")) = \(taken.count) coins"))
-    }
-    let greedyCount = taken.count
-
-    let unreachable = target + 1
+    // dp[a] = fewest coins that make exactly a; via[a] = the coin that got it there.
+    let unreachable = Int.max
     var dp = [Int](repeating: unreachable, count: target + 1)
+    var via = [Int](repeating: 0, count: target + 1)
     dp[0] = 0
-    func dpRow(_ upTo: Int, active: Int? = nil) -> [CellView] {
-        (0...target).map { a in CellView(dp[a] == unreachable ? "∞" : "\(dp[a])", a == active ? .active : a <= upTo ? .window : .dim) }
-    }
-
-    frames.append(WalkFrame(
-        status: "Greed answered \(greedyCount) coins. Now tabulate: dp[a] is the fewest coins that make exactly a.",
-        cells: (0...target).map { CellView("\($0)", .idle) }, aux: dpRow(0), auxLabel: "dp (fewest coins)"))
     for a in 1...target {
-        var bestCoin = 0
-        for coin in coins where coin <= a && dp[a - coin] + 1 < dp[a] {
+        for coin in coins where coin <= a && dp[a - coin] != unreachable && dp[a - coin] + 1 < dp[a] {
             dp[a] = dp[a - coin] + 1
-            bestCoin = coin
+            via[a] = coin
         }
-        frames.append(WalkFrame(
-            status: "dp[\(a)] = 1 + dp[\(a - bestCoin)] = \(dp[a]), taking a \(bestCoin).",
-            cells: (0...target).map { CellView("\($0)", $0 == a ? .active : $0 < a ? .window : .idle) },
-            pointers: [a: "a"], aux: dpRow(a - 1, active: a), auxLabel: "dp (fewest coins)"))
+    }
+    var optimal: [Int] = []
+    var rest = target
+    while rest > 0 { optimal.append(via[rest]); rest -= via[rest] }
+
+    let legend: [(StoryTone, String)] = [(.warn, "Greedy pick"), (.active, "Filling"), (.path, "Tabulated"), (.answer, "Optimal")]
+
+    func frame(_ taken: Int, _ filled: Int, _ active: Int?, _ solved: Bool, _ chips: [StoryChip], _ headline: String, _ body: String) {
+        let picks = Array(greedy.prefix(taken))
+        let remaining = target - picks.reduce(0, +)
+        var greedyBlocks = picks.map { StoryBlock(text: "\($0)", weight: CGFloat($0), tone: .warn) }
+        if remaining > 0 { greedyBlocks.append(StoryBlock(text: "\(remaining) left", weight: CGFloat(remaining), tone: .empty)) }
+        let story = GreedyStory(
+            title: "COINS {\(coins.map(String.init).joined(separator: ", "))} · AMOUNT \(target)",
+            note: "not canonical",
+            sections: [
+                StorySection(label: "GREEDY", note: taken == 0 ? nil : "\(taken) coin\(taken == 1 ? "" : "s")", blocks: greedyBlocks),
+                StorySection(label: "OPTIMAL", note: solved ? "\(optimal.count) coins" : nil,
+                             blocks: solved ? optimal.map { StoryBlock(text: "\($0)", weight: CGFloat($0), tone: .answer) }
+                                 : [StoryBlock(text: "?", weight: CGFloat(target), tone: .empty)]),
+                StorySection(label: "DP · FEWEST COINS", note: "amount 0–\(target)", cells: (0...target).map { a in
+                    if a > filled { return StoryCell("", .empty, caption: "\(a)") }
+                    if a == active { return StoryCell("\(dp[a])", .active, caption: "\(a)") }
+                    if solved && a == target { return StoryCell("\(dp[a])", .answer, caption: "\(a)") }
+                    return StoryCell("\(dp[a])", .path, caption: "\(a)")
+                }),
+            ],
+            legend: legend, chips: chips, headline: headline, body: body)
+        frames.append(WalkFrame(status: story.status, cells: [], story: story))
     }
 
-    frames.append(WalkFrame(
-        status: "dp[6] = \(dp[target]) — the split 3 + 3. Greed took \(taken.map(String.init).joined(separator: " + ")), \(greedyCount) coins, because taking the 4 " +
-            "left a remainder that only 1s can fill. The rule never had to be wrong; these denominations are simply not canonical.",
-        cells: (0...target).map { CellView("\($0)", $0 == target ? .result : .dim) },
-        aux: dpRow(target, active: target), auxLabel: "dp (fewest coins)",
-        readout: "greedy \(greedyCount) coins · optimal \(dp[target]) coins"))
+    frame(0, -1, nil, false, [StoryChip("left", "\(target)")],
+          "Greedy grabs the {largest coin} that fits, again and again.",
+          "It never looks back. With coins like 1, 5, 10 and 25 that is always right, but these coins are \(coins.dropLast().map(String.init).joined(separator: ", ")) and \(coins.last!).")
+    for (i, coin) in greedy.enumerated() {
+        let before = target - greedy.prefix(i).reduce(0, +)
+        let after = before - coin
+        let count = i + 1
+        let chips = [StoryChip("greedy", "\(count)", .warn), StoryChip("left", "\(after)")]
+        if i == 0 {
+            frame(count, -1, nil, false, chips, "Greedy takes {\(coin)}, the largest coin that fits in \(before).",
+                  "\(after) is left, and every coin bigger than \(after) is now too big.")
+        } else if after > 0 {
+            frame(count, -1, nil, false, chips, "Only a {\(coin)} fits in \(before).", "\(after) left to make.")
+        } else {
+            frame(count, -1, nil, false, chips, "Another {\(coin)} makes \(target): \(greedy.count) coins in all.",
+                  "Greedy is done, and it never checked whether fewer coins could work.")
+        }
+    }
+    frame(greedy.count, 0, 0, false, [StoryChip("greedy", "\(greedy.count)", .warn), StoryChip("dp[0]", "0", .path)],
+          "Now the table: {dp[0] = 0}, since 0 needs no coins.",
+          "dp[a] is the fewest coins that make exactly a. Every entry is built from a smaller one.")
+    for a in 1...target {
+        let coin = via[a]
+        frame(greedy.count, a, a, false, [StoryChip("greedy", "\(greedy.count)", .warn), StoryChip("dp[\(a)]", "\(dp[a])", .path)],
+              a == coin ? "{dp[\(a)] = 1}: a single \(coin)." : "{dp[\(a)] = \(dp[a])}: a \(coin) on top of dp[\(a - coin)].",
+              "Try each coin: " + coins.filter { $0 <= a }.map { "\($0) leaves \(a - $0), so \(dp[a - $0] + 1)" }.joined(separator: "; ") + ". Keep the smallest.")
+    }
+    let solvedChips = [StoryChip("greedy", "\(greedy.count)", .warn), StoryChip("optimal", "\(dp[target])", .answer)]
+    frame(greedy.count, target, nil, true, solvedChips,
+          "{v:\(optimal.map(String.init).joined(separator: " + "))} makes \(target) with \(optimal.count) coins.",
+          "Walk the table back from dp[\(target)]: it used a \(optimal[0]), and dp[\(target - optimal[0])] used another \(optimal[1]).")
+    frame(greedy.count, target, nil, true, solvedChips,
+          "Greedy takes \(greedy[0]) first, and the remaining \(target - greedy[0]) needs two 1s.",
+          "dp[\(target)] finds \(optimal.map(String.init).joined(separator: " + ")) instead. Greedy only works when the coin system is canonical, and {\(coins.map(String.init).joined(separator: ", "))} isn't.")
     return frames
 }

@@ -3,74 +3,86 @@ import Foundation
 // ArrayWalkSection.kt builders: selection and randomised walks. Each counts something as it goes, so
 // the closing claim is a number the walk itself produced. `Lcg` is the Kotlin WalkRng.
 
+func ordinalSuffix(_ n: Int) -> String {
+    if (11...13).contains(n % 100) { return "\(n)th" }
+    switch n % 10 { case 1: return "\(n)st"; case 2: return "\(n)nd"; case 3: return "\(n)rd"; default: return "\(n)th" }
+}
+
+/// Lomuto partitions around the last value in range; each round keeps only the side that holds index k.
+/// Drawn as the story card: blue is still in play, red is discarded for good, yellow is the pivot.
 func quickselectFrames() -> [WalkFrame] {
-    var a = [7, 2, 9, 4, 1, 8, 3, 6]
-    let target = 3
-    let sorted = a.sorted()
+    let original = [7, 2, 9, 4, 1, 8, 3, 6]
+    var a = original
+    let k = 2
     var frames: [WalkFrame] = []
     var comparisons = 0
+    let legend: [(StoryTone, String)] = [(.active, "Pivot"), (.path, "Still in play"), (.done, "Below pivot"), (.warn, "Discarded"), (.answer, "Answer")]
 
-    func row(_ lo: Int, _ hi: Int, _ pivotIndex: Int?, _ scan: Int?, _ boundary: Int?, done: Int? = nil) -> [CellView] {
-        a.enumerated().map { i, v in
-            let mark: CellMark = i == done ? .result : i < lo || i > hi ? .dim : i == pivotIndex ? .result : i == scan ? .active
-                : boundary != nil && i < boundary! ? .window : .idle
-            return CellView("\(v)", mark)
+    func frame(_ lo: Int, _ hi: Int, _ pivot: Int?, _ scan: Int?, _ boundary: Int?, _ answer: Int?,
+               _ chips: [StoryChip], _ headline: String, _ body: String) {
+        let cells = a.indices.map { i -> StoryCell in
+            let tone: StoryTone
+            if i == answer { tone = .answer }
+            else if i == pivot { tone = .active }
+            else if i < lo || i > hi { tone = .warn }
+            else if let b = boundary, i >= lo && i < b { tone = .done }
+            else { tone = .path }
+            if i == scan { return StoryCell("\(a[i])", tone, caption: "j", captionTone: .active) }
+            if i == k { return StoryCell("\(a[i])", tone, caption: "k", captionTone: .path) }
+            return StoryCell("\(a[i])", tone, caption: "\(i)")
         }
+        let story = GreedyStory(title: "FIND k = \(k) · \(ordinalSuffix(k + 1).uppercased()) SMALLEST",
+                                note: answer != nil ? "found" : "range \(lo)–\(hi)",
+                                sections: [StorySection(cells: cells)], legend: legend, chips: chips, headline: headline, body: body)
+        frames.append(WalkFrame(status: story.status, cells: [], story: story))
     }
+    func inPlay(_ lo: Int, _ hi: Int) -> StoryChip { StoryChip("in play", "\(hi - lo + 1) of \(a.count)") }
 
-    frames.append(WalkFrame(
-        status: "Find the \(target + 1)th smallest value without sorting. Sorting would order all \(a.count) " +
-            "elements; quickselect only ever descends into the side that can still contain the answer.",
-        cells: row(0, a.count - 1, nil, nil, nil), readout: "target: rank \(target + 1) of \(a.count)"))
+    frame(0, a.count - 1, nil, nil, nil, nil, [StoryChip("k", "\(k)"), inPlay(0, a.count - 1)],
+          "Find what sorts into index {p:\(k)}, without sorting.",
+          "That is the \(ordinalSuffix(k + 1)) smallest value. Quickselect partitions around a pivot and keeps only the side that holds index \(k).")
 
     var lo = 0, hi = a.count - 1
-    var answer = -1
-    while lo <= hi {
+    var answer: Int? = nil
+    while answer == nil {
         let pivot = a[hi]
-        frames.append(WalkFrame(status: "Partition a[\(lo)..\(hi)] around the pivot \(pivot). Everything smaller is swapped to the front.",
-                                cells: row(lo, hi, hi, nil, nil), pointers: [hi: "pivot"]))
+        frame(lo, hi, hi, nil, lo, nil, [StoryChip("pivot", "\(pivot)", .active), inPlay(lo, hi)],
+              "Partition \(lo)–\(hi) around the last value, {\(pivot)}.",
+              "Anything smaller than \(pivot) is swapped to the front of the range; the rest stay behind it.")
         var boundary = lo
-        for j in until(lo, hi) {
+        for j in lo..<hi {
             comparisons += 1
-            let smaller = a[j] < pivot
-            if smaller {
-                a.swapAt(boundary, j)
-                boundary += 1
-            }
-            frames.append(WalkFrame(
-                status: smaller
-                    ? "\(a[boundary - 1]) < \(pivot) — swap it into the smaller-than-pivot block, which now holds \(boundary - lo)."
-                    : "\(a[j]) ≥ \(pivot) — leave it where it is.",
-                cells: row(lo, hi, hi, j, boundary), pointers: [j: "j", hi: "pivot"]))
+            let value = a[j]
+            let smaller = value < pivot
+            if smaller { a.swapAt(boundary, j); boundary += 1 }
+            let below = boundary - lo
+            frame(lo, hi, hi, smaller ? boundary - 1 : j, boundary, nil,
+                  [StoryChip("pivot", "\(pivot)", .active), StoryChip("below", "\(below)", .done)],
+                  smaller ? "{\(value)} < \(pivot), so it joins the front block." : "{\(value)} ≥ \(pivot), so it stays put.",
+                  smaller ? "\(below) value\(below == 1 ? " is" : "s are") now below the pivot." : "Only values below the pivot move.")
         }
         a.swapAt(boundary, hi)
-
-        if boundary == target {
-            answer = a[boundary]
-            frames.append(WalkFrame(
-                status: "The pivot lands at index \(boundary), which is exactly the rank we wanted. Its final " +
-                    "position is its answer — no further work, and the two sides were never sorted.",
-                cells: row(lo, hi, nil, nil, nil, done: boundary),
-                readout: "\(target + 1)th smallest = \(answer), found in \(comparisons) comparisons"))
-            lo = boundary + 1
-            hi = boundary
-        } else if boundary > target {
-            frames.append(WalkFrame(
-                status: "The pivot settles at index \(boundary), above the rank we want, so the answer lies to " +
-                    "its left. Indices \(boundary)..\(hi) are discarded and never looked at again.",
-                cells: row(lo, boundary - 1, nil, nil, nil), readout: "\(boundary - lo) of \(a.count) still in play"))
+        if boundary == k {
+            answer = boundary
+            frame(lo, hi, nil, nil, nil, boundary, [StoryChip("answer", "\(a[boundary])", .answer), StoryChip("comparisons", "\(comparisons)")],
+                  "Pivot {v:\(a[boundary])} settles at index \(boundary), exactly the index we want.",
+                  "So \(a[boundary]) is the \(ordinalSuffix(k + 1)) smallest. Neither side was ever sorted.")
+        } else if boundary > k {
+            frame(lo, boundary - 1, boundary, nil, nil, nil, [StoryChip("pivot", "\(pivot) → index \(boundary)"), inPlay(lo, boundary - 1)],
+                  "Pivot {\(pivot)} settles at index \(boundary). We want index \(k), so go left.",
+                  "Indices \(boundary)–\(hi) are discarded and never looked at again. Only one side is ever searched.")
             hi = boundary - 1
         } else {
-            frames.append(WalkFrame(
-                status: "The pivot settles at index \(boundary), below the rank we want, so the answer lies to " +
-                    "its right. Everything from \(lo) up to and including \(boundary) is discarded.",
-                cells: row(boundary + 1, hi, nil, nil, nil), readout: "\(hi - boundary) of \(a.count) still in play"))
+            frame(boundary + 1, hi, boundary, nil, nil, nil, [StoryChip("pivot", "\(pivot) → index \(boundary)"), inPlay(boundary + 1, hi)],
+                  "Pivot {\(pivot)} settles at index \(boundary). We want index \(k), so go right.",
+                  "Indices \(lo)–\(boundary) are discarded and never looked at again. Only one side is ever searched.")
             lo = boundary + 1
         }
     }
 
+    // What the same array costs to sort, counted the same way.
     var sortComparisons = 0
-    var b = [7, 2, 9, 4, 1, 8, 3, 6]
+    var b = original
     for i in 1..<b.count {
         var j = i
         while j > 0 {
@@ -80,62 +92,60 @@ func quickselectFrames() -> [WalkFrame] {
             j -= 1
         }
     }
-
-    frames.append(WalkFrame(
-        status: "Quickselect answered in \(comparisons) comparisons. Sorting the same array to read off index " +
-            "\(target) takes \(sortComparisons) — and sorting computes the other \(a.count - 1) ranks nobody asked " +
-            "for. Expected cost is linear because each round discards a constant fraction: n + n/2 + n/4 … ≈ 2n.",
-        cells: sorted.enumerated().map { i, v in CellView("\(v)", i == target ? .result : .dim) },
-        readout: "\(comparisons) comparisons vs \(sortComparisons) to sort"))
+    frame(lo, hi, nil, nil, nil, answer, [StoryChip("quickselect", "\(comparisons)", .answer), StoryChip("sort", "\(sortComparisons)")],
+          "{v:\(a[answer!])} found in \(comparisons) comparisons; sorting takes \(sortComparisons).",
+          "Sorting orders every value. Quickselect follows one side each round, n + n/2 + n/4 … ≈ 2n on average.")
     return frames
 }
 
+/// Median of medians: groups of five, each sorted, their middles, and the middle of those as the pivot.
 func medianOfMediansFrames() -> [WalkFrame] {
     let a = [12, 3, 17, 8, 1, 20, 6, 14, 9, 2, 18, 11, 5, 15, 7]
     let groups = stride(from: 0, to: a.count, by: 5).map { Array(a[$0..<min($0 + 5, a.count)]) }
-    let medians = groups.map { $0.sorted()[$0.count / 2] }
+    let sortedGroups = groups.map { $0.sorted() }
+    let medians = sortedGroups.map { $0[$0.count / 2] }
     let pivot = medians.sorted()[medians.count / 2]
     let below = a.filter { $0 < pivot }.count
     let above = a.filter { $0 > pivot }.count
+    let floor = 30
     var frames: [WalkFrame] = []
+    let legend: [(StoryTone, String)] = [(.active, "Group median"), (.answer, "Pivot"), (.path, "Below pivot")]
 
-    func row(_ mark: (Int) -> CellMark) -> [CellView] { a.enumerated().map { i, v in CellView("\(v)", mark(i)) } }
+    func frame(_ title: String, _ note: String, _ rows: [[Int]], _ tone: (Int, Int) -> StoryTone, _ mediansRow: [StoryBlock]?,
+               _ chips: [StoryChip], _ headline: String, _ body: String) {
+        var sections = [StorySection(grid: rows.enumerated().map { g, row in
+            StoryGridLine(label: "g\(g + 1)", cells: row.enumerated().map { i, v in StoryCell("\(v)", tone(v, i)) })
+        })]
+        if let mediansRow { sections.append(StorySection(label: "MEDIANS", note: "median of these = pivot", blocks: mediansRow)) }
+        let story = GreedyStory(title: title, note: note, sections: sections, legend: legend, chips: chips, headline: headline, body: body)
+        frames.append(WalkFrame(status: story.status, cells: [], story: story))
+    }
+    let title = "\(groups.count) GROUPS OF 5 · EACH SORTED"
+    func blocks(_ tone: (Int) -> StoryTone) -> [StoryBlock] { medians.map { StoryBlock(text: "\($0)", weight: 1, tone: tone($0)) } }
 
-    frames.append(WalkFrame(
-        status: "Quickselect is linear *on average*, but a badly chosen pivot splits off one element at a time " +
-            "and costs O(n²). Median of medians picks a pivot with a guaranteed split, making the worst case linear too.",
-        cells: row { _ in .idle }, readout: "\(a.count) elements, in groups of 5"))
-    frames.append(WalkFrame(
-        status: "Split into \(groups.count) groups of 5. Each group is small and fixed-size, so sorting one is " +
-            "constant work — \(groups.count) groups is O(n) in total.",
-        cells: row { ($0 / 5) % 2 == 0 ? .window : .idle },
-        aux: groups.flatMap { g in g.sorted().map { CellView("\($0)", .dim) } }, auxLabel: "each group, sorted"))
-    frames.append(WalkFrame(
-        status: "Take each group's median: \(medians.map(String.init).joined(separator: ", ")). These \(medians.count) values are the " +
-            "only ones that matter for choosing the pivot.",
-        cells: row { _ in .dim },
-        aux: groups.flatMap { g in g.sorted().enumerated().map { i, v in CellView("\(v)", i == g.count / 2 ? .active : .dim) } },
-        auxLabel: "group medians highlighted"))
-    frames.append(WalkFrame(
-        status: "The pivot is the median of those medians: \(pivot). Finding it is a recursive quickselect on a " +
-            "list one fifth the size, which is what keeps the recursion affordable.",
-        cells: row { a[$0] == pivot ? .result : .dim },
-        aux: medians.map { CellView("\($0)", $0 == pivot ? .result : .window) }, auxLabel: "the \(medians.count) medians",
-        readout: "pivot = \(pivot)"))
-    frames.append(WalkFrame(
-        status: "Partitioning on \(pivot) puts \(below) elements below it and \(above) above — the smaller side is " +
-            "\(fx(100.0 * Double(min(below, above)) / Double(a.count), 0))% of the array, so that is what gets thrown " +
-            "away this round. Half the groups have a median on each side of the pivot, and in each of those at " +
-            "least three of five elements fall the same way, so at least 3n/10 is discarded no matter what the " +
-            "input is. That floor is what turns the worst case linear.",
-        cells: row { a[$0] == pivot ? .result : a[$0] < pivot ? .window : .idle },
-        readout: "\(below) below · \(above) above — guaranteed floor is \(3 * a.count / 10)"))
-    frames.append(WalkFrame(
-        status: "The catch is the constant. Grouping, sorting each group and recursing to find the pivot all cost " +
-            "real time, so in practice a random pivot is faster and median of medians is reserved for when a " +
-            "worst-case bound actually has to hold.",
-        cells: row { a[$0] == pivot ? .result : .dim },
-        readout: "guaranteed O(n) — at a constant factor you pay on every input"))
+    frame("\(groups.count) GROUPS OF 5", "\(a.count) values", groups, { _, _ in .idle }, nil, [StoryChip("values", "\(a.count)")],
+          "A bad pivot makes quickselect {w:O(n²)}.",
+          "Median of medians picks a pivot that is guaranteed to split well, so even the worst case is linear.")
+    frame(title, "median = middle", sortedGroups, { _, _ in .idle }, medians.map { _ in StoryBlock(text: "", weight: 1, tone: .empty) },
+          [StoryChip("groups", "\(groups.count)")],
+          "Sort each group of {5}.", "Five values is constant work, so sorting every group is O(n) in total.")
+    frame(title, "median = middle", sortedGroups, { _, i in i == 2 ? .active : .idle }, blocks { _ in .active },
+          [StoryChip("medians", medians.map(String.init).joined(separator: ", "))],
+          "Each group's middle value is its {median}: \(medians.map(String.init).joined(separator: ", ")).",
+          "Only these \(medians.count) values matter for picking the pivot.")
+    frame(title, "median = middle", sortedGroups, { v, i in i != 2 ? .idle : v == pivot ? .answer : .active }, blocks { $0 == pivot ? .answer : .active },
+          [StoryChip("pivot", "\(pivot)", .answer), StoryChip("below", "≥ \(floor)%")],
+          "The medians are \(medians.dropLast().map(String.init).joined(separator: ", ")) and \(medians.last!), so the pivot is {v:\(pivot)}.",
+          "At least \(floor)% of the elements are below \(pivot) and \(floor)% above, so every split is guaranteed to be fair.")
+    frame(title, "median = middle", sortedGroups, { v, _ in v == pivot ? .answer : v < pivot ? .path : .idle },
+          blocks { $0 == pivot ? .answer : $0 < pivot ? .path : .idle },
+          [StoryChip("below", "\(below)", .path), StoryChip("above", "\(above)")],
+          "Partition on {v:\(pivot)}: \(below) below, \(above) above.",
+          "Half the groups have a median ≤ \(pivot), and each of those has 3 values ≤ its median, so at least 3n/10 land on each side.")
+    frame(title, "median = middle", sortedGroups, { v, _ in v == pivot ? .answer : .idle }, blocks { $0 == pivot ? .answer : .idle },
+          [StoryChip("worst case", "O(n)", .done)],
+          "Guaranteed {m:O(n)}, at a price.",
+          "Grouping, sorting and recursing for the pivot all cost time, so a random pivot is faster in practice. This one is for when the worst case has to hold.")
     return frames
 }
 

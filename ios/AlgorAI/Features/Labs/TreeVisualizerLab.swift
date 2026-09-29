@@ -29,6 +29,8 @@ private struct TreeNodeSpec {
     var badgeTone: TreeState = .idle
     /// A green ring round the tile: a trie node that ends a word.
     var ring = false
+    /// A line under the tile in the node's colour (tree DP's "take / skip").
+    var below: String? = nil
 }
 private struct TreeLink { let from: Int; let to: Int }
 private struct TreeFrame { let nodes: [TreeNodeSpec]; let status: String; var links: [TreeLink] = []; var story: TreeStory? = nil }
@@ -129,6 +131,8 @@ private struct TreeStory {
     var grid: [StoryGridBlock] = []
     /// Per-step legend words, over the style's.
     var legendLabels: [LegendKey: String] = [:]
+    /// Labelled lines of arithmetic under the tree ("take B   2 + 0 + 0 = 2").
+    var formulaRows: [StoryFormulaRow] = []
 
     var status: String { headlineSpans(headline).map(\.text).joined() + (body.isEmpty ? "" : " " + body) }
 }
@@ -197,12 +201,13 @@ private final class TreeBuilder {
 
     func frame(_ status: String, active: Set<Int> = [], path: Set<Int> = [], marked: Set<Int> = [], links: [TreeLink] = [],
                skipped: Set<Int> = [], story: TreeStory? = nil, ghost: Set<Int> = [], badges: [Int: (String, TreeState)] = [:],
-               rings: Set<Int> = []) {
+               rings: Set<Int> = [], below: [Int: String] = [:]) {
         frames.append(TreeFrame(nodes: nodes.map { n in
             let state: TreeState = ghost.contains(n.id) ? .ghost : active.contains(n.id) ? .active : marked.contains(n.id) ? .marked
                 : path.contains(n.id) ? .path : skipped.contains(n.id) ? .skipped : .idle
             return TreeNodeSpec(id: n.id, label: n.label, parent: n.parent, order: n.order, state: state, sub: n.sub, edge: n.edge,
-                                badge: badges[n.id]?.0, badgeTone: badges[n.id]?.1 ?? .idle, ring: rings.contains(n.id))
+                                badge: badges[n.id]?.0, badgeTone: badges[n.id]?.1 ?? .idle, ring: rings.contains(n.id),
+                                below: below[n.id])
         }, status: story?.status ?? status, links: links, story: story))
     }
 }
@@ -860,41 +865,117 @@ private func priorityQueueFrames() -> [TreeFrame] {
 
 // MARK: - Huffman coding
 
+/// The forest over the queue it is built from: each step pops the two lightest subtrees (yellow), hangs
+/// them under a new dashed node, and pushes that node back. Everything already inside a subtree is green.
 private func huffmanFrames() -> [TreeFrame] {
     let b = TreeBuilder()
     let freq: [(String, Int)] = [("a", 20), ("b", 12), ("c", 8), ("d", 5), ("e", 3)]
-    struct Sub { let id: Int; let weight: Int; let leaves: [String] }
-    var live = freq.map { Sub(id: b.add("\($0.0):\($0.1)", nil, 0), weight: $0.1, leaves: [$0.0]) }
-    b.frame("Five symbols with their frequencies. Fixed-width coding would spend ⌈log₂ 5⌉ = 3 bits on every one of them, including the rare ones.")
-    while live.count > 1 {
-        let sorted = live.sortedBy(\.weight)
-        let first = sorted[0], second = sorted[1]
-        b.frame("The two lightest subtrees are \(first.weight) and \(second.weight). Merging the rarest pair first is what pushes them deepest, and depth is code length.",
-                active: [first.id, second.id])
-        let merged = b.add("\(first.weight + second.weight)", nil, 0)
-        b.reparent(first.id, merged, 0)
-        b.reparent(second.id, merged, 1)
-        live = live.filter { $0.id != first.id && $0.id != second.id } + [Sub(id: merged, weight: first.weight + second.weight, leaves: first.leaves + second.leaves)]
-        b.frame("They become children of a node weighing \(first.weight + second.weight), which goes back into the pool. \(live.count) subtree(s) left.", marked: [merged])
-    }
     let total = freq.reduce(0) { $0 + $1.1 }
-    let finalNodes = b.frames.last!.nodes
-    var codeLengths: [String: Int] = [:]
-    for (ch, _) in freq {
-        var depth = 0
-        var current = finalNodes.first { $0.label.hasPrefix("\(ch):") }!.id
-        var parent = finalNodes.first { $0.id == current }!.parent
-        while let p = parent {
-            depth += 1
-            current = p
-            parent = finalNodes.first { $0.id == current }!.parent
-        }
-        codeLengths[ch] = depth
+
+    struct Sub {
+        let id: Int; let weight: Int; let symbol: String?
+        var label: String { symbol.map { "\($0):\(weight)" } ?? "\(weight)" }
     }
-    let huffmanBits = freq.reduce(0) { $0 + $1.1 * codeLengths[$1.0]! }
+    /// The queue in pop order: lightest first, and on a tie the merged node before the symbol.
+    func sorted(_ queue: [Sub]) -> [Sub] {
+        queue.enumerated().sorted { l, r in
+            if l.element.weight != r.element.weight { return l.element.weight < r.element.weight }
+            let lk = l.element.symbol == nil ? 0 : 1, rk = r.element.symbol == nil ? 0 : 1
+            return lk != rk ? lk < rk : l.offset < r.offset
+        }.map(\.element)
+    }
+
+    // Code lengths up front, so a merge step can say where the symbols it touches will end up.
+    var lengths = Dictionary(uniqueKeysWithValues: freq.map { ($0.0, 0) })
+    var pool = freq.map { ($0.1, [$0.0]) }
+    while pool.count > 1 {
+        let s = pool.sortedBy { $0.0 }
+        (s[0].1 + s[1].1).forEach { lengths[$0]! += 1 }
+        pool = Array(s.dropFirst(2)) + [(s[0].0 + s[1].0, s[0].1 + s[1].1)]
+    }
+    let maxLen = lengths.values.max()!, minLen = lengths.values.min()!
+    let deepest = freq.filter { lengths[$0.0] == maxLen }.sortedBy { $0.1 }.map(\.0)
+    let shallowest = freq.first { lengths[$0.0] == minLen }!.0
+
+    var merged = Set<Int>()
+    var kids: [Int: (Int, Int)] = [:]
+    func queueCells(_ queue: [Sub], _ popping: Int) -> [StripCell] {
+        sorted(queue).enumerated().map { i, sub in StripCell(header: "", value: sub.label, state: i < popping ? .active : .idle) }
+    }
+    func story(_ cells: [StripCell], _ chips: [(key: String?, value: String)], _ headline: String, _ body: String,
+               emphasis: TreeState = .active, next: Set<Int> = []) -> TreeStory {
+        TreeStory(title: "FOREST", note: "merge two rarest", stripLabel: "QUEUE", cells: cells, chips: chips, headline: headline,
+                  emphasis: emphasis, body: body, nextEdges: next,
+                  edgeStates: Dictionary(uniqueKeysWithValues: merged.map { ($0, TreeState.marked) }), stripNote: "by weight")
+    }
+
+    var queue = freq.map { Sub(id: b.add("\($0.0):\($0.1)", nil, 0), weight: $0.1, symbol: $0.0) }
+    b.frame("", story: story(queueCells(queue, 0), [("symbols", "\(freq.count)"), ("fixed", "3 bits")],
+                             "Count each symbol, then queue them {by weight}.",
+                             "Fixed-width codes spend 3 bits on every symbol, rare ones included. Huffman gives the rare ones the long codes instead."))
+
+    var step = 0
+    while queue.count > 1 {
+        let pop = sorted(queue)
+        let x = pop[0], y = pop[1]
+        // Lighter on the left; on a tie the symbol goes left of the merged node.
+        let (left, right) = x.weight < y.weight || x.symbol != nil ? (x, y) : (y, x)
+        let weight = x.weight + y.weight
+        let node = b.add("\(weight)", nil, 0)
+        b.reparent(left.id, node, 0)
+        b.reparent(right.id, node, 1)
+        kids[node] = (left.id, right.id)
+        let body: String
+        switch step {
+        case 0: body = "Rare symbols end up deepest, so they get the longest codes."
+        case 1: body = "Rare symbols end up deepest, so they get the longest codes. \(deepest.joined(separator: " and ")) end with \(maxLen) bits, and \(shallowest) with \(minLen)."
+        default: body = queue.count == 2 ? "The last two subtrees join at the root." : "Every symbol under the new node gets one bit longer."
+        }
+        b.frame("", active: [x.id, y.id], marked: merged, story: story(
+            queueCells(queue, 2),
+            [("weight", "\(x.weight) + \(y.weight) = \(weight)"), ("queue", "\(queue.count) → \(queue.count - 1)")],
+            "Merge the two rarest, {\(x.label)} and {\(y.label)}, into \(weight).", body, next: [left.id, right.id]),
+            ghost: [node])
+        merged.insert(left.id)
+        merged.insert(right.id)
+        queue = queue.filter { $0.id != x.id && $0.id != y.id } + [Sub(id: node, weight: weight, symbol: nil)]
+        b.frame("", marked: merged, story: story(
+            queueCells(queue, 0), [("queue", "\(queue.count)")],
+            queue.count == 1 ? "{m:\(weight)} is the root: the whole message." : "{m:\(weight)} goes back into the queue.",
+            queue.count == 1 ? "Its weight is the total count, \(total). The tree is finished." : "\(queue.count) subtrees left. It is sorted in by weight like any other entry.",
+            emphasis: .marked))
+        step += 1
+    }
+
+    // Left edges read 0, right edges 1; a symbol's code is the path down to its leaf.
+    for (_, pair) in kids {
+        b.setEdge(pair.0, "0")
+        b.setEdge(pair.1, "1")
+    }
+    var codes: [Int: String] = [:]
+    func walk(_ id: Int, _ code: String) {
+        codes[id] = code
+        if case let (l, r)? = kids[id] { walk(l, code + "0"); walk(r, code + "1") }
+    }
+    walk(queue[0].id, "")
+    let leafIds = Dictionary(uniqueKeysWithValues: b.frames[0].nodes.map { (String($0.label.split(separator: ":")[0]), $0.id) })
+    let codeCells = freq.map { StripCell(header: $0.0, value: codes[leafIds[$0.0]!]!, state: .marked) }
+    let leaves = Set(leafIds.values)
+    let huffmanBits = freq.reduce(0) { $0 + $1.1 * lengths[$1.0]! }
     let fixedBits = total * 3
-    b.frame("The tree is finished. A symbol's code is the path to it — left is 0, right is 1 — so its length is just its depth: " + freq.map { "\($0.0)=\(codeLengths[$0.0]!) bits" }.joined(separator: ", ") + ".")
-    b.frame("Weighted by frequency that is \(huffmanBits) bits for the whole message, against \(fixedBits) at a fixed 3 bits each — a \(fx(100.0 * Double(fixedBits - huffmanBits) / Double(fixedBits), 0))% saving. No code is a prefix of another, because every symbol sits at a leaf, so the decoder never needs a separator.")
+
+    func codeStory(_ chips: [(key: String?, value: String)], _ headline: String, _ body: String) -> TreeStory {
+        TreeStory(title: "CODE TREE", note: "left 0 · right 1", stripLabel: "CODES", cells: codeCells, chips: chips, headline: headline,
+                  emphasis: .marked, body: body, legendLabels: [.marked: "Symbol"])
+    }
+    b.frame("", marked: leaves, story: codeStory(
+        freq.map { (key: Optional($0.0), value: codes[leafIds[$0.0]!]!) },
+        "Read each code off the path: {left is 0, right is 1}.",
+        "Frequent \(shallowest) gets \(minLen) bit; rare \(deepest.joined(separator: " and ")) get \(maxLen). No code is a prefix of another, since every symbol is a leaf."))
+    b.frame("", marked: leaves, story: codeStory(
+        [("huffman", "\(huffmanBits) bits"), ("fixed", "\(fixedBits) bits"), ("saved", "\(100 * (fixedBits - huffmanBits) / fixedBits)%")],
+        "The message costs {\(huffmanBits) bits} instead of \(fixedBits).",
+        "Each symbol costs its count times its code length: " + freq.map { "\($0.1)×\(lengths[$0.0]!)" }.joined(separator: " + ") + " = \(huffmanBits). Fixed 3-bit codes need \(total) × 3 = \(fixedBits)."))
     return b.frames
 }
 
@@ -1141,6 +1222,7 @@ private func lcaFrames() -> [TreeFrame] {
 private func treeDpFrames() -> [TreeFrame] {
     let b = TreeBuilder()
     let weight = ["A": 3, "B": 2, "C": 4, "D": 5, "E": 1, "F": 6]
+    let children = ["A": ["B", "C"], "B": ["D", "E"], "C": ["F"]]
     let a = b.add("A·3", nil, 0)
     let bb = b.add("B·2", a, 0)
     let c = b.add("C·4", a, 1)
@@ -1148,29 +1230,48 @@ private func treeDpFrames() -> [TreeFrame] {
     let e = b.add("E·1", bb, 1)
     let f = b.add("F·6", c, 0)
     let ids = ["A": a, "B": bb, "C": c, "D": d, "E": e, "F": f]
-    var dp0: [String: Int] = [:], dp1: [String: Int] = [:]
-    func show(_ name: String) { b.relabel(ids[name]!, "\(name) \(dp0[name]!)/\(dp1[name]!)") }
-    b.frame("Maximum-weight independent set: pick nodes with the largest total weight, never two that are joined by an edge. Labels are node·weight.", marked: [a])
-    for leaf in ["D", "E", "F"] {
-        dp0[leaf] = 0
-        dp1[leaf] = weight[leaf]!
-        show(leaf)
-        b.frame("Leaf \(leaf): not taking it is worth 0, taking it is worth \(weight[leaf]!). Labels now read \"not-taken / taken\".", active: [ids[leaf]!])
+    // take[n]: best weight in n's subtree with n in the set; skip[n]: with n left out.
+    var take: [String: Int] = [:], skip: [String: Int] = [:]
+
+    func step(_ headline: String, _ body: String, active: String? = nil, rows: [StoryFormulaRow] = [], marked: Set<String> = [],
+              chips: [(key: String?, value: String)] = [("order", "post-order")]) {
+        var story = TreeStory(title: "MAX INDEPENDENT SET", note: "badges = take / skip", stripLabel: nil, cells: [], chips: chips,
+                              headline: headline, emphasis: marked.isEmpty ? .active : .marked, body: body)
+        story.plainEdges = true
+        story.formulaRows = rows
+        b.frame(story.status, active: Set([active].compactMap { $0 }.map { ids[$0]! }),
+                path: Set((active.flatMap { children[$0] } ?? []).map { ids[$0]! }),
+                marked: Set(marked.map { ids[$0]! }), story: story,
+                below: Dictionary(uniqueKeysWithValues: take.keys.map { (ids[$0]!, "\(take[$0]!) / \(skip[$0]!)") }))
     }
-    dp1["B"] = weight["B"]! + dp0["D"]! + dp0["E"]!
-    dp0["B"] = max(dp0["D"]!, dp1["D"]!) + max(dp0["E"]!, dp1["E"]!)
-    show("B")
-    b.frame("B's children are finished, so B can be resolved. Taking B forbids D and E: 2 + 0 + 0 = \(dp1["B"]!). Not taking B leaves each child free to do whichever is better: 5 + 1 = \(dp0["B"]!).", active: [bb], path: [d, e])
-    dp1["C"] = weight["C"]! + dp0["F"]!
-    dp0["C"] = max(dp0["F"]!, dp1["F"]!)
-    show("C")
-    b.frame("Same rule at C: taking it gives 4 + 0 = \(dp1["C"]!), skipping it lets F be taken for \(dp0["C"]!). Note the subtree already prefers the child over the parent here.", active: [c], path: [f])
-    dp1["A"] = weight["A"]! + dp0["B"]! + dp0["C"]!
-    dp0["A"] = max(dp0["B"]!, dp1["B"]!) + max(dp0["C"]!, dp1["C"]!)
-    show("A")
-    b.frame("The root combines both subtrees: take A for 3 + \(dp0["B"]!) + \(dp0["C"]!) = \(dp1["A"]!), or skip it for \(dp0["A"]!). Every subtree was solved exactly once, so this whole pass is O(n).", active: [a], path: [bb, c])
-    b.frame("Answer \(max(dp0["A"]!, dp1["A"]!)): take A, D, E and F — 3 + 5 + 1 + 6. No two of them are adjacent, and the greedy alternative of taking the heaviest node first would have blocked its neighbours for less.",
-            path: [bb, c], marked: [a, d, e, f])
+
+    func solve(_ n: String) -> [StoryFormulaRow] {
+        let kids = children[n] ?? []
+        take[n] = weight[n]! + kids.reduce(0) { $0 + skip[$1]! }
+        skip[n] = kids.reduce(0) { $0 + max(take[$1]!, skip[$1]!) }
+        if kids.isEmpty {
+            return [StoryFormulaRow(label: "take \(n)", formula: "{\(take[n]!)}"), StoryFormulaRow(label: "skip \(n)", formula: "{\(skip[n]!)}")]
+        }
+        let takeSum = (["\(weight[n]!)"] + kids.map { "{p:\(skip[$0]!)}" }).joined(separator: " + ")
+        let skipSum = kids.map { "{p:\(max(take[$0]!, skip[$0]!))}" }.joined(separator: " + ")
+        return [StoryFormulaRow(label: "take \(n)", formula: "\(takeSum) = {\(take[n]!)}"),
+                StoryFormulaRow(label: "skip \(n)", formula: kids.count == 1 ? skipSum : "\(skipSum) = {\(skip[n]!)}")]
+    }
+
+    step("Pick nodes with the largest total weight, never two {w:joined by an edge}.",
+         "Labels are node·weight. Post-order solves every child before its parent, so each parent's inputs are ready.")
+    step("Leaf {D}: taking it is worth 5, skipping it 0.", "A leaf has no children to rule out, so its two answers are its weight and zero.",
+         active: "D", rows: solve("D"))
+    step("Leaf {E}: taking it is worth 1, skipping it 0.", "Post-order finishes both of B's children before B itself.", active: "E", rows: solve("E"))
+    step("Taking {B} rules out D and E. Skipping it lets both in.", "Each node keeps two answers, with and without itself. The root picks the better one.",
+         active: "B", rows: solve("B"))
+    step("Leaf {F}: taking it is worth 6, skipping it 0.", "B's subtree is finished, so the pass moves over to C's.", active: "F", rows: solve("F"))
+    step("Taking {C} rules out F. Skipping it lets F in, and F weighs more.", "A heavy child can beat its parent: skipping C keeps 6, taking it only 4.",
+         active: "C", rows: solve("C"))
+    step("Taking {A} wins: 15 against 12.", "Taking A means skipping B and C, and both already did best without themselves.", active: "A", rows: solve("A"))
+    let best = max(take["A"]!, skip["A"]!)
+    step("{A, D, E and F} weigh 3 + 5 + 1 + 6 = \(best).", "No two of them share an edge. Every subtree was solved once, so the whole pass is O(n).",
+         marked: ["A", "D", "E", "F"], chips: [("order", "post-order"), ("best", "\(best)")])
     return b.frames
 }
 
@@ -1931,7 +2032,9 @@ private let treeConfigs: [String: TreeConfig] = [
                       storyStyle: StoryStyle(canvasHeight: 210, rowGap: 58,
                                              legend: [(.active, "Current pair"), (.path, "Climbed"), (.marked, "LCA"), (.next, "Next climb")],
                                              depthGuides: true)),
-    "tree_dp": TreeConfig(intro: "Maximum-weight independent set. Labels turn into \"not-taken / taken\" as the post-order pass resolves each subtree — children are always finished before their parent is touched.", markedLabel: "Chosen set", build: treeDpFrames, cardTitle: "MAX INDEPENDENT SET", cardNote: "post-order"),
+    "tree_dp": TreeConfig(intro: "Maximum-weight independent set. Labels turn into \"not-taken / taken\" as the post-order pass resolves each subtree — children are always finished before their parent is touched.", markedLabel: "Chosen set", build: treeDpFrames,
+                          storyStyle: StoryStyle(canvasHeight: 220, rowGap: 84,
+                                                 legend: [(.active, "Solving"), (.path, "Solved child"), (.marked, "Chosen")], noteMono: true)),
     "binary_search_tree": TreeConfig(intro: "Inserting 50, 30, 70, 20, 40, 60, 80, then searching for 60. Every operation walks one root-to-leaf path, comparing once per level.", markedLabel: "Placed / found", build: bstFrames,
                                      storyStyle: StoryStyle(canvasHeight: 196, rowGap: 78, legend: [(.active, "Comparing"), (.path, "Path taken"), (.marked, "Result"), (.ghost, "Insert here")]),
                                      variants: [StoryVariant(label: "Insert", build: { bstStoryFrames(0) }),
@@ -1974,7 +2077,8 @@ private let treeConfigs: [String: TreeConfig] = [
     "priority_queue_adt": TreeConfig(intro: "The contract is insert, peek and remove-highest-priority. A binary heap keeps just enough order to serve it — watch how little of the structure each operation has to touch.", markedLabel: "Root / minimum", build: priorityQueueFrames,
                                      storyStyle: StoryStyle(canvasHeight: 196, rowGap: 68, legend: [(.marked, "Root / minimum"), (.active, "Just inserted")],
                                                             noteMono: true, stepNoun: "Insert")),
-    "huffman_coding": TreeConfig(intro: "Merge the two rarest symbols, repeat, and the tree that falls out assigns short codes to common symbols. The bit totals at the end are counted from the tree it actually built.", markedLabel: "Merged", build: huffmanFrames, cardTitle: "HUFFMAN TREE", cardNote: "merge two rarest"),
+    "huffman_coding": TreeConfig(intro: "Merge the two rarest symbols, repeat, and the tree that falls out assigns short codes to common symbols. The bit totals at the end are counted from the tree it actually built.", markedLabel: "Merged", build: huffmanFrames,
+                                storyStyle: StoryStyle(canvasHeight: 210, rowGap: 56, legend: [(.active, "Merging"), (.marked, "Merged"), (.ghost, "New node")], wideCells: true)),
     "disjoint_set": TreeConfig(intro: "A forest where the only thing a tree means is \"these elements are in one set\". Union by rank keeps it shallow, path compression flattens what it walks, and the final frame counts both against the naive version.", markedLabel: "Root / settled", build: disjointSetFrames,
                                storyStyle: StoryStyle(canvasHeight: 214, rowGap: 86,
                                                       legend: [(.active, "Start"), (.path, "Walked"), (.marked, "Root"), (.link, "Compressed link")])),
@@ -2012,6 +2116,10 @@ struct TreeVisualizerLab: View {
     }
 
     var body: some View {
+        if key == "priority_queue_adt" { PriorityQueueLab() } else { player }
+    }
+
+    @ViewBuilder private var player: some View {
         let key = self.key
         let tab = self.tab
         AsyncFrameLab(key: "tree:\(key):\(tab)", speedMs: 700, build: {
@@ -2110,17 +2218,20 @@ private struct TreeStoryLab: View {
             LabCard {
                 HStack {
                     if tabs.isEmpty {
-                        Text(story.title).font(AppFont.sans(13, .semibold)).tracking(0.8).foregroundStyle(palette.muted).lineLimit(1)
+                        Text(story.title).font(AppFont.sans(13, .semibold)).tracking(0.8).foregroundStyle(palette.muted).lineLimit(1).minimumScaleFactor(0.8)
                     } else {
                         StoryTabs(labels: tabs, selected: $tab)
                     }
                     Spacer(minLength: 12)
                     if !story.note.isEmpty {
-                        Text(story.note).font(style.noteMono ? AppFont.mono(13) : AppFont.sans(13)).foregroundStyle(palette.muted).lineLimit(1)
+                        Text(story.note).font(style.noteMono ? AppFont.mono(13) : AppFont.sans(13)).foregroundStyle(palette.muted).lineLimit(1).minimumScaleFactor(0.8)
                     }
                 }
                 if !frame.nodes.isEmpty {
                     StoryCanvas(style: style, frame: frame, story: story, linkTint: linkTint).padding(.top, 12)
+                }
+                if !story.formulaRows.isEmpty {
+                    StoryFormulaRows(rows: story.formulaRows).padding(.top, 12)
                 }
                 ForEach(story.grid.indices, id: \.self) { i in
                     StoryGrid(block: story.grid[i]).padding(.top, i == 0 ? 12 : 16)
@@ -2152,7 +2263,8 @@ private struct TreeStoryLab: View {
                             case .overflow: StoryLegendItem(color: SimColors.red, label: label)
                             case .warn: StoryLegendItem(color: SimColors.red, label: label)
                             case .ring: StoryLegendItem(color: markedColor, label: label, ring: true)
-                            case .ghost: StoryLegendItem(color: activeColor, label: label, dash: true)
+                            // A ghost is drawn as a dashed box, so its key is one too.
+                            case .ghost: StorySwatch(color: activeColor, style: .dashed, label: label)
                             case .answer: StoryLegendItem(color: SimColors.answer, label: label)
                             }
                         }
@@ -2447,6 +2559,7 @@ private struct StoryCanvas: View {
         let byId = Dictionary(uniqueKeysWithValues: frame.nodes.map { ($0.id, $0) })
         let hasSub = frame.nodes.contains { $0.sub != nil }
         let hasOverflow = frame.nodes.contains { $0.overflow != nil }
+        let hasBelow = frame.nodes.contains { $0.below != nil }
         let palette = self.palette
         let children2 = children
 
@@ -2515,7 +2628,7 @@ private struct StoryCanvas: View {
                 }
             }
 
-            let captionSpace: CGFloat = hasOverflow ? 20 : 0
+            let captionSpace: CGFloat = hasOverflow || hasBelow ? 20 : 0
             let panelSpace: CGFloat = story.panels.isEmpty ? 0 : 22
             let rowGap = maxDepth == 0 ? 0 : min(style.rowGap, (size.height - nodeH - captionSpace - panelSpace - 8) / CGFloat(maxDepth))
             // Centre the tree's block vertically, so a shallow frame (eight singletons) is not stuck to the top.
@@ -2686,6 +2799,20 @@ private struct StoryCanvas: View {
                 if node.state == .skipped { ctx.stroke(tile, with: .color(palette.muted.opacity(0.16)), lineWidth: 1) }
                 if node.state == .ghost { ctx.stroke(tile, with: .color(activeColor), style: StrokeStyle(lineWidth: 1.5, dash: [4, 3])) }
                 if node.ring { ctx.stroke(tile, with: .color(markedColor), lineWidth: 2) }
+                if let below = node.below {
+                    let ink: Color = switch node.state {
+                    case .active: StoryTone.active.ink(palette)
+                    case .path: StoryTone.path.ink(palette)
+                    case .marked: StoryTone.done.ink(palette)
+                    default: palette.muted
+                    }
+                    let caption = ctx.resolve(Text(below).font(AppFont.mono(13, .bold)).foregroundStyle(ink))
+                    let size = caption.measure(in: CGSize(width: 200, height: 40))
+                    // Backed by the card colour, so an edge running past the caption passes behind it.
+                    let back = CGRect(x: center.x - size.width / 2 - 3, y: rect.maxY + 4, width: size.width + 6, height: size.height)
+                    ctx.fill(Path(roundedRect: back, cornerRadius: 4), with: .color(palette.surface))
+                    ctx.draw(caption, at: CGPoint(x: center.x, y: rect.maxY + 4), anchor: .top)
+                }
                 let label = ctx.resolve(Text(node.label).font(labelFont).foregroundStyle(tone.ink))
                 if let sub = node.sub {
                     let caption = ctx.resolve(Text(sub).font(.system(size: 9, weight: .medium, design: .monospaced)).foregroundStyle(tone.ink.opacity(0.7)))
@@ -2710,5 +2837,192 @@ private struct StoryCanvas: View {
             }
         }
         .frame(height: style.canvasHeight)
+    }
+}
+
+// MARK: - Priority queue lab
+// Port of PriorityQueueLab.kt. A min-heap drawn twice, as the tree and as the array that stores it,
+// with insert (sift up) and extract-min (sift down) as tabs. The comparison being made rides on the
+// edge between the two nodes.
+
+private enum PqTone { case idle, active, compared, swapped }
+
+private struct PqFrame {
+    let heap: [Int]
+    let tones: [Int: PqTone]
+    /// The edge up from this child carries the comparison ("3 < 4").
+    var bubble: (child: Int, text: String)? = nil
+    let formula: String
+    let chips: [StoryChip]
+    let headline: String
+    let body: String
+}
+
+private let pqCapacity = 7
+
+private func pqInsertFrames() -> [PqFrame] {
+    let h0 = [4, 7, 9, 8, 10]
+    return [
+        PqFrame(heap: h0, tones: [:], formula: "parent(i) = (i − 1) / 2", chips: [StoryChip("size", "5"), StoryChip("min", "4")],
+                headline: "Every parent is at most its children, so the minimum, {4}, sits at the root.",
+                body: "The heap is a complete tree stored level by level in an array, so no pointers are needed."),
+        PqFrame(heap: h0 + [3], tones: [5: .active], formula: "heap[5] = {3}", chips: [StoryChip("size", "5 → 6"), StoryChip("compares", "0")],
+                headline: "Insert puts {3} in the next free slot, i5.",
+                body: "That keeps the tree complete, but 3 may now be smaller than its parent."),
+        PqFrame(heap: h0 + [3], tones: [5: .active, 2: .compared], bubble: (5, "3 < 9"),
+                formula: "parent(5) = (5 − 1) / 2 = 2 → {3} < {p:9} → swap", chips: [StoryChip("compares", "1"), StoryChip("swaps", "0")],
+                headline: "3 is smaller than its parent 9, so they swap.",
+                body: "Sift-up compares a node only with its parent, never with its sibling."),
+        PqFrame(heap: [4, 7, 3, 8, 10, 9], tones: [2: .active, 5: .swapped], formula: "swap(heap[2], heap[5])",
+                chips: [StoryChip("compares", "1"), StoryChip("swaps", "1")],
+                headline: "{3} climbs to i2 and 9 drops to i5.", body: "One level up for one compare."),
+        PqFrame(heap: [4, 7, 3, 8, 10, 9], tones: [2: .active, 0: .compared, 5: .swapped], bubble: (2, "3 < 4"),
+                formula: "parent(2) = (2 − 1) / 2 = 0 → {3} < {p:4} → swap", chips: [StoryChip("compares", "2"), StoryChip("swaps", "1")],
+                headline: "3 is smaller than its parent 4, so they swap and 3 becomes the new minimum.",
+                body: "It already passed 9 on the way up. Sift-up is at most one compare per level, so O(log n)."),
+        PqFrame(heap: [3, 7, 4, 8, 10, 9], tones: [0: .active, 2: .swapped, 5: .swapped], formula: "peek() = {v:3}",
+                chips: [StoryChip("compares", "2"), StoryChip("swaps", "2"), StoryChip("cost", "O(log n)", .answer)],
+                headline: "3 reached the root, so peek() now returns {v:3}.",
+                body: "Two compares for six elements: the work follows the height of the tree, not its size."),
+    ]
+}
+
+private func pqExtractFrames() -> [PqFrame] {
+    let h = [3, 7, 4, 8, 10, 9]
+    return [
+        PqFrame(heap: h, tones: [0: .active], formula: "extractMin() → {v:3}", chips: [StoryChip("size", "6"), StoryChip("min", "3")],
+                headline: "Extract-min returns the root, {3}.",
+                body: "The hard part is filling the hole it leaves without breaking the heap."),
+        PqFrame(heap: [9, 7, 4, 8, 10], tones: [0: .active], formula: "heap[0] = heap[5] = {9}", chips: [StoryChip("size", "6 → 5"), StoryChip("compares", "0")],
+                headline: "The last leaf, {9}, moves into the root's slot.",
+                body: "The array shrinks by one and the tree stays complete, but 9 is far too big for the root."),
+        PqFrame(heap: [9, 7, 4, 8, 10], tones: [0: .active, 1: .compared, 2: .compared], bubble: (2, "4 < 9"),
+                formula: "min({p:7}, {p:4}) = 4 → {9} > 4 → swap", chips: [StoryChip("compares", "2"), StoryChip("swaps", "0")],
+                headline: "9 is bigger than its smaller child, 4, so they swap.",
+                body: "Sift-down picks the smaller child, so the new parent is at most its sibling too."),
+        PqFrame(heap: [4, 7, 9, 8, 10], tones: [2: .active, 0: .swapped], formula: "swap(heap[0], heap[2])",
+                chips: [StoryChip("compares", "2"), StoryChip("swaps", "1")],
+                headline: "4 rises to the root and {9} sinks to i2.", body: "One level down for one pair of compares."),
+        PqFrame(heap: [4, 7, 9, 8, 10], tones: [2: .active, 0: .swapped], formula: "children(2) = 5, 6 → none → stop",
+                chips: [StoryChip("compares", "2"), StoryChip("swaps", "1"), StoryChip("min", "4", .answer)],
+                headline: "i2 has no children, so {9} stops and the heap is valid again.",
+                body: "At most one swap per level on the way down, so extract-min is O(log n) too."),
+    ]
+}
+
+struct PriorityQueueLab: View {
+    private let tabs: [(String, [PqFrame], [String])] = [
+        ("Insert", pqInsertFrames(), ["Sifting up", "Parent compared", "Swapped down"]),
+        ("Extract min", pqExtractFrames(), ["Sifting down", "Child compared", "Swapped up"]),
+    ]
+    @State private var tab = 0
+    @State private var playback = PlaybackState(stepCount: 6, speedMs: 1000)
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        let frames = tabs[tab].1
+        let frame = frames[min(playback.index, frames.count - 1)]
+        let present = Set(frame.tones.values)
+        let words = tabs[tab].2
+        VStack(alignment: .leading, spacing: 0) {
+            LabCard {
+                LabSegments(labels: tabs.map(\.0), selected: Binding(get: { tab }, set: { select($0) }))
+                PqTree(frame: frame)
+                    .frame(height: 186)
+                    .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 14))
+                    .padding(.top, 14)
+                PqStrip(frame: frame).padding(.top, 12)
+                StoryFormula(text: frame.formula).padding(.top, 12)
+                StoryLegendRow(items: [(PqTone.active, SimColors.active, words[0]), (.compared, SimColors.blue, words[1]), (.swapped, SimColors.green, words[2])]
+                    .filter { present.contains($0.0) }.map { ($0.1, .fill, $0.2) })
+                    .padding(.top, 14)
+            }
+            StoryChips(chips: frame.chips).padding(.top, 16)
+            LabStoryNarration(headline: frame.headline, body: frame.body).padding(.top, 16)
+            PlaybackTransport(state: playback, captions: frames.map { storyPlain($0.headline) })
+        }
+    }
+
+    private func select(_ i: Int) {
+        guard i != tab else { return }
+        tab = i
+        playback = PlaybackState(stepCount: tabs[i].1.count, speedMs: 1000)
+    }
+}
+
+private func pqColors(_ tone: PqTone?, _ palette: Palette) -> (Color, Color) {
+    switch tone ?? .idle {
+    case .idle: (palette.muted.opacity(0.22), palette.onSurface)
+    case .active: (SimColors.active, Color(hex: 0x1F1A0A))
+    case .compared: (SimColors.blue, .white)
+    case .swapped: (SimColors.green.opacity(palette.dark ? 0.24 : 0.18), StoryTone.done.ink(palette))
+    }
+}
+
+private struct PqTree: View {
+    let frame: PqFrame
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        Canvas { ctx, size in
+            let w: CGFloat = 44, h: CGFloat = 34
+            func at(_ i: Int) -> CGPoint {
+                let depth = Int(log2(Double(i + 1)))
+                let first = (1 << depth) - 1
+                let slots = CGFloat(1 << depth)
+                return CGPoint(x: (CGFloat(i - first) + 0.5) * size.width / slots, y: 30 + CGFloat(depth) * 62)
+            }
+            for i in 1..<frame.heap.count {
+                let lit = frame.bubble?.child == i
+                var p = Path(); p.move(to: at((i - 1) / 2)); p.addLine(to: at(i))
+                ctx.stroke(p, with: .color(lit ? SimColors.active : palette.muted.opacity(0.45)), lineWidth: lit ? 2.5 : 1.5)
+            }
+            for (i, v) in frame.heap.enumerated() {
+                let c = at(i)
+                let rect = CGRect(x: c.x - w / 2, y: c.y - h / 2, width: w, height: h)
+                let tile = Path(roundedRect: rect, cornerRadius: 8)
+                let (fill, ink) = pqColors(frame.tones[i], palette)
+                ctx.fill(tile, with: .color(palette.surface))
+                ctx.fill(tile, with: .color(fill))
+                ctx.draw(ctx.resolve(Text("\(v)").font(AppFont.mono(16, .bold)).foregroundColor(ink)), at: c)
+                ctx.draw(ctx.resolve(Text("i\(i)").font(AppFont.mono(10)).foregroundColor(palette.muted)), at: CGPoint(x: rect.maxX + 3, y: rect.minY + 2), anchor: .leading)
+            }
+            if let bubble = frame.bubble {
+                let a = at((bubble.child - 1) / 2), b = at(bubble.child)
+                let mid = CGPoint(x: (a.x + b.x) / 2 + (b.x > a.x ? 10 : -10), y: (a.y + b.y) / 2)
+                let text = ctx.resolve(Text(bubble.text).font(AppFont.mono(12, .bold)).foregroundColor(Color(hex: 0x1F1A0A)))
+                let size = text.measure(in: CGSize(width: 120, height: 30))
+                let pill = CGRect(x: mid.x - size.width / 2 - 6, y: mid.y - size.height / 2 - 3, width: size.width + 12, height: size.height + 6)
+                ctx.fill(Path(roundedRect: pill, cornerRadius: 6), with: .color(SimColors.active))
+                ctx.draw(text, at: mid)
+            }
+        }
+    }
+}
+
+private struct PqStrip: View {
+    let frame: PqFrame
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 5) {
+                ForEach(0..<pqCapacity, id: \.self) { i in
+                    let tone = frame.tones[i]
+                    Text("\(i)").font(AppFont.mono(12, tone == .active || tone == .compared ? .bold : .regular))
+                        .foregroundStyle(tone == .active ? StoryTone.active.ink(palette) : tone == .compared ? StoryTone.path.ink(palette) : palette.muted)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            HStack(spacing: 5) {
+                ForEach(0..<pqCapacity, id: \.self) { i in
+                    let filled = i < frame.heap.count
+                    let (fill, ink) = filled ? pqColors(frame.tones[i], palette) : (palette.muted.opacity(0.08), palette.muted.opacity(0.6))
+                    Text(filled ? "\(frame.heap[i])" : "·").font(AppFont.mono(15, .bold)).foregroundStyle(ink)
+                        .frame(maxWidth: .infinity).frame(height: 40)
+                        .background(fill, in: RoundedRectangle(cornerRadius: 8))
+                }
+            }
+        }
     }
 }

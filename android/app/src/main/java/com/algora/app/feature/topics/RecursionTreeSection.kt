@@ -607,6 +607,11 @@ internal val recursionTreeTopicIds: Set<String> get() = recursionConfigs.keys
 internal fun recursionTreeFrameCount(topicId: String): Int {
     val config = recursionConfigFor(topicId)
     var total = 0
+    // Strassen and Karatsuba draw story cards; check every size their stepper offers.
+    when (topicId) {
+        "strassens_algorithm" -> StrassenSizes.forEach { total += strassenSteps(it).size }
+        "karatsubas_algorithm" -> KaratsubaDigits.forEach { total += karatsubaSteps(it).size }
+    }
     for (n in config.nRange.start.toInt()..config.nRange.endInclusive.toInt()) {
         val trace = config.build(n)
         require(trace.frames.isNotEmpty()) { "$topicId at n = $n produced no frames" }
@@ -641,6 +646,10 @@ fun RecursionTreeSection(topicId: String) {
     when (topicId) {
         "tower_of_hanoi" -> HanoiLab()
         "n_queens" -> NQueensLab()
+        "strassens_algorithm" -> StrassenLab()
+        "karatsubas_algorithm" -> KaratsubaLab()
+        "fast_power", "modular_exponentiation" -> NumberStorySection(topicId)
+        in recursionStoryTopicIds -> RecursionStorySection(topicId)
         else -> RecursionTreeLab(topicId)
     }
 }

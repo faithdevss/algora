@@ -54,6 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.algora.app.core.ui.theme.IBMPlexMono
 import com.algora.app.core.ui.theme.SimColors
 
 // ── Tree visualizer ──────────────────────────────────────────────────────────
@@ -92,6 +93,8 @@ private class TreeNodeSpec(
     val badgeTone: TreeState = TreeState.Idle,
     // A green ring round the tile: a trie node that ends a word.
     val ring: Boolean = false,
+    // A line under the tile in the node's colour (tree DP's "take / skip").
+    val below: String? = null,
 )
 
 private class KeyCell(val value: String, val state: TreeState = TreeState.Idle)
@@ -205,6 +208,8 @@ private class TreeStory(
     val grid: List<StoryGridBlock> = emptyList(),
     // Per-step legend words, over the style's.
     val legendLabels: Map<LegendKey, String> = emptyMap(),
+    // Labelled lines of arithmetic under the tree ("take B   2 + 0 + 0 = 2").
+    val formulaRows: List<StoryFormulaRow> = emptyList(),
 ) {
     val status: String get() = HeadlineMark.replace(headline) { it.groupValues[2] } + " " + body
 }
@@ -274,6 +279,7 @@ private class TreeBuilder {
         ghost: Set<Int> = emptySet(),
         badges: Map<Int, Pair<String, TreeState>> = emptyMap(),
         rings: Set<Int> = emptySet(),
+        below: Map<Int, String> = emptyMap(),
     ) {
         frames.add(
             TreeFrame(
@@ -296,6 +302,7 @@ private class TreeBuilder {
                         badge = badges[n.id]?.first,
                         badgeTone = badges[n.id]?.second ?: TreeState.Idle,
                         ring = n.id in rings,
+                        below = below[n.id],
                     )
                 },
                 story?.status ?: status,
@@ -1305,53 +1312,170 @@ private fun priorityQueueFrames(): List<TreeFrame> {
 }
 
 // ── Huffman coding: build the tree bottom-up, then read the codes off it ─────
+// The forest over the queue it is built from: each step pops the two lightest subtrees (yellow), hangs
+// them under a new dashed node, and pushes that node back. Everything already inside a subtree is green.
 private fun huffmanFrames(): List<TreeFrame> {
     val b = TreeBuilder()
     val freq = listOf("a" to 20, "b" to 12, "c" to 8, "d" to 5, "e" to 3)
-    // Each live subtree tracks its root id, weight and the leaves under it.
-    class Sub(val id: Int, val weight: Int, val leaves: List<String>)
-
-    var live = freq.map { (ch, f) -> Sub(b.add("$ch:$f", null, 0), f, listOf(ch)) }
-    b.frame("Five symbols with their frequencies. Fixed-width coding would spend ⌈log₂ 5⌉ = 3 bits on every one of " +
-        "them, including the rare ones.")
-
-    while (live.size > 1) {
-        val sorted = live.sortedBy { it.weight }
-        val first = sorted[0]
-        val second = sorted[1]
-        b.frame("The two lightest subtrees are ${first.weight} and ${second.weight}. Merging the rarest pair first " +
-            "is what pushes them deepest, and depth is code length.",
-            active = setOf(first.id, second.id))
-        val merged = b.add((first.weight + second.weight).toString(), null, 0)
-        b.reparent(first.id, merged, 0)
-        b.reparent(second.id, merged, 1)
-        live = live.filterNot { it === first || it === second } + Sub(merged, first.weight + second.weight, first.leaves + second.leaves)
-        b.frame("They become children of a node weighing ${first.weight + second.weight}, which goes back into the " +
-            "pool. ${live.size} subtree(s) left.", marked = setOf(merged))
-    }
-
-    // A symbol's code length is its depth, read off the finished tree by walking parent links.
     val total = freq.sumOf { it.second }
-    val finalNodes = b.frames.last().nodes
-    val codeLengths = freq.associate { (ch, _) ->
-        var depth = 0
-        var current = finalNodes.first { it.label.startsWith("$ch:") }.id
-        var parent = finalNodes.first { it.id == current }.parent
-        while (parent != null) {
-            depth++
-            current = parent
-            parent = finalNodes.first { it.id == current }.parent
-        }
-        ch to depth
+
+    class Sub(val id: Int, val weight: Int, val symbol: String?) {
+        val label: String get() = symbol?.let { "$it:$weight" } ?: "$weight"
     }
-    val huffmanBits = freq.sumOf { (ch, f) -> f * codeLengths.getValue(ch) }
+    // The queue in pop order: lightest first, and on a tie the merged node before the symbol.
+    fun sorted(queue: List<Sub>) = queue.sortedWith(compareBy<Sub>({ it.weight }, { if (it.symbol == null) 0 else 1 }))
+
+    // Code lengths up front, so a merge step can say where the symbols it touches will end up.
+    val lengths = freq.associate { it.first to 0 }.toMutableMap()
+    run {
+        var pool = freq.map { it.second to listOf(it.first) }
+        while (pool.size > 1) {
+            val s = pool.sortedBy { it.first }
+            s[0].second.forEach { lengths[it] = lengths.getValue(it) + 1 }
+            s[1].second.forEach { lengths[it] = lengths.getValue(it) + 1 }
+            pool = s.drop(2) + ((s[0].first + s[1].first) to (s[0].second + s[1].second))
+        }
+    }
+    val deepest = freq.filter { lengths.getValue(it.first) == lengths.values.max() }.sortedBy { it.second }.map { it.first }
+    val shallowest = freq.first { lengths.getValue(it.first) == lengths.values.min() }.first
+
+    val merged = mutableSetOf<Int>()
+    val kids = HashMap<Int, Pair<Int, Int>>()
+    fun queueCells(queue: List<Sub>, popping: Int) = sorted(queue).mapIndexed { i, sub ->
+        StripCell("", sub.label, if (i < popping) TreeState.Active else TreeState.Idle)
+    }
+    fun story(
+        cells: List<StripCell>,
+        chips: List<Pair<String?, String>>,
+        headline: String,
+        body: String,
+        emphasis: TreeState = TreeState.Active,
+        next: Set<Int> = emptySet(),
+    ) = TreeStory(
+        title = "FOREST",
+        note = "merge two rarest",
+        stripLabel = "QUEUE",
+        stripNote = "by weight",
+        cells = cells,
+        chips = chips,
+        headline = headline,
+        emphasis = emphasis,
+        body = body,
+        nextEdges = next,
+        edgeStates = merged.associateWith { TreeState.Marked },
+    )
+
+    var queue = freq.map { (ch, f) -> Sub(b.add("$ch:$f", null, 0), f, ch) }
+    b.frame(
+        "",
+        story = story(
+            queueCells(queue, 0),
+            listOf("symbols" to "${freq.size}", "fixed" to "3 bits"),
+            "Count each symbol, then queue them {by weight}.",
+            "Fixed-width codes spend 3 bits on every symbol, rare ones included. Huffman gives the rare ones the " +
+                "long codes instead.",
+        ),
+    )
+
+    var step = 0
+    while (queue.size > 1) {
+        val pop = sorted(queue)
+        val x = pop[0]
+        val y = pop[1]
+        // Lighter on the left; on a tie the symbol goes left of the merged node.
+        val (left, right) = if (x.weight < y.weight || x.symbol != null) x to y else y to x
+        val weight = x.weight + y.weight
+        val node = b.add("$weight", null, 0)
+        b.reparent(left.id, node, 0)
+        b.reparent(right.id, node, 1)
+        kids[node] = left.id to right.id
+        val body = when (step) {
+            0 -> "Rare symbols end up deepest, so they get the longest codes."
+            1 -> "Rare symbols end up deepest, so they get the longest codes. ${deepest.joinToString(" and ")} end " +
+                "with ${lengths.getValue(deepest[0])} bits, and $shallowest with ${lengths.getValue(shallowest)}."
+            else -> if (queue.size == 2) "The last two subtrees join at the root." else "Every symbol under the new node gets one bit longer."
+        }
+        b.frame(
+            "",
+            active = setOf(x.id, y.id),
+            marked = merged.toSet(),
+            ghost = setOf(node),
+            story = story(
+                queueCells(queue, 2),
+                listOf("weight" to "${x.weight} + ${y.weight} = $weight", "queue" to "${queue.size} → ${queue.size - 1}"),
+                "Merge the two rarest, {${x.label}} and {${y.label}}, into $weight.",
+                body,
+                next = setOf(left.id, right.id),
+            ),
+        )
+        merged += left.id
+        merged += right.id
+        queue = queue.filterNot { it === x || it === y } + Sub(node, weight, null)
+        b.frame(
+            "",
+            marked = merged.toSet(),
+            story = story(
+                queueCells(queue, 0),
+                listOf("queue" to "${queue.size}"),
+                if (queue.size == 1) "{m:$weight} is the root: the whole message." else "{m:$weight} goes back into the queue.",
+                if (queue.size == 1) "Its weight is the total count, $total. The tree is finished."
+                else "${queue.size} subtrees left. It is sorted in by weight like any other entry.",
+                emphasis = TreeState.Marked,
+            ),
+        )
+        step++
+    }
+
+    // Left edges read 0, right edges 1; a symbol's code is the path down to its leaf.
+    kids.forEach { (_, pair) ->
+        b.setEdge(pair.first, "0")
+        b.setEdge(pair.second, "1")
+    }
+    val root = queue.single().id
+    val codes = HashMap<Int, String>()
+    fun walk(id: Int, code: String) {
+        codes[id] = code
+        kids[id]?.let { (l, r) -> walk(l, code + "0"); walk(r, code + "1") }
+    }
+    walk(root, "")
+    val leafIds = b.frames.first().nodes.associate { it.label.substringBefore(":") to it.id }
+    val codeCells = freq.map { (ch, _) -> StripCell(ch, codes.getValue(leafIds.getValue(ch)), TreeState.Marked) }
+    val leaves = leafIds.values.toSet()
+    val huffmanBits = freq.sumOf { (ch, f) -> f * lengths.getValue(ch) }
     val fixedBits = total * 3
 
-    b.frame("The tree is finished. A symbol's code is the path to it — left is 0, right is 1 — so its length is " +
-        "just its depth: " + freq.joinToString(", ") { "${it.first}=${codeLengths.getValue(it.first)} bits" } + ".")
-    b.frame("Weighted by frequency that is $huffmanBits bits for the whole message, against $fixedBits at a fixed " +
-        "3 bits each — a ${"%.0f".format(100.0 * (fixedBits - huffmanBits) / fixedBits)}% saving. No code is a " +
-        "prefix of another, because every symbol sits at a leaf, so the decoder never needs a separator.")
+    fun codeStory(chips: List<Pair<String?, String>>, headline: String, body: String) = TreeStory(
+        title = "CODE TREE",
+        note = "left 0 · right 1",
+        stripLabel = "CODES",
+        cells = codeCells,
+        chips = chips,
+        headline = headline,
+        emphasis = TreeState.Marked,
+        body = body,
+        legendLabels = mapOf(LegendKey.Marked to "Symbol"),
+    )
+    b.frame(
+        "",
+        marked = leaves,
+        story = codeStory(
+            freq.map { (ch, _) -> ch to codes.getValue(leafIds.getValue(ch)) },
+            "Read each code off the path: {left is 0, right is 1}.",
+            "Frequent $shallowest gets ${lengths.getValue(shallowest)} bit; rare ${deepest.joinToString(" and ")} get " +
+                "${lengths.getValue(deepest[0])}. No code is a prefix of another, since every symbol is a leaf.",
+        ),
+    )
+    b.frame(
+        "",
+        marked = leaves,
+        story = codeStory(
+            listOf("huffman" to "$huffmanBits bits", "fixed" to "$fixedBits bits", "saved" to "${100 * (fixedBits - huffmanBits) / fixedBits}%"),
+            "The message costs {$huffmanBits bits} instead of $fixedBits.",
+            "Each symbol costs its count times its code length: " +
+                freq.joinToString(" + ") { (ch, f) -> "$f×${lengths.getValue(ch)}" } + " = $huffmanBits. Fixed 3-bit " +
+                "codes need $total × 3 = $fixedBits.",
+        ),
+    )
     return b.frames
 }
 
@@ -1831,7 +1955,8 @@ private fun lcaFrames(): List<TreeFrame> {
 
 private fun treeDpFrames(): List<TreeFrame> {
     val b = TreeBuilder()
-    val weight = linkedMapOf<String, Int>("A" to 3, "B" to 2, "C" to 4, "D" to 5, "E" to 1, "F" to 6)
+    val weight = linkedMapOf("A" to 3, "B" to 2, "C" to 4, "D" to 5, "E" to 1, "F" to 6)
+    val children = mapOf("A" to listOf("B", "C"), "B" to listOf("D", "E"), "C" to listOf("F"))
 
     val a = b.add("A·3", null, 0)
     val bb = b.add("B·2", a, 0)
@@ -1839,71 +1964,98 @@ private fun treeDpFrames(): List<TreeFrame> {
     val d = b.add("D·5", bb, 0)
     val e = b.add("E·1", bb, 1)
     val f = b.add("F·6", c, 0)
-
     val ids = mapOf("A" to a, "B" to bb, "C" to c, "D" to d, "E" to e, "F" to f)
-    val dp0 = mutableMapOf<String, Int>()
-    val dp1 = mutableMapOf<String, Int>()
 
-    fun show(name: String) {
-        b.relabel(ids.getValue(name), "$name ${dp0[name]}/${dp1[name]}")
-    }
+    // take[n]: best weight in n's subtree with n in the set; skip[n]: with n left out.
+    val take = mutableMapOf<String, Int>()
+    val skip = mutableMapOf<String, Int>()
 
-    b.frame(
-        "Maximum-weight independent set: pick nodes with the largest total weight, never two that are joined by " +
-            "an edge. Labels are node·weight.",
-        marked = setOf(a),
-    )
-
-    // Leaves first — post-order is what makes each parent's inputs ready.
-    for (leaf in listOf("D", "E", "F")) {
-        dp0[leaf] = 0
-        dp1[leaf] = weight.getValue(leaf)
-        show(leaf)
+    fun step(
+        headline: String,
+        body: String,
+        active: String? = null,
+        rows: List<StoryFormulaRow> = emptyList(),
+        marked: Set<String> = emptySet(),
+        chips: List<Pair<String?, String>> = listOf("order" to "post-order"),
+    ) {
+        val story = TreeStory(
+            title = "MAX INDEPENDENT SET",
+            note = "badges = take / skip",
+            stripLabel = null,
+            cells = emptyList(),
+            chips = chips,
+            headline = headline,
+            emphasis = if (marked.isEmpty()) TreeState.Active else TreeState.Marked,
+            body = body,
+            plainEdges = true,
+            formulaRows = rows,
+        )
         b.frame(
-            "Leaf $leaf: not taking it is worth 0, taking it is worth ${weight[leaf]}. Labels now read " +
-                "\"not-taken / taken\".",
-            active = setOf(ids.getValue(leaf)),
+            story.status,
+            active = setOfNotNull(active?.let { ids.getValue(it) }),
+            path = children[active].orEmpty().map { ids.getValue(it) }.toSet(),
+            marked = marked.map { ids.getValue(it) }.toSet(),
+            below = take.keys.associate { ids.getValue(it) to "${take[it]} / ${skip[it]}" },
+            story = story,
         )
     }
 
-    dp1["B"] = weight.getValue("B") + dp0.getValue("D") + dp0.getValue("E")
-    dp0["B"] = maxOf(dp0.getValue("D"), dp1.getValue("D")) + maxOf(dp0.getValue("E"), dp1.getValue("E"))
-    show("B")
-    b.frame(
-        "B's children are finished, so B can be resolved. Taking B forbids D and E: 2 + 0 + 0 = ${dp1["B"]}. " +
-            "Not taking B leaves each child free to do whichever is better: 5 + 1 = ${dp0["B"]}.",
-        active = setOf(bb),
-        path = setOf(d, e),
-    )
+    fun solve(n: String): List<StoryFormulaRow> {
+        val kids = children[n].orEmpty()
+        take[n] = weight.getValue(n) + kids.sumOf { skip.getValue(it) }
+        skip[n] = kids.sumOf { maxOf(take.getValue(it), skip.getValue(it)) }
+        if (kids.isEmpty()) {
+            return listOf(StoryFormulaRow("take $n", "{${take[n]}}"), StoryFormulaRow("skip $n", "{${skip[n]}}"))
+        }
+        val takeSum = (listOf("${weight[n]}") + kids.map { "{p:${skip[it]}}" }).joinToString(" + ")
+        val skipSum = kids.joinToString(" + ") { "{p:${maxOf(take.getValue(it), skip.getValue(it))}}" }
+        return listOf(
+            StoryFormulaRow("take $n", "$takeSum = {${take[n]}}"),
+            StoryFormulaRow("skip $n", if (kids.size == 1) "$skipSum" else "$skipSum = {${skip[n]}}"),
+        )
+    }
 
-    dp1["C"] = weight.getValue("C") + dp0.getValue("F")
-    dp0["C"] = maxOf(dp0.getValue("F"), dp1.getValue("F"))
-    show("C")
-    b.frame(
-        "Same rule at C: taking it gives 4 + 0 = ${dp1["C"]}, skipping it lets F be taken for ${dp0["C"]}. " +
-            "Note the subtree already prefers the child over the parent here.",
-        active = setOf(c),
-        path = setOf(f),
+    step(
+        "Pick nodes with the largest total weight, never two {w:joined by an edge}.",
+        "Labels are node·weight. Post-order solves every child before its parent, so each parent's inputs are ready.",
     )
-
-    dp1["A"] = weight.getValue("A") + dp0.getValue("B") + dp0.getValue("C")
-    dp0["A"] = maxOf(dp0.getValue("B"), dp1.getValue("B")) + maxOf(dp0.getValue("C"), dp1.getValue("C"))
-    show("A")
-    b.frame(
-        "The root combines both subtrees: take A for 3 + ${dp0["B"]} + ${dp0["C"]} = ${dp1["A"]}, or skip it for " +
-            "${dp0["A"]}. Every subtree was solved exactly once, so this whole pass is O(n).",
-        active = setOf(a),
-        path = setOf(bb, c),
+    step(
+        "Leaf {D}: taking it is worth 5, skipping it 0.",
+        "A leaf has no children to rule out, so its two answers are its weight and zero.",
+        active = "D", rows = solve("D"),
     )
-
-    val best = maxOf(dp0.getValue("A"), dp1.getValue("A"))
-    b.frame(
-        "Answer ${best}: take A, D, E and F — 3 + 5 + 1 + 6. No two of them are adjacent, and the greedy " +
-            "alternative of taking the heaviest node first would have blocked its neighbours for less.",
-        marked = setOf(a, d, e, f),
-        path = setOf(bb, c),
+    step(
+        "Leaf {E}: taking it is worth 1, skipping it 0.",
+        "Post-order finishes both of B's children before B itself.",
+        active = "E", rows = solve("E"),
     )
-
+    step(
+        "Taking {B} rules out D and E. Skipping it lets both in.",
+        "Each node keeps two answers, with and without itself. The root picks the better one.",
+        active = "B", rows = solve("B"),
+    )
+    step(
+        "Leaf {F}: taking it is worth 6, skipping it 0.",
+        "B's subtree is finished, so the pass moves over to C's.",
+        active = "F", rows = solve("F"),
+    )
+    step(
+        "Taking {C} rules out F. Skipping it lets F in, and F weighs more.",
+        "A heavy child can beat its parent: skipping C keeps 6, taking it only 4.",
+        active = "C", rows = solve("C"),
+    )
+    step(
+        "Taking {A} wins: 15 against 12.",
+        "Taking A means skipping B and C, and both already did best without themselves.",
+        active = "A", rows = solve("A"),
+    )
+    val best = maxOf(take.getValue("A"), skip.getValue("A"))
+    step(
+        "{A, D, E and F} weigh 3 + 5 + 1 + 6 = $best.",
+        "No two of them share an edge. Every subtree was solved once, so the whole pass is O(n).",
+        marked = setOf("A", "D", "E", "F"),
+        chips = listOf("order" to "post-order", "best" to "$best"),
+    )
     return b.frames
 }
 
@@ -3375,8 +3527,16 @@ private val treeConfigs = mapOf(
             "resolves each subtree — children are always finished before their parent is touched.",
         markedLabel = "Chosen set",
         build = ::treeDpFrames,
-        cardTitle = "MAX INDEPENDENT SET",
-        cardNote = "post-order",
+        storyStyle = StoryStyle(
+            canvasHeight = 220,
+            rowGap = 84,
+            legend = listOf(
+                LegendKey.Active to "Solving",
+                LegendKey.Path to "Solved child",
+                LegendKey.Marked to "Chosen",
+            ),
+            noteMono = true,
+        ),
     ),
     "binary_search_tree" to TreeConfig(
         intro = "Inserting 50, 30, 70, 20, 40, 60, 80, then searching for 60. Every operation walks one root-to-leaf path, comparing once per level.",
@@ -3558,8 +3718,12 @@ private val treeConfigs = mapOf(
             "symbols. The bit totals at the end are counted from the tree it actually built.",
         markedLabel = "Merged",
         build = ::huffmanFrames,
-        cardTitle = "HUFFMAN TREE",
-        cardNote = "merge two rarest",
+        storyStyle = StoryStyle(
+            canvasHeight = 210,
+            rowGap = 56,
+            legend = listOf(LegendKey.Active to "Merging", LegendKey.Marked to "Merged", LegendKey.Ghost to "New node"),
+            wideCells = true,
+        ),
     ),
     "disjoint_set" to TreeConfig(
         intro = "A forest where the only thing a tree means is \"these elements are in one set\". Union by rank " +
@@ -3662,6 +3826,7 @@ private fun genericStory(config: TreeConfig, status: String): TreeStory {
 
 @Composable
 fun TreeVisualizerSection(topicId: String) {
+    if (topicId == "priority_queue_adt") return PriorityQueueLabSection()
     val config = remember(topicId) { treeConfigFor(topicId) }
     var tab by remember(config) { mutableIntStateOf(0) }
     val variant = config.variants.getOrNull(tab)
@@ -3794,6 +3959,9 @@ private fun TreeStoryLab(
                 if (frame.nodes.isNotEmpty()) {
                     StoryCanvas(style, frame, story, linkColor, Modifier.padding(top = 12.dp))
                 }
+                if (story.formulaRows.isNotEmpty()) {
+                    StoryFormulaRows(story.formulaRows, Modifier.padding(top = 12.dp))
+                }
 
                 story.grid.forEachIndexed { i, block ->
                     StoryGrid(block, Modifier.padding(top = if (i == 0) 12.dp else 16.dp))
@@ -3831,7 +3999,8 @@ private fun TreeStoryLab(
                                 LegendKey.Overflow -> StoryLegendItem(SimColors.Red, label)
                                 LegendKey.Warn -> StoryLegendItem(SimColors.Red, label)
                                 LegendKey.Ring -> StoryLegendItem(MarkedColor, label, ring = true)
-                                LegendKey.Ghost -> StoryLegendItem(ActiveColor, label, dash = true)
+                                // A ghost is drawn as a dashed box, so its key is one too.
+                                LegendKey.Ghost -> StorySwatch(ActiveColor, SwatchStyle.Dashed, label)
                                 LegendKey.Answer -> StoryLegendItem(SimColors.Answer, label)
                             }
                         }
@@ -4206,6 +4375,13 @@ private fun StoryCanvas(style: StoryStyle, frame: TreeFrame, story: TreeStory, l
     val maxDepth = depthById.values.maxOrNull() ?: 0
     val hasSub = frame.nodes.any { it.sub != null }
     val hasOverflow = frame.nodes.any { it.overflow != null }
+    val hasBelow = frame.nodes.any { it.below != null }
+    val belowStyle = TextStyle(fontFamily = IBMPlexMono, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+    val belowInk = mapOf(
+        TreeState.Active to StoryTone.Active.ink(),
+        TreeState.Path to StoryTone.Path.ink(),
+        TreeState.Marked to StoryTone.Done.ink(),
+    )
 
     Canvas(modifier = modifier.fillMaxWidth().height(style.canvasHeight.dp)) {
         val nodeH = (if (hasSub) 40.dp else 34.dp).toPx()
@@ -4264,7 +4440,7 @@ private fun StoryCanvas(style: StoryStyle, frame: TreeFrame, story: TreeStory, l
             }
         }
 
-        val captionSpace = if (hasOverflow) 20.dp.toPx() else 0f
+        val captionSpace = if (hasOverflow || hasBelow) 20.dp.toPx() else 0f
         val panelSpace = if (story.panels.isNotEmpty()) 22.dp.toPx() else 0f
         val rowGap = if (maxDepth == 0) 0f else minOf(style.rowGap.dp.toPx(), (size.height - nodeH - captionSpace - panelSpace - 8.dp.toPx()) / maxDepth)
         // Centre the tree's block vertically, so a shallow frame (eight singletons) is not stuck to the top.
@@ -4476,6 +4652,21 @@ private fun StoryCanvas(style: StoryStyle, frame: TreeFrame, story: TreeStory, l
             }
             if (node.ring) {
                 drawRoundRect(MarkedColor, boxTopLeft, box, radius, style = Stroke(2.dp.toPx()))
+            }
+            node.below?.let { text ->
+                val layout = textMeasurer.measure(text, belowStyle)
+                // Backed by the card colour, so an edge running past the caption passes behind it.
+                drawRoundRect(
+                    surface,
+                    Offset(center.x - layout.size.width / 2f - 3.dp.toPx(), boxTopLeft.y + box.height + 4.dp.toPx()),
+                    Size(layout.size.width + 6.dp.toPx(), layout.size.height.toFloat()),
+                    androidx.compose.ui.geometry.CornerRadius(4.dp.toPx()),
+                )
+                drawText(
+                    layout,
+                    color = belowInk[node.state] ?: muted,
+                    topLeft = Offset(center.x - layout.size.width / 2f, boxTopLeft.y + box.height + 4.dp.toPx()),
+                )
             }
             val label = textMeasurer.measure(node.label, labelStyle)
             val sub = node.sub

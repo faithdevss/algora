@@ -298,6 +298,10 @@ fun LabIntro(text: String, modifier: Modifier = Modifier) {
 // ── Shared playback transport ────────────────────────────────────────────────
 // Owns the current step index + play/pause + speed for any precomputed-snapshot sim. The widget
 // renders steps[state.index]; this drives auto-advance.
+// Every lab's per-step delay is stretched by this at 1×, so a step's narration can be read before the
+// next one lands. The rate buttons still scale from here.
+private const val PLAYBACK_PACE = 2f
+
 class PlaybackState(val stepCount: Int, initialSpeedMs: Float) {
     var index by mutableStateOf(0)
     var playing by mutableStateOf(false)
@@ -409,7 +413,7 @@ fun LabTransportBar(
     // Auto-advance while playing; the rate is read fresh each tick so a change takes effect live.
     LaunchedEffect(state, state.playing) {
         while (state.playing) {
-            delay((state.speedMs / state.rate).toLong())
+            delay((state.speedMs * PLAYBACK_PACE / state.rate).toLong())
             if (state.index < state.stepCount - 1) state.index++ else state.playing = false
         }
     }
