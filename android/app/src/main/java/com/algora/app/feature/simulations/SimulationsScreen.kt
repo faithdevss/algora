@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -133,8 +134,8 @@ internal fun simLabel(type: SimulationType): String = when (type) {
 // Tapping a row opens that topic's detail page, whose Interactive Simulation section hosts the lab.
 @Composable
 fun SimulationsScreen(onTopicClick: (String) -> Unit, modifier: Modifier = Modifier) {
-    val groups = remember { buildGroups() }
-    val total = remember(groups) { groups.sumOf { it.count } }
+    val groups = simGroups
+    val total = simTotal
 
     // A premium topic's lab is premium too (SimulationDetailScreen enforces it) — the catalog row
     // has to say so up front, and the padlock must vanish the moment premium or an ad unlock lands.
@@ -152,8 +153,10 @@ fun SimulationsScreen(onTopicClick: (String) -> Unit, modifier: Modifier = Modif
     val searching = query.isNotBlank()
     val visibleGroups = remember(groups, query) { if (searching) groups.mapNotNull { it.filtered(query) } else groups }
 
+    // Edge-to-edge leaves the keyboard over the content unless the list shrinks for it; without this
+    // the search hits sat under the keyboard.
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize().imePadding(),
         contentPadding = PaddingValues(
             start = ScreenGutter,
             end = ScreenGutter,
@@ -188,7 +191,7 @@ fun SimulationsScreen(onTopicClick: (String) -> Unit, modifier: Modifier = Modif
         visibleGroups.forEach { group ->
             // A search shows its hits directly — collapsing them behind two taps would hide the answer.
             val sectionOpen = searching || group.section.name in expandedSections
-            item(key = "header_${group.section.name}") {
+            item(key = "header_${group.section.name}", contentType = "section") {
                 SimGroupHeader(
                     group = group,
                     isExpanded = sectionOpen,
@@ -205,7 +208,7 @@ fun SimulationsScreen(onTopicClick: (String) -> Unit, modifier: Modifier = Modif
             if (sectionOpen) {
                 group.subgroups.forEach { subgroup ->
                     val categoryOpen = searching || subgroup.key in expandedCategories
-                    item(key = "cat_${subgroup.key}") {
+                    item(key = "cat_${subgroup.key}", contentType = "category") {
                         AccordionHeader(
                             title = subgroup.name,
                             count = subgroup.entries.size,
@@ -222,7 +225,7 @@ fun SimulationsScreen(onTopicClick: (String) -> Unit, modifier: Modifier = Modif
                         )
                     }
                     if (categoryOpen) {
-                        items(subgroup.entries, key = { "${subgroup.key}_${it.topic.id}" }) { entry ->
+                        items(subgroup.entries, key = { "${subgroup.key}_${it.topic.id}" }, contentType = { "lab" }) { entry ->
                             SimulationRow(
                                 entry = entry,
                                 isLocked = entry.topic.isPremium && !isPremium && entry.topic.id !in adUnlocks,
@@ -256,6 +259,11 @@ private fun patternGroupName(type: SimulationType): String = when (type) {
     SimulationType.GameSearchPlayer -> "Game Search"
     else -> "Other"
 }
+
+// Built once per process: the catalog is static, and rebuilding it every time the tab re-enters
+// composition (back from a lab) cost a frame on the way back.
+private val simGroups: List<SimGroup> by lazy { buildGroups() }
+private val simTotal: Int by lazy { simGroups.sumOf { it.count } }
 
 private fun buildGroups(): List<SimGroup> {
     val entriesBySection = LinkedHashMap<Section, LinkedHashMap<String, MutableList<SimEntry>>>()

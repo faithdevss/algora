@@ -1,6 +1,9 @@
 package com.algora.app.core.nav
 
 import androidx.compose.runtime.Composable
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -44,7 +47,17 @@ fun NavGraph(
     // Category browsers are entered from Home (or the Practice tab), which stays on the back stack.
     val goBack: () -> Unit = { navController.popBackStack() }
 
-    NavHost(navController = navController, startDestination = Screen.Home.route, modifier = modifier) {
+    // Navigation Compose's default is a 700ms crossfade, during which both screens stay composed and
+    // taps land on the outgoing one — opening a lab, backing out and picking another felt sluggish.
+    NavHost(
+        navController = navController,
+        startDestination = Screen.Home.route,
+        modifier = modifier,
+        enterTransition = { fadeIn(tween(NAV_FADE_MS)) },
+        exitTransition = { fadeOut(tween(NAV_FADE_MS)) },
+        popEnterTransition = { fadeIn(tween(NAV_FADE_MS)) },
+        popExitTransition = { fadeOut(tween(NAV_FADE_MS)) },
+    ) {
         // DSA mode
         composable(Screen.InterviewPrep.route) { InterviewPrepScreen(onTopicClick = openTopic, onBack = goBack) }
         composable(PatternsRoute.ROUTE) { PatternsScreen(onTopicClick = openTopic, onBack = goBack) }
@@ -176,3 +189,5 @@ fun NavGraph(
         }
     }
 }
+
+private const val NAV_FADE_MS = 180

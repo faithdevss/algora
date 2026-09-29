@@ -11,6 +11,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -285,7 +286,9 @@ fun AlgoraApp(
             navController = navController,
             mode = mode,
             onModeChange = onModeChange,
-            modifier = Modifier.padding(innerPadding),
+            // Consumed so a screen's imePadding() only adds the part of the keyboard that rises
+            // above the bottom bar, not the bar's height a second time.
+            modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding),
         )
     }
 }
