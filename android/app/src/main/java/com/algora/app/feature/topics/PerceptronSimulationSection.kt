@@ -43,10 +43,9 @@ import com.algora.app.core.ui.theme.IBMPlexMono
 import com.algora.app.core.ui.theme.SimColors
 import kotlin.math.roundToInt
 
-// Parameter lab (screen 4e): AND / OR / XOR tabs, a stage with the four inputs on the plane and the
-// half-plane w₁·x₁ + w₂·x₂ + b ≥ 0 shaded, a truth-table row, a verdict, then the three sliders.
-// Docked (sim-only screen) the sliders pin to the bottom in thumb reach; on the topic page they sit
-// under a divider in the card.
+// AND / OR / XOR tabs, a stage with the four inputs on the plane and the half-plane w₁·x₁ + w₂·x₂ + b ≥ 0
+// shaded, a truth-table row, chips and a story headline, then a w₁ / w₂ / b picker with the value's
+// stepper and Train Step. Docked (sim-only screen) the controls pin to the bottom in thumb reach.
 
 private class Gate(val label: String, val targets: List<Int>)
 
@@ -68,19 +67,73 @@ private const val AXIS_HI = 1.36f
 private fun predict(w1: Float, w2: Float, b: Float, x: Int, y: Int): Int =
     if (w1 * x + w2 * y + b >= 0f) 1 else 0
 
-/** Sliders snap to one decimal, matching their readout. */
+/** Values snap to one decimal, matching their readout. */
 private fun snap(v: Float): Float = (v * 10f).roundToInt() / 10f
+
+private val startWeights = floatArrayOf(1f, 1f, -1.5f)
+private val symbols = listOf("w₁", "w₂", "b")
+
+/** One perceptron-rule update on the first input it gets wrong: w += (target − output)·x, b += (target − output). */
+private fun trainStep(w: FloatArray, gate: Gate): FloatArray {
+    val i = inputs.indices.firstOrNull { predict(w[0], w[1], w[2], inputs[it].first, inputs[it].second) != gate.targets[it] } ?: return w
+    val (x, y) = inputs[i]
+    val e = gate.targets[i] - predict(w[0], w[1], w[2], x, y)
+    return floatArrayOf(
+        snap((w[0] + 0.5f * e * x).coerceIn(-3f, 3f)),
+        snap((w[1] + 0.5f * e * y).coerceIn(-3f, 3f)),
+        snap((w[2] + 0.5f * e).coerceIn(-3f, 3f)),
+    )
+}
+
+private fun pointName(i: Int) = "(${inputs[i].first},${inputs[i].second})"
+
+private fun joined(names: List<String>) = when (names.size) {
+    0 -> ""
+    1 -> names[0]
+    else -> names.dropLast(1).joinToString(", ") + " and " + names.last()
+}
+
+private fun perceptronStory(gate: Gate, outputs: List<Int>): Pair<String, String> {
+    val wrong = inputs.indices.filter { outputs[it] != gate.targets[it] }
+    val correct = 4 - wrong.size
+    val xorBody = "No values of w₁, w₂ and b fix that, because one line cannot split XOR. A hidden layer can."
+    if (wrong.isEmpty()) {
+        return "{m:All 4 correct.} One straight line separates ${gate.label}." to
+            "The shaded side outputs 1. Try XOR next: Train Step will never settle there."
+    }
+    if (wrong.size == 1) {
+        val i = wrong[0]
+        val with = inputs.indices.filter { it != i && outputs[it] == outputs[i] }.map(::pointName)
+        val wants = inputs.indices.filter { it != i && gate.targets[it] == gate.targets[i] }.map(::pointName)
+        val headline = if (with.isNotEmpty() && wants.isNotEmpty()) {
+            "$correct of 4. {w:${pointName(i)}} lands with ${joined(with)}, but ${gate.label} wants it with ${joined(wants)}."
+        } else {
+            "$correct of 4. {w:${pointName(i)}} lands on the ${outputs[i]} side, but ${gate.label} wants ${gate.targets[i]}."
+        }
+        return headline to if (gate.label == "XOR") xorBody else "Train Step moves the line toward it: w += (target − output)·x."
+    }
+    return "$correct of 4. {w:${wrong.size} inputs} are on the wrong side." to
+        if (gate.label == "XOR") xorBody else "Train Step fixes them one at a time: w += (target − output)·x."
+}
 
 @Composable
 fun PerceptronSimulationSection() {
     var gateIndex by remember { mutableIntStateOf(0) }
-    var w1 by remember { mutableFloatStateOf(1f) }
-    var w2 by remember { mutableFloatStateOf(1f) }
-    var bias by remember { mutableFloatStateOf(-1.5f) }
+    val weights = remember { startWeights.map { mutableFloatStateOf(it) } }
+    var selected by remember { mutableIntStateOf(2) }
+    val w = floatArrayOf(weights[0].floatValue, weights[1].floatValue, weights[2].floatValue)
 
     val gate = gates[gateIndex]
-    val outputs = inputs.map { (x, y) -> predict(w1, w2, bias, x, y) }
+    val outputs = inputs.map { (x, y) -> predict(w[0], w[1], w[2], x, y) }
     val correct = outputs.indices.count { outputs[it] == gate.targets[it] }
+    // The chip reads the score at the input in question: the first one wrong, else (1,1).
+    val focus = outputs.indices.firstOrNull { outputs[it] != gate.targets[it] } ?: 3
+    val focusScore = w[0] * inputs[focus].first + w[1] * inputs[focus].second + w[2]
+    val (headline, body) = perceptronStory(gate, outputs)
+    val chips = listOf(
+        if (correct == 4) LabChip("correct", "4 / 4", good = true) else LabChip("correct", "$correct / 4", tint = StoryTone.Warn),
+        LabChip("w·x+b at ${pointName(focus)}", "%.1f".format(focusScore)),
+    )
 
     val dock = LocalLabDock.current
     LabIntro(
@@ -89,25 +142,20 @@ fun PerceptronSimulationSection() {
     )
 
     val controls: @Composable () -> Unit = {
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            LabParamSlider("Weight", "w₁", w1, -2f..2f) { w1 = snap(it) }
-            LabParamSlider("Weight", "w₂", w2, -2f..2f) { w2 = snap(it) }
-            LabParamSlider("Bias", "b", bias, -3f..3f) { bias = snap(it) }
-        }
-    }
-
-    val stage: @Composable () -> Unit = {
-        Column {
-            GatePlane(gate, w1, w2, bias)
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                inputs.forEachIndexed { i, (x, y) ->
-                    TruthCell("$x $y →", outputs[i], outputs[i] == gate.targets[i], Modifier.weight(1f))
-                }
-            }
-        }
+        LabParamActionControls(
+            params = listOf("Weight", "Weight", "Bias").mapIndexed { i, name ->
+                val v = weights[i].floatValue
+                LabParam("$name ${symbols[i]}", name, symbols[i], "%.1f".format(v), v > -3f + 1e-4f, v < 3f - 1e-4f)
+            },
+            selected = selected,
+            onSelect = { selected = it },
+            onStep = { i, delta -> weights[i].floatValue = snap((weights[i].floatValue + delta * 0.1f).coerceIn(-3f, 3f)) },
+            action = "Train Step",
+            onAction = {
+                val next = trainStep(w, gate)
+                weights.forEachIndexed { i, s -> s.floatValue = next[i] }
+            },
+        )
     }
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -119,26 +167,34 @@ fun PerceptronSimulationSection() {
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                stage()
-                if (dock == null) {
-                    Verdict(gate, correct, Modifier.padding(top = 16.dp))
-                    HorizontalDivider(modifier = Modifier.padding(top = 16.dp, bottom = 14.dp), color = MaterialTheme.colorScheme.outline)
-                    controls()
+                GatePlane(gate, w[0], w[1], w[2], wrong = outputs.indices.filter { outputs[it] != gate.targets[it] }.toSet())
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    inputs.forEachIndexed { i, (x, y) ->
+                        TruthCell("$x $y →", outputs[i], outputs[i] == gate.targets[i], Modifier.weight(1f))
+                    }
                 }
             }
         }
-        if (dock != null) Verdict(gate, correct, Modifier.padding(start = 4.dp, end = 4.dp, top = 18.dp))
+        LabChips(chips, Modifier.padding(top = 16.dp))
+        LabStoryNarration(headline, body, Modifier.padding(top = 16.dp))
+        if (dock == null) {
+            HorizontalDivider(modifier = Modifier.padding(top = 16.dp, bottom = 14.dp), color = MaterialTheme.colorScheme.outline)
+            controls()
+        }
     }
 
     if (dock != null) {
-        // Re-handed every composition: the controls close over this composition's slider values.
+        // Re-handed every composition: the controls close over this composition's values.
         SideEffect { dock.controls = controls }
         DisposableEffect(dock) { onDispose { dock.controls = null } }
     }
 }
 
 @Composable
-private fun GatePlane(gate: Gate, w1: Float, w2: Float, bias: Float) {
+private fun GatePlane(gate: Gate, w1: Float, w2: Float, bias: Float, wrong: Set<Int>) {
     val accent = MaterialTheme.colorScheme.primary
     val axisColor = MaterialTheme.colorScheme.outline
     val ring = MaterialTheme.colorScheme.surface
@@ -171,6 +227,7 @@ private fun GatePlane(gate: Gate, w1: Float, w2: Float, bias: Float) {
             val c = Offset(px(x.toFloat()), py(y.toFloat()))
             drawCircle(if (gate.targets[i] == 1) OneColor else ZeroColor, radius = r, center = c)
             drawCircle(ring, radius = r, center = c, style = Stroke(width = 2.dp.toPx()))
+            if (i in wrong) drawCircle(SimColors.Red, radius = r + 5.dp.toPx(), center = c, style = Stroke(width = 2.5.dp.toPx()))
             val text = measurer.measure("($x,$y)", labelStyle)
             val gap = r + 5.dp.toPx()
             val top = if (y == 1) c.y - gap - text.size.height else c.y + gap
@@ -183,7 +240,7 @@ private fun GatePlane(gate: Gate, w1: Float, w2: Float, bias: Float) {
 private fun TruthCell(inputLabel: String, output: Int, ok: Boolean, modifier: Modifier) {
     Column(
         modifier = modifier
-            .background(SimColors.Tint.copy(alpha = 0.18f), RoundedCornerShape(10.dp))
+            .background(if (ok) SimColors.Tint else SimColors.Red.copy(alpha = 0.18f), RoundedCornerShape(10.dp))
             .padding(vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -193,41 +250,8 @@ private fun TruthCell(inputLabel: String, output: Int, ok: Boolean, modifier: Mo
             fontFamily = IBMPlexMono,
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
-            color = if (ok) SimColors.Green else SimColors.Red,
+            color = if (ok) StoryTone.Done.ink() else StoryTone.Warn.ink(),
             modifier = Modifier.padding(top = 4.dp),
-        )
-    }
-}
-
-@Composable
-private fun Verdict(gate: Gate, correct: Int, modifier: Modifier) {
-    val solved = correct == 4
-    val headline = buildAnnotatedString {
-        withStyle(SpanStyle(color = if (solved) SimColors.Green else MaterialTheme.colorScheme.onSurface)) {
-            append(if (solved) "All 4 correct." else "$correct of 4 correct.")
-        }
-        append(
-            when {
-                solved -> " One straight line separates ${gate.label}."
-                gate.label == "XOR" -> " No straight line separates XOR."
-                else -> " Move the line until every cell shows ✓."
-            },
-        )
-    }
-    val detail = when {
-        gate.label == "XOR" ->
-            "One perceptron tops out at 3 of 4 here. That gap is why networks add a hidden layer."
-        solved -> "Try XOR next: no setting of these sliders will work."
-        else -> "The shaded side outputs 1. Bias slides the line; the weights tilt it."
-    }
-    Column(modifier = modifier) {
-        Text(headline, fontSize = 19.sp, lineHeight = 25.sp, fontWeight = FontWeight.SemiBold)
-        Text(
-            detail,
-            fontSize = 15.sp,
-            lineHeight = 21.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 8.dp),
         )
     }
 }

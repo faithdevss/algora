@@ -1,7 +1,8 @@
 import SwiftUI
 
 // Port of RegressionLabSection.kt: one canvas, readout row, sliders and a solve button, driven by a
-// per-topic config — regression estimators, time-series forecasting and regression metrics.
+// per-topic config — time-series forecasting and regression metrics. The regression estimators moved
+// to their own storyboard layout in RegressionStoryLabs.swift.
 
 private let labFit = Color(hex: 0x4F46E5)
 private let labPoint = Color(hex: 0x7C3AED)
@@ -68,330 +69,12 @@ private func fmt(_ v: Double) -> String {
 private func rInt(_ v: Double) -> Int { Int(Float(v).rounded()) }
 private func expLabel(_ v: Double) -> String { "1e\(rInt(v))" }
 
-// MARK: Datasets
-
-private func wavyData(_ seed: Int32) -> [LabPoint] {
-    var r = KotlinRandom(seed)
-    return (0..<24).map { i in
-        let x = Float(i) * 0.4
-        return LabPoint(x: x, y: 3 + 1.6 * sinf(x * 0.75) + 0.18 * x + (r.nextFloat() - 0.5) * 1.1)
-    }
-}
-
-private func outlierData(_ seed: Int32) -> [LabPoint] {
-    var r = KotlinRandom(seed)
-    let clean = (0..<26).map { i -> LabPoint in
-        let x = Float(i) * 0.36
-        return LabPoint(x: x, y: 1.2 + 0.85 * x + (r.nextFloat() - 0.5) * 0.7)
-    }
-    let bad = (0..<6).map { i in LabPoint(x: 1.2 + Float(i) * 1.3, y: 9.5 - r.nextFloat() * 1.4) }
-    return clean + bad
-}
-
-private func fanData(_ seed: Int32) -> [LabPoint] {
-    var r = KotlinRandom(seed)
-    return (0..<40).map { i in
-        let x = Float(i) * 0.24
-        let spread: Float = 0.4 + 0.42 * x
-        return LabPoint(x: x, y: 2 + 0.7 * x + (r.nextFloat() - 0.5) * 2 * spread)
-    }
-}
-
-private func countData(_ seed: Int32) -> [LabPoint] {
-    var r = KotlinRandom(seed)
-    return (0..<30).map { i in
-        let x = Float(i) * 0.3
-        let m = exp(-0.4 + 0.42 * Double(x))
-        var k = 0, p = 1.0
-        let limit = exp(-m)
-        repeat { k += 1; p *= r.nextDouble() } while p > limit
-        return LabPoint(x: x, y: Float(k - 1))
-    }
-}
-
-private func monotoneData(_ seed: Int32) -> [LabPoint] {
-    var r = KotlinRandom(seed)
-    return (0..<28).map { i in
-        let x = Float(i) * 0.32
-        let trend: Float = x < 2.5 ? 1.2 + 0.15 * x : x < 5.5 ? 2.6 + 0.9 * (x - 2.5) : 5.3 + 0.1 * (x - 5.5)
-        return LabPoint(x: x, y: trend + (r.nextFloat() - 0.5) * 1.3)
-    }
-}
-
-private func heldOut(_ points: [LabPoint]) -> Set<Int> { Set(points.indices.filter { $0 % 4 == 3 }) }
-
 private func xRange(_ points: [LabPoint]) -> (Float, Float) { (points.map(\.x).min() ?? 0, points.map(\.x).max() ?? 1) }
 
 private func sampleCurve(_ xMin: Float, _ xMax: Float, _ color: Color, dashed: Bool = false, width: CGFloat = 3, _ f: (Float) -> Double) -> LabCurve {
     LabCurve(points: (0...80).map { i in let x = xMin + (xMax - xMin) * Float(i) / 80; return (x, Float(f(x))) }, color: color, dashed: dashed, width: width)
 }
 
-private func split(_ points: [LabPoint]) -> ([LabPoint], [LabPoint]) {
-    let test = heldOut(points)
-    return (points.indices.filter { !test.contains($0) }.map { points[$0] }, points.indices.filter { test.contains($0) }.map { points[$0] })
-}
-
-private func ys(_ points: [LabPoint]) -> [Double] { points.map { Double($0.y) } }
-
-// MARK: Regression configs
-
-private func polynomial() -> RegConfig {
-    RegConfig(
-        intro: "One slider: the degree of the polynomial. Training error can only fall as it rises — the held-out error is the one that tells the truth.",
-        data: wavyData,
-        sliders: [RegSlider(label: "Degree", range: 1...9, initial: 3, step: 1, format: { "\(rInt($0))" })],
-        solveLabel: "✦ Best by held-out",
-        solve: { points, _ in
-            let (train, hold) = split(points)
-            let (xMin, xMax) = xRange(points)
-            let best = (1...9).min { a, b in
-                func err(_ d: Int) -> Double {
-                    let beta = ridgeSolve(designMatrix(train.map(\.x), degree: d, xMin: xMin, xMax: xMax), ys(train), 0)
-                    return mse(hold) { polyValue(beta, scaleX($0, xMin, xMax)) }
-                }
-                return err(a) < err(b)
-            } ?? 3
-            return [Double(best)]
-        },
-        evaluate: { points, values in
-            let degree = rInt(values[0])
-            let (xMin, xMax) = xRange(points)
-            let (train, hold) = split(points)
-            let beta = ridgeSolve(designMatrix(train.map(\.x), degree: degree, xMin: xMin, xMax: xMax), ys(train), 0)
-            let predict = { (x: Float) in polyValue(beta, scaleX(x, xMin, xMax)) }
-            let trainMse = mse(train, predict), testMse = mse(hold, predict)
-            return LabResult(
-                curves: [sampleCurve(xMin, xMax, labFit, predict)],
-                readouts: [LabReadout(value: fmt(trainMse), label: "Train MSE"), LabReadout(value: fmt(testMse), label: "Held-out MSE"), LabReadout(value: "\(degree + 1)", label: "Coefficients")],
-                note: testMse > trainMse * 2.2 && degree > 4
-                    ? "Held-out error is now more than double the training error. The curve is fitting noise it will never see again — this is overfitting, not a better model."
-                    : "Degree \(degree) fits \(degree + 1) coefficients to \(train.count) training points.",
-                highlighted: heldOut(points))
-        },
-        legend: [(labPoint, "Train"), (labHighlight, "Held out")])
-}
-
-private func ridge() -> RegConfig {
-    RegConfig(
-        intro: "A degree-9 polynomial — far more flexible than the data justifies — with the L2 penalty as the only defence. λ is on a log scale.",
-        data: wavyData,
-        sliders: [RegSlider(label: "log₁₀ λ", range: -6...2, initial: -6, format: expLabel)],
-        solveLabel: "✦ Best by held-out",
-        solve: { points, _ in
-            let (train, hold) = split(points)
-            let (xMin, xMax) = xRange(points)
-            let best = (-6...2).min { a, b in
-                func err(_ e: Int) -> Double {
-                    let beta = ridgeSolve(designMatrix(train.map(\.x), degree: 9, xMin: xMin, xMax: xMax), ys(train), pow(10, Double(e)))
-                    return mse(hold) { polyValue(beta, scaleX($0, xMin, xMax)) }
-                }
-                return err(a) < err(b)
-            } ?? -3
-            return [Double(best)]
-        },
-        evaluate: { points, values in
-            let lambda = pow(10, values[0])
-            let (xMin, xMax) = xRange(points)
-            let (train, hold) = split(points)
-            let x = designMatrix(train.map(\.x), degree: 9, xMin: xMin, xMax: xMax)
-            let beta = ridgeSolve(x, ys(train), lambda), plain = ridgeSolve(x, ys(train), 0)
-            let norm = beta.dropFirst().reduce(0) { $0 + $1 * $1 }.squareRoot()
-            let f = { (v: Float) in polyValue(beta, scaleX(v, xMin, xMax)) }
-            return LabResult(
-                curves: [sampleCurve(xMin, xMax, labReference, dashed: true, width: 2) { polyValue(plain, scaleX($0, xMin, xMax)) }, sampleCurve(xMin, xMax, labFit, f)],
-                readouts: [LabReadout(value: fmt(mse(train, f)), label: "Train MSE"), LabReadout(value: fmt(mse(hold, f)), label: "Held-out MSE"), LabReadout(value: fmt(norm), label: "‖β‖₂")],
-                note: "Ridge shrinks every coefficient toward zero but sets none of them to zero — the norm falls smoothly and all 10 terms stay in the model.",
-                highlighted: heldOut(points))
-        },
-        legend: [(labPoint, "Train"), (labHighlight, "Held out"), (labReference, "λ = 0")])
-}
-
-private func lasso() -> RegConfig {
-    RegConfig(
-        intro: "The identical setup as Ridge, with L1 in place of L2. Watch the coefficient count, not just the curve.",
-        data: wavyData,
-        sliders: [RegSlider(label: "log₁₀ λ", range: -5...0, initial: -5, format: expLabel)],
-        evaluate: { points, values in
-            let lambda = pow(10, values[0])
-            let (xMin, xMax) = xRange(points)
-            let x = designMatrix(points.map(\.x), degree: 9, xMin: xMin, xMax: xMax)
-            let l = coordinateDescent(x, ys(points), lambda: lambda, l1Ratio: 1)
-            let r = ridgeSolve(x, ys(points), lambda * Double(points.count))
-            let nz = l.dropFirst().filter { abs($0) > 1e-6 }.count, rnz = r.dropFirst().filter { abs($0) > 1e-6 }.count
-            return LabResult(
-                curves: [sampleCurve(xMin, xMax, labReference, dashed: true, width: 2) { polyValue(r, scaleX($0, xMin, xMax)) }, sampleCurve(xMin, xMax, labFit) { polyValue(l, scaleX($0, xMin, xMax)) }],
-                readouts: [LabReadout(value: fmt(mse(points) { polyValue(l, scaleX($0, xMin, xMax)) }), label: "Train MSE"), LabReadout(value: "\(nz) of 9", label: "Non-zero β"), LabReadout(value: "\(rnz) of 9", label: "Ridge non-zero")],
-                note: "At this λ lasso keeps \(nz) of the 9 polynomial terms; ridge at the same penalty keeps \(rnz). L1's corner at zero is what makes coefficients land exactly on it — L2's smooth bowl never does.")
-        },
-        legend: [(labPoint, "Train"), (labReference, "Ridge, same λ")])
-}
-
-private func elasticNet() -> RegConfig {
-    RegConfig(
-        intro: "Two dials. λ sets how much penalty, and the mix sets how much of it is L1 — 0 is pure ridge, 1 is pure lasso.",
-        data: wavyData,
-        sliders: [RegSlider(label: "log₁₀ λ", range: -5...0, initial: -3, format: expLabel), RegSlider(label: "L1 ratio", range: 0...1, initial: 0.5)],
-        evaluate: { points, values in
-            let (xMin, xMax) = xRange(points)
-            let x = designMatrix(points.map(\.x), degree: 9, xMin: xMin, xMax: xMax)
-            let ratio = values[1]
-            let beta = coordinateDescent(x, ys(points), lambda: pow(10, values[0]), l1Ratio: ratio)
-            let nz = beta.dropFirst().filter { abs($0) > 1e-6 }.count
-            let norm = beta.dropFirst().reduce(0) { $0 + $1 * $1 }.squareRoot()
-            return LabResult(
-                curves: [sampleCurve(xMin, xMax, labFit) { polyValue(beta, scaleX($0, xMin, xMax)) }],
-                readouts: [LabReadout(value: fmt(mse(points) { polyValue(beta, scaleX($0, xMin, xMax)) }), label: "Train MSE"), LabReadout(value: "\(nz) of 9", label: "Non-zero β"), LabReadout(value: fmt(norm), label: "‖β‖₂")],
-                note: ratio < 0.05 ? "Pure ridge: everything shrinks, nothing is eliminated."
-                    : ratio > 0.95 ? "Pure lasso: sparse, but among correlated terms it picks one arbitrarily and drops the rest."
-                    : "Mixed: the L2 part keeps correlated terms in together rather than letting L1 pick a winner at random, while the L1 part still zeroes what is useless.")
-        })
-}
-
-private func stepwise() -> RegConfig {
-    RegConfig(
-        intro: "Forward selection over the same nine polynomial terms: at each step add whichever remaining term cuts residual error most.",
-        data: wavyData,
-        sliders: [RegSlider(label: "Terms kept", range: 1...9, initial: 3, step: 1, format: { "\(rInt($0))" })],
-        evaluate: { points, values in
-            let (xMin, xMax) = xRange(points)
-            let r = forwardStepwise(designMatrix(points.map(\.x), degree: 9, xMin: xMin, xMax: xMax), ys(points), terms: rInt(values[0]))
-            let sel = r.selected.map { "x^\($0)" }.joined(separator: ",")
-            return LabResult(
-                curves: [sampleCurve(xMin, xMax, labFit) { polyValue(r.beta, scaleX($0, xMin, xMax)) }],
-                readouts: [LabReadout(value: fmt(mse(points) { polyValue(r.beta, scaleX($0, xMin, xMax)) }), label: "Train MSE"), LabReadout(value: fmt(r.adjustedR2), label: "Adjusted R²"), LabReadout(value: sel.isEmpty ? "—" : sel, label: "Selected")],
-                note: "Each term was chosen by looking at this data, so the reported p-values and R² are optimistically biased — the selection step is never accounted for. Adjusted R² helps a little; honest evaluation needs a held-out set.")
-        })
-}
-
-private func robust() -> RegConfig {
-    RegConfig(
-        intro: "Twenty-six points from one process and six from another. The slider is RANSAC's inlier threshold — how far off the line a point may sit and still count.",
-        data: outlierData,
-        sliders: [RegSlider(label: "Inlier threshold", range: 0.2...4, initial: 0.9)],
-        evaluate: { points, values in
-            let (xMin, xMax) = xRange(points)
-            let fit = ransac(points, threshold: values[0])
-            let (m, c) = ordinaryLeastSquares(points)
-            return LabResult(
-                curves: [sampleCurve(xMin, xMax, labReference, dashed: true, width: 2) { m * Double($0) + c }, sampleCurve(xMin, xMax, labFit) { fit.slope * Double($0) + fit.intercept }],
-                readouts: [LabReadout(value: fmt(fit.slope), label: "RANSAC slope"), LabReadout(value: fmt(m), label: "OLS slope"), LabReadout(value: "\(fit.inliers.count)/\(points.count)", label: "Inliers")],
-                note: "Squared error grows with the square of the residual, so the six contaminating points dominate the OLS fit and drag it away from the \(fit.inliers.count) points that share a trend. RANSAC never averages them in — it finds the largest consensus set and fits only that.",
-                highlighted: Set(points.indices.filter { !fit.inliers.contains($0) }))
-        },
-        legend: [(labFit, "RANSAC"), (labReference, "OLS"), (labHighlight, "Outlier")])
-}
-
-private func quantile() -> RegConfig {
-    RegConfig(
-        intro: "Spread grows with x here, so \"the average response\" and \"the 90th percentile response\" are genuinely different lines. τ picks which one to fit.",
-        data: fanData,
-        sliders: [RegSlider(label: "τ (quantile)", range: 0.05...0.95, initial: 0.5)],
-        evaluate: { points, values in
-            let tau = values[0]
-            let (xMin, xMax) = xRange(points)
-            let (m, c) = quantileFit(points, tau: tau), (lm, lc) = quantileFit(points, tau: 0.1), (hm, hc) = quantileFit(points, tau: 0.9)
-            let (mm, mc) = ordinaryLeastSquares(points)
-            let below = points.filter { Double($0.y) < m * Double($0.x) + c }.count
-            let pct = Int((Float(below) * 100 / Float(points.count)).rounded())
-            return LabResult(
-                curves: [sampleCurve(xMin, xMax, labBand, dashed: true, width: 1.5) { lm * Double($0) + lc }, sampleCurve(xMin, xMax, labBand, dashed: true, width: 1.5) { hm * Double($0) + hc },
-                         sampleCurve(xMin, xMax, labReference, dashed: true, width: 2) { mm * Double($0) + mc }, sampleCurve(xMin, xMax, labFit) { m * Double($0) + c }],
-                readouts: [LabReadout(value: "\(pct)%", label: "Points below"), LabReadout(value: "\(Int((tau * 100).rounded()))%", label: "Target τ"), LabReadout(value: fmt(pinballLoss(points, tau: tau, m: m, c: c)), label: "Pinball loss")],
-                note: "The check: a correct τ-quantile fit should leave about τ of the data beneath it — measured \(pct)% against a target of \(Int((tau * 100).rounded()))%. Note also that the τ=0.1 and τ=0.9 lines are not parallel; they fan out because the spread does.")
-        },
-        legend: [(labFit, "τ fit"), (labBand, "τ = 0.1 / 0.9"), (labReference, "OLS mean")])
-}
-
-private func bayesian() -> RegConfig {
-    RegConfig(
-        intro: "A degree-5 fit that returns a distribution rather than a line. The shaded band is ±2 predictive standard deviations.",
-        data: { wavyData($0).filter { !($0.x > 3.2 && $0.x < 5.6) } },
-        sliders: [RegSlider(label: "Prior precision α", range: 0.01...8, initial: 1), RegSlider(label: "Noise variance", range: 0.05...2, initial: 0.4)],
-        evaluate: { points, values in
-            let (xMin, xMax) = xRange(points)
-            let fit = bayesianRidge(designMatrix(points.map(\.x), degree: 5, xMin: xMin, xMax: xMax), ys(points), alpha: values[0], noiseVariance: values[1])
-            let phi = { (v: Float) -> [Double] in let t = scaleX(v, xMin, xMax); return (0..<6).map { $0 == 0 ? 1 : pow(t, Double($0)) } }
-            let meanAt = { (v: Float) in polyValue(fit.mean, scaleX(v, xMin, xMax)) }
-            let gap = predictiveStd(fit, phi(4.4)), dense = predictiveStd(fit, phi(1.2))
-            return LabResult(
-                curves: [sampleCurve(xMin, xMax, labBand, dashed: true, width: 1.5) { meanAt($0) + 2 * predictiveStd(fit, phi($0)) },
-                         sampleCurve(xMin, xMax, labBand, dashed: true, width: 1.5) { meanAt($0) - 2 * predictiveStd(fit, phi($0)) },
-                         sampleCurve(xMin, xMax, labFit, meanAt)],
-                readouts: [LabReadout(value: fmt(dense), label: "σ where dense"), LabReadout(value: fmt(gap), label: "σ in the gap"), LabReadout(value: fmt(gap / max(dense, 1e-6)) + "×", label: "Ratio")],
-                note: "The band widens across the gap because the posterior covariance term grows where no data constrains it. A plain ridge fit produces the same mean curve and no way at all to know that middle stretch is a guess.")
-        },
-        legend: [(labFit, "Posterior mean"), (labBand, "±2σ")])
-}
-
-private func poisson() -> RegConfig {
-    RegConfig(
-        intro: "Counts, not measurements: integers, never negative, and with variance that grows alongside the mean. Sliders are the log-linear coefficients.",
-        data: countData,
-        sliders: [RegSlider(label: "β₀ (intercept)", range: -2...2, initial: -0.4), RegSlider(label: "β₁ (slope)", range: -0.2...0.8, initial: 0.42)],
-        solveLabel: "✦ Fit by IRLS",
-        solve: { points, _ in
-            let (b0, b1) = poissonIrls(points)
-            return [min(max(b0, -2), 2), min(max(b1, -0.2), 0.8)]
-        },
-        evaluate: { points, values in
-            let b0 = values[0], b1 = values[1]
-            let (xMin, xMax) = xRange(points)
-            let (om, oc) = ordinaryLeastSquares(points)
-            let predict = { (v: Float) in exp(min(max(b0 + b1 * Double(v), -20), 20)) }
-            let negFrom = (0...80).map { xMin + (xMax - xMin) * Float($0) / 80 }.first { om * Double($0) + oc < 0 }
-            return LabResult(
-                curves: [sampleCurve(xMin, xMax, labReference, dashed: true, width: 2) { om * Double($0) + oc }, sampleCurve(xMin, xMax, labFit, predict)],
-                readouts: [LabReadout(value: fmt(poissonDeviance(points, b0, b1)), label: "Deviance"), LabReadout(value: fmt(mse(points, predict)), label: "MSE"), LabReadout(value: fmt(exp(b1)) + "×", label: "Per unit x")],
-                note: negFrom.map { "The dashed OLS line crosses zero at x ≈ \(round2(Double($0))) and predicts negative counts below it — impossible for the data it is modelling. The log link makes that unrepresentable: exp is positive everywhere." }
-                    ?? "The log link means β₁ is multiplicative: each unit of x multiplies the expected count by exp(β₁) = \(fmt(exp(b1))), rather than adding a constant.")
-        },
-        legend: [(labFit, "exp(β₀+β₁x)"), (labReference, "OLS line")])
-}
-
-private func isotonic() -> RegConfig {
-    RegConfig(
-        intro: "No functional form assumed at all — only that the fit must never decrease. The slider adds noise to show when the constraint binds.",
-        data: monotoneData,
-        sliders: [RegSlider(label: "Extra noise", range: 0...2, initial: 0)],
-        evaluate: { points, values in
-            let extra = Float(values[0])
-            var r = KotlinRandom(9)
-            let noisy = points.map { LabPoint(x: $0.x, y: $0.y + (r.nextFloat() - 0.5) * 2 * extra) }
-            let fit = pava(noisy)
-            let (m, c) = ordinaryLeastSquares(noisy)
-            let (xMin, xMax) = xRange(noisy)
-            var step: [(Float, Float)] = []
-            for (i, x) in fit.xs.enumerated() {
-                if i > 0 { step.append((x, Float(fit.ys[i - 1]))) }
-                step.append((x, Float(fit.ys[i])))
-            }
-            let err = mse(noisy) { v in fit.ys[max(fit.xs.lastIndex { $0 <= v } ?? 0, 0)] }
-            return LabResult(
-                curves: [sampleCurve(xMin, xMax, labReference, dashed: true, width: 2) { m * Double($0) + c }, LabCurve(points: step, color: labFit)],
-                readouts: [LabReadout(value: "\(fit.blocks)", label: "Blocks"), LabReadout(value: "\(noisy.count)", label: "Points"), LabReadout(value: fmt(err), label: "MSE")],
-                note: "PAVA merged \(noisy.count) points into \(fit.blocks) flat blocks. Every merge is a place the raw data went down and monotonicity said it may not — more noise means more violations, so fewer and wider blocks.")
-        },
-        legend: [(labFit, "Isotonic (PAVA)"), (labReference, "Linear fit")])
-}
-
-private func lars() -> RegConfig {
-    RegConfig(
-        intro: "The coefficient path, one step at a time. Each step admits the predictor most correlated with the current residual, then moves in the direction that keeps the active correlations equal.",
-        data: wavyData,
-        sliders: [RegSlider(label: "Path steps", range: 1...8, initial: 2, step: 1, format: { "\(rInt($0))" })],
-        evaluate: { points, values in
-            let steps = rInt(values[0])
-            let (xMin, xMax) = xRange(points)
-            let path = larsPath(designMatrix(points.map(\.x), degree: 9, xMin: xMin, xMax: xMax), ys(points), maxSteps: steps)
-            let cur = path.last
-            let beta = cur?.beta ?? [Double](repeating: 0, count: 10)
-            return LabResult(
-                curves: [sampleCurve(xMin, xMax, labFit) { polyValue(beta, scaleX($0, xMin, xMax)) }],
-                readouts: [LabReadout(value: cur.map { $0.active.map { "x^\($0)" }.joined(separator: ",") } ?? "—", label: "Active set"),
-                           LabReadout(value: "\(cur?.active.count ?? 0)", label: "Size"), LabReadout(value: cur.map { fmt($0.maxCorrelation) } ?? "—", label: "Max |corr|")],
-                note: "Step \(steps) admitted x^\(cur?.entered ?? 0). LARS moves partway rather than all the way, so a predictor is never fully fitted before the next one is considered — that is the difference from forward stepwise, and it is what makes the path piecewise-linear and cheap to compute in full.")
-        })
-}
 
 // MARK: Time series
 
@@ -698,9 +381,6 @@ private let regressionConfigs: [String: () -> RegConfig] = [
     "mse": mseCfg, "rmse": rmseCfg, "mae": maeCfg, "r_squared": rSquaredCfg, "adjusted_r_squared": adjustedR2Cfg,
     "moving_average": movingAverageCfg, "autoregression": autoregressionCfg, "arima": arimaCfg, "sarima": sarimaCfg,
     "exponential_smoothing": expSmoothingCfg, "prophet": prophetCfg,
-    "polynomial_regression": polynomial, "ridge_regression": ridge, "lasso_regression": lasso, "elasticnet_regression": elasticNet,
-    "stepwise_regression": stepwise, "robust_regression": robust, "quantile_regression": quantile, "bayesian_ridge": bayesian,
-    "poisson_regression": poisson, "isotonic_regression": isotonic, "lars": lars,
 ]
 
 /// Shared by the page and the pinned controls, so both stay live.
@@ -723,7 +403,7 @@ struct RegressionLab: View {
     @Environment(\.labDock) private var dock
 
     init(topicId: String) {
-        let c = (regressionConfigs[topicId] ?? polynomial)()
+        let c = (regressionConfigs[topicId] ?? mseCfg)()
         config = c
         _model = State(initialValue: RegressionLabModel(values: c.sliders.map(\.initial)))
     }

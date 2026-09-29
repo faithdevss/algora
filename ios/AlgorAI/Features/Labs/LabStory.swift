@@ -141,7 +141,8 @@ struct LabStoryNarration: View {
     }
 }
 
-enum SwatchStyle { case fill, dashed, ring, dot }
+/// `line` and `dashedLine` are short strokes, for a plotted curve or boundary.
+enum SwatchStyle { case fill, dashed, ring, dot, line, dashedLine }
 
 /// A legend swatch: filled, a dashed outline (a frontier, a node not made yet) or a solid ring (a goal).
 struct StorySwatch: View {
@@ -158,6 +159,11 @@ struct StorySwatch: View {
             case .dot: Circle().fill(color).frame(width: 10, height: 10)
             case .ring: shape.stroke(color, lineWidth: 1.5).frame(width: 10, height: 10)
             case .dashed: shape.stroke(color, style: StrokeStyle(lineWidth: 1.5, dash: [2, 1.5])).frame(width: 10, height: 10)
+            case .line: RoundedRectangle(cornerRadius: 1.5).fill(color).frame(width: 16, height: 3)
+            case .dashedLine:
+                Path { p in p.move(to: CGPoint(x: 0, y: 1.5)); p.addLine(to: CGPoint(x: 16, y: 1.5)) }
+                    .stroke(color, style: StrokeStyle(lineWidth: 3, dash: [3, 2]))
+                    .frame(width: 16, height: 3)
             }
             Text(label).font(AppFont.sans(13)).foregroundStyle(palette.onSurface.opacity(0.75))
         }

@@ -241,11 +241,12 @@ func poissonDeviance(_ points: [LabPoint], _ b0: Double, _ b1: Double) -> Double
     return sum / Double(max(1, points.count))
 }
 
-struct IsotonicFit { let xs: [Float]; let ys: [Double]; let blocks: Int }
+/// `sizes` is how many points each block pooled, in x order; a block of more than one is a merge.
+struct IsotonicFit { let xs: [Float]; let ys: [Double]; let blocks: Int; let sizes: [Int] }
 
 /// Pool adjacent violators.
 func pava(_ points: [LabPoint]) -> IsotonicFit {
-    if points.isEmpty { return IsotonicFit(xs: [], ys: [], blocks: 0) }
+    if points.isEmpty { return IsotonicFit(xs: [], ys: [], blocks: 0, sizes: []) }
     let sorted = points.enumerated().sorted { $0.element.x < $1.element.x || ($0.element.x == $1.element.x && $0.offset < $1.offset) }.map(\.element)
     var values: [Double] = [], weights: [Int] = []
     for p in sorted {
@@ -260,44 +261,91 @@ func pava(_ points: [LabPoint]) -> IsotonicFit {
     }
     var out: [Double] = []
     for (i, v) in values.enumerated() { out += [Double](repeating: v, count: weights[i]) }
-    return IsotonicFit(xs: sorted.map(\.x), ys: out, blocks: values.count)
+    return IsotonicFit(xs: sorted.map(\.x), ys: out, blocks: values.count, sizes: weights)
 }
 
-struct LarsStep { let beta: [Double]; let active: [Int]; let maxCorrelation: Double; let entered: Int? }
+/// `beta` is the polynomial fit (intercept first) at the moment `entered` joined, `active` the
+/// predictors in the order they joined, and `tie` the absolute correlation they then all share.
+struct LarsStep { let beta: [Double]; let active: [Int]; let tie: Double; let entered: Int }
 
-func larsPath(_ x: [[Double]], _ y: [Double], maxSteps: Int) -> [LarsStep] {
+/// Least Angle Regression (Efron et al.), the plain form. The columns after the intercept are
+/// standardized; each step moves along the direction equiangular to every active predictor, exactly
+/// far enough that an inactive one becomes as correlated with the residual, which then joins.
+func larsSteps(_ x: [[Double]], _ y: [Double]) -> [LarsStep] {
     let n = x.count
-    let p = x.first?.count ?? 0
-    if p <= 1 { return [] }
-    let mean = y.reduce(0, +) / Double(n)
-    var residual = y.map { $0 - mean }
-    var beta = [Double](repeating: 0, count: p)
-    beta[0] = mean
+    let p = (x.first?.count ?? 0) - 1
+    if p <= 0 { return [] }
+    let means = (0..<p).map { j in (0..<n).reduce(0.0) { $0 + x[$1][j + 1] } / Double(n) }
+    let scales = (0..<p).map { j in max(sqrt((0..<n).reduce(0.0) { let d = x[$1][j + 1] - means[j]; return $0 + d * d }), 1e-12) }
+    let z = (0..<n).map { r in (0..<p).map { j in (x[r][j + 1] - means[j]) / scales[j] } }
+    let yMean = y.reduce(0, +) / Double(n)
+    var residual = y.map { $0 - yMean }
+    var coef = [Double](repeating: 0, count: p)
     var active: [Int] = []
     var steps: [LarsStep] = []
-    func correlation(_ j: Int) -> Double {
-        var s = 0.0
-        for r in 0..<n { s += x[r][j] * residual[r] }
-        return s
+
+    func correlations() -> [Double] { (0..<p).map { j in (0..<n).reduce(0.0) { $0 + z[$1][j] * residual[$1] } } }
+    func snapshot(_ entered: Int, _ tie: Double) {
+        var beta = [Double](repeating: 0, count: p + 1)
+        for j in 0..<p { beta[j + 1] = coef[j] / scales[j] }
+        beta[0] = yMean - (0..<p).reduce(0.0) { $0 + beta[$1 + 1] * means[$1] }
+        steps.append(LarsStep(beta: beta, active: active.map { $0 + 1 }, tie: tie, entered: entered + 1))
     }
-    for _ in 0..<min(maxSteps, p - 1) {
-        let candidates = (1..<p).filter { !active.contains($0) }
-        guard let candidate = candidates.max(by: { abs(correlation($0)) < abs(correlation($1)) }) else { continue }
-        active.append(candidate)
-        let sub = (0..<n).map { r in active.map { x[r][$0] } }
-        let direction = ridgeSolve(sub, residual, 0, penalizeIntercept: true)
-        let gamma = 0.5
-        for (k, j) in active.enumerated() { beta[j] += gamma * direction[k] }
-        for r in 0..<n {
-            var delta = 0.0
-            for (k, d) in direction.enumerated() { delta += gamma * d * x[r][active[k]] }
-            residual[r] -= delta
+
+    let c0 = correlations()
+    var first = 0
+    for j in 1..<p where abs(c0[j]) > abs(c0[first]) { first = j }
+    active.append(first)
+    snapshot(first, abs(c0[first]))
+
+    while active.count < p {
+        let c = correlations()
+        let big = active.map { abs(c[$0]) }.max() ?? 0
+        let signs = active.map { c[$0] >= 0 ? 1.0 : -1.0 }
+        let gram = active.indices.map { a in active.indices.map { b in
+            signs[a] * signs[b] * (0..<n).reduce(0.0) { $0 + z[$1][active[a]] * z[$1][active[b]] } + (a == b ? 1e-10 : 0)
+        } }
+        let g1 = solveLinear(gram, [Double](repeating: 1, count: active.count))
+        let norm = 1 / sqrt(max(g1.reduce(0, +), 1e-12))
+        let w = g1.map { norm * $0 }
+        let u = (0..<n).map { r in active.indices.reduce(0.0) { $0 + w[$1] * signs[$1] * z[r][active[$1]] } }
+        var gamma = Double.greatestFiniteMagnitude
+        var next = -1
+        for j in 0..<p where !active.contains(j) {
+            let a = (0..<n).reduce(0.0) { $0 + z[$1][j] * u[$1] }
+            for g in [(big - c[j]) / (norm - a), (big + c[j]) / (norm + a)] where g.isFinite && g > 1e-12 && g < gamma {
+                gamma = g
+                next = j
+            }
         }
-        steps.append(LarsStep(beta: beta, active: active, maxCorrelation: (1..<p).map { abs(correlation($0)) }.max() ?? 0, entered: candidate))
+        if next < 0 { break }
+        for r in 0..<n { residual[r] -= gamma * u[r] }
+        for k in active.indices { coef[active[k]] += gamma * w[k] * signs[k] }
+        active.append(next)
+        snapshot(next, abs(correlations()[next]))
     }
     return steps
 }
 
+/// Gaussian elimination with partial pivoting, for the small systems above.
+private func solveLinear(_ matrix: [[Double]], _ rhs: [Double]) -> [Double] {
+    let n = rhs.count
+    var a = (0..<n).map { r in (0...n).map { c in c < n ? matrix[r][c] : rhs[r] } }
+    for col in 0..<n {
+        var pivot = col
+        for r in (col + 1)..<n where abs(a[r][col]) > abs(a[pivot][col]) { pivot = r }
+        a.swapAt(col, pivot)
+        if abs(a[col][col]) < 1e-12 { a[col][col] = 1e-12 }
+        for r in 0..<n where r != col {
+            let f = a[r][col] / a[col][col]
+            if f == 0 { continue }
+            for c in col...n { a[r][c] -= f * a[col][c] }
+        }
+    }
+    return (0..<n).map { a[$0][n] / a[$0][$0] }
+}
+
+/// `selected` is in the order the terms were added.
 struct StepwiseResult { let beta: [Double]; let selected: [Int]; let adjustedR2: Double }
 
 func forwardStepwise(_ x: [[Double]], _ y: [Double], terms: Int) -> StepwiseResult {
@@ -321,7 +369,7 @@ func forwardStepwise(_ x: [[Double]], _ y: [Double], terms: Int) -> StepwiseResu
     let rss = rssFor(x, y, selected)
     let k = selected.count - 1
     let adjusted = n - k - 1 > 0 && totalSs > 0 ? 1 - (rss / Double(n - k - 1)) / (totalSs / Double(n - 1)) : 0
-    return StepwiseResult(beta: beta, selected: Array(selected.dropFirst()).sorted(), adjustedR2: adjusted)
+    return StepwiseResult(beta: beta, selected: Array(selected.dropFirst()), adjustedR2: adjusted)
 }
 
 private func rssFor(_ x: [[Double]], _ y: [Double], _ columns: [Int]) -> Double {

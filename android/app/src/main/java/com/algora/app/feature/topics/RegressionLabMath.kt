@@ -312,10 +312,11 @@ internal fun poissonDeviance(points: List<LabPoint>, b0: Double, b1: Double): Do
 }
 
 // ── Isotonic regression: pool adjacent violators ─────────────────────────────
-internal class IsotonicFit(val xs: List<Float>, val ys: List<Double>, val blocks: Int)
+// [sizes] is how many points each block pooled, in x order; a block of more than one is a merge.
+internal class IsotonicFit(val xs: List<Float>, val ys: List<Double>, val blocks: Int, val sizes: List<Int>)
 
 internal fun pava(points: List<LabPoint>): IsotonicFit {
-    if (points.isEmpty()) return IsotonicFit(emptyList(), emptyList(), 0)
+    if (points.isEmpty()) return IsotonicFit(emptyList(), emptyList(), 0, emptyList())
     val sorted = points.sortedBy { it.x }
     val values = ArrayDeque<Double>()
     val weights = ArrayDeque<Int>()
@@ -336,69 +337,96 @@ internal fun pava(points: List<LabPoint>): IsotonicFit {
 
     val out = ArrayList<Double>(sorted.size)
     values.forEachIndexed { i, v -> repeat(weights.elementAt(i)) { out.add(v) } }
-    return IsotonicFit(sorted.map { it.x }, out, values.size)
+    return IsotonicFit(sorted.map { it.x }, out, values.size, weights.toList())
 }
 
 // ── LARS: the equiangular coefficient path ───────────────────────────────────
-internal class LarsStep(
-    val beta: DoubleArray,
-    val active: List<Int>,
-    val maxCorrelation: Double,
-    val entered: Int?,
-)
+// [beta] is the polynomial fit (intercept first) at the moment [entered] joined, [active] the
+// predictors in the order they joined, and [tie] the absolute correlation they then all share.
+internal class LarsStep(val beta: DoubleArray, val active: List<Int>, val tie: Double, val entered: Int)
 
-// Least Angle Regression, in the plain (non-lasso-modified) form. Each step moves along the
-// equiangular direction until a new predictor ties the active set's correlation with the residual.
-internal fun larsPath(x: Array<DoubleArray>, y: DoubleArray, maxSteps: Int): List<LarsStep> {
+// Least Angle Regression (Efron et al.), the plain form. The columns after the intercept are
+// standardized; each step moves along the direction equiangular to every active predictor, exactly
+// far enough that an inactive one becomes as correlated with the residual, which then joins.
+internal fun larsSteps(x: Array<DoubleArray>, y: DoubleArray): List<LarsStep> {
     val n = x.size
-    val p = if (n == 0) 0 else x[0].size
-    if (p <= 1) return emptyList()
-
-    val mean = y.average()
-    val residual = DoubleArray(n) { y[it] - mean }
-    val beta = DoubleArray(p)
-    beta[0] = mean // column 0 is the intercept and sits outside the path
+    val p = if (n == 0) 0 else x[0].size - 1
+    if (p <= 0) return emptyList()
+    val means = DoubleArray(p) { j -> (0 until n).sumOf { x[it][j + 1] } / n }
+    val scales = DoubleArray(p) { j ->
+        sqrt((0 until n).sumOf { (x[it][j + 1] - means[j]).let { d -> d * d } }).coerceAtLeast(1e-12)
+    }
+    val z = Array(n) { r -> DoubleArray(p) { j -> (x[r][j + 1] - means[j]) / scales[j] } }
+    val yMean = y.average()
+    val residual = DoubleArray(n) { y[it] - yMean }
+    val coef = DoubleArray(p)
     val active = mutableListOf<Int>()
     val steps = mutableListOf<LarsStep>()
 
-    fun correlation(j: Int): Double {
-        var s = 0.0
-        for (r in 0 until n) s += x[r][j] * residual[r]
-        return s
+    fun correlations() = DoubleArray(p) { j -> (0 until n).sumOf { z[it][j] * residual[it] } }
+    fun snapshot(entered: Int, tie: Double) {
+        val beta = DoubleArray(p + 1)
+        for (j in 0 until p) beta[j + 1] = coef[j] / scales[j]
+        beta[0] = yMean - (0 until p).sumOf { beta[it + 1] * means[it] }
+        steps.add(LarsStep(beta, active.map { it + 1 }, tie, entered + 1))
     }
 
-    repeat(minOf(maxSteps, p - 1)) {
-        val candidate = (1 until p).filter { it !in active }
-            .maxByOrNull { abs(correlation(it)) } ?: return@repeat
-        active.add(candidate)
+    val first = correlations().let { c -> (0 until p).maxBy { abs(c[it]) } }
+    active.add(first)
+    snapshot(first, abs(correlations()[first]))
 
-        // Direction that keeps correlations of all active predictors equal: least squares of the
-        // residual on the active columns only.
-        val sub = Array(n) { r -> DoubleArray(active.size) { k -> x[r][active[k]] } }
-        val direction = ridgeSolve(sub, residual, 0.0, penalizeIntercept = true)
-
-        // Step partway, not all the way — going the full distance is plain forward selection.
-        val gamma = 0.5
-        active.forEachIndexed { k, j -> beta[j] += gamma * direction[k] }
-        for (r in 0 until n) {
-            var delta = 0.0
-            direction.forEachIndexed { k, d -> delta += gamma * d * x[r][active[k]] }
-            residual[r] -= delta
+    while (active.size < p) {
+        val c = correlations()
+        val big = active.maxOf { abs(c[it]) }
+        val signs = active.map { if (c[it] >= 0) 1.0 else -1.0 }
+        val gram = Array(active.size) { a ->
+            DoubleArray(active.size) { b ->
+                signs[a] * signs[b] * (0 until n).sumOf { z[it][active[a]] * z[it][active[b]] } + if (a == b) 1e-10 else 0.0
+            }
         }
-
-        steps.add(
-            LarsStep(
-                beta = beta.copyOf(),
-                active = active.toList(),
-                maxCorrelation = (1 until p).maxOfOrNull { abs(correlation(it)) } ?: 0.0,
-                entered = candidate,
-            ),
-        )
+        val g1 = solveLinear(gram, DoubleArray(active.size) { 1.0 })
+        val norm = 1.0 / sqrt(g1.sum().coerceAtLeast(1e-12))
+        val w = DoubleArray(active.size) { norm * g1[it] }
+        val u = DoubleArray(n) { r -> active.indices.sumOf { k -> w[k] * signs[k] * z[r][active[k]] } }
+        var gamma = Double.MAX_VALUE
+        var next = -1
+        for (j in 0 until p) {
+            if (j in active) continue
+            val a = (0 until n).sumOf { z[it][j] * u[it] }
+            listOf((big - c[j]) / (norm - a), (big + c[j]) / (norm + a)).forEach { g ->
+                if (g.isFinite() && g > 1e-12 && g < gamma) { gamma = g; next = j }
+            }
+        }
+        if (next < 0) break
+        for (r in 0 until n) residual[r] -= gamma * u[r]
+        active.indices.forEach { k -> coef[active[k]] += gamma * w[k] * signs[k] }
+        active.add(next)
+        snapshot(next, abs(correlations()[next]))
     }
     return steps
 }
 
+// Gaussian elimination with partial pivoting, for the small systems above.
+private fun solveLinear(matrix: Array<DoubleArray>, rhs: DoubleArray): DoubleArray {
+    val n = rhs.size
+    val a = Array(n) { r -> DoubleArray(n + 1) { c -> if (c < n) matrix[r][c] else rhs[r] } }
+    for (col in 0 until n) {
+        var pivot = col
+        for (r in col + 1 until n) if (abs(a[r][col]) > abs(a[pivot][col])) pivot = r
+        val tmp = a[col]; a[col] = a[pivot]; a[pivot] = tmp
+        if (abs(a[col][col]) < 1e-12) a[col][col] = 1e-12
+        for (r in 0 until n) {
+            if (r == col) continue
+            val f = a[r][col] / a[col][col]
+            if (f == 0.0) continue
+            for (c in col..n) a[r][c] -= f * a[col][c]
+        }
+    }
+    return DoubleArray(n) { a[it][n] / a[it][it] }
+}
+
 // ── Forward stepwise selection ───────────────────────────────────────────────
+// [selected] is in the order the terms were added.
 internal class StepwiseResult(val beta: DoubleArray, val selected: List<Int>, val adjustedR2: Double)
 
 internal fun forwardStepwise(x: Array<DoubleArray>, y: DoubleArray, terms: Int): StepwiseResult {
@@ -431,7 +459,7 @@ internal fun forwardStepwise(x: Array<DoubleArray>, y: DoubleArray, terms: Int):
     val adjusted = if (n - k - 1 > 0 && totalSs > 0) {
         1.0 - (rss / (n - k - 1)) / (totalSs / (n - 1))
     } else 0.0
-    return StepwiseResult(beta, selected.drop(1).sorted(), adjusted)
+    return StepwiseResult(beta, selected.drop(1), adjusted)
 }
 
 private fun rssFor(x: Array<DoubleArray>, y: DoubleArray, columns: List<Int>): Double {

@@ -36,6 +36,14 @@ internal val patternLabAliases: Map<String, Pair<String, SimulationType>> = mapO
 internal fun SimulationHost(topicId: String, type: SimulationType) {
     // The storyboarded string and array labs span several simulation types; they are routed first.
     if (topicId in textStoryTopicIds) return TextStorySection(topicId)
+    if (topicId in neuralStoryTopicIds) return NeuralStorySection(topicId)
+    if (topicId in mlStoryTopicIds) return MlStorySection(topicId)
+    if (topicId in regressionStoryTopicIds) return RegressionStorySection(topicId)
+    if (topicId in bayesStoryTopicIds) return BayesStorySection(topicId)
+    if (topicId in ensembleStoryTopicIds) return EnsembleStorySection(topicId)
+    if (topicId in metricStoryTopicIds) return MetricStorySection(topicId)
+    if (topicId in evalStoryTopicIds) return EvalStorySection(topicId)
+    if (topicId in rlStoryTopicIds) return RlStorySection(topicId)
     patternLabAliases[topicId]?.let { (id, labType) -> return SimulationHost(id, labType) }
     when (type) {
         SimulationType.ArrayVisualizer -> ArraySimulationSection()

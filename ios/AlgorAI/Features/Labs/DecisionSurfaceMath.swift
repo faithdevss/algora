@@ -197,6 +197,18 @@ func fitQda(_ points: [ClassPoint], shrink: Double = 0) -> DiscriminantFit {
                            positive: Gaussian2D(meanX: pm.0, meanY: pm.1, covariance: covarianceOf(pos, pm.0, pm.1, shrink: shrink), prior: Double(pos.count) / total))
 }
 
+/// Regularized discriminant analysis: each class's covariance blended toward the pooled one, so λ = 0 is
+/// QDA and λ = 1 is LDA. The dial for a class with too few points to trust its own shape.
+func fitRda(_ points: [ClassPoint], lambda: Double) -> DiscriminantFit {
+    let qda = fitQda(points), lda = fitLda(points)
+    func blend(_ own: Gaussian2D, _ shared: Gaussian2D) -> Gaussian2D {
+        Gaussian2D(meanX: own.meanX, meanY: own.meanY,
+                   covariance: (0..<2).map { i in (0..<2).map { j in (1 - lambda) * own.covariance[i][j] + lambda * shared.covariance[i][j] } },
+                   prior: own.prior)
+    }
+    return DiscriminantFit(negative: blend(qda.negative, lda.negative), positive: blend(qda.positive, lda.positive))
+}
+
 /// Gaussian naive Bayes = QDA with the off-diagonal terms forced to zero.
 func fitGaussianNb(_ points: [ClassPoint], smoothing: Double = 0) -> DiscriminantFit {
     let full = fitQda(points)

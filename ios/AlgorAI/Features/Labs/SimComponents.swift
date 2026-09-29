@@ -134,6 +134,8 @@ final class LabDock {
     /// The transport's step label ("Pull 40 of 200") and track marks, when the lab sets them.
     var stepLabel: ((Int) -> String)?
     var marks: TrackMarks?
+    /// The storyboard transport's labelled action per step ("Predict"); see `LabTransportBar`.
+    var stepAction: ((Int) -> String)?
 }
 
 /// Steps flagged on the scrub track with a tick, and what a tick means ("explore"). `color` is the
@@ -237,6 +239,7 @@ struct PlaybackTransport: View {
     var captions: [String]? = nil
     var stepLabel: ((Int) -> String)? = nil
     var marks: TrackMarks? = nil
+    var action: ((Int) -> String)? = nil
     @Environment(\.labDock) private var dock
 
     var body: some View {
@@ -248,13 +251,13 @@ struct PlaybackTransport: View {
                 .onChange(of: marks) { _, new in dock.marks = new }
                 .onDisappear {
                     if dock.playback === state {
-                        dock.playback = nil; dock.captions = nil; dock.stepLabel = nil; dock.marks = nil
+                        dock.playback = nil; dock.captions = nil; dock.stepLabel = nil; dock.marks = nil; dock.stepAction = nil
                     }
                 }
         } else {
             VStack(spacing: 0) {
                 Divider().padding(.top, 16)
-                LabTransportBar(state: state, captions: captions, stepLabel: stepLabel, marks: marks).padding(.top, 14)
+                LabTransportBar(state: state, captions: captions, stepLabel: stepLabel, marks: marks, action: action).padding(.top, 14)
             }
         }
     }
@@ -264,6 +267,7 @@ struct PlaybackTransport: View {
         dock.captions = captions
         dock.stepLabel = stepLabel
         dock.marks = marks
+        dock.stepAction = action
     }
 }
 
@@ -276,6 +280,9 @@ struct LabTransportBar: View {
     /// A text action at the right of the step label, in place of All steps ("New Data").
     var trailing: (label: String, action: () -> Void)? = nil
     var marks: TrackMarks? = nil
+    /// The storyboard transport: the step's labelled action ("Predict", "Score “great”") beside a square
+    /// step-back button, in place of speed, play and reset. It advances one step; on the last it starts over.
+    var action: ((Int) -> String)? = nil
     @State private var showSteps = false
     @Environment(\.palette) private var palette
 
@@ -301,6 +308,11 @@ struct LabTransportBar: View {
                     }
                 }
             }
+            if let action {
+                LabBackActionRow(action: action(state.index), backEnabled: state.index > 0,
+                                 onBack: { state.stepBack() },
+                                 onAction: { if state.atEnd { state.reset() } else { state.stepForward() } })
+            } else {
             HStack {
                 Button { state.cycleRate() } label: {
                     Text(rateLabel(state.rate))
@@ -334,6 +346,7 @@ struct LabTransportBar: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(palette.onSurface)
+            }
         }
         .sensoryFeedback(.selection, trigger: state.index)
         // Speed is read fresh each tick so a rate change takes effect live.
@@ -534,7 +547,7 @@ struct LabDockBar: View {
                 .background(.bar)
                 .overlay(alignment: .top) { Rectangle().fill(palette.outline).frame(height: 0.5) }
         } else if let playback = dock.playback {
-            LabTransportBar(state: playback, captions: dock.captions, stepLabel: dock.stepLabel, marks: dock.marks)
+            LabTransportBar(state: playback, captions: dock.captions, stepLabel: dock.stepLabel, marks: dock.marks, action: dock.stepAction)
                 .padding(.horizontal, 20)
                 .padding(.top, 14)
                 .padding(.bottom, 8)

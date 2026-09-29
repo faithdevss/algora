@@ -277,6 +277,20 @@ internal fun fitQda(points: List<ClassPoint>, shrink: Double = 0.0): Discriminan
     )
 }
 
+// Regularized discriminant analysis: each class's covariance blended toward the pooled one, so λ = 0 is
+// QDA and λ = 1 is LDA. The dial for a class with too few points to trust its own shape.
+internal fun fitRda(points: List<ClassPoint>, lambda: Double): DiscriminantFit {
+    val qda = fitQda(points)
+    val lda = fitLda(points)
+    fun blend(own: Gaussian2D, shared: Gaussian2D) = Gaussian2D(
+        own.meanX,
+        own.meanY,
+        Array(2) { i -> DoubleArray(2) { j -> (1 - lambda) * own.covariance[i][j] + lambda * shared.covariance[i][j] } },
+        own.prior,
+    )
+    return DiscriminantFit(blend(qda.negative, lda.negative), blend(qda.positive, lda.positive))
+}
+
 // Gaussian naive Bayes is QDA with the off-diagonal covariance terms forced to zero: features are
 // assumed conditionally independent given the class, which is exactly what a diagonal covariance
 // says. Keeping it in the same DiscriminantFit type makes the three directly comparable.

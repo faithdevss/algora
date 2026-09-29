@@ -1,9 +1,8 @@
 import SwiftUI
 
-// Port of PerceptronSimulationSection.kt. Parameter lab (screen 4e): AND / OR / XOR tabs, a stage
-// with the four inputs on the plane and the half-plane w₁·x₁ + w₂·x₂ + b ≥ 0 shaded, a truth-table
-// row, a verdict, then the three sliders. Docked, the sliders pin to the bottom in thumb reach; on
-// the topic page they sit under a divider in the card.
+// Port of PerceptronSimulationSection.kt: AND / OR / XOR tabs, a stage with the four inputs on the plane
+// and the half-plane w₁·x₁ + w₂·x₂ + b ≥ 0 shaded, a truth-table row, chips and a story headline, then a
+// w₁ / w₂ / b picker with the value's stepper and Train Step, pinned in thumb reach when docked.
 
 private struct Gate { let label: String; let targets: [Int] }
 
@@ -22,18 +21,58 @@ private let zeroColor = SimColors.blue
 private let axisLo = -0.36
 private let axisHi = 1.36
 
+private let startWeights = [1.0, 1.0, -1.5]
+private let symbols = ["w₁", "w₂", "b"]
+
+private func snap(_ v: Double) -> Double { (v * 10).rounded() / 10 }
+
+private func pointName(_ i: Int) -> String { "(\(inputs[i].0),\(inputs[i].1))" }
+
+private func joined(_ names: [String]) -> String {
+    names.count <= 1 ? names.first ?? "" : names.dropLast().joined(separator: ", ") + " and " + names.last!
+}
+
 /// Shared by the page and the pinned controls, so both stay live.
 @MainActor
 @Observable
 private final class PerceptronModel {
     var gateIndex = 0
-    var w1 = 1.0
-    var w2 = 1.0
-    var bias = -1.5
+    var w = startWeights
+    /// The picker: which of w₁, w₂, b the stepper is on.
+    var selected = 2
 
     var gate: Gate { gates[gateIndex] }
-    var outputs: [Int] { inputs.map { w1 * Double($0.0) + w2 * Double($0.1) + bias >= 0 ? 1 : 0 } }
+    var outputs: [Int] { inputs.map { w[0] * Double($0.0) + w[1] * Double($0.1) + w[2] >= 0 ? 1 : 0 } }
     var correct: Int { outputs.indices.filter { outputs[$0] == gate.targets[$0] }.count }
+    var wrong: Set<Int> { Set(outputs.indices.filter { outputs[$0] != gate.targets[$0] }) }
+
+    /// One perceptron-rule update on the first input it gets wrong: w += (target − output)·x, b += (target − output).
+    func trainStep() {
+        guard let i = outputs.indices.first(where: { outputs[$0] != gate.targets[$0] }) else { return }
+        let e = Double(gate.targets[i] - outputs[i])
+        let (x, y) = (Double(inputs[i].0), Double(inputs[i].1))
+        w = [snap(min(max(w[0] + 0.5 * e * x, -3), 3)), snap(min(max(w[1] + 0.5 * e * y, -3), 3)), snap(min(max(w[2] + 0.5 * e, -3), 3))]
+    }
+
+    var story: (String, String) {
+        let wrong = outputs.indices.filter { outputs[$0] != gate.targets[$0] }
+        let xorBody = "No values of w₁, w₂ and b fix that, because one line cannot split XOR. A hidden layer can."
+        if wrong.isEmpty {
+            return ("{m:All 4 correct.} One straight line separates \(gate.label).",
+                    "The shaded side outputs 1. Try XOR next: Train Step will never settle there.")
+        }
+        if wrong.count == 1 {
+            let i = wrong[0]
+            let with = inputs.indices.filter { $0 != i && outputs[$0] == outputs[i] }.map(pointName)
+            let wants = inputs.indices.filter { $0 != i && gate.targets[$0] == gate.targets[i] }.map(pointName)
+            let headline = !with.isEmpty && !wants.isEmpty
+                ? "\(correct) of 4. {w:\(pointName(i))} lands with \(joined(with)), but \(gate.label) wants it with \(joined(wants))."
+                : "\(correct) of 4. {w:\(pointName(i))} lands on the \(outputs[i]) side, but \(gate.label) wants \(gate.targets[i])."
+            return (headline, gate.label == "XOR" ? xorBody : "Train Step moves the line toward it: w += (target − output)·x.")
+        }
+        return ("\(correct) of 4. {w:\(wrong.count) inputs} are on the wrong side.",
+                gate.label == "XOR" ? xorBody : "Train Step fixes them one at a time: w += (target − output)·x.")
+    }
 }
 
 struct PerceptronLab: View {
@@ -41,20 +80,25 @@ struct PerceptronLab: View {
     @Environment(\.labDock) private var dock
 
     var body: some View {
+        // The chip reads the score at the input in question: the first one wrong, else (1,1).
+        let focus = model.outputs.indices.first { model.outputs[$0] != model.gate.targets[$0] } ?? 3
+        let focusScore = model.w[0] * Double(inputs[focus].0) + model.w[1] * Double(inputs[focus].1) + model.w[2]
+        let (headline, detail) = model.story
         VStack(alignment: .leading, spacing: 0) {
             LabIntro(text: "A perceptron draws one straight line, w₁·x₁ + w₂·x₂ + b = 0, and outputs 1 on the shaded side. Move the weights and bias until every input lands on the side its gate asks for.", bottom: 12)
-            ChipPicker(options: gates.indices.map { ($0, gates[$0].label) }, selection: $model.gateIndex)
+            LabSegments(labels: gates.map(\.label), selected: $model.gateIndex)
             LabCard {
                 PerceptronStage(model: model)
-                if dock == nil {
-                    PerceptronVerdict(model: model).padding(.top, 16)
-                    Divider().padding(.top, 16)
-                    PerceptronControls(model: model).padding(.top, 14)
-                }
             }
             .padding(.top, 14)
-            if dock != nil {
-                PerceptronVerdict(model: model).padding(.horizontal, 4).padding(.top, 18)
+            LabChips(chips: [
+                model.correct == 4 ? LabChip(key: "correct", value: "4 / 4", good: true) : LabChip(key: "correct", value: "\(model.correct) / 4", tint: .warn),
+                LabChip(key: "w·x+b at \(pointName(focus))", value: String(format: "%.1f", focusScore)),
+            ]).padding(.top, 16)
+            LabStoryNarration(headline: headline, body: detail).padding(.top, 16)
+            if dock == nil {
+                Divider().padding(.top, 16)
+                PerceptronControls(model: model).padding(.top, 14)
             }
         }
         .onAppear {
@@ -81,11 +125,11 @@ private struct PerceptronStage: View {
                     let ok = out == model.gate.targets[i]
                     VStack(spacing: 4) {
                         Text("\(inputs[i].0) \(inputs[i].1) →").font(AppFont.mono(12)).foregroundStyle(palette.muted)
-                        Text(ok ? "\(out) ✓" : "\(out) ✗").font(AppFont.mono(15, .semibold)).foregroundStyle(ok ? SimColors.green : SimColors.red)
+                        Text(ok ? "\(out) ✓" : "\(out) ✗").font(AppFont.mono(15, .semibold)).foregroundStyle(ok ? StoryTone.done.ink(palette) : StoryTone.warn.ink(palette))
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
-                    .background(SimColors.tint.opacity(0.18), in: RoundedRectangle(cornerRadius: 10))
+                    .background(ok ? SimColors.tint : SimColors.red.opacity(0.18), in: RoundedRectangle(cornerRadius: 10))
                 }
             }
         }
@@ -95,7 +139,7 @@ private struct PerceptronStage: View {
         let span = axisHi - axisLo
         func px(_ x: Double) -> CGFloat { CGFloat((x - axisLo) / span) * size.width }
         func py(_ y: Double) -> CGFloat { size.height - CGFloat((y - axisLo) / span) * size.height }
-        let (w1, w2, b) = (model.w1, model.w2, model.bias)
+        let (w1, w2, b) = (model.w[0], model.w[1], model.w[2])
 
         // The whole plane is the 0 side; the half-plane where the sum is ≥ 0 is repainted as the 1 side.
         ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(zeroColor.opacity(0.16)))
@@ -113,6 +157,10 @@ private struct PerceptronStage: View {
             let dot = Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2))
             ctx.fill(dot, with: .color(model.gate.targets[i] == 1 ? oneColor : zeroColor))
             ctx.stroke(dot, with: .color(palette.surface), lineWidth: 2)
+            if model.wrong.contains(i) {
+                let halo = Path(ellipseIn: CGRect(x: c.x - r - 5, y: c.y - r - 5, width: (r + 5) * 2, height: (r + 5) * 2))
+                ctx.stroke(halo, with: .color(SimColors.red), lineWidth: 2.5)
+            }
             let gap = r + 5
             ctx.label("(\(x),\(y))", at: CGPoint(x: c.x, y: y == 1 ? c.y - gap : c.y + gap),
                       font: AppFont.mono(11), color: palette.muted, anchor: y == 1 ? .bottom : .top)
@@ -120,50 +168,20 @@ private struct PerceptronStage: View {
     }
 }
 
-private struct PerceptronVerdict: View {
-    let model: PerceptronModel
-    @Environment(\.palette) private var palette
-
-    var body: some View {
-        let label = model.gate.label
-        let solved = model.correct == 4
-        let lead = Text(solved ? "All 4 correct." : "\(model.correct) of 4 correct.")
-            .foregroundColor(solved ? SimColors.green : palette.onSurface)
-        let rest: String = if solved {
-            " One straight line separates \(label)."
-        } else if label == "XOR" {
-            " No straight line separates XOR."
-        } else {
-            " Move the line until every cell shows ✓."
-        }
-        let detail: String = if label == "XOR" {
-            "One perceptron tops out at 3 of 4 here. That gap is why networks add a hidden layer."
-        } else if solved {
-            "Try XOR next: no setting of these sliders will work."
-        } else {
-            "The shaded side outputs 1. Bias slides the line; the weights tilt it."
-        }
-        VStack(alignment: .leading, spacing: 8) {
-            (lead + Text(rest).foregroundColor(palette.onSurface))
-                .font(AppFont.sans(19, .semibold))
-                .fixedSize(horizontal: false, vertical: true)
-            Text(detail)
-                .font(AppFont.sans(15))
-                .foregroundStyle(palette.muted)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
 private struct PerceptronControls: View {
     @Bindable var model: PerceptronModel
 
     var body: some View {
-        VStack(spacing: 14) {
-            LabParamSlider(name: "Weight", symbol: "w₁", value: $model.w1, range: -2...2, step: 0.1)
-            LabParamSlider(name: "Weight", symbol: "w₂", value: $model.w2, range: -2...2, step: 0.1)
-            LabParamSlider(name: "Bias", symbol: "b", value: $model.bias, range: -3...3, step: 0.1)
-        }
+        let names = ["Weight", "Weight", "Bias"]
+        LabParamActionControls(
+            params: names.indices.map { i in
+                let v = model.w[i]
+                return LabParam(tab: "\(names[i]) \(symbols[i])", name: names[i], symbol: symbols[i], text: String(format: "%.1f", v),
+                                canDecrease: v > -3 + 1e-4, canIncrease: v < 3 - 1e-4)
+            },
+            selected: $model.selected,
+            onStep: { i, delta in model.w[i] = snap(min(max(model.w[i] + Double(delta) * 0.1, -3), 3)) },
+            action: "Train Step"
+        ) { model.trainStep() }
     }
 }

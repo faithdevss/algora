@@ -268,6 +268,9 @@ class LabDock {
     /** The transport's step label ("Pull 40 of 200") and track marks, when the lab sets them. */
     var stepLabel by mutableStateOf<((Int) -> String)?>(null)
     var marks by mutableStateOf<TrackMarks?>(null)
+
+    /** The storyboard transport's labelled action per step ("Predict"); see [LabTransportBar]. */
+    var stepAction by mutableStateOf<((Int) -> String)?>(null)
 }
 
 /** Steps flagged on the scrub track with a yellow tick, and what a tick means ("explore"). */
@@ -346,6 +349,7 @@ fun PlaybackTransport(
     captions: List<String>? = null,
     stepLabel: ((Int) -> String)? = null,
     marks: TrackMarks? = null,
+    action: ((Int) -> String)? = null,
 ) {
     val dock = LocalLabDock.current
     if (dock != null) {
@@ -357,6 +361,7 @@ fun PlaybackTransport(
                     dock.captions = null
                     dock.stepLabel = null
                     dock.marks = null
+                    dock.stepAction = null
                 }
             }
         }
@@ -364,11 +369,12 @@ fun PlaybackTransport(
             dock.captions = captions
             dock.stepLabel = stepLabel
             dock.marks = marks
+            dock.stepAction = action
         }
     } else {
         Column(modifier = modifier.fillMaxWidth().padding(top = 16.dp)) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-            LabTransportBar(state, captions, Modifier.padding(top = 14.dp), stepLabel = stepLabel, marks = marks)
+            LabTransportBar(state, captions, Modifier.padding(top = 14.dp), stepLabel = stepLabel, marks = marks, action = action)
         }
     }
 }
@@ -392,6 +398,7 @@ fun LabDockBar(dock: LabDock, modifier: Modifier = Modifier) {
             Modifier.padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 12.dp),
             stepLabel = dock.stepLabel,
             marks = dock.marks,
+            action = dock.stepAction,
         )
     }
 }
@@ -409,6 +416,12 @@ fun LabTransportBar(
     /** A text action at the right of the step label, in place of All steps ("New Data"). */
     trailing: Pair<String, () -> Unit>? = null,
     marks: TrackMarks? = null,
+    /**
+     * The storyboard transport: the step's labelled action ("Predict", "Score “great”") beside a square
+     * step-back button, in place of speed, play and reset. Pressing it advances one step; on the last
+     * step it starts over.
+     */
+    action: ((Int) -> String)? = null,
 ) {
     // Auto-advance while playing; the rate is read fresh each tick so a change takes effect live.
     LaunchedEffect(state, state.playing) {
@@ -458,7 +471,14 @@ fun LabTransportBar(
                 }
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+        if (action != null) {
+            LabBackActionRow(
+                action = action(state.index),
+                backEnabled = state.index > 0,
+                onBack = { state.stepBack() },
+                onAction = { if (state.atEnd) state.reset() else state.stepForward() },
+            )
+        } else Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
             Box(
                 modifier = Modifier
                     .clip(CircleShape)

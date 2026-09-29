@@ -41,6 +41,22 @@ class SimulationFrameTest {
         check("Geometry", geometryTopicIds, ::geometryFrameCount)
 
     @Test
+    fun `every neural story builds frames at every drop rate`() =
+        check("NeuralStory", neuralStoryTopicIds, ::neuralStoryFrameCount)
+
+    @Test
+    fun `every ml story builds frames`() =
+        check("MlStory", mlStoryTopicIds, ::mlStoryFrameCount)
+
+    @Test
+    fun `every regression story evaluates at every stepper value`() =
+        check("RegressionStory", regressionStoryTopicIds, ::regressionStoryProbe)
+
+    @Test
+    fun `the decision-tree story's data grows the tree its diagram draws`() =
+        assertTrue(treeStoryShapeHolds())
+
+    @Test
     fun `every bit story builds frames as wide as their header`() =
         check("BitStory", bitStoryTopicIds, ::bitStoryFrameCount)
 

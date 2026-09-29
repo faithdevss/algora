@@ -14,6 +14,7 @@ private let positiveFill = CategoryAccents.pink
 private let supportRing = SimColors.active
 private let errorRing = SimColors.red
 private let ellipseColor = SimColors.grey
+private let unseenColor = Color(hex: 0x6B7280)
 
 private enum MarkKind { case ring, dot, line }
 private struct LegendMark { let color: Color; let label: String; let kind: MarkKind }
@@ -32,6 +33,13 @@ private struct SurfaceResult {
     var marginBand: Double?
     /// Points from this index on haven't streamed in yet; drawn dim.
     var unseenFrom: Int?
+    /// The storyboard layout's chips; the older layout reads `readout`.
+    var chips: [LabChip] = []
+    /// Another model's boundary drawn thin and grey for comparison (LDA's line under QDA, the boundary
+    /// before a Passive-Aggressive update).
+    var reference: ((Float, Float) -> Double)? = nil
+    /// The arithmetic of the step, in a strip under the plane.
+    var formula: String? = nil
 }
 
 private struct SurfaceSlider {
@@ -40,6 +48,9 @@ private struct SurfaceSlider {
     let range: ClosedRange<Double>
     let initial: Double
     var format: (Double) -> String = { String(format: "%.2f", $0) }
+    /// Storyboard layout: the stepper's increment and the picker label.
+    var step: Double = 0.05
+    var tab: String? = nil
 }
 
 private struct SurfaceConfig {
@@ -50,6 +61,20 @@ private struct SurfaceConfig {
     var legend: [LegendMark] = []
     /// Streams the points in one at a time; the step is how many have been seen.
     var stream = false
+    /// The redesigned layout: chips and a story headline over a picker and one stepper, in place of the
+    /// readout and sliders. Opt-in, so the other surface labs render unchanged.
+    var story = false
+    // Story options for QDA, Gaussian NB and Passive-Aggressive; the defaults keep the other story labs as
+    // they are. `storyLegend` replaces the class-dot legend; `solidEllipses` draws covariances as solid
+    // lines; `greyUnseen` draws not-yet-streamed points grey; `solidMargins` draws ±1 as thin solid lines;
+    // `startStep` is where a stream opens; `navReset` makes the nav button a reset instead of new data.
+    var storyLegend: [(color: Color, style: SwatchStyle, label: String)]? = nil
+    var solidEllipses = false
+    var greyUnseen = false
+    var solidMargins = false
+    var startStep: Int? = nil
+    var initialVariant = 0
+    var navReset = false
     let evaluate: (_ points: [ClassPoint], _ values: [Double], _ variant: Int, _ step: Int) -> SurfaceResult
 }
 
@@ -71,24 +96,30 @@ private func svmRbf() -> SurfaceConfig {
         intro: "Two concentric rings — not linearly separable by any line at all. γ controls how far each support vector's influence reaches; C controls how much margin violation is tolerated.",
         data: { ringData(seed: $0) },
         sliders: [
-            SurfaceSlider(name: "Reach", symbol: "log₁₀ γ", range: -2...1.2, initial: -0.4, format: { String(format: "%.1f", $0) }),
-            SurfaceSlider(name: "Penalty", symbol: "log₁₀ C", range: -1...3, initial: 1, format: { String(format: "%.1f", $0) }),
+            SurfaceSlider(name: "Reach", symbol: "log₁₀ γ", range: -2...1.2, initial: -0.4, format: { String(format: "%.1f", $0) }, step: 0.2, tab: "Reach γ"),
+            SurfaceSlider(name: "Penalty", symbol: "log₁₀ C", range: -1...3, initial: 1, format: { String(format: "%.1f", $0) }, step: 0.5, tab: "Penalty C"),
         ],
         legend: [supportLegend, errorLegend],
+        story: true,
         evaluate: { points, values, _, _ in
             let gamma = pow(10, Double(Float(values[0]))), c = pow(10, Double(Float(values[1])))
             let fit = trainSvm(points, kernel: rbfKernel(gamma), c: c)
             let wrong = fit.misclassified()
-            let readout = "SVs = \(fit.supportVectors.count) · correct = \(points.count - wrong.count)/\(points.count) · γ = \(f2(gamma))"
-            let (headline, highlight, detail): (String, String, String) =
-                gamma > 3 ? ("γ is large, so the boundary breaks into islands around single points.", "islands",
-                             "Each support vector's influence has shrunk to nearly a point. That is memorization, and it will generalize badly.")
-                : gamma < 0.05 ? ("γ is small, so the kernel behaves almost linearly.", "almost linearly",
+            let svs = fit.supportVectors.count
+            let chips = [
+                LabChip(key: "correct", value: "\(points.count - wrong.count)/\(points.count)", tone: wrong.isEmpty ? .idle : .warn, good: wrong.isEmpty),
+                LabChip(key: "SVs", value: "\(svs)"),
+                LabChip(key: "γ", value: f2(gamma)),
+            ]
+            let (headline, detail): (String, String) =
+                gamma > 3 ? ("γ is large, so the boundary breaks into {w:islands} around single points.",
+                             "Each support vector's reach has shrunk to almost nothing. That is memorization, and it will generalize badly.")
+                : gamma < 0.05 ? ("γ is small, so the kernel behaves {almost linearly}.",
                                   "Every point influences everywhere, and nothing that smooth can split two concentric rings.")
-                : ("The boundary is a closed curve, which no linear model can produce.", "closed curve",
-                   "The kernel trick got there using only inner products between pairs of points, never coordinates in the higher-dimensional space.")
-            return SurfaceResult(decision: { fit.decision($0, $1) }, readout: readout, headline: headline, highlight: highlight,
-                                 detail: detail, ringed: fit.supportVectors, errors: wrong, marginBand: 1)
+                : ("The boundary is a {closed curve}, something no linear model can draw.",
+                   "Only the \(svs) ringed points define it. The kernel compares pairs of points and never computes the higher-dimensional coordinates.")
+            return SurfaceResult(decision: { fit.decision($0, $1) }, readout: "", headline: headline, detail: detail,
+                                 ringed: fit.supportVectors, errors: wrong, marginBand: 1, chips: chips)
         })
 }
 
@@ -96,23 +127,28 @@ private func nuSvc() -> SurfaceConfig {
     SurfaceConfig(
         intro: "ν replaces C with something you can actually reason about: it simultaneously upper-bounds the fraction of margin errors and lower-bounds the fraction of support vectors. Both are measured below.",
         data: { overlappingBlobs(seed: $0, separation: 1.15) },
-        sliders: [SurfaceSlider(name: "Budget", symbol: "ν", range: 0.05...0.8, initial: 0.3)],
+        sliders: [SurfaceSlider(name: "Budget", symbol: "ν", range: 0.05...0.8, initial: 0.3, step: 0.05)],
         legend: [supportLegend, errorLegend],
+        story: true,
         evaluate: { points, values, _, _ in
             let nu = Double(Float(values[0]))
             let r = trainNuSvc(points, kernel: linearKernel(), nu: nu)
             let holds = r.marginErrorFraction <= nu + 0.06 && r.svFraction >= nu - 0.06
             return SurfaceResult(
                 decision: { r.fit.decision($0, $1) },
-                readout: "ν = \(f2(nu)) · margin err = \(f2(r.marginErrorFraction)) · SVs = \(f2(r.svFraction))",
+                readout: "",
                 headline: holds
-                    ? "The bound holds: margin errors \(f2(r.marginErrorFraction)) ≤ ν \(f2(nu)) ≤ support vectors \(f2(r.svFraction))."
-                    : "Margin errors \(f2(r.marginErrorFraction)) and support vectors \(f2(r.svFraction)) sit just outside ν = \(f2(nu)).",
-                highlight: holds ? "The bound holds" : nil,
+                    ? "{The bound holds}: margin errors \(f2(r.marginErrorFraction)) ≤ ν \(f2(nu)) ≤ support vectors \(f2(r.svFraction))."
+                    : "Margin errors \(f2(r.marginErrorFraction)) and support vectors \(f2(r.svFraction)) sit {w:just outside} ν = \(f2(nu)).",
                 detail: holds
-                    ? "That sandwich is what ν buys. C gives you nothing comparable, which is why it always needs a grid search."
+                    ? "That guarantee is what ν gives you. C gives nothing comparable, which is why it needs a grid search."
                     : "The bound is asymptotic, so on \(points.count) points it can miss slightly. The equivalent C here is \(f3(r.c)).",
-                ringed: r.fit.supportVectors, errors: r.fit.misclassified(), marginBand: 1)
+                ringed: r.fit.supportVectors, errors: r.fit.misclassified(), marginBand: 1,
+                chips: [
+                    LabChip(key: "margin err", value: f2(r.marginErrorFraction)),
+                    LabChip(key: "ν", value: f2(nu), dot: supportRing),
+                    LabChip(key: "SVs", value: f2(r.svFraction)),
+                ])
         })
 }
 
@@ -120,119 +156,187 @@ private func lda() -> SurfaceConfig {
     SurfaceConfig(
         intro: "Two classes with genuinely different spreads. LDA assumes they share one covariance, so it pools them — and the boundary it produces is always a straight line.",
         data: { unequalCovarianceBlobs(seed: $0) },
-        sliders: [SurfaceSlider(name: "Shrinkage", symbol: "", range: 0...0.95, initial: 0)],
-        legend: [LegendMark(color: ellipseColor, label: "Pooled covariance", kind: .line), errorLegend],
+        sliders: [SurfaceSlider(name: "Shrinkage", symbol: "", range: 0...0.95, initial: 0, step: 0.05)],
+        legend: [LegendMark(color: ellipseColor, label: "Shared covariance", kind: .ring), errorLegend],
+        story: true,
         evaluate: { points, values, _, _ in
-            let fit = fitLda(points, shrink: Double(Float(values[0])))
+            let shrink = Double(Float(values[0]))
+            let fit = fitLda(points, shrink: shrink)
             let wrong = errorsOf(points, fit.decision)
             return SurfaceResult(
                 decision: fit.decision,
-                readout: "correct = \(points.count - wrong.count)/\(points.count) · params = 5",
-                headline: "Both ellipses are identical, so the boundary is a straight line.",
-                highlight: "identical",
-                detail: "LDA forces both classes to share one pooled covariance, which cancels the quadratic terms. "
-                    + (wrong.isEmpty ? "On this sample the wrong shape costs nothing; tap New Data until it does."
-                       : "The pooled shape is wrong for the wide class, and the \(plural(wrong.count, "circled point")) are what that costs."),
-                errors: wrong, ellipses: [fit.negative.ellipse(1.6), fit.positive.ellipse(1.6)])
+                readout: "",
+                headline: "Both ellipses are {the same shape}, so the boundary is a straight line.",
+                detail: (wrong.isEmpty ? "On this sample the shared shape costs nothing. Tap new data until it does."
+                    : "The shared shape is too narrow for the stretched pink class. The \(plural(wrong.count, "red-ringed point")) are the cost.")
+                    + (shrink > 0 ? " Shrinkage pulls the shared shape toward a circle." : ""),
+                errors: wrong, ellipses: [fit.negative.ellipse(1.6), fit.positive.ellipse(1.6)],
+                chips: [
+                    LabChip(key: "correct", value: "\(points.count - wrong.count)/\(points.count)", good: true),
+                    LabChip(key: "misclassified", value: "\(wrong.count)", dot: errorRing),
+                ])
         })
 }
 
 private func qda() -> SurfaceConfig {
     SurfaceConfig(
-        intro: "The identical data as LDA, with the shared-covariance assumption dropped. Each class estimates its own, and the boundary stops being a line.",
+        intro: "The identical data as LDA, with the shared-covariance assumption dropped. Each class estimates its own, and the boundary stops being a line. λ blends each class's shape toward the shared one: 0 is QDA, 1 is LDA.",
         data: { unequalCovarianceBlobs(seed: $0) },
-        sliders: [SurfaceSlider(name: "Shrinkage", symbol: "", range: 0...0.95, initial: 0)],
-        legend: [LegendMark(color: ellipseColor, label: "Per-class covariance", kind: .line), errorLegend],
+        sliders: [SurfaceSlider(name: "Shrinkage", symbol: "λ", range: 0...1, initial: 0.32, step: 0.04)],
+        story: true,
+        storyLegend: [(ellipseColor, .line, "Class covariance"), (ellipseColor, .dashedLine, "LDA boundary"), (errorRing, .ring, "Misclassified")],
+        solidEllipses: true,
+        navReset: true,
         evaluate: { points, values, _, _ in
-            let fit = fitQda(points, shrink: Double(Float(values[0])))
+            let lambda = Double(Float(values[0]))
+            let fit = fitRda(points, lambda: lambda)
+            let lda = fitLda(points)
+            let n = points.count
             let wrong = errorsOf(points, fit.decision)
-            let ldaWrong = errorsOf(points, fitLda(points).decision).count
-            let verdict = wrong.count < ldaWrong ? "that buys \(plural(ldaWrong - wrong.count, "fewer error"))."
-                : wrong.count > ldaWrong ? "it costs \(plural(wrong.count - ldaWrong, "extra error")): two covariances from \(points.count / 2) points each are noisier than one pooled estimate that is merely biased."
-                : "the two tie, so the extra six parameters bought nothing."
+            let right = n - wrong.count
+            let qdaRight = n - errorsOf(points, fitQda(points).decision).count
+            let ldaRight = n - errorsOf(points, lda.decision).count
+            let l = f2(lambda)
+            let (headline, detail): (String, String) =
+                lambda < 1e-4 ? ("At λ = 0 each class keeps {its own shape}: this is plain QDA.",
+                                 "LDA shares one shape and gets \(ldaRight)/\(n). Raise λ when a class has too few points to trust its own covariance.")
+                : lambda > 1 - 1e-4 ? ("At λ = 1 both classes share {one shape}, so the boundary is LDA's straight line.",
+                                       "That gets \(ldaRight)/\(n) against QDA's \(qdaRight). Lower λ to let each class keep its own covariance.")
+                : lambda < 0.5 ? ("At λ = \(l) each class keeps most of its {own shape}, so the boundary still curves.",
+                                  "LDA shares one shape and gets \(ldaRight)/\(n). Raise λ when a class has too few points to trust its own covariance.")
+                : ("At λ = \(l) both shapes are pulled toward {one shared shape}, so the boundary straightens.",
+                   "This blend gets \(right)/\(n), QDA \(qdaRight) and LDA \(ldaRight). λ trades a flexible boundary for a steadier estimate.")
             return SurfaceResult(
-                decision: fit.decision,
-                readout: "QDA = \(points.count - wrong.count)/\(points.count) · LDA = \(points.count - ldaWrong)/\(points.count) · params = 11",
-                headline: "Each class gets its own ellipse, so the boundary bends into a conic.",
-                highlight: "conic",
-                detail: "QDA fits 11 parameters to LDA's 5, and on this sample " + verdict + " Shrinkage is the dial between them.",
-                errors: wrong, ellipses: [fit.negative.ellipse(1.6), fit.positive.ellipse(1.6)])
+                decision: fit.decision, readout: "", headline: headline, detail: detail,
+                errors: wrong, ellipses: [fit.negative.ellipse(1.6), fit.positive.ellipse(1.6)],
+                chips: [
+                    LabChip(key: "correct", value: "\(right)/\(n)", good: true),
+                    LabChip(key: "QDA λ=0", value: "\(qdaRight)/\(n)"),
+                    LabChip(key: "LDA λ=1", value: "\(ldaRight)/\(n)"),
+                ],
+                reference: lda.decision)
         })
 }
 
 private func passiveAggressive() -> SurfaceConfig {
     SurfaceConfig(
-        intro: "One pass over a stream, one example at a time. Example 45 is deliberately mislabelled — scrub past it and watch what each variant does to a boundary that was already correct.",
+        intro: "One pass over a stream, one example at a time. Example 45 is deliberately mislabelled — step past it and watch what each variant does to a boundary that was already correct.",
         data: { streamData(seed: $0) },
-        sliders: [SurfaceSlider(name: "Aggressiveness", symbol: "C", range: 0.05...3, initial: 1)],
+        sliders: [SurfaceSlider(name: "Aggressiveness", symbol: "C", range: 0.05...3, initial: 0.25, step: 0.05)],
         variants: ["Hard", "PA-I", "PA-II"],
-        legend: [LegendMark(color: supportRing, label: "Current", kind: .ring), errorLegend,
-                 LegendMark(color: SimColors.grey.opacity(0.45), label: "Not seen yet", kind: .dot)],
         stream: true,
+        story: true,
+        storyLegend: [(supportRing, .ring, "Current"), (ellipseColor, .dashedLine, "Before update"), (unseenColor, .dot, "Not seen yet")],
+        greyUnseen: true,
+        solidMargins: true,
+        startStep: 23,
+        initialVariant: 1,
+        navReset: true,
         evaluate: { points, values, variantIndex, step in
             let seen = min(max(step, 0), points.count)
-            let aggr = Double(Float(values[0]))
+            let c = Double(Float(values[0]))
             let variant: PaVariant = [.hard, .paI, .paII][min(max(variantIndex, 0), 2)]
-            let path = passiveAggressivePath(points, variant: variant, aggressiveness: aggr)
+            let path = passiveAggressivePath(points, variant: variant, aggressiveness: c)
             let s = path[min(seen, path.count - 1)]
+            let before = path[min(max(seen - 1, 0), path.count - 1)]
             let decision: (Float, Float) -> Double = { s.w1 * Double($0) + s.w2 * Double($1) + s.bias }
-            let wrong = errorsOf(Array(points.prefix(seen)), decision)
-            let tau = f3(s.lastTau)
-            let headline: String, highlight: String?, detail: String
+            let loss = s.lastLoss, tau = s.lastTau
+            let p: ClassPoint? = seen >= 1 ? points[seen - 1] : nil
+            let norm = p.map { Double($0.x) * Double($0.x) + Double($0.y) * Double($0.y) + 1 } ?? 1
+            let raw = loss / norm
+            let formula: String? =
+                seen == 0 ? nil
+                : loss == 0 ? "ℓ = max(0, 1 − y·f(x)) = 0, so τ = {v:0}"
+                : variant == .hard ? "τ = ℓ / ‖x‖² = \(f2(loss)) / \(f2(norm)) = {v:\(f2(tau))}"
+                : variant == .paI ? "τ = min(C, ℓ / ‖x‖²) = min(\(f2(c)), \(f2(loss)) / \(f2(norm))) = {v:\(f2(tau))}"
+                : "τ = ℓ / (‖x‖² + 1/2C) = \(f2(loss)) / (\(f2(norm)) + \(f2(1 / (2 * c)))) = {v:\(f2(tau))}"
+            let wrongSide = p.map { Double($0.label) * (before.w1 * Double($0.x) + before.w2 * Double($0.y) + before.bias) <= 0 } ?? false
+            let place = wrongSide ? "On the wrong side" : "Inside the margin"
+            let headline: String, detail: String
             if seen == 0 {
-                headline = "No examples yet, so the line hasn't been placed."
-                highlight = nil
-                detail = "Press play to stream the \(points.count) examples in one at a time."
-            } else if s.lastLoss == 0 {
-                headline = "This example is outside the margin, so τ = 0 and the line stays put."
-                highlight = "outside the margin"
+                headline = "No examples yet, so the line {hasn't been placed}."
+                detail = "Next Example streams the \(points.count) examples in one at a time."
+            } else if loss == 0 {
+                headline = "This example is {outside the margin}, so τ = 0 and the line stays put."
                 detail = "That is the passive half: a confident, correct example teaches nothing."
             } else if s.lastIndex == 44 {
-                highlight = "mislabelled"
                 switch variant {
                 case .hard:
-                    headline = "The mislabelled example forces a step of τ = \(tau)."
+                    headline = "The {mislabelled} example forces a step of τ = \(f2(tau))."
                     detail = "Hard PA has no cap, so it moves as far as it takes to fit this one point and wrecks a boundary that was already right."
                 case .paI:
-                    headline = "The mislabelled example is capped at τ = \(tau)."
-                    detail = "PA-I clips the step at C = \(f2(aggr)), so one bad label can only do bounded damage."
+                    headline = "The {mislabelled} example is capped at τ = \(f2(tau))."
+                    detail = "PA-I clips the step at C = \(f2(c)), so one bad label can only do bounded damage."
                 case .paII:
-                    headline = "The mislabelled example is softened to τ = \(tau)."
+                    headline = "The {mislabelled} example is softened to τ = \(f2(tau))."
                     detail = "PA-II adds 1/2C to the denominator, shrinking the step smoothly with no hard cutoff."
                 }
+            } else if variant == .paI && raw > c + 1e-9 {
+                let share = tau / raw
+                let far = share >= 0.45 && share <= 0.55 ? "half as far" : "\(Int((share * 100).rounded()))% as far"
+                headline = "\(place), the loss asks for τ = \(f2(raw)), but PA-I {caps it at C}."
+                detail = "So the line moves \(far) as Hard PA would. A lower C lets noisy examples move it less."
+            } else if variant == .paII {
+                headline = "\(place), PA-II softens the step to τ = \(f2(tau)) {instead of \(f2(raw))}."
+                detail = "The 1/2C term shrinks every step smoothly. A lower C shrinks it more."
             } else {
-                headline = "Hinge loss is \(f2(s.lastLoss)), so the line moves just far enough to put this example on the margin."
-                highlight = "on the margin"
-                detail = "That is the aggressive half. \(plural(s.updates, "update")) over \(seen) examples, \(plural(s.mistakes, "outright mistake"))."
+                headline = "\(place), so the line moves {just far enough} to put this example on the margin."
+                detail = "That is the aggressive half: τ = \(f2(tau)). \(plural(s.updates, "update")) over \(seen) examples, \(plural(s.mistakes, "outright mistake"))."
             }
             return SurfaceResult(
-                decision: decision,
-                readout: "updates = \(s.updates) · τ = \(tau) · hinge = \(f2(s.lastLoss))",
-                headline: headline, highlight: highlight, detail: detail,
-                ringed: seen >= 1 && seen <= points.count ? [seen - 1] : [], errors: wrong, marginBand: 1, unseenFrom: seen)
+                decision: decision, readout: "", headline: headline, detail: detail,
+                ringed: seen >= 1 && seen <= points.count ? [seen - 1] : [], marginBand: 1, unseenFrom: seen,
+                chips: [
+                    LabChip(key: "example", value: "\(seen) / \(points.count)"),
+                    LabChip(key: "hinge", value: f2(loss), tint: .active),
+                    LabChip(key: "τ", value: f2(tau), tint: .answer),
+                ],
+                reference: seen >= 1 && loss > 0 ? { before.w1 * Double($0) + before.w2 * Double($1) + before.bias } : nil,
+                formula: formula)
         })
+}
+
+/// var_smoothing as sklearn has it: 10^e times the largest feature variance, added to every variance.
+private func smoothingLabel(_ e: Double) -> String {
+    let i = Int(e.rounded())
+    return i == 0 ? "1" : "1e\(i)"
 }
 
 private func gaussianNb() -> SurfaceConfig {
     SurfaceConfig(
         intro: "Gaussian naive Bayes is QDA with the off-diagonal covariance terms forced to zero. \"Features are independent given the class\" is not an abstraction here — it is visible as ellipses that cannot tilt.",
         data: { unequalCovarianceBlobs(seed: $0) },
-        sliders: [SurfaceSlider(name: "Smoothing", symbol: "var", range: 0...1.5, initial: 0)],
-        legend: [LegendMark(color: ellipseColor, label: "Axis-aligned covariance", kind: .line), errorLegend],
+        sliders: [SurfaceSlider(name: "Smoothing", symbol: "var", range: -9...0, initial: -9, format: smoothingLabel, step: 1)],
+        story: true,
+        storyLegend: [(ellipseColor, .line, "Axis-aligned covariance"), (ellipseColor, .dashedLine, "QDA boundary"), (errorRing, .ring, "Misclassified")],
+        solidEllipses: true,
+        navReset: true,
         evaluate: { points, values, _, _ in
-            let fit = fitGaussianNb(points, smoothing: Double(Float(values[0])))
+            let e = Int(values[0].rounded())
+            let qda = fitQda(points)
+            let maxVar = [qda.negative, qda.positive].map { max($0.covariance[0][0], $0.covariance[1][1]) }.max() ?? 1
+            let fit = fitGaussianNb(points, smoothing: pow(10, Double(e)) * maxVar)
+            let n = points.count
             let wrong = errorsOf(points, fit.decision)
-            let qdaWrong = errorsOf(points, fitQda(points).decision).count
-            let verdict = wrong.count > qdaWrong ? "\(plural(wrong.count - qdaWrong, "extra error")). The independence assumption is false and you can see exactly where."
-                : wrong.count < qdaWrong ? "nothing: it is \(plural(qdaWrong - wrong.count, "error")) ahead of QDA, because fewer parameters from the same data is often the better trade."
-                : "nothing. The assumption is false, yet the predictions are unaffected, which is why naive Bayes keeps working."
+            let right = n - wrong.count
+            let qdaRight = n - errorsOf(points, qda.decision).count
+            let cost = right < qdaRight
+                ? "That costs \(qdaRight - right == 1 ? "one point" : "\(qdaRight - right) points") against QDA: \(right)/\(n) against \(qdaRight). The independence assumption is wrong here, but it barely moves the boundary."
+                : right > qdaRight ? "It even beats QDA, \(right)/\(n) against \(qdaRight): fewer parameters from the same data can be the better trade."
+                : "Here it costs nothing: both get \(right)/\(n). The independence assumption is wrong, yet the predictions survive."
+            let (headline, detail): (String, String) = e >= -2
+                ? ("Smoothing of \(smoothingLabel(Double(e))) {swells both ellipses}, so the boundary drifts.",
+                   "Variance smoothing only guards against a zero variance. This much reshapes the classes: \(right)/\(n) against QDA's \(qdaRight).")
+                : ("The pink ellipse {can't tilt}, because naive Bayes has no parameter for it.", cost)
             return SurfaceResult(
-                decision: fit.decision,
-                readout: "NB = \(points.count - wrong.count)/\(points.count) · QDA = \(points.count - qdaWrong)/\(points.count) · params = 6",
-                headline: "The ellipses can't tilt, because naive Bayes has no parameter for it.",
-                highlight: "can't tilt",
-                detail: "It fits 6 parameters to QDA's 11, and here that costs " + verdict,
-                errors: wrong, ellipses: [fit.negative.ellipse(1.6), fit.positive.ellipse(1.6)])
+                decision: fit.decision, readout: "", headline: headline, detail: detail,
+                errors: wrong, ellipses: [fit.negative.ellipse(1.6), fit.positive.ellipse(1.6)],
+                chips: [
+                    LabChip(key: "NB", value: "\(right)/\(n)", good: true),
+                    LabChip(key: "QDA", value: "\(qdaRight)/\(n)"),
+                    LabChip(key: "params", value: "6 vs 11"),
+                ],
+                reference: qda.decision)
         })
 }
 
@@ -251,8 +355,13 @@ private final class SurfaceModel {
     let playback = PlaybackState(stepCount: 1, speedMs: 450)
     var points: [ClassPoint] = []
     var result: SurfaceResult?
+    /// Storyboard layout: the parameter the stepper is on.
+    var selected = 0
 
-    init(values: [Double]) { self.values = values }
+    init(values: [Double], variant: Int = 0) {
+        self.values = values
+        self.variant = variant
+    }
 }
 
 struct DecisionSurfaceLab: View {
@@ -263,12 +372,97 @@ struct DecisionSurfaceLab: View {
     init(topicId: String) {
         let c = (surfaceConfigs[topicId] ?? svmRbf)()
         config = c
-        _model = State(initialValue: SurfaceModel(values: c.sliders.map(\.initial)))
+        _model = State(initialValue: SurfaceModel(values: c.sliders.map(\.initial), variant: c.initialVariant))
     }
 
     private struct Key: Equatable { let seed: Int32; let variant: Int; let values: [Double]; let step: Int }
 
     var body: some View {
+        content
+        .onAppear {
+            guard let dock else { return }
+            let config = config, model = model
+            dock.controls = { AnyView(config.story ? AnyView(StorySurfaceControls(config: config, model: model, docked: true))
+                                                   : AnyView(SurfaceControls(config: config, model: model, docked: true))) }
+            if config.navReset {
+                dock.navAction = LabNavAction(icon: "arrow.counterclockwise", label: "Reset") { resetSurface(config, model) }
+            } else if !config.stream {
+                dock.navAction = LabNavAction(icon: "arrow.counterclockwise", label: "New data") { model.seed += 1 }
+            }
+        }
+        .onDisappear {
+            dock?.controls = nil
+            dock?.navAction = nil
+            model.playback.playing = false
+        }
+        .task(id: Key(seed: model.seed, variant: model.variant, values: model.values,
+                      step: config.stream ? model.playback.index : 0)) {
+            let config = config, seed = model.seed, values = model.values, variant = model.variant
+            var pts = model.points
+            if pts.isEmpty || seed != loadedSeed {
+                pts = await Task.detached(priority: .userInitiated) { config.data(seed) }.value
+                if Task.isCancelled { return }
+                loadedSeed = seed
+                model.points = pts
+                model.playback.load(stepCount: pts.count + 1)
+                model.playback.index = min(config.startStep ?? model.playback.lastIndex, model.playback.lastIndex)
+            }
+            let step = config.stream ? model.playback.index : 0
+            // Sliders move fast; let the latest value settle before running an SMO fit.
+            try? await Task.sleep(for: .milliseconds(config.stream ? 0 : 60))
+            if Task.isCancelled { return }
+            let r = await Task.detached(priority: .userInitiated) { config.evaluate(pts, values, variant, step) }.value
+            if Task.isCancelled { return }
+            model.result = r
+        }
+    }
+
+    @ViewBuilder private var content: some View {
+        if config.story { storyContent } else { classicContent }
+    }
+
+    /// The redesigned layout: the plane and a legend of what is on it, chips, a story headline, then a
+    /// picker over one stepper (docked in thumb reach when the screen has a dock).
+    private var storyContent: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            LabIntro(text: config.intro, bottom: 12)
+            if !config.variants.isEmpty {
+                LabSegments(labels: config.variants, selected: $model.variant).padding(.bottom, 14)
+            }
+            LabCard {
+                ZStack {
+                    if let result = model.result {
+                        SurfacePlane(points: model.points, result: result, dottedEllipses: !config.solidEllipses,
+                                     greyUnseen: config.greyUnseen, solidMargins: config.solidMargins)
+                    } else {
+                        ProgressView()
+                    }
+                }
+                .aspectRatio(planeAspect, contentMode: .fit)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                if let result = model.result {
+                    if let formula = result.formula { SurfaceFormula(text: formula).padding(.top, 12) }
+                    if let legend = config.storyLegend {
+                        StoryLegendRow(items: legend.filter { $0.label != errorLegend.label || !result.errors.isEmpty }).padding(.top, 14)
+                    } else {
+                        let marks = config.legend.filter { $0.label != errorLegend.label || !result.errors.isEmpty }
+                        StoryLegendRow(items: [(negativeFill, .dot, "Class 0"), (positiveFill, .dot, "Class 1")]
+                            + marks.map { ($0.color, SwatchStyle.ring, $0.label) }).padding(.top, 14)
+                    }
+                }
+            }
+            if let result = model.result {
+                LabChips(chips: result.chips).padding(.top, 16)
+                LabStoryNarration(headline: result.headline, body: result.detail).padding(.top, 16)
+            }
+            if dock == nil {
+                Divider().padding(.top, 16)
+                StorySurfaceControls(config: config, model: model, docked: false).padding(.top, 14)
+            }
+        }
+    }
+
+    private var classicContent: some View {
         VStack(alignment: .leading, spacing: 0) {
             LabIntro(text: config.intro, bottom: 12)
             if !config.variants.isEmpty {
@@ -303,39 +497,6 @@ struct DecisionSurfaceLab: View {
                 SurfaceNarration(result: result).padding(.horizontal, 4).padding(.top, 16)
             }
         }
-        .onAppear {
-            guard let dock else { return }
-            let config = config, model = model
-            dock.controls = { AnyView(SurfaceControls(config: config, model: model, docked: true)) }
-            if !config.stream {
-                dock.navAction = LabNavAction(icon: "arrow.counterclockwise", label: "New data") { model.seed += 1 }
-            }
-        }
-        .onDisappear {
-            dock?.controls = nil
-            dock?.navAction = nil
-            model.playback.playing = false
-        }
-        .task(id: Key(seed: model.seed, variant: model.variant, values: model.values,
-                      step: config.stream ? model.playback.index : 0)) {
-            let config = config, seed = model.seed, values = model.values, variant = model.variant
-            var pts = model.points
-            if pts.isEmpty || seed != loadedSeed {
-                pts = await Task.detached(priority: .userInitiated) { config.data(seed) }.value
-                if Task.isCancelled { return }
-                loadedSeed = seed
-                model.points = pts
-                model.playback.load(stepCount: pts.count + 1)
-                model.playback.index = model.playback.lastIndex
-            }
-            let step = config.stream ? model.playback.index : 0
-            // Sliders move fast; let the latest value settle before running an SMO fit.
-            try? await Task.sleep(for: .milliseconds(config.stream ? 0 : 60))
-            if Task.isCancelled { return }
-            let r = await Task.detached(priority: .userInitiated) { config.evaluate(pts, values, variant, step) }.value
-            if Task.isCancelled { return }
-            model.result = r
-        }
     }
 
     @State private var loadedSeed: Int32?
@@ -365,6 +526,72 @@ private struct SurfaceControls: View {
                 SimButtonRow(buttons: [("↻ New Data", SimColors.grey, { model.seed += 1 })]).padding(.top, 14)
             }
         }
+    }
+}
+
+/// The storyboard layout's picker over one stepper, plus New Data when there is no dock to hold it.
+private struct StorySurfaceControls: View {
+    let config: SurfaceConfig
+    @Bindable var model: SurfaceModel
+    let docked: Bool
+
+    var body: some View {
+        VStack(spacing: 14) {
+            LabParamControls(
+                params: config.sliders.indices.map { i in
+                    let s = config.sliders[i], v = model.values[i]
+                    return LabParam(tab: s.tab ?? s.name, name: s.name, symbol: s.symbol, text: s.format(v),
+                                    canDecrease: v > s.range.lowerBound + 1e-4, canIncrease: v < s.range.upperBound - 1e-4)
+                },
+                selected: $model.selected
+            ) { i, delta in
+                let s = config.sliders[i]
+                let next = ((model.values[i] + Double(delta) * s.step) / s.step).rounded() * s.step
+                model.values[i] = min(max(next, s.range.lowerBound), s.range.upperBound)
+            }
+            // A stream steps one example at a time with a labelled action in place of a transport.
+            if config.stream {
+                let playback = model.playback
+                LabBackActionRow(action: playback.atEnd ? "Start Over" : "Next Example", backEnabled: playback.index > 0,
+                                 onBack: { playback.stepBack() },
+                                 onAction: { if playback.atEnd { playback.jump(to: 0) } else { playback.stepForward() } })
+            }
+            if !docked {
+                if config.navReset {
+                    SimButtonRow(buttons: [("↻ Reset", SimColors.grey, { resetSurface(config, model) })])
+                } else {
+                    SimButtonRow(buttons: [("↻ New Data", SimColors.grey, { model.seed += 1 })])
+                }
+            }
+        }
+    }
+}
+
+/// Back to the lab's opening state: the first sample, the initial values, variant and example.
+@MainActor
+private func resetSurface(_ config: SurfaceConfig, _ model: SurfaceModel) {
+    model.seed = 5
+    model.variant = config.initialVariant
+    model.values = config.sliders.map(\.initial)
+    model.playback.jump(to: config.startStep ?? model.playback.lastIndex)
+}
+
+/// The step's arithmetic, centred in a tinted strip; wraps to two lines when it has to.
+private struct SurfaceFormula: View {
+    let text: String
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        storyText(text, palette)
+            .font(AppFont.mono(13))
+            .foregroundStyle(palette.onSurface.opacity(0.85))
+            .multilineTextAlignment(.center)
+            .lineLimit(2)
+            .lineSpacing(3)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .padding(.horizontal, 12)
+            .background(SimColors.tint, in: RoundedRectangle(cornerRadius: 10))
     }
 }
 
@@ -416,6 +643,9 @@ private let gridY = 40
 private struct SurfacePlane: View {
     let points: [ClassPoint]
     let result: SurfaceResult
+    var dottedEllipses = false
+    var greyUnseen = false
+    var solidMargins = false
     @Environment(\.palette) private var palette
 
     var body: some View {
@@ -461,8 +691,17 @@ private struct SurfacePlane: View {
         if let band = result.marginBand {
             for level in [band, -band] {
                 ctx.stroke(contourPath(nodes, level: level, at: at), with: .color(palette.primary.opacity(0.6)),
-                           style: StrokeStyle(lineWidth: 1.2, dash: [5, 4]))
+                           style: StrokeStyle(lineWidth: 1.2, dash: solidMargins ? [] : [5, 4]))
             }
+        }
+        if let reference = result.reference {
+            var refNodes = nodes
+            for gx in 0...gridX {
+                for gy in 0...gridY {
+                    refNodes[gx][gy] = reference(xMin + (xMax - xMin) * Float(gx) / Float(gridX), yMin + (yMax - yMin) * Float(gy) / Float(gridY))
+                }
+            }
+            ctx.stroke(contourPath(refNodes, level: 0, at: at), with: .color(ellipseColor.opacity(0.85)), lineWidth: 1.5)
         }
         ctx.stroke(contourPath(nodes, level: 0, at: at), with: .color(palette.primary), lineWidth: 3)
 
@@ -472,7 +711,11 @@ private struct SurfacePlane: View {
                 let pt = CGPoint(x: sx(p.0), y: sy(p.1))
                 if i == 0 { path.move(to: pt) } else { path.addLine(to: pt) }
             }
-            ctx.stroke(path, with: .color(ellipseColor), lineWidth: 2)
+            if dottedEllipses {
+                ctx.stroke(path, with: .color(ellipseColor.opacity(0.7)), style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
+            } else {
+                ctx.stroke(path, with: .color(ellipseColor), lineWidth: 2)
+            }
         }
 
         let r: CGFloat = 6.5
@@ -482,7 +725,12 @@ private struct SurfacePlane: View {
             let fill = p.label > 0 ? positiveFill : negativeFill
             let dot = Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2))
             if i >= unseenFrom {
-                ctx.fill(dot, with: .color(fill.opacity(0.3)))
+                if greyUnseen {
+                    ctx.fill(dot, with: .color(unseenColor))
+                    ctx.stroke(dot, with: .color(palette.surface), lineWidth: 1.5)
+                } else {
+                    ctx.fill(dot, with: .color(fill.opacity(0.3)))
+                }
                 continue
             }
             ctx.fill(dot, with: .color(fill))

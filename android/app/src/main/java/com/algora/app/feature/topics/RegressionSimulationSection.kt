@@ -22,6 +22,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.Icons
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -48,35 +51,48 @@ import kotlin.random.Random
 
 private data class RegPoint(val x: Float, val y: Float)
 
-private fun generateData(): List<RegPoint> {
-    val m = Random.nextFloat() * 3f - 0.5f
-    val c = Random.nextFloat() * 4f + 1f
+// A fixed, seeded scatter that climbs faster than the starting line, so the lab opens on "the slope is
+// too flat" and Reset always returns to the same story.
+private fun regressionData(): List<RegPoint> {
+    val random = Random(3)
     return (0 until 12).map { i ->
-        val x = i * 0.9f + Random.nextFloat() * 0.4f
-        RegPoint(x, m * x + c + (Random.nextFloat() * 3f - 1.5f))
+        val x = i * 0.9f + random.nextFloat() * 0.4f
+        RegPoint(x, 0.55f * x + 0.9f + (random.nextFloat() * 2f - 1f) * 0.9f)
     }
 }
 
 private val ResidualColor = SimColors.Red
 
+private const val START_SLOPE = 0.35f
+private const val START_INTERCEPT = 1.5f
+
 /** Data points: pale on dark, a mid grey on light so they don't wash out. */
 @Composable
 private fun pointColor() = if (LocalDarkTheme.current) SimColors.Idle else SimColors.Grey
 
-// The slider-explorer lab for Linear Regression: slope and intercept drive a line over a scatter,
-// each residual drawn as a stub, with MSE read out and a least-squares "Show Best Fit". Layout
-// follows the parameter-lab pattern: stage card (plot + legend), readout chips, narration, then the
-// sliders and buttons — pinned in thumb reach when docked. The narration reads the residuals to say
-// which slider to move next.
+private fun f2(v: Float) = "%.2f".format(v)
+
+/** Steps [value] by [delta] × [step] on the step grid, within [range]. */
+private fun stepped(value: Float, delta: Int, step: Float, range: ClosedFloatingPointRange<Float>) =
+    ((value + delta * step) / step).roundToInt().times(step).coerceIn(range.start, range.endInclusive)
+
+private val SlopeRange = -3f..3f
+private val InterceptRange = -4f..8f
+
+// The Linear Regression lab: slope and intercept drive a line over a scatter, each residual drawn as a
+// stub. Chips read the line, its MSE and the best MSE; the headline reads the residuals to say what is
+// wrong with the line; a Slope / Intercept picker over one stepper and Show Best Fit sit in thumb reach.
 @Composable
 fun RegressionSimulationSection() {
-    var points by remember { mutableStateOf(generateData()) }
-    var slope by remember { mutableFloatStateOf(0.35f) }
-    var intercept by remember { mutableFloatStateOf(1.5f) }
+    val points = remember { regressionData() }
+    var slope by remember { mutableFloatStateOf(START_SLOPE) }
+    var intercept by remember { mutableFloatStateOf(START_INTERCEPT) }
+    var selected by remember { mutableIntStateOf(0) }
 
     val mse = mse(points, slope, intercept)
     val best = remember(points) { leastSquares(points) }
     val bestMse = remember(points) { mse(points, best.first, best.second) }
+    val (headline, body) = regressionStory(points, slope, intercept, mse, bestMse)
 
     val dock = LocalLabDock.current
     LabIntro(
@@ -85,22 +101,29 @@ fun RegressionSimulationSection() {
     )
 
     val controls: @Composable () -> Unit = {
-        Column {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                LabParamSlider("Slope", "m", slope, -3f..3f, { "%.2f".format(it) }) { slope = it }
-                LabParamSlider("Intercept", "c", intercept, -4f..8f, { "%.2f".format(it) }) { intercept = it }
-            }
-            Row(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                LabButton("New Data", primary = false, modifier = Modifier.weight(1f)) { points = generateData() }
-                LabButton("Show Best Fit", primary = true, modifier = Modifier.weight(1f)) {
-                    slope = best.first
-                    intercept = best.second
-                }
-            }
-        }
+        LabParamActionControls(
+            params = listOf(
+                LabParam("Slope m", "Slope", "m", f2(slope), slope > SlopeRange.start + 1e-4f, slope < SlopeRange.endInclusive - 1e-4f),
+                LabParam("Intercept c", "Intercept", "c", f2(intercept), intercept > InterceptRange.start + 1e-4f, intercept < InterceptRange.endInclusive - 1e-4f),
+            ),
+            selected = selected,
+            onSelect = { selected = it },
+            onStep = { i, delta ->
+                if (i == 0) slope = stepped(slope, delta, 0.05f, SlopeRange) else intercept = stepped(intercept, delta, 0.1f, InterceptRange)
+            },
+            action = "Show Best Fit",
+            onAction = {
+                slope = best.first
+                intercept = best.second
+            },
+        )
     }
 
-    val chips = listOf<Pair<String?, String>>(null to equation(slope, intercept), "MSE" to "%.2f".format(mse))
+    val chips = listOf(
+        LabChip("y =", "${f2(slope)}x ${if (intercept < 0) "−" else "+"} ${f2(abs(intercept))}"),
+        LabChip("MSE", f2(mse), tint = StoryTone.Path),
+        LabChip("best", f2(bestMse)),
+    )
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Surface(
@@ -112,87 +135,65 @@ fun RegressionSimulationSection() {
             Column(modifier = Modifier.padding(16.dp)) {
                 RegressionCanvas(points, slope, intercept)
                 RegressionLegend(Modifier.padding(top = 12.dp))
-                if (dock == null) {
-                    ReadoutChips(chips, Modifier.padding(top = 16.dp), accented = setOf(1))
-                    RegressionNarration(points, slope, intercept, mse, bestMse, Modifier.padding(top = 14.dp))
-                    HorizontalDivider(modifier = Modifier.padding(top = 16.dp, bottom = 14.dp), color = MaterialTheme.colorScheme.outline)
-                    controls()
-                }
             }
         }
-        if (dock != null) {
-            ReadoutChips(chips, Modifier.padding(top = 14.dp), accented = setOf(1))
-            RegressionNarration(points, slope, intercept, mse, bestMse, Modifier.padding(start = 4.dp, end = 4.dp, top = 16.dp))
+        LabChips(chips, Modifier.padding(top = 16.dp))
+        LabStoryNarration(headline, body, Modifier.padding(top = 16.dp))
+        if (dock == null) {
+            HorizontalDivider(modifier = Modifier.padding(top = 16.dp, bottom = 14.dp), color = MaterialTheme.colorScheme.outline)
+            controls()
         }
     }
 
     if (dock != null) {
         // Re-handed every composition: the controls close over this composition's values.
-        SideEffect { dock.controls = controls }
-        DisposableEffect(dock) { onDispose { dock.controls = null } }
+        SideEffect {
+            dock.controls = controls
+            dock.navAction = LabNavAction(Icons.Filled.Refresh, "Reset") {
+                slope = START_SLOPE
+                intercept = START_INTERCEPT
+                selected = 0
+            }
+        }
+        DisposableEffect(dock) {
+            onDispose {
+                dock.controls = null
+                dock.navAction = null
+            }
+        }
     }
 }
 
 private fun mse(points: List<RegPoint>, m: Float, c: Float): Float =
     points.map { val e = m * it.x + c - it.y; e * e }.average().toFloat()
 
-/** "y = 0.35x + 1.5": two decimals at most, trailing zeros dropped. */
-private fun equation(m: Float, c: Float): String {
-    fun short(v: Float) = "%.2f".format(v).trimEnd('0').trimEnd('.').ifEmpty { "0" }
-    val sign = if (c < 0) "−" else "+"
-    return "y = ${short(m)}x $sign ${short(abs(c))}"
-}
-
-@Composable
-private fun RegressionNarration(
-    points: List<RegPoint>,
-    slope: Float,
-    intercept: Float,
-    mse: Float,
-    bestMse: Float,
-    modifier: Modifier,
-) {
-    val residuals = points.map { it.y - (slope * it.x + intercept) }
-    val meanX = points.map { it.x }.average().toFloat()
+/** What the residuals say about the line: its headline (with the key word marked) and the why. */
+private fun regressionStoryText(xs: List<Float>, ys: List<Float>, slope: Float, intercept: Float, mse: Float, bestMse: Float): Pair<String, String> {
+    val residuals = xs.indices.map { ys[it] - (slope * xs[it] + intercept) }
+    val meanX = xs.average().toFloat()
     // How residuals trend with x: positive means the points climb away from the line to the right.
-    val drift = points.indices.sumOf { ((points[it].x - meanX) * residuals[it]).toDouble() } /
-        points.sumOf { ((it.x - meanX) * (it.x - meanX)).toDouble() }
-    val meanResidual = residuals.average()
-    val atBest = mse <= bestMse * 1.02f + 1e-3f
-
-    val headline = buildAnnotatedString {
-        when {
-            atBest -> {
-                append("This is the ")
-                withStyle(SpanStyle(color = SimColors.Green)) { append("best fit") }
-                append(": no other line has a lower MSE.")
-            }
-            residuals.all { it > 0f } -> append("Every point sits above your line, so raise the intercept first.")
-            residuals.all { it < 0f } -> append("Every point sits below your line, so lower the intercept first.")
-            abs(drift) > 0.15 -> append(
-                if (drift > 0) "Points climb away from your line on the right, so steepen the slope."
-                else "Points fall away from your line on the right, so flatten the slope.",
-            )
-            meanResidual > 0 -> append("Your line runs a little low overall, so raise the intercept.")
-            else -> append("Your line runs a little high overall, so lower the intercept.")
-        }
-    }
-    val detail = if (atBest) {
-        "Its MSE is ${"%.2f".format(bestMse)}. Any tilt or shift from here makes the squared residuals grow."
-    } else {
-        "Each red stub is one residual. MSE is the average of their squares."
-    }
-    Column(modifier = modifier.fillMaxWidth()) {
-        Text(headline, fontSize = 19.sp, lineHeight = 25.sp, fontWeight = FontWeight.SemiBold)
-        Text(
-            detail,
-            fontSize = 15.sp,
-            lineHeight = 21.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 8.dp),
-        )
+    val drift = xs.indices.sumOf { ((xs[it] - meanX) * residuals[it]).toDouble() } / xs.sumOf { ((it - meanX) * (it - meanX)).toDouble() }
+    val right = xs.indices.filter { xs[it] > meanX }
+    val rightAbove = right.count { residuals[it] > 0f }
+    val rightBelow = right.size - rightAbove
+    val body = "Each red stub is one residual, and MSE averages their squares. The best line reaches ${f2(bestMse)}."
+    return when {
+        mse <= bestMse * 1.02f + 1e-3f ->
+            "This is the {m:best fit}: no other line has a lower MSE." to
+                "Its MSE is ${f2(bestMse)}. Tilt or shift the line from here and the squared residuals grow."
+        residuals.all { it > 0f } -> "Every point sits {above} your line, so the intercept is too low." to body
+        residuals.all { it < 0f } -> "Every point sits {below} your line, so the intercept is too high." to body
+        drift > 0.15 && rightAbove * 2 > right.size ->
+            "$rightAbove of ${right.size} points on the right sit {above} your line, so the slope is too flat." to body
+        drift < -0.15 && rightBelow * 2 > right.size ->
+            "$rightBelow of ${right.size} points on the right sit {below} your line, so the slope is too steep." to body
+        residuals.average() > 0 -> "Most points sit {above} your line, so the intercept is too low." to body
+        else -> "Most points sit {below} your line, so the intercept is too high." to body
     }
 }
+
+private fun regressionStory(points: List<RegPoint>, slope: Float, intercept: Float, mse: Float, bestMse: Float) =
+    regressionStoryText(points.map { it.x }, points.map { it.y }, slope, intercept, mse, bestMse)
 
 @Composable
 private fun RegressionLegend(modifier: Modifier) {

@@ -21,6 +21,14 @@ struct SimulationHost: View {
     var body: some View {
         // The storyboarded string and array labs span several simulation types; they are routed first.
         if textStoryTopicIds.contains(topicId) { TextStoryLab(topicId: topicId).id(topicId) }
+        else if neuralStoryTopicIds.contains(topicId) { NeuralStoryLab(topicId: topicId).id(topicId) }
+        else if mlStoryTopicIds.contains(topicId) { MlStoryLab(topicId: topicId).id(topicId) }
+        else if regressionStoryTopicIds.contains(topicId) { RegressionStoryLab(topicId: topicId).id(topicId) }
+        else if bayesStoryTopicIds.contains(topicId) { BayesStoryLab(topicId: topicId).id(topicId) }
+        else if ensembleStoryTopicIds.contains(topicId) { EnsembleStoryLab(topicId: topicId).id(topicId) }
+        else if metricStoryTopicIds.contains(topicId) { MetricStoryLab(topicId: topicId).id(topicId) }
+        else if evalStoryTopicIds.contains(topicId) { EvalStoryLab(topicId: topicId).id(topicId) }
+        else if rlStoryTopicIds.contains(topicId) { RlStoryLab(topicId: topicId).id(topicId) }
         else if let alias = patternLabAliases[topicId] { SimulationHost(topicId: alias.topicId, type: alias.type) }
         else { lab }
     }

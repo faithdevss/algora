@@ -46,6 +46,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
+import com.algora.app.core.ui.theme.IBMPlexMono
+import androidx.compose.ui.text.style.TextAlign
 import com.algora.app.core.ui.theme.CategoryAccents
 import com.algora.app.core.ui.theme.LocalDarkTheme
 import com.algora.app.core.ui.theme.SimColors
@@ -67,6 +70,7 @@ private val PositiveFill = CategoryAccents.Pink
 private val SupportRing = SimColors.Active
 private val ErrorRing = SimColors.Red
 private val EllipseColor = SimColors.Grey
+private val UnseenColor = Color(0xFF6B7280)
 
 private enum class MarkKind { Ring, Dot, Line }
 
@@ -89,6 +93,13 @@ private class SurfaceResult(
     val marginBand: Double? = null,
     // Points from this index on haven't streamed in yet; drawn dim.
     val unseenFrom: Int? = null,
+    // The storyboard layout's chips; the older layout reads [readout].
+    val chips: List<LabChip> = emptyList(),
+    // Another model's boundary drawn thin and grey for comparison (LDA's line under QDA, the boundary
+    // before a Passive-Aggressive update).
+    val reference: ((Float, Float) -> Double)? = null,
+    // The arithmetic of the step, in a strip under the plane.
+    val formula: String? = null,
 )
 
 private class SurfaceSlider(
@@ -97,6 +108,9 @@ private class SurfaceSlider(
     val range: ClosedFloatingPointRange<Float>,
     val initial: Float,
     val format: (Float) -> String = { "%.2f".format(it) },
+    // Storyboard layout: the stepper's increment and the picker label.
+    val step: Float = 0.05f,
+    val tab: String = name,
 )
 
 private class SurfaceConfig(
@@ -107,6 +121,20 @@ private class SurfaceConfig(
     val legend: List<LegendMark> = emptyList(),
     /** Streams the points in one at a time; the step is how many have been seen. */
     val stream: Boolean = false,
+    // The redesigned layout: chips and a story headline over a picker and one stepper, in place of
+    // the readout and sliders. Opt-in, so the other surface labs render unchanged.
+    val story: Boolean = false,
+    // Story options for QDA, Gaussian NB and Passive-Aggressive; the defaults keep the other story labs as
+    // they are. [storyLegend] replaces the class-dot legend; [solidEllipses] draws covariances as solid
+    // lines; [greyUnseen] draws not-yet-streamed points grey; [solidMargins] draws ±1 as thin solid lines;
+    // [startStep] is where a stream opens; [navReset] makes the nav button a reset instead of new data.
+    val storyLegend: List<Triple<Color, SwatchStyle, String>>? = null,
+    val solidEllipses: Boolean = false,
+    val greyUnseen: Boolean = false,
+    val solidMargins: Boolean = false,
+    val startStep: Int? = null,
+    val initialVariant: Int = 0,
+    val navReset: Boolean = false,
     val evaluate: (points: List<ClassPoint>, values: FloatArray, variant: Int, step: Int) -> SurfaceResult,
 )
 
@@ -129,47 +157,43 @@ private fun svmRbfConfig() = SurfaceConfig(
     intro = "Two concentric rings — not linearly separable by any line at all. γ controls how far each support vector's influence reaches; C controls how much margin violation is tolerated.",
     data = { seed -> ringData(seed) },
     sliders = listOf(
-        SurfaceSlider("Reach", "log₁₀ γ", -2f..1.2f, -0.4f) { "%.1f".format(it) },
-        SurfaceSlider("Penalty", "log₁₀ C", -1f..3f, 1f) { "%.1f".format(it) },
+        SurfaceSlider("Reach", "log₁₀ γ", -2f..1.2f, -0.4f, { "%.1f".format(it) }, step = 0.2f, tab = "Reach γ"),
+        SurfaceSlider("Penalty", "log₁₀ C", -1f..3f, 1f, { "%.1f".format(it) }, step = 0.5f, tab = "Penalty C"),
     ),
     legend = listOf(supportLegend, errorLegend),
+    story = true,
     evaluate = { points, values, _, _ ->
         val gamma = Math.pow(10.0, values[0].toDouble())
         val c = Math.pow(10.0, values[1].toDouble())
         val fit = trainSvm(points, rbfKernel(gamma), c)
         val wrong = fit.misclassified()
-        val readout = "SVs = ${fit.supportVectors.size} · correct = ${points.size - wrong.size}/${points.size} · γ = ${f2(gamma)}"
-        when {
-            gamma > 3.0 -> SurfaceResult(
-                decision = { x, y -> fit.decision(x, y) }, readout = readout,
-                headline = "γ is large, so the boundary breaks into islands around single points.",
-                highlight = "islands",
-                detail = "Each support vector's influence has shrunk to nearly a point. That is memorization, and it will generalize badly.",
-                ringed = fit.supportVectors, errors = wrong, marginBand = 1.0,
-            )
-            gamma < 0.05 -> SurfaceResult(
-                decision = { x, y -> fit.decision(x, y) }, readout = readout,
-                headline = "γ is small, so the kernel behaves almost linearly.",
-                highlight = "almost linearly",
-                detail = "Every point influences everywhere, and nothing that smooth can split two concentric rings.",
-                ringed = fit.supportVectors, errors = wrong, marginBand = 1.0,
-            )
-            else -> SurfaceResult(
-                decision = { x, y -> fit.decision(x, y) }, readout = readout,
-                headline = "The boundary is a closed curve, which no linear model can produce.",
-                highlight = "closed curve",
-                detail = "The kernel trick got there using only inner products between pairs of points, never coordinates in the higher-dimensional space.",
-                ringed = fit.supportVectors, errors = wrong, marginBand = 1.0,
-            )
+        val svs = fit.supportVectors.size
+        val chips = listOf(
+            LabChip("correct", "${points.size - wrong.size}/${points.size}", if (wrong.isEmpty()) StoryTone.Idle else StoryTone.Warn, good = wrong.isEmpty()),
+            LabChip("SVs", "$svs"),
+            LabChip("γ", f2(gamma)),
+        )
+        val (headline, detail) = when {
+            gamma > 3.0 -> "γ is large, so the boundary breaks into {w:islands} around single points." to
+                "Each support vector's reach has shrunk to almost nothing. That is memorization, and it will generalize badly."
+            gamma < 0.05 -> "γ is small, so the kernel behaves {almost linearly}." to
+                "Every point influences everywhere, and nothing that smooth can split two concentric rings."
+            else -> "The boundary is a {closed curve}, something no linear model can draw." to
+                "Only the $svs ringed points define it. The kernel compares pairs of points and never computes the higher-dimensional coordinates."
         }
+        SurfaceResult(
+            decision = { x, y -> fit.decision(x, y) }, readout = "", headline = headline, detail = detail,
+            ringed = fit.supportVectors, errors = wrong, marginBand = 1.0, chips = chips,
+        )
     },
 )
 
 private fun nuSvcConfig() = SurfaceConfig(
     intro = "ν replaces C with something you can actually reason about: it simultaneously upper-bounds the fraction of margin errors and lower-bounds the fraction of support vectors. Both are measured below.",
     data = { seed -> overlappingBlobs(seed, separation = 1.15f) },
-    sliders = listOf(SurfaceSlider("Budget", "ν", 0.05f..0.8f, 0.3f)),
+    sliders = listOf(SurfaceSlider("Budget", "ν", 0.05f..0.8f, 0.3f, step = 0.05f)),
     legend = listOf(supportLegend, errorLegend),
+    story = true,
     evaluate = { points, values, _, _ ->
         val nu = values[0].toDouble()
         val result = trainNuSvc(points, linearKernel(), nu)
@@ -178,21 +202,25 @@ private fun nuSvcConfig() = SurfaceConfig(
         val holds = errorFraction <= nu + 0.06 && svFraction >= nu - 0.06
         SurfaceResult(
             decision = { x, y -> result.fit.decision(x, y) },
-            readout = "ν = ${f2(nu)} · margin err = ${f2(errorFraction)} · SVs = ${f2(svFraction)}",
+            readout = "",
             headline = if (holds) {
-                "The bound holds: margin errors ${f2(errorFraction)} ≤ ν ${f2(nu)} ≤ support vectors ${f2(svFraction)}."
+                "{The bound holds}: margin errors ${f2(errorFraction)} ≤ ν ${f2(nu)} ≤ support vectors ${f2(svFraction)}."
             } else {
-                "Margin errors ${f2(errorFraction)} and support vectors ${f2(svFraction)} sit just outside ν = ${f2(nu)}."
+                "Margin errors ${f2(errorFraction)} and support vectors ${f2(svFraction)} sit {w:just outside} ν = ${f2(nu)}."
             },
-            highlight = if (holds) "The bound holds" else null,
             detail = if (holds) {
-                "That sandwich is what ν buys. C gives you nothing comparable, which is why it always needs a grid search."
+                "That guarantee is what ν gives you. C gives nothing comparable, which is why it needs a grid search."
             } else {
                 "The bound is asymptotic, so on ${points.size} points it can miss slightly. The equivalent C here is ${f3(result.c)}."
             },
             ringed = result.fit.supportVectors,
             errors = result.fit.misclassified(),
             marginBand = 1.0,
+            chips = listOf(
+                LabChip("margin err", f2(errorFraction)),
+                LabChip("ν", f2(nu), dot = SupportRing),
+                LabChip("SVs", f2(svFraction)),
+            ),
         )
     },
 )
@@ -200,151 +228,210 @@ private fun nuSvcConfig() = SurfaceConfig(
 private fun ldaConfig() = SurfaceConfig(
     intro = "Two classes with genuinely different spreads. LDA assumes they share one covariance, so it pools them — and the boundary it produces is always a straight line.",
     data = { seed -> unequalCovarianceBlobs(seed) },
-    sliders = listOf(SurfaceSlider("Shrinkage", "", 0f..0.95f, 0f)),
-    legend = listOf(LegendMark(EllipseColor, "Pooled covariance", MarkKind.Line), errorLegend),
+    sliders = listOf(SurfaceSlider("Shrinkage", "", 0f..0.95f, 0f, step = 0.05f)),
+    legend = listOf(LegendMark(EllipseColor, "Shared covariance", MarkKind.Ring), errorLegend),
+    story = true,
     evaluate = { points, values, _, _ ->
         val shrink = values[0].toDouble()
         val fit = fitLda(points, shrink)
         val wrong = errorsOf(points) { x, y -> fit.decision(x, y) }
         SurfaceResult(
             decision = { x, y -> fit.decision(x, y) },
-            readout = "correct = ${points.size - wrong.size}/${points.size} · params = 5",
-            headline = "Both ellipses are identical, so the boundary is a straight line.",
-            highlight = "identical",
-            detail = "LDA forces both classes to share one pooled covariance, which cancels the quadratic terms. " +
-                if (wrong.isEmpty()) {
-                    "On this sample the wrong shape costs nothing; tap New Data until it does."
-                } else {
-                    "The pooled shape is wrong for the wide class, and the ${plural(wrong.size, "circled point")} are what that costs."
-                },
+            readout = "",
+            headline = "Both ellipses are {the same shape}, so the boundary is a straight line.",
+            detail = if (wrong.isEmpty()) {
+                "On this sample the shared shape costs nothing. Tap new data until it does."
+            } else {
+                "The shared shape is too narrow for the stretched pink class. The ${plural(wrong.size, "red-ringed point")} are the cost."
+            } + if (shrink > 0) " Shrinkage pulls the shared shape toward a circle." else "",
             errors = wrong,
             ellipses = listOf(fit.negative.ellipse(1.6), fit.positive.ellipse(1.6)),
+            chips = listOf(
+                LabChip("correct", "${points.size - wrong.size}/${points.size}", good = true),
+                LabChip("misclassified", "${wrong.size}", dot = ErrorRing),
+            ),
         )
     },
 )
 
 private fun qdaConfig() = SurfaceConfig(
-    intro = "The identical data as LDA, with the shared-covariance assumption dropped. Each class estimates its own, and the boundary stops being a line.",
+    intro = "The identical data as LDA, with the shared-covariance assumption dropped. Each class estimates its own, and the boundary stops being a line. λ blends each class's shape toward the shared one: 0 is QDA, 1 is LDA.",
     data = { seed -> unequalCovarianceBlobs(seed) },
-    sliders = listOf(SurfaceSlider("Shrinkage", "", 0f..0.95f, 0f)),
-    legend = listOf(LegendMark(EllipseColor, "Per-class covariance", MarkKind.Line), errorLegend),
+    sliders = listOf(SurfaceSlider("Shrinkage", "λ", 0f..1f, 0.32f, step = 0.04f)),
+    story = true,
+    storyLegend = listOf(
+        Triple(EllipseColor, SwatchStyle.Line, "Class covariance"),
+        Triple(EllipseColor, SwatchStyle.DashedLine, "LDA boundary"),
+        Triple(ErrorRing, SwatchStyle.Ring, "Misclassified"),
+    ),
+    solidEllipses = true,
+    navReset = true,
     evaluate = { points, values, _, _ ->
-        val fit = fitQda(points, values[0].toDouble())
+        val lambda = values[0].toDouble()
+        val fit = fitRda(points, lambda)
         val lda = fitLda(points)
         val wrong = errorsOf(points) { x, y -> fit.decision(x, y) }
-        val ldaWrong = errorsOf(points) { x, y -> lda.decision(x, y) }.size
+        val n = points.size
+        val qdaRight = n - errorsOf(points) { x, y -> fitQda(points).decision(x, y) }.size
+        val ldaRight = n - errorsOf(points) { x, y -> lda.decision(x, y) }.size
+        val right = n - wrong.size
+        val l = f2(lambda)
+        val (headline, detail) = when {
+            lambda < 1e-4 -> "At λ = 0 each class keeps {its own shape}: this is plain QDA." to
+                "LDA shares one shape and gets $ldaRight/$n. Raise λ when a class has too few points to trust its own covariance."
+            lambda > 1 - 1e-4 -> "At λ = 1 both classes share {one shape}, so the boundary is LDA's straight line." to
+                "That gets $ldaRight/$n against QDA's $qdaRight. Lower λ to let each class keep its own covariance."
+            lambda < 0.5 -> "At λ = $l each class keeps most of its {own shape}, so the boundary still curves." to
+                "LDA shares one shape and gets $ldaRight/$n. Raise λ when a class has too few points to trust its own covariance."
+            else -> "At λ = $l both shapes are pulled toward {one shared shape}, so the boundary straightens." to
+                "This blend gets $right/$n, QDA $qdaRight and LDA $ldaRight. λ trades a flexible boundary for a steadier estimate."
+        }
         SurfaceResult(
             decision = { x, y -> fit.decision(x, y) },
-            readout = "QDA = ${points.size - wrong.size}/${points.size} · LDA = ${points.size - ldaWrong}/${points.size} · params = 11",
-            headline = "Each class gets its own ellipse, so the boundary bends into a conic.",
-            highlight = "conic",
-            detail = "QDA fits 11 parameters to LDA's 5, and on this sample " +
-                when {
-                    wrong.size < ldaWrong -> "that buys ${plural(ldaWrong - wrong.size, "fewer error")}."
-                    wrong.size > ldaWrong -> "it costs ${plural(wrong.size - ldaWrong, "extra error")}: two covariances from ${points.size / 2} points each are noisier than one pooled estimate that is merely biased."
-                    else -> "the two tie, so the extra six parameters bought nothing."
-                } +
-                " Shrinkage is the dial between them.",
+            readout = "",
+            headline = headline,
+            detail = detail,
             errors = wrong,
             ellipses = listOf(fit.negative.ellipse(1.6), fit.positive.ellipse(1.6)),
+            chips = listOf(
+                LabChip("correct", "$right/$n", good = true),
+                LabChip("QDA λ=0", "$qdaRight/$n"),
+                LabChip("LDA λ=1", "$ldaRight/$n"),
+            ),
+            reference = { x, y -> lda.decision(x, y) },
         )
     },
 )
 
 private fun passiveAggressiveConfig() = SurfaceConfig(
-    intro = "One pass over a stream, one example at a time. Example 45 is deliberately mislabelled — scrub past it and watch what each variant does to a boundary that was already correct.",
+    intro = "One pass over a stream, one example at a time. Example 45 is deliberately mislabelled — step past it and watch what each variant does to a boundary that was already correct.",
     data = { seed -> streamData(seed) },
-    sliders = listOf(SurfaceSlider("Aggressiveness", "C", 0.05f..3f, 1f)),
+    sliders = listOf(SurfaceSlider("Aggressiveness", "C", 0.05f..3f, 0.25f, step = 0.05f)),
     variants = listOf("Hard", "PA-I", "PA-II"),
-    legend = listOf(
-        LegendMark(SupportRing, "Current", MarkKind.Ring),
-        errorLegend,
-        LegendMark(SimColors.Grey.copy(alpha = 0.45f), "Not seen yet", MarkKind.Dot),
-    ),
     stream = true,
+    story = true,
+    storyLegend = listOf(
+        Triple(SupportRing, SwatchStyle.Ring, "Current"),
+        Triple(EllipseColor, SwatchStyle.DashedLine, "Before update"),
+        Triple(UnseenColor, SwatchStyle.Dot, "Not seen yet"),
+    ),
+    greyUnseen = true,
+    solidMargins = true,
+    startStep = 23,
+    initialVariant = 1,
+    navReset = true,
     evaluate = { points, values, variantIndex, step ->
         val seen = step.coerceIn(0, points.size)
-        val aggressiveness = values[0].toDouble()
+        val c = values[0].toDouble()
         val variant = PaVariant.entries[variantIndex.coerceIn(0, 2)]
-        val path = passiveAggressivePath(points, variant, aggressiveness)
+        val path = passiveAggressivePath(points, variant, c)
         val state = path[seen.coerceIn(0, path.lastIndex)]
+        val before = path[(seen - 1).coerceIn(0, path.lastIndex)]
         val decision = { x: Float, y: Float -> state.w1 * x + state.w2 * y + state.bias }
-        val wrong = errorsOf(points.take(seen), decision)
-        val tau = f3(state.lastTau)
-        val headline: String
-        val highlight: String?
-        val detail: String
-        when {
-            seen == 0 -> {
-                headline = "No examples yet, so the line hasn't been placed."
-                highlight = null
-                detail = "Press play to stream the ${points.size} examples in one at a time."
+        val loss = state.lastLoss
+        val p = points.getOrNull(seen - 1)
+        val norm = p?.let { it.x * it.x + it.y * it.y + 1.0 } ?: 1.0
+        val raw = loss / norm
+        val tau = state.lastTau
+        val formula = when {
+            seen == 0 -> null
+            loss == 0.0 -> "ℓ = max(0, 1 − y·f(x)) = 0, so τ = {v:0}"
+            variant == PaVariant.HARD -> "τ = ℓ / ‖x‖² = ${f2(loss)} / ${f2(norm)} = {v:${f2(tau)}}"
+            variant == PaVariant.PA_I -> "τ = min(C, ℓ / ‖x‖²) = min(${f2(c)}, ${f2(loss)} / ${f2(norm)}) = {v:${f2(tau)}}"
+            else -> "τ = ℓ / (‖x‖² + 1/2C) = ${f2(loss)} / (${f2(norm)} + ${f2(1 / (2 * c))}) = {v:${f2(tau)}}"
+        }
+        val where = if (p != null && p.label * (before.w1 * p.x + before.w2 * p.y + before.bias) <= 0) "On the wrong side" else "Inside the margin"
+        val (headline, detail) = when {
+            seen == 0 -> "No examples yet, so the line {hasn't been placed}." to
+                "Next Example streams the ${points.size} examples in one at a time."
+            loss == 0.0 -> "This example is {outside the margin}, so τ = 0 and the line stays put." to
+                "That is the passive half: a confident, correct example teaches nothing."
+            state.lastIndex == 44 -> when (variant) {
+                PaVariant.HARD -> "The {mislabelled} example forces a step of τ = ${f2(tau)}." to
+                    "Hard PA has no cap, so it moves as far as it takes to fit this one point and wrecks a boundary that was already right."
+                PaVariant.PA_I -> "The {mislabelled} example is capped at τ = ${f2(tau)}." to
+                    "PA-I clips the step at C = ${f2(c)}, so one bad label can only do bounded damage."
+                PaVariant.PA_II -> "The {mislabelled} example is softened to τ = ${f2(tau)}." to
+                    "PA-II adds 1/2C to the denominator, shrinking the step smoothly with no hard cutoff."
             }
-            state.lastLoss == 0.0 -> {
-                headline = "This example is outside the margin, so τ = 0 and the line stays put."
-                highlight = "outside the margin"
-                detail = "That is the passive half: a confident, correct example teaches nothing."
+            variant == PaVariant.PA_I && raw > c + 1e-9 -> {
+                val share = tau / raw
+                val far = if (share in 0.45..0.55) "half as far" else "${(share * 100).roundToInt()}% as far"
+                "$where, the loss asks for τ = ${f2(raw)}, but PA-I {caps it at C}." to
+                    "So the line moves $far as Hard PA would. A lower C lets noisy examples move it less."
             }
-            state.lastIndex == 44 -> {
-                highlight = "mislabelled"
-                when (variant) {
-                    PaVariant.HARD -> {
-                        headline = "The mislabelled example forces a step of τ = $tau."
-                        detail = "Hard PA has no cap, so it moves as far as it takes to fit this one point and wrecks a boundary that was already right."
-                    }
-                    PaVariant.PA_I -> {
-                        headline = "The mislabelled example is capped at τ = $tau."
-                        detail = "PA-I clips the step at C = ${f2(aggressiveness)}, so one bad label can only do bounded damage."
-                    }
-                    PaVariant.PA_II -> {
-                        headline = "The mislabelled example is softened to τ = $tau."
-                        detail = "PA-II adds 1/2C to the denominator, shrinking the step smoothly with no hard cutoff."
-                    }
-                }
-            }
-            else -> {
-                headline = "Hinge loss is ${f2(state.lastLoss)}, so the line moves just far enough to put this example on the margin."
-                highlight = "on the margin"
-                detail = "That is the aggressive half. ${plural(state.updates, "update")} over $seen examples, ${plural(state.mistakes, "outright mistake")}."
-            }
+            variant == PaVariant.PA_II -> "$where, PA-II softens the step to τ = ${f2(tau)} {instead of ${f2(raw)}}." to
+                "The 1/2C term shrinks every step smoothly. A lower C shrinks it more."
+            else -> "$where, so the line moves {just far enough} to put this example on the margin." to
+                "That is the aggressive half: τ = ${f2(tau)}. ${plural(state.updates, "update")} over $seen examples, ${plural(state.mistakes, "outright mistake")}."
         }
         SurfaceResult(
             decision = decision,
-            readout = "updates = ${state.updates} · τ = $tau · hinge = ${f2(state.lastLoss)}",
+            readout = "",
             headline = headline,
-            highlight = highlight,
             detail = detail,
             ringed = if (seen in 1..points.size) setOf(seen - 1) else emptySet(),
-            errors = wrong,
             marginBand = 1.0,
             unseenFrom = seen,
+            chips = listOf(
+                LabChip("example", "$seen / ${points.size}"),
+                LabChip("hinge", f2(loss), tint = StoryTone.Active),
+                LabChip("τ", f2(tau), tint = StoryTone.Answer),
+            ),
+            reference = if (seen >= 1 && loss > 0.0) { x, y -> before.w1 * x + before.w2 * y + before.bias } else null,
+            formula = formula,
         )
     },
 )
 
+/** var_smoothing as sklearn has it: 10^e times the largest feature variance, added to every variance. */
+private fun smoothingLabel(e: Float): String = e.roundToInt().let { if (it == 0) "1" else "1e$it" }
+
 private fun gaussianNbConfig() = SurfaceConfig(
     intro = "Gaussian naive Bayes is QDA with the off-diagonal covariance terms forced to zero. \"Features are independent given the class\" is not an abstraction here — it is visible as ellipses that cannot tilt.",
     data = { seed -> unequalCovarianceBlobs(seed) },
-    sliders = listOf(SurfaceSlider("Smoothing", "var", 0f..1.5f, 0f)),
-    legend = listOf(LegendMark(EllipseColor, "Axis-aligned covariance", MarkKind.Line), errorLegend),
+    sliders = listOf(SurfaceSlider("Smoothing", "var", -9f..0f, -9f, { smoothingLabel(it) }, step = 1f)),
+    story = true,
+    storyLegend = listOf(
+        Triple(EllipseColor, SwatchStyle.Line, "Axis-aligned covariance"),
+        Triple(EllipseColor, SwatchStyle.DashedLine, "QDA boundary"),
+        Triple(ErrorRing, SwatchStyle.Ring, "Misclassified"),
+    ),
+    solidEllipses = true,
+    navReset = true,
     evaluate = { points, values, _, _ ->
-        val fit = fitGaussianNb(points, values[0].toDouble())
+        val e = values[0].roundToInt()
+        val maxVar = fitQda(points).let { q -> listOf(q.negative, q.positive).maxOf { maxOf(it.covariance[0][0], it.covariance[1][1]) } }
+        val fit = fitGaussianNb(points, Math.pow(10.0, e.toDouble()) * maxVar)
         val qda = fitQda(points)
+        val n = points.size
         val wrong = errorsOf(points) { x, y -> fit.decision(x, y) }
-        val qdaWrong = errorsOf(points) { x, y -> qda.decision(x, y) }.size
+        val right = n - wrong.size
+        val qdaRight = n - errorsOf(points) { x, y -> qda.decision(x, y) }.size
+        val cost = when {
+            right < qdaRight -> "That costs ${if (qdaRight - right == 1) "one point" else "${qdaRight - right} points"} against QDA: $right/$n against $qdaRight. The independence assumption is wrong here, but it barely moves the boundary."
+            right > qdaRight -> "It even beats QDA, $right/$n against $qdaRight: fewer parameters from the same data can be the better trade."
+            else -> "Here it costs nothing: both get $right/$n. The independence assumption is wrong, yet the predictions survive."
+        }
+        val (headline, detail) = if (e >= -2) {
+            "Smoothing of ${smoothingLabel(e.toFloat())} {swells both ellipses}, so the boundary drifts." to
+                "Variance smoothing only guards against a zero variance. This much reshapes the classes: $right/$n against QDA's $qdaRight."
+        } else {
+            "The pink ellipse {can't tilt}, because naive Bayes has no parameter for it." to cost
+        }
         SurfaceResult(
             decision = { x, y -> fit.decision(x, y) },
-            readout = "NB = ${points.size - wrong.size}/${points.size} · QDA = ${points.size - qdaWrong}/${points.size} · params = 6",
-            headline = "The ellipses can't tilt, because naive Bayes has no parameter for it.",
-            highlight = "can't tilt",
-            detail = "It fits 6 parameters to QDA's 11, and here that costs " +
-                when {
-                    wrong.size > qdaWrong -> "${plural(wrong.size - qdaWrong, "extra error")}. The independence assumption is false and you can see exactly where."
-                    wrong.size < qdaWrong -> "nothing: it is ${plural(qdaWrong - wrong.size, "error")} ahead of QDA, because fewer parameters from the same data is often the better trade."
-                    else -> "nothing. The assumption is false, yet the predictions are unaffected, which is why naive Bayes keeps working."
-                },
+            readout = "",
+            headline = headline,
+            detail = detail,
             errors = wrong,
             ellipses = listOf(fit.negative.ellipse(1.6), fit.positive.ellipse(1.6)),
+            chips = listOf(
+                LabChip("NB", "$right/$n", good = true),
+                LabChip("QDA", "$qdaRight/$n"),
+                LabChip("params", "6 vs 11"),
+            ),
+            reference = { x, y -> qda.decision(x, y) },
         )
     },
 )
@@ -364,18 +451,35 @@ private val surfaceConfigs: Map<String, () -> SurfaceConfig> = mapOf(
 fun DecisionSurfaceSection(topicId: String) {
     val config = remember(topicId) { (surfaceConfigs[topicId] ?: ::svmRbfConfig)() }
     var seed by remember(config) { mutableIntStateOf(5) }
-    var variantIndex by remember(config) { mutableIntStateOf(0) }
+    var variantIndex by remember(config) { mutableIntStateOf(config.initialVariant) }
     val points = remember(config, seed) { config.data(seed) }
     var values by remember(config) { mutableStateOf(FloatArray(config.sliders.size) { config.sliders[it].initial }) }
     // A stream lab opens on the finished pass; play restarts it from the first example.
     val playback = remember(config, points) {
-        PlaybackState(points.size + 1, 450f).also { it.index = it.lastIndex }
+        PlaybackState(points.size + 1, 450f).also { it.index = config.startStep?.coerceIn(0, it.lastIndex) ?: it.lastIndex }
     }
     val step = if (config.stream) playback.index else 0
     val result = remember(points, values, variantIndex, step) { config.evaluate(points, values, variantIndex, step) }
 
     val dock = LocalLabDock.current
     LabIntro(config.intro)
+    if (config.story) {
+        StorySurfaceLayout(
+            config, points, result, values,
+            onValues = { values = it },
+            onNewData = { seed += 1 },
+            variantIndex = variantIndex,
+            onVariant = { variantIndex = it },
+            playback = playback,
+            onReset = {
+                seed = 5
+                variantIndex = config.initialVariant
+                values = FloatArray(config.sliders.size) { config.sliders[it].initial }
+                playback.jump(config.startStep ?: playback.lastIndex)
+            },
+        )
+        return
+    }
 
     val controls: @Composable () -> Unit = {
         Column {
@@ -445,6 +549,128 @@ fun DecisionSurfaceSection(topicId: String) {
     }
 }
 
+// The redesigned layout: the plane and a legend of what is on it, chips, a story headline, then a
+// picker over one stepper (docked in thumb reach when the screen has a dock).
+@Composable
+private fun StorySurfaceLayout(
+    config: SurfaceConfig,
+    points: List<ClassPoint>,
+    result: SurfaceResult,
+    values: FloatArray,
+    onValues: (FloatArray) -> Unit,
+    onNewData: () -> Unit,
+    variantIndex: Int,
+    onVariant: (Int) -> Unit,
+    playback: PlaybackState,
+    onReset: () -> Unit,
+) {
+    val dock = LocalLabDock.current
+    var selected by remember(config) { mutableIntStateOf(0) }
+    val legend = config.storyLegend
+        ?.filter { it.third != errorLegend.label || result.errors.isNotEmpty() }
+        ?: (
+            listOf(
+                Triple(NegativeFill, SwatchStyle.Dot, "Class 0"),
+                Triple(PositiveFill, SwatchStyle.Dot, "Class 1"),
+            ) + config.legend.filter { it !== errorLegend || result.errors.isNotEmpty() }.map { Triple(it.color, SwatchStyle.Ring, it.label) }
+            )
+    val controls: @Composable () -> Unit = {
+        Column {
+        LabParamControls(
+            params = config.sliders.mapIndexed { i, slider ->
+                LabParam(slider.tab, slider.name, slider.symbol, slider.format(values[i]), values[i] > slider.range.start + 1e-4f, values[i] < slider.range.endInclusive - 1e-4f)
+            },
+            selected = selected,
+            onSelect = { selected = it },
+            onStep = { i, delta ->
+                val slider = config.sliders[i]
+                val next = (Math.round((values[i] + delta * slider.step) / slider.step) * slider.step).coerceIn(slider.range.start, slider.range.endInclusive)
+                onValues(values.copyOf().also { it[i] = next })
+            },
+        )
+        // A stream steps one example at a time with a labelled action in place of a transport.
+        if (config.stream) {
+            LabBackActionRow(
+                action = if (playback.atEnd) "Start Over" else "Next Example",
+                backEnabled = playback.index > 0,
+                onBack = { playback.stepBack() },
+                onAction = { if (playback.atEnd) playback.jump(0) else playback.stepForward() },
+                modifier = Modifier.padding(top = 14.dp),
+            )
+        }
+        }
+    }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        if (config.variants.isNotEmpty()) {
+            LabSegments(config.variants, variantIndex, Modifier.padding(bottom = 14.dp), onVariant)
+        }
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                SurfaceCanvas(
+                    points = points,
+                    result = result,
+                    dottedEllipses = !config.solidEllipses,
+                    greyUnseen = config.greyUnseen,
+                    solidMargins = config.solidMargins,
+                )
+                result.formula?.let { StoryFormulaStrip(it, Modifier.padding(top = 12.dp)) }
+                StoryLegendRow(legend, Modifier.padding(top = 14.dp))
+            }
+        }
+        LabChips(result.chips, Modifier.padding(top = 16.dp))
+        LabStoryNarration(result.headline, result.detail, Modifier.padding(top = 16.dp))
+        if (dock == null) {
+            HorizontalDivider(modifier = Modifier.padding(top = 16.dp, bottom = 14.dp), color = MaterialTheme.colorScheme.outline)
+            controls()
+            SimButtonRow(
+                buttons = listOf(
+                    if (config.navReset) Triple("↻ Reset", SimColors.Grey) { onReset() } else Triple("↻ New Data", SimColors.Grey) { onNewData() },
+                ),
+                modifier = Modifier.padding(top = 14.dp),
+            )
+        }
+    }
+    if (dock != null) {
+        SideEffect {
+            dock.controls = controls
+            dock.navAction = if (config.navReset) LabNavAction(Icons.Filled.Refresh, "Reset") { onReset() } else LabNavAction(Icons.Filled.Refresh, "New data") { onNewData() }
+        }
+        DisposableEffect(dock) {
+            onDispose {
+                dock.controls = null
+                dock.navAction = null
+            }
+        }
+    }
+}
+
+/** The step's arithmetic, centred in a tinted strip; wraps to two lines when it has to. */
+@Composable
+private fun StoryFormulaStrip(text: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(SimColors.Tint, RoundedCornerShape(10.dp))
+            .padding(vertical = 10.dp, horizontal = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            storyAnnotated(text),
+            fontFamily = IBMPlexMono,
+            fontSize = 13.sp,
+            lineHeight = 19.sp,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+        )
+    }
+}
+
 @Composable
 private fun SurfaceNarration(result: SurfaceResult, modifier: Modifier) {
     val key = if (LocalDarkTheme.current) SimColors.Active else Color(0xFFB45309)
@@ -502,7 +728,13 @@ private const val GRID_X = 60
 private const val GRID_Y = 40
 
 @Composable
-private fun SurfaceCanvas(points: List<ClassPoint>, result: SurfaceResult) {
+private fun SurfaceCanvas(
+    points: List<ClassPoint>,
+    result: SurfaceResult,
+    dottedEllipses: Boolean = false,
+    greyUnseen: Boolean = false,
+    solidMargins: Boolean = false,
+) {
     val accent = MaterialTheme.colorScheme.primary
     val ring = MaterialTheme.colorScheme.surface
     Canvas(
@@ -548,7 +780,7 @@ private fun SurfaceCanvas(points: List<ClassPoint>, result: SurfaceResult) {
 
         fun nodeOffset(gx: Float, gy: Float) = Offset(gx * cw, size.height - gy * ch)
         result.marginBand?.let { band ->
-            val dash = PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 4.dp.toPx()))
+            val dash = if (solidMargins) null else PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 4.dp.toPx()))
             for (level in listOf(band, -band)) {
                 drawPath(
                     contourPath(nodes, level, ::nodeOffset),
@@ -557,12 +789,26 @@ private fun SurfaceCanvas(points: List<ClassPoint>, result: SurfaceResult) {
                 )
             }
         }
+        result.reference?.let { reference ->
+            val refNodes = Array(GRID_X + 1) { gx ->
+                DoubleArray(GRID_Y + 1) { gy -> reference(xMin + (xMax - xMin) * gx / GRID_X, yMin + (yMax - yMin) * gy / GRID_Y) }
+            }
+            drawPath(contourPath(refNodes, 0.0, ::nodeOffset), color = EllipseColor.copy(alpha = 0.85f), style = Stroke(width = 1.5.dp.toPx()))
+        }
         drawPath(contourPath(nodes, 0.0, ::nodeOffset), color = accent, style = Stroke(width = 3.dp.toPx()))
 
         result.ellipses.forEach { ellipse ->
             val path = Path()
             ellipse.forEachIndexed { i, (x, y) -> if (i == 0) path.moveTo(sx(x), sy(y)) else path.lineTo(sx(x), sy(y)) }
-            drawPath(path, EllipseColor, style = Stroke(width = 2.dp.toPx()))
+            drawPath(
+                path,
+                if (dottedEllipses) EllipseColor.copy(alpha = 0.7f) else EllipseColor,
+                style = if (dottedEllipses) {
+                    Stroke(width = 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 3.dp.toPx())))
+                } else {
+                    Stroke(width = 2.dp.toPx())
+                },
+            )
         }
 
         val r = 6.5.dp.toPx()
@@ -571,7 +817,12 @@ private fun SurfaceCanvas(points: List<ClassPoint>, result: SurfaceResult) {
             val c = Offset(sx(p.x), sy(p.y))
             val fill = if (p.label > 0) PositiveFill else NegativeFill
             if (i >= unseenFrom) {
-                drawCircle(fill.copy(alpha = 0.3f), radius = r, center = c)
+                if (greyUnseen) {
+                    drawCircle(UnseenColor, radius = r, center = c)
+                    drawCircle(ring, radius = r, center = c, style = Stroke(width = 1.5.dp.toPx()))
+                } else {
+                    drawCircle(fill.copy(alpha = 0.3f), radius = r, center = c)
+                }
                 return@forEachIndexed
             }
             drawCircle(fill, radius = r, center = c)

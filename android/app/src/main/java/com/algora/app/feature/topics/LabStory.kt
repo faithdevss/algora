@@ -182,7 +182,8 @@ internal fun StoryFormulaRows(rows: List<StoryFormulaRow>, modifier: Modifier = 
     }
 }
 
-internal enum class SwatchStyle { Fill, Dashed, Ring, Dot }
+// Line and DashedLine are short strokes, for a plotted curve or boundary.
+internal enum class SwatchStyle { Fill, Dashed, Ring, Dot, Line, DashedLine }
 
 /** A legend swatch: filled, a dashed outline (a frontier, a node not made yet) or a solid ring (a goal). */
 @Composable
@@ -194,6 +195,16 @@ internal fun StorySwatch(color: Color, style: SwatchStyle, label: String) {
             SwatchStyle.Dot -> Box(Modifier.size(10.dp).background(color, androidx.compose.foundation.shape.CircleShape))
             SwatchStyle.Ring -> Box(Modifier.size(10.dp).border(1.5.dp, color, shape))
             SwatchStyle.Dashed -> Box(Modifier.size(10.dp).dashedOutline(color, 3.dp, 1.2.dp, 2.dp, 1.5.dp))
+            SwatchStyle.Line -> Box(Modifier.width(16.dp).height(3.dp).background(color, RoundedCornerShape(2.dp)))
+            SwatchStyle.DashedLine -> androidx.compose.foundation.Canvas(Modifier.width(16.dp).height(3.dp)) {
+                drawLine(
+                    color,
+                    androidx.compose.ui.geometry.Offset(0f, size.height / 2),
+                    androidx.compose.ui.geometry.Offset(size.width, size.height / 2),
+                    strokeWidth = size.height,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 2.dp.toPx())),
+                )
+            }
         }
         Text(
             label,

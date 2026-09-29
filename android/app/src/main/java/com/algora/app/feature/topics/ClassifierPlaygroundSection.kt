@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -23,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -108,42 +111,96 @@ private fun bestNudge(w: FloatArray, points: List<DataPoint>, loss: (FloatArray)
 
 @Composable
 fun ClassifierPlaygroundSection(config: ClassifierConfig) {
-    val params = remember(config) { listOf(mutableFloatStateOf(1f), mutableFloatStateOf(0.6f), mutableFloatStateOf(0.4f)) }
+    if (config.margins) SvmStoryLab(config) else LogisticStoryLab(config)
+}
+
+// ── Logistic regression storyboard ──────────────────────────────────────────
+// The plane and a legend, chips (correct · log loss), a headline naming what is on the wrong side and
+// how far the bias has to move, then a w₁ / w₂ / b picker, the value's stepper and Fit Line.
+
+// Opens with one point just across the line (the first bias from 0.4 up that leaves exactly one wrong),
+// so the first thing to fix is visible.
+private val logisticStart: FloatArray by lazy {
+    val points = logisticClassifierConfig.points
+    val bias = (4..20).map { it / 10f }.firstOrNull { b -> points.count { predict(floatArrayOf(1f, 0.6f, b), it) != it.target } == 1 } ?: 0.4f
+    floatArrayOf(1f, 0.6f, bias)
+}
+
+/** Gradient descent on the mean log loss (with a touch of L2, so separable data can't run off). */
+private fun fitLogistic(start: FloatArray, points: List<DataPoint>): FloatArray {
+    val w = DoubleArray(3) { start[it].toDouble() }
+    repeat(3000) {
+        val g = DoubleArray(3)
+        points.forEach { p ->
+            val z = w[0] * p.x + w[1] * p.y + w[2]
+            val err = 1.0 / (1.0 + exp(-z)) - p.target
+            g[0] += err * p.x; g[1] += err * p.y; g[2] += err
+        }
+        for (k in 0..2) w[k] -= 0.5 * (g[k] / points.size + if (k < 2) 0.02 * w[k] else 0.0)
+    }
+    return FloatArray(3) { snap(w[it].toFloat().coerceIn(-3f, 3f)) }
+}
+
+private val paramSymbols = listOf("w₁", "w₂", "b")
+
+private fun logisticStory(points: List<DataPoint>, w: FloatArray, wrong: Set<Int>): Pair<String, String> {
+    val n = points.size
+    val lead = "The line is where the model is exactly 50% sure."
+    if (wrong.isEmpty()) {
+        return "{m:All $n correct.} The line splits the two classes." to
+            "$lead Fit Line keeps lowering log loss by pushing points further from it."
+    }
+    if (wrong.size == 1) {
+        val p = points[wrong.first()]
+        // How far the bias must move for this point's score to change sign, to one decimal.
+        val gap = kotlin.math.ceil((kotlin.math.abs(score(w, p)) + 0.05f) * 10f) / 10f
+        return "${n - 1} of $n correct. {w:One ${if (p.target == 1) "pink" else "blue"} point} sits just past the line." to
+            "$lead ${if (p.target == 1) "Raising" else "Lowering"} b by about ${"%.1f".format(gap)} moves it back across."
+    }
+    val nudge = bestNudge(w, points) { logLoss(it, points) }
+    return "${n - wrong.size} of $n correct. {w:${wrong.size} points} sit on the wrong side." to
+        (nudge?.let { "$lead ${if (it.up) "Raise" else "Lower"} ${paramSymbols[it.param]} to ${if (it.param == 2) "slide" else "tilt"} it toward them." }
+            ?: "$lead Fit Line finds the weights with the lowest log loss.")
+}
+
+@Composable
+private fun LogisticStoryLab(config: ClassifierConfig) {
+    val params = remember(config) { logisticStart.map { mutableFloatStateOf(it) } }
+    val selected = remember(config) { mutableIntStateOf(2) }
     val w = floatArrayOf(params[0].floatValue, params[1].floatValue, params[2].floatValue)
     val points = config.points
     val wrong = points.indices.filter { predict(w, points[it]) != points[it].target }.toSet()
-    val lossFn: (FloatArray) -> Double = if (config.margins) { t -> hingeLoss(t, points) } else { t -> logLoss(t, points) }
-    val norm = sqrt(w[0] * w[0] + w[1] * w[1])
-
-    val readout = buildString {
-        append("correct = ${points.size - wrong.size} / ${points.size}")
-        if (config.margins) {
-            if (norm > 1e-3f) append(" · margin = ${"%.2f".format(2f / norm)}")
-            append(" · hinge = ${"%.2f".format(hingeLoss(w, points))}")
-        } else {
-            append(" · log loss = ${"%.2f".format(logLoss(w, points))}")
-        }
+    val (headline, body) = logisticStory(points, w, wrong)
+    val chips = listOf(
+        LabChip("correct", "${points.size - wrong.size} / ${points.size}", tint = StoryTone.Path),
+        LabChip("log loss", "%.2f".format(logLoss(w, points))),
+    )
+    val legend = listOfNotNull(
+        Triple(ZeroColor, SwatchStyle.Dot, "Class 0"),
+        Triple(OneColor, SwatchStyle.Dot, "Class 1"),
+        if (wrong.isNotEmpty()) Triple(ErrorRing, SwatchStyle.Ring, "Misclassified") else null,
+    )
+    val controls: @Composable () -> Unit = {
+        LabParamActionControls(
+            params = listOf("Weight", "Weight", "Bias").mapIndexed { i, name ->
+                val v = params[i].floatValue
+                LabParam("$name ${paramSymbols[i]}", name, paramSymbols[i], "%.1f".format(v), v > -3f + 1e-4f, v < 3f - 1e-4f)
+            },
+            selected = selected.intValue,
+            onSelect = { selected.intValue = it },
+            onStep = { i, delta -> params[i].floatValue = snap((params[i].floatValue + delta * 0.1f).coerceIn(-3f, 3f)) },
+            action = "Fit Line",
+            onAction = {
+                val fit = fitLogistic(w, points)
+                params.forEachIndexed { i, p -> p.floatValue = fit[i] }
+            },
+        )
     }
-
     val dock = LocalLabDock.current
     LabIntro(
-        if (config.margins) {
-            "A linear SVM draws the same line as logistic regression, then asks for the widest empty band around it. " +
-                "The dashed lines sit where w₁·x + w₂·y + b = ±1, so shrinking the weights widens the band."
-        } else {
-            "Logistic regression scores each point with w₁·x + w₂·y + b and squashes the score into a probability. " +
-                "The line is where that probability is exactly 50%; tilt it with the weights and slide it with the bias."
-        },
+        "Logistic regression scores each point with w₁·x + w₂·y + b and squashes the score into a probability. " +
+            "The line is where that probability is exactly 50%; tilt it with the weights and slide it with the bias.",
     )
-
-    val controls: @Composable () -> Unit = {
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            LabParamSlider("Weight", "w₁", params[0].floatValue, -3f..3f) { params[0].floatValue = snap(it) }
-            LabParamSlider("Weight", "w₂", params[1].floatValue, -3f..3f) { params[1].floatValue = snap(it) }
-            LabParamSlider("Bias", "b", params[2].floatValue, -3f..3f) { params[2].floatValue = snap(it) }
-        }
-    }
-
     Column(modifier = Modifier.fillMaxWidth()) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
@@ -153,105 +210,36 @@ fun ClassifierPlaygroundSection(config: ClassifierConfig) {
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 ClassifierCanvas(config, w, wrong)
-                ClassifierLegend(Modifier.padding(top = 12.dp))
-                if (dock == null) {
-                    ReadoutChips(readout, Modifier.padding(top = 16.dp), accented = setOf(0))
-                    ClassifierNarration(config, points, w, wrong, lossFn, Modifier.padding(top = 14.dp))
-                    HorizontalDivider(modifier = Modifier.padding(top = 16.dp, bottom = 14.dp), color = MaterialTheme.colorScheme.outline)
-                    controls()
-                }
+                StoryLegendRow(legend, Modifier.padding(top = 14.dp))
             }
         }
-        if (dock != null) {
-            ReadoutChips(readout, Modifier.padding(top = 14.dp), accented = setOf(0))
-            ClassifierNarration(config, points, w, wrong, lossFn, Modifier.padding(start = 4.dp, end = 4.dp, top = 16.dp))
+        LabChips(chips, Modifier.padding(top = 16.dp))
+        LabStoryNarration(headline, body, Modifier.padding(top = 16.dp))
+        if (dock == null) {
+            HorizontalDivider(modifier = Modifier.padding(top = 16.dp, bottom = 14.dp), color = MaterialTheme.colorScheme.outline)
+            controls()
         }
     }
-
     if (dock != null) {
-        // Re-handed every composition: the controls close over this composition's slider values.
-        SideEffect { dock.controls = controls }
-        DisposableEffect(dock) { onDispose { dock.controls = null } }
-    }
-}
-
-@Composable
-private fun ClassifierNarration(
-    config: ClassifierConfig,
-    points: List<DataPoint>,
-    w: FloatArray,
-    wrong: Set<Int>,
-    loss: (FloatArray) -> Double,
-    modifier: Modifier,
-) {
-    val symbols = listOf("w₁", "w₂", "b")
-    val headline = buildAnnotatedString {
-        if (wrong.isEmpty()) {
-            withStyle(SpanStyle(color = SimColors.Green)) { append("All ${points.size} points") }
-            append(" are on the right side.")
-        } else {
-            val classes = wrong.map { points[it].target }.toSet()
-            val n = wrong.size
-            val count = if (n == 1) "One" else "$n"
-            val verb = if (n == 1) "point is" else "points are"
-            if (classes.size == 1) {
-                val k = classes.first()
-                append("$count ")
-                withStyle(SpanStyle(color = if (k == 1) OneColor else ZeroColor)) { append("class $k") }
-                append(" $verb on the wrong side.")
-            } else {
-                append("$count $verb on the wrong side.")
-            }
-            bestNudge(w, points, loss)?.let { nudge ->
-                val verbUp = if (nudge.up) "Raise" else "Lower"
-                val what = if (nudge.param == 2) "slide" else "tilt"
-                append(" $verbUp ${symbols[nudge.param]} to $what the boundary.")
+        SideEffect {
+            dock.controls = controls
+            dock.navAction = LabNavAction(Icons.Filled.Refresh, "Reset") {
+                params.forEachIndexed { i, p -> p.floatValue = logisticStart[i] }
+                selected.intValue = 2
             }
         }
-    }
-    val norm = sqrt(w[0] * w[0] + w[1] * w[1])
-    val detail = when {
-        !config.margins -> "The line is where the model is exactly 50% sure."
-        norm < 1e-3f -> "With both weights at zero there is no line, and no margin to measure."
-        else -> "The margin is ${"%.2f".format(2f / norm)} wide, between the dashed lines. Shrink both weights to widen it while every point stays outside."
-    }
-    Column(modifier = modifier.fillMaxWidth()) {
-        Text(headline, fontSize = 19.sp, lineHeight = 25.sp, fontWeight = FontWeight.SemiBold)
-        Text(
-            detail,
-            fontSize = 15.sp,
-            lineHeight = 21.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 8.dp),
-        )
-    }
-}
-
-@Composable
-private fun ClassifierLegend(modifier: Modifier) {
-    FlowRow(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        listOf(ZeroColor to "Class 0", OneColor to "Class 1", ErrorRing to "Misclassified").forEachIndexed { i, (color, label) ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = if (i == 2) {
-                        Modifier.size(11.dp).border(2.dp, color, CircleShape)
-                    } else {
-                        Modifier.size(11.dp).background(color, CircleShape)
-                    },
-                )
-                Text(
-                    label,
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                    modifier = Modifier.padding(start = 6.dp),
-                )
+        DisposableEffect(dock) {
+            onDispose {
+                dock.controls = null
+                dock.navAction = null
             }
         }
     }
 }
 
 @Composable
-private fun ClassifierCanvas(config: ClassifierConfig, w: FloatArray, wrong: Set<Int>) {
+private fun ClassifierCanvas(config: ClassifierConfig, w: FloatArray, wrong: Set<Int>, ringed: Set<Int> = emptySet(), outlined: Boolean = false) {
+    val surface = MaterialTheme.colorScheme.surface
     val accent = MaterialTheme.colorScheme.primary
     Canvas(
         modifier = Modifier
@@ -286,7 +274,115 @@ private fun ClassifierCanvas(config: ClassifierConfig, w: FloatArray, wrong: Set
         config.points.forEachIndexed { i, p ->
             val c = Offset(px(p.x), py(p.y))
             drawCircle(if (p.target == 1) OneColor else ZeroColor, radius = r, center = c)
-            if (i in wrong) drawCircle(ErrorRing, radius = r + 4.dp.toPx(), center = c, style = Stroke(width = 2.5.dp.toPx()))
+            if (outlined) drawCircle(surface, radius = r, center = c, style = Stroke(width = 1.5.dp.toPx()))
+            if (i in wrong) {
+                drawCircle(ErrorRing, radius = r + 4.dp.toPx(), center = c, style = Stroke(width = 2.5.dp.toPx()))
+            } else if (i in ringed) {
+                drawCircle(SimColors.Active, radius = r + 4.dp.toPx(), center = c, style = Stroke(width = 2.5.dp.toPx()))
+            }
+        }
+    }
+}
+
+// ── Linear SVM storyboard ───────────────────────────────────────────────────
+// The plane, a legend of what is ringed, chips (correct · margin · hinge), a story headline, then a
+// w₁ / w₂ / b picker over one stepper in place of three sliders.
+
+private val svmStart = floatArrayOf(1f, 0.6f, 0.4f)
+
+@Composable
+private fun SvmStoryLab(config: ClassifierConfig) {
+    val params = remember(config) { svmStart.map { mutableFloatStateOf(it) } }
+    val selected = remember(config) { mutableIntStateOf(0) }
+    val w = floatArrayOf(params[0].floatValue, params[1].floatValue, params[2].floatValue)
+    val points = config.points
+    val wrong = points.indices.filter { predict(w, points[it]) != points[it].target }.toSet()
+    val inside = points.indices.filter { it !in wrong && (if (points[it].target == 1) 1f else -1f) * score(w, points[it]) < 1f }.toSet()
+    val norm = sqrt(w[0] * w[0] + w[1] * w[1])
+    val margin = if (norm > 1e-3f) "%.2f".format(2f / norm) else "—"
+    val hinge = hingeLoss(w, points)
+
+    val chips = listOf(
+        LabChip("correct", "${points.size - wrong.size}/${points.size}", if (wrong.isEmpty()) StoryTone.Idle else StoryTone.Warn, good = wrong.isEmpty()),
+        LabChip("margin", margin),
+        LabChip("hinge", "%.2f".format(hinge)),
+    )
+    val symbols = listOf("w₁", "w₂", "b")
+    val headline: String
+    val body: String
+    when {
+        norm < 1e-3f -> {
+            headline = "With both weights at {w:zero} there is no line."
+            body = "Raise w₁ or w₂ to give the boundary a direction."
+        }
+        wrong.isEmpty() -> {
+            headline = "All ${points.size} points are on the right side. The margin between the dashed lines is {$margin} wide."
+            body = if (inside.isEmpty()) {
+                "No point sits inside it, so hinge loss is 0. Shrink both weights to widen it until one does."
+            } else {
+                "${inside.size} point${if (inside.size == 1) " sits" else "s sit"} inside it and add hinge loss. Shrink both weights to widen the margin."
+            }
+        }
+        else -> {
+            val nudge = bestNudge(w, points) { hingeLoss(it, points) }
+            headline = "{w:${if (wrong.size == 1) "One point is" else "${wrong.size} points are"}} on the wrong side." +
+                (nudge?.let { " ${if (it.up) "Raise" else "Lower"} ${symbols[it.param]} to ${if (it.param == 2) "slide" else "tilt"} the boundary." } ?: "")
+            body = "Each misclassified point adds more than 1 to the hinge loss. The margin is $margin wide."
+        }
+    }
+    val legend = listOfNotNull(
+        Triple(ZeroColor, SwatchStyle.Dot, "Class 0"),
+        Triple(OneColor, SwatchStyle.Dot, "Class 1"),
+        Triple(SimColors.Active, SwatchStyle.Ring, "Inside margin"),
+        if (wrong.isNotEmpty()) Triple(ErrorRing, SwatchStyle.Ring, "Misclassified") else null,
+    )
+    val controls: @Composable () -> Unit = {
+        LabParamControls(
+            params = listOf("Weight", "Weight", "Bias").mapIndexed { i, name ->
+                val v = params[i].floatValue
+                LabParam(symbols[i], name, symbols[i], "%.1f".format(v), v > -3f + 1e-4f, v < 3f - 1e-4f)
+            },
+            selected = selected.intValue,
+            onSelect = { selected.intValue = it },
+            onStep = { i, delta -> params[i].floatValue = snap((params[i].floatValue + delta * 0.1f).coerceIn(-3f, 3f)) },
+        )
+    }
+    val dock = LocalLabDock.current
+    LabIntro(
+        "A linear SVM draws the same line as logistic regression, then asks for the widest empty band around it. " +
+            "The dashed lines sit where w₁·x + w₂·y + b = ±1, so shrinking the weights widens the band.",
+    )
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                ClassifierCanvas(config, w, wrong, ringed = inside, outlined = true)
+                StoryLegendRow(legend, Modifier.padding(top = 14.dp))
+            }
+        }
+        LabChips(chips, Modifier.padding(top = 16.dp))
+        LabStoryNarration(headline, body, Modifier.padding(top = 16.dp))
+        if (dock == null) {
+            HorizontalDivider(modifier = Modifier.padding(top = 16.dp, bottom = 14.dp), color = MaterialTheme.colorScheme.outline)
+            controls()
+        }
+    }
+    if (dock != null) {
+        SideEffect {
+            dock.controls = controls
+            dock.navAction = LabNavAction(Icons.Filled.Refresh, "Reset") {
+                params.forEachIndexed { i, p -> p.floatValue = svmStart[i] }
+            }
+        }
+        DisposableEffect(dock) {
+            onDispose {
+                dock.controls = null
+                dock.navAction = null
+            }
         }
     }
 }
