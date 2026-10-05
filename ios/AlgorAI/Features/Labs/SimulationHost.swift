@@ -22,6 +22,7 @@ struct SimulationHost: View {
         // The storyboarded string and array labs span several simulation types; they are routed first.
         if textStoryTopicIds.contains(topicId) { TextStoryLab(topicId: topicId).id(topicId) }
         else if neuralStoryTopicIds.contains(topicId) { NeuralStoryLab(topicId: topicId).id(topicId) }
+        else if deepStoryTopicIds.contains(topicId) { DeepStoryLab(topicId: topicId).id(topicId) }
         else if mlStoryTopicIds.contains(topicId) { MlStoryLab(topicId: topicId).id(topicId) }
         else if regressionStoryTopicIds.contains(topicId) { RegressionStoryLab(topicId: topicId).id(topicId) }
         else if bayesStoryTopicIds.contains(topicId) { BayesStoryLab(topicId: topicId).id(topicId) }
@@ -29,6 +30,12 @@ struct SimulationHost: View {
         else if metricStoryTopicIds.contains(topicId) { MetricStoryLab(topicId: topicId).id(topicId) }
         else if evalStoryTopicIds.contains(topicId) { EvalStoryLab(topicId: topicId).id(topicId) }
         else if rlStoryTopicIds.contains(topicId) { RlStoryLab(topicId: topicId).id(topicId) }
+        else if rlBoardTopicIds.contains(topicId) { RlBoardLab(topicId: topicId).id(topicId) }
+        else if preprocessStoryTopicIds.contains(topicId) { PreprocessStoryLab(topicId: topicId).id(topicId) }
+        else if clusterStoryTopicIds.contains(topicId) { ClusterStoryLab(topicId: topicId).id(topicId) }
+        else if dimStoryTopicIds.contains(topicId) { DimStoryLab(topicId: topicId).id(topicId) }
+        else if seriesStoryTopicIds.contains(topicId) { SeriesStoryLab(topicId: topicId).id(topicId) }
+        else if llmStoryTopicIds.contains(topicId) { LlmStoryLab(topicId: topicId).id(topicId) }
         else if let alias = patternLabAliases[topicId] { SimulationHost(topicId: alias.topicId, type: alias.type) }
         else { lab }
     }
@@ -68,7 +75,8 @@ struct SimulationHost: View {
         case .OfflineRlPlayer: OfflineRlLab(topicId: topicId).id(topicId)
         case .GraphAlgorithmPlayer: GraphAlgorithmLab(topicId: topicId).id(topicId)
         case .TreeVisualizer: TreeVisualizerLab(topicId: topicId).id(topicId)
-        case .FeatureMapPlayer: FeatureMapLab(topicId: topicId).id(topicId)
+        // Every feature-map topic is a deep-learning storyboard now.
+        case .FeatureMapPlayer: DeepStoryLab(topicId: topicId).id(topicId)
         case .ArrayWalkPlayer: ArrayWalkLab(topicId: topicId).id(topicId)
         // Only the geometry storyboards, the k-d tree and closest pair have point-cloud labs on iOS so far; the rest of
         // PointCloud is not ported yet.

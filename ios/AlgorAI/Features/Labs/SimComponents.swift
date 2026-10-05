@@ -283,6 +283,8 @@ struct LabTransportBar: View {
     /// The storyboard transport: the step's labelled action ("Predict", "Score “great”") beside a square
     /// step-back button, in place of speed, play and reset. It advances one step; on the last it starts over.
     var action: ((Int) -> String)? = nil
+    /// Drawn under the step label in place of the play or action row (a stepper that re-runs the story).
+    var footer: (() -> AnyView)? = nil
     @State private var showSteps = false
     @Environment(\.palette) private var palette
 
@@ -308,7 +310,9 @@ struct LabTransportBar: View {
                     }
                 }
             }
-            if let action {
+            if let footer {
+                footer()
+            } else if let action {
                 LabBackActionRow(action: action(state.index), backEnabled: state.index > 0,
                                  onBack: { state.stepBack() },
                                  onAction: { if state.atEnd { state.reset() } else { state.stepForward() } })

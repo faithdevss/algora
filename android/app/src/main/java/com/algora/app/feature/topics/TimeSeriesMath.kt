@@ -9,54 +9,15 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 // ── Time series ──────────────────────────────────────────────────────────────
-// The estimators behind the six B7 Time Series labs. All six run on the same monthly series so the
-// methods are comparable rather than each flattered by its own data, and all six are the real
-// estimator: AR by least squares on the lagged design, ARIMA's MA terms by Hannan–Rissanen two-stage
-// regression, Holt-Winters by its three recursions, Prophet by a piecewise-linear trend on
-// changepoint basis functions plus a Fourier seasonality, fitted as one regularised least-squares
-// problem.
+// The estimators behind the forecasting storyboards (SeriesStoryLabs). All of them are the real
+// estimator: AR by least squares on the lagged design, Holt-Winters by its three recursions, Prophet by
+// a piecewise-linear trend on changepoint basis functions plus a Fourier seasonality, fitted as one
+// regularised least-squares problem.
 //
 // Every lab forecasts past the end of the observed data, which is the only honest way to show a
 // forecasting method: an in-sample fit can be made arbitrarily good and says nothing.
 
 internal const val SeasonPeriod = 12
-
-/** Index of the first forecast point. Everything at or past this is held out from every fit. */
-internal const val TrainLength = 48
-
-internal class SeriesPoint(val t: Int, val value: Double)
-
-private class SeriesRng(private var state: Int) {
-    fun next(): Double {
-        state = state * 1103515245 + 12345
-        return ((state ushr 16) and 0x7fff) / 32767.0
-    }
-
-    fun gaussian(): Double {
-        val u1 = next().coerceAtLeast(1e-9)
-        val u2 = next()
-        return sqrt(-2.0 * ln(u1)) * cos(2.0 * PI * u2)
-    }
-}
-
-/**
- * Sixty months of a retail-shaped series: a trend that changes slope once, an annual seasonal
- * pattern, and noise. The slope change is deliberate — it is what separates a method that assumes
- * one global trend from one that does not, and without it Prophet's changepoints would have nothing
- * to find.
- */
-internal fun retailSeries(seed: Int = 5): List<Double> {
-    val rng = SeriesRng(seed * 7919 + 13)
-    return List(TrainLength + 12) { t ->
-        val trend = if (t < 30) 100.0 + 1.30 * t else 100.0 + 1.30 * 30 + 0.35 * (t - 30)
-        val seasonal = 9.0 * sin(2 * PI * t / SeasonPeriod) + 4.0 * cos(4 * PI * t / SeasonPeriod)
-        trend + seasonal + rng.gaussian() * 3.0
-    }
-}
-
-internal fun trainingPart(series: List<Double>) = series.take(TrainLength)
-
-internal fun holdOutPart(series: List<Double>) = series.drop(TrainLength)
 
 // ── Smoothing ────────────────────────────────────────────────────────────────
 
@@ -186,29 +147,6 @@ internal fun difference(series: List<Double>, lag: Int = 1): List<Double> =
     if (series.size <= lag) emptyList() else (lag until series.size).map { series[it] - series[it - lag] }
 
 /**
- * Undo `d` rounds of lag-1 differencing on a forecast, given the tail of the original series. The
- * integration step is the "I" in ARIMA, and it is where the drift in a differenced forecast comes
- * from.
- */
-internal fun integrate(forecastDiff: List<Double>, lastValues: List<Double>, d: Int, lag: Int = 1): List<Double> {
-    if (d == 0) return forecastDiff
-    var current = forecastDiff
-    var anchors = lastValues
-    repeat(d) {
-        val undone = mutableListOf<Double>()
-        var previous = anchors.last()
-        current.forEach { step ->
-            previous += step
-            undone += previous
-        }
-        current = undone
-        anchors = anchors.dropLast(1)
-        if (anchors.isEmpty()) anchors = listOf(0.0)
-    }
-    return current
-}
-
-/**
  * A crude but real stationarity check: the lag-1 autocorrelation of the series. A trending series
  * has one very close to 1; differencing pulls it down. This is the intuition behind an augmented
  * Dickey-Fuller test without the test's distribution theory, and the labs say so rather than
@@ -224,128 +162,6 @@ internal fun lag1Autocorrelation(series: List<Double>): Double {
         if (i > 0) num += (series[i] - mean) * (series[i - 1] - mean)
     }
     return if (den < 1e-12) 0.0 else num / den
-}
-
-internal fun autocorrelation(series: List<Double>, lag: Int): Double {
-    if (series.size <= lag) return 0.0
-    val mean = series.average()
-    var num = 0.0
-    var den = 0.0
-    series.indices.forEach { i ->
-        den += (series[i] - mean) * (series[i] - mean)
-        if (i >= lag) num += (series[i] - mean) * (series[i - lag] - mean)
-    }
-    return if (den < 1e-12) 0.0 else num / den
-}
-
-internal class ArimaFit(
-    val ar: DoubleArray,
-    val ma: DoubleArray,
-    val intercept: Double,
-    val forecast: List<Double>,
-    val fitted: List<Double>,
-    val trainRmse: Double,
-)
-
-/**
- * ARIMA(p, d, q) by Hannan–Rissanen: difference d times, fit a long AR to get residual estimates,
- * then regress the differenced series on its own lags *and* those estimated residuals' lags. It is
- * the standard two-stage initialisation for an ARMA likelihood, and it is a genuine estimator on its
- * own rather than a stand-in — which matters, because a lab that animated a fake fit would be
- * teaching the wrong thing.
- */
-internal fun fitArima(train: List<Double>, p: Int, d: Int, q: Int, horizon: Int): ArimaFit {
-    var work = train
-    repeat(d) { work = difference(work) }
-
-    // Stage one: a long AR whose residuals stand in for the unobservable innovations.
-    val longOrder = max(p + q + 2, 6).coerceAtMost(work.size / 3)
-    val stageOne = fitAr(work, longOrder, lambda = 1e-6)
-    val innovations = DoubleArray(work.size)
-    stageOne.residuals.forEachIndexed { i, e -> innovations[i + longOrder] = e }
-
-    // Stage two: regress on p own-lags and q innovation-lags together.
-    val start = max(p, q) + longOrder
-    val rows = work.size - start
-    val terms = 1 + p + q
-    val x = Array(rows) { r ->
-        DoubleArray(terms) { c ->
-            when {
-                c == 0 -> 1.0
-                c <= p -> work[start + r - c]
-                else -> innovations[start + r - (c - p)]
-            }
-        }
-    }
-    val y = DoubleArray(rows) { work[start + it] }
-    val beta = if (rows > terms) ridgeSolve(x, y, 1e-6) else DoubleArray(terms)
-
-    val fittedDiff = (0 until rows).map { r -> (0 until terms).sumOf { x[r][it] * beta[it] } }
-    val residuals = (0 until rows).map { y[it] - fittedDiff[it] }
-
-    // Forecast on the differenced scale, then integrate back. Future innovations are zero in
-    // expectation, so the MA terms decay out of the forecast after q steps — which is exactly why
-    // an MA(q) model has no memory beyond q periods.
-    val history = work.toMutableList()
-    val futureInnovations = MutableList(q) { i -> innovations.getOrElse(work.size - q + i) { 0.0 } }
-    val forecastDiff = List(horizon) { h ->
-        var v = beta[0]
-        for (c in 1..p) v += beta[c] * history[history.size - c]
-        for (c in 1..q) {
-            val e = futureInnovations.getOrElse(futureInnovations.size - c) { 0.0 }
-            v += beta[p + c] * e
-        }
-        history += v
-        futureInnovations += 0.0
-        v
-    }
-
-    return ArimaFit(
-        ar = DoubleArray(p) { beta[it + 1] },
-        ma = DoubleArray(q) { beta[p + it + 1] },
-        intercept = beta[0],
-        forecast = integrate(forecastDiff, train.takeLast(max(d, 1)), d),
-        fitted = fittedDiff,
-        trainRmse = rmseOf(residuals),
-    )
-}
-
-/**
- * SARIMA's seasonal part, as the labs need it: difference at the seasonal lag, fit an AR that
- * carries both short lags and the seasonal lag, forecast, then undo both differences. Written
- * separately from [fitArima] rather than as a general (p,d,q)(P,D,Q)ₘ engine, because the point the
- * lab makes is about the seasonal *difference* and a general engine would bury it.
- */
-internal class SarimaFit(
-    val forecast: List<Double>,
-    val seasonalDifferenced: List<Double>,
-    val acfBefore: Double,
-    val acfAfter: Double,
-    val trainRmse: Double,
-)
-
-internal fun fitSarima(train: List<Double>, p: Int, seasonalDifference: Boolean, horizon: Int): SarimaFit {
-    val acfBefore = autocorrelation(train, SeasonPeriod)
-    val work = if (seasonalDifference) difference(train, SeasonPeriod) else train
-    val acfAfter = autocorrelation(work, SeasonPeriod)
-
-    val fit = fitAr(work, max(p, 1), lambda = 1e-6)
-    val diffForecast = arForecast(fit, work, horizon)
-
-    val forecast = if (seasonalDifference) {
-        // Undo a lag-12 difference: each forecast adds back the value one season earlier, taken from
-        // the observed series while it reaches and from the forecast itself after that.
-        val out = mutableListOf<Double>()
-        diffForecast.forEachIndexed { h, step ->
-            val seasonAgoIndex = train.size + h - SeasonPeriod
-            val base = if (seasonAgoIndex < train.size) train[seasonAgoIndex] else out[seasonAgoIndex - train.size]
-            out += base + step
-        }
-        out
-    } else {
-        diffForecast
-    }
-    return SarimaFit(forecast, work, acfBefore, acfAfter, fit.rmse)
 }
 
 // ── Prophet-style decomposable model ─────────────────────────────────────────
@@ -481,13 +297,6 @@ internal fun forecastRmse(forecast: List<Double>, actual: List<Double>): Double 
     val n = minOf(forecast.size, actual.size)
     if (n == 0) return 0.0
     return sqrt((0 until n).sumOf { val e = forecast[it] - actual[it]; e * e } / n)
-}
-
-/** Mean absolute percentage error, in percent. Undefined at zero, and this series never is. */
-internal fun forecastMape(forecast: List<Double>, actual: List<Double>): Double {
-    val n = minOf(forecast.size, actual.size)
-    if (n == 0) return 0.0
-    return 100.0 * (0 until n).sumOf { abs((forecast[it] - actual[it]) / actual[it]) } / n
 }
 
 /** The naive seasonal benchmark: next year looks like last year. Anything that loses to this is not working. */

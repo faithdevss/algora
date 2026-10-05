@@ -18,6 +18,8 @@ struct TopicDetailScreen: View {
                     BehavioralScreen(bank: bank, onComplete: markCompleted)
                 } else if let primer = content.systemDesignPrimer(topicId) {
                     SystemDesignScreen(primer: primer, onComplete: markCompleted)
+                } else if analysisBoardIds.contains(topicId) {
+                    AnalysisBoardPage(topicId: topicId)
                 } else if AnalysisToolRegistry.has(topicId) {
                     AnalysisToolPage(topic: topic)
                 } else if let page = content.content(topicId) {
@@ -88,44 +90,46 @@ struct CompleteToggle: View {
     }
 }
 
+private enum TopicTab: String, CaseIterable { case overview = "Overview", math = "Math", code = "Code", simulate = "Simulate" }
+
+/// A lesson: back link with share and bookmark, a coloured category eyebrow, a large title and tagline,
+/// then pill tabs that split the page into the overview, the maths, the code and the live simulation.
 private struct TopicPage: View {
     let topic: Topic
     let page: TopicContent
-    @Environment(Router.self) private var router
     @Environment(\.palette) private var palette
+    @State private var tab: TopicTab = .overview
+
+    private var tabs: [TopicTab] {
+        TopicTab.allCases.filter {
+            switch $0 {
+            case .overview: true
+            case .math: !page.formulas.isEmpty
+            case .code: !page.codeBlocks.isEmpty
+            case .simulate: page.simulation != .NotYetAvailable
+            }
+        }
+    }
 
     var body: some View {
+        let accent = Color(argb: topic.accentColor)
         VStack(spacing: 0) {
-            DetailHeader(title: topic.name, topicId: topic.id)
+            TopicNavBar(topic: topic)
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    HeroSection(topic: topic, page: page)
-                        .padding(.top, 12)
-                    pageTitle("How Does It Work?")
-                    if let figure = page.figure {
-                        FigureCard(figure: figure).padding(.bottom, 11)
+                    Text(eyebrow).font(AppFont.sans(14, .bold)).tracking(1).foregroundStyle(accent).padding(.top, 4)
+                    Text(topic.name).font(AppFont.sans(32, .bold)).padding(.top, 4)
+                    Text(topic.tagline).font(AppFont.sans(17)).foregroundStyle(palette.muted).padding(.top, 4)
+                    TopicTabs(tabs: tabs, selected: $tab).padding(.top, 16).padding(.bottom, 18)
+                    switch tab {
+                    case .overview: overview
+                    case .math: MathSection(formulas: page.formulas, notation: page.notationKey)
+                    case .code:
+                        ForEach(Array(page.codeBlocks.enumerated()), id: \.offset) { index, block in
+                            CodeBlockCard(block: block, expanded: index == 0).padding(.bottom, 12)
+                        }
+                    case .simulate: SimulationHost(topicId: topic.id, type: page.simulation)
                     }
-                    VStack(spacing: 11) {
-                        ForEach(page.steps, id: \.self) { StepRow(step: $0) }
-                    }
-                    pageTitle("The Mathematics")
-                    MathSection(formulas: page.formulas, notation: page.notationKey)
-                    pageTitle("Technical Deep Dive")
-                    ForEach(Array(page.codeBlocks.enumerated()), id: \.offset) { index, block in
-                        CodeBlockCard(block: block, expanded: index == 0).padding(.vertical, 6)
-                    }
-                    pageTitle("Interactive Simulation")
-                    SimulationHost(topicId: topic.id, type: page.simulation)
-                    pageTitle("Real-World Applications")
-                    VStack(spacing: 11) {
-                        ForEach(page.applications, id: \.self) { ApplicationRow(app: $0) }
-                    }
-                    TakeawaysSection(takeaways: page.takeaways).padding(.vertical, 22)
-                    PrerequisitesSection(topicId: topic.id)
-                    if !page.crossLinks.isEmpty {
-                        RelatedTopicsSection(links: page.crossLinks)
-                    }
-                    CompleteToggle(topicId: topic.id).padding(.horizontal, -16)
                 }
                 .padding(.horizontal, screenGutter)
                 .padding(.bottom, screenBottomInset)
@@ -133,29 +137,124 @@ private struct TopicPage: View {
         }
     }
 
-    private func pageTitle(_ text: String) -> some View {
-        Text(text).font(.titleLarge).padding(.top, 22).padding(.bottom, 12)
+    /// "GRAPHS · INTERMEDIATE": the category without its number, then the level.
+    private var eyebrow: String {
+        let category = ContentStore.shared.category(topic.categoryId)?.name ?? ""
+        var name = category
+        if let r = category.range(of: " · "), category[..<r.lowerBound].allSatisfy(\.isNumber) { name = String(category[r.upperBound...]) }
+        return ([name] + (topic.difficulty.map { [$0.rawValue] } ?? [])).filter { !$0.isEmpty }.joined(separator: " · ").uppercased()
+    }
+
+    @ViewBuilder private var overview: some View {
+        ForEach(page.whatIsIt, id: \.self) { paragraph in
+            Text(paragraph).font(AppFont.sans(17)).lineSpacing(5).padding(.bottom, 12)
+        }
+        sectionTitle("How It Works")
+        if let figure = page.figure { FigureCard(figure: figure).padding(.bottom, 11) }
+        VStack(spacing: 11) { ForEach(page.steps, id: \.self) { StepRow(step: $0) } }
+        if !page.applications.isEmpty {
+            sectionTitle("Real-World Applications")
+            VStack(spacing: 11) { ForEach(page.applications, id: \.self) { ApplicationRow(app: $0) } }
+        }
+        TakeawaysSection(takeaways: page.takeaways).padding(.vertical, 22)
+        PrerequisitesSection(topicId: topic.id)
+        if !page.crossLinks.isEmpty { RelatedTopicsSection(links: page.crossLinks) }
+    }
+
+    private func sectionTitle(_ text: String) -> some View {
+        Text(text).font(AppFont.grotesk(24, .bold)).padding(.top, 14).padding(.bottom, 12)
     }
 }
 
-private struct HeroSection: View {
+/// "‹ Learning" on the left; mark-complete and bookmark on the right.
+private struct TopicNavBar: View {
     let topic: Topic
-    let page: TopicContent
+    @Environment(AppStore.self) private var store
+    @Environment(Router.self) private var router
+    @Environment(\.palette) private var palette
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        let back = router.backTitle
+        let marked = store.bookmarks.contains(topic.id)
+        HStack(spacing: 0) {
+            Button { dismiss() } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "chevron.backward").font(.system(size: 19, weight: .semibold))
+                    Text(back).font(AppFont.sans(17)).lineLimit(1)
+                }
+                .frame(minHeight: 44, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .accessibilityLabel("Back to \(back)")
+            Spacer()
+            DoneToggle(topicId: topic.id)
+            Button { store.toggleBookmark(topic.id) } label: {
+                Image(systemName: marked ? "bookmark.fill" : "bookmark").font(.system(size: 19)).frame(width: 44, height: 44)
+            }
+            .accessibilityLabel(marked ? "Remove bookmark" : "Bookmark")
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(palette.primary)
+        .padding(.leading, 10)
+        .padding(.trailing, 8)
+        .padding(.top, 4)
+        .background(palette.background)
+    }
+}
+
+/// The nav-bar mark-complete: an outlined tick that fills green when the topic is done.
+struct DoneToggle: View {
+    let topicId: String
+    @Environment(AppStore.self) private var store
     @Environment(\.palette) private var palette
 
     var body: some View {
-        let accent = Color(argb: topic.accentColor)
-        VStack(alignment: .leading, spacing: 0) {
-            TopicHeroHeader(topic: topic)
-            Text("What is \(topic.name)?").font(.titleMedium).padding(.top, 14).padding(.bottom, 8)
-            ForEach(page.whatIsIt, id: \.self) { paragraph in
-                Text(paragraph).font(.bodyLarge).lineSpacing(4).padding(.bottom, 10)
+        let done = store.completedTopicIds.contains(topicId)
+        Button {
+            if done { store.markIncomplete(topicId) } else { store.markCompleted(topicId) }
+        } label: {
+            ZStack {
+                if done {
+                    Circle().fill(SimColors.green)
+                    Image(systemName: "checkmark").font(.system(size: 12, weight: .bold)).foregroundStyle(.white)
+                } else {
+                    Circle().stroke(palette.primary, lineWidth: 1.8)
+                    Image(systemName: "checkmark").font(.system(size: 11, weight: .semibold)).foregroundStyle(palette.primary.opacity(0.55))
+                }
+            }
+            .frame(width: 24, height: 24)
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(done ? "Mark not complete" : "Mark complete")
+    }
+}
+
+/// Pill tabs: the selected one filled in the accent, the rest on the neutral fill.
+private struct TopicTabs: View {
+    let tabs: [TopicTab]
+    @Binding var selected: TopicTab
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(tabs, id: \.self) { t in
+                    let on = t == selected
+                    Button { selected = t } label: {
+                        Text(t.rawValue).font(AppFont.sans(15, .semibold))
+                            .foregroundStyle(on ? .white : palette.onSurface)
+                            .padding(.horizontal, 16)
+                            .frame(height: 36)
+                            .background(on ? palette.primary : SimColors.tint, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(on ? .isSelected : [])
+                }
             }
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(accent.opacity(palette.dark ? 0.14 : 0.10), in: RoundedRectangle(cornerRadius: 20))
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(accent.opacity(0.22), lineWidth: 1))
     }
 }
 

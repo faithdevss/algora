@@ -56,6 +56,8 @@ struct RootView: View {
             }
             if let id = args.string(forKey: "openTopic") { router.push(.topic(id)) }
             if let id = args.string(forKey: "openSim") { router.push(.simulation(id)) }
+            if let id = args.string(forKey: "openSimSection") { router.push(.simulationSection(id)) }
+            if let page = args.string(forKey: "openPractice") { router.push(page == "quizzes" ? .quizzes : .browser(.interviewPrep)) }
             if args.string(forKey: "openMode") == "ai" { session.mode = .ai }
             if let theme = args.string(forKey: "openTheme") { store.themeMode = ThemeMode(rawValue: theme) ?? .system }
         }
@@ -95,10 +97,13 @@ struct RouteView: View {
 
     var body: some View {
         switch route {
-        case .browser(let kind): CategoryBrowserScreen(kind: kind)
+        case .browser(let kind):
+            if kind == .interviewPrep { InterviewPrepScreen() } else { CategoryBrowserScreen(kind: kind) }
         case .topic(let id): TopicDetailScreen(topicId: id)
         case .simulation(let id): SimulationDetailScreen(topicId: id)
+        case .simulationSection(let id): SimulationSectionScreen(sectionId: id)
         case .quizzes: QuizCatalogScreen()
+        case .quizRun(let id, let learn): QuizRunScreen(topicId: id, learn: learn)
         case .weakSpotDrill: WeakSpotDrillScreen()
         case .dailyDrill: DailyDrillScreen()
         case .problems: ProblemListScreen()

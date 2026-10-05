@@ -44,8 +44,11 @@ enum class NavTab(val label: String, val iconName: String) {
 
 object TopicDetailRoute {
     const val ARG = "topicId"
-    const val PATTERN = "topic_detail/{$ARG}"
+    // A quiz opened from a set list starts in the list's mode ("learn" / "interview") instead of asking.
+    const val QUIZ_MODE = "quizMode"
+    const val PATTERN = "topic_detail/{$ARG}?$QUIZ_MODE={$QUIZ_MODE}"
     fun route(topicId: String) = "topic_detail/$topicId"
+    fun quiz(topicId: String, learn: Boolean) = "topic_detail/$topicId?$QUIZ_MODE=${if (learn) "learn" else "interview"}"
 }
 
 // The single flashcard surface, scheduled by SM-2. Replaced the old unscheduled FlashcardsRoute,
@@ -104,6 +107,13 @@ object SettingsRoute {
 // Simulations tab lands on a catalog of every topic that ships a runnable interactive lab.
 object SimulationsRoute {
     const val ROUTE = "simulations"
+}
+
+// A Simulations-tab section on its own page, by Section name.
+object SimulationSectionRoute {
+    const val ARG = "section"
+    const val PATTERN = "simulations/section/{$ARG}"
+    fun route(section: String) = "simulations/section/$section"
 }
 
 // A catalog row opens the lab alone — same topic id as TopicDetailRoute, sim-only chrome.

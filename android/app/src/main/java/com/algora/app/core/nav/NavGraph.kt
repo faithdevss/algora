@@ -1,6 +1,7 @@
 package com.algora.app.core.nav
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -32,6 +33,7 @@ import com.algora.app.feature.reinforcementlearning.ReinforcementLearningScreen
 import com.algora.app.feature.review.ReviewScreen
 import com.algora.app.feature.settings.SettingsScreen
 import com.algora.app.feature.simulations.SimulationDetailScreen
+import com.algora.app.feature.simulations.SimulationSectionScreen
 import com.algora.app.feature.simulations.SimulationsScreen
 import com.algora.app.feature.topics.TopicDetailScreen
 
@@ -46,6 +48,26 @@ fun NavGraph(
     val openSimulation: (String) -> Unit = { topicId -> navController.navigate(SimulationDetailRoute.route(topicId)) }
     // Category browsers are entered from Home (or the Practice tab), which stays on the back stack.
     val goBack: () -> Unit = { navController.popBackStack() }
+    val startQuiz: (String, Boolean) -> Unit = { topicId, learn -> navController.navigate(TopicDetailRoute.quiz(topicId, learn)) }
+    // The title of the screen under the current one, for an iOS-style "‹ Practice" back link.
+    val backTitle: () -> String = {
+        when (navController.previousBackStackEntry?.destination?.route) {
+            PracticeRoute.ROUTE -> "Practice"
+            Screen.Home.route -> "Learning"
+            ProgressRoute.ROUTE -> "Progress"
+            QuizCatalogRoute.ROUTE -> "Quizzes"
+            PatternsRoute.ROUTE -> "Patterns"
+            Screen.InterviewPrep.route -> "Interview Prep"
+            Screen.DataStructures.route -> "Data Structures"
+            Screen.Algorithms.route -> "Algorithms"
+            Screen.Analysis.route -> "Analysis"
+            Screen.MachineLearning.route -> "Machine Learning"
+            Screen.DeepLearning.route -> "Deep Learning"
+            Screen.Nlp.route -> "NLP"
+            Screen.ReinforcementLearning.route -> "Reinforcement Learning"
+            else -> "Back"
+        }
+    }
 
     // Navigation Compose's default is a 700ms crossfade, during which both screens stay composed and
     // taps land on the outgoing one — opening a lab, backing out and picking another felt sluggish.
@@ -59,7 +81,9 @@ fun NavGraph(
         popExitTransition = { fadeOut(tween(NAV_FADE_MS)) },
     ) {
         // DSA mode
-        composable(Screen.InterviewPrep.route) { InterviewPrepScreen(onTopicClick = openTopic, onBack = goBack) }
+        composable(Screen.InterviewPrep.route) {
+            InterviewPrepScreen(onTopicClick = openTopic, onStartQuiz = startQuiz, onBack = goBack, backTitle = remember { backTitle() })
+        }
         composable(PatternsRoute.ROUTE) { PatternsScreen(onTopicClick = openTopic, onBack = goBack) }
         composable(Screen.DataStructures.route) { DataStructuresScreen(onTopicClick = openTopic, onBack = goBack) }
         composable(Screen.Algorithms.route) { AlgorithmsScreen(onTopicClick = openTopic, onBack = goBack) }
@@ -95,7 +119,9 @@ fun NavGraph(
         composable(QuizCatalogRoute.ROUTE) {
             QuizCatalogScreen(
                 onQuizClick = openTopic,
+                onStartQuiz = startQuiz,
                 onBack = goBack,
+                backTitle = remember { backTitle() },
                 onWeakSpotDrill = { navController.navigate(WeakSpotDrillRoute.ROUTE) },
             )
         }
@@ -158,7 +184,18 @@ fun NavGraph(
 
         // Simulations catalog — every topic with a runnable interactive lab.
         composable(SimulationsRoute.ROUTE) {
-            SimulationsScreen(onTopicClick = openSimulation)
+            SimulationsScreen(onTopicClick = openSimulation, onSectionClick = { navController.navigate(SimulationSectionRoute.route(it)) })
+        }
+
+        composable(
+            route = SimulationSectionRoute.PATTERN,
+            arguments = listOf(navArgument(SimulationSectionRoute.ARG) { type = NavType.StringType }),
+        ) { backStackEntry ->
+            SimulationSectionScreen(
+                section = backStackEntry.arguments?.getString(SimulationSectionRoute.ARG).orEmpty(),
+                onBack = { navController.popBackStack() },
+                onTopicClick = openSimulation,
+            )
         }
 
         // A lab on its own, without the surrounding topic write-up.
@@ -177,11 +214,16 @@ fun NavGraph(
 
         composable(
             route = TopicDetailRoute.PATTERN,
-            arguments = listOf(navArgument(TopicDetailRoute.ARG) { type = NavType.StringType }),
+            arguments = listOf(
+                navArgument(TopicDetailRoute.ARG) { type = NavType.StringType },
+                navArgument(TopicDetailRoute.QUIZ_MODE) { type = NavType.StringType; nullable = true; defaultValue = null },
+            ),
         ) { backStackEntry ->
             val topicId = backStackEntry.arguments?.getString(TopicDetailRoute.ARG).orEmpty()
             TopicDetailScreen(
                 topicId = topicId,
+                quizMode = backStackEntry.arguments?.getString(TopicDetailRoute.QUIZ_MODE),
+                backTitle = remember { backTitle() },
                 onBack = { navController.popBackStack() },
                 onTopicClick = openTopic,
                 onGoPremium = { navController.navigate(PremiumRoute.ROUTE) },

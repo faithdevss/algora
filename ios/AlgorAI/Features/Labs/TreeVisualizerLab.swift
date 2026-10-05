@@ -1351,29 +1351,6 @@ private func catboostFrames() -> [TreeFrame] {
 
 // MARK: - Divisive hierarchical clustering
 
-private func divisiveFrames() -> [TreeFrame] {
-    let b = TreeBuilder()
-    let points = compactBlobs
-    let splits = divisive(points, splits: 4)
-    var nodeFor: [[Int]: Int] = [:]
-    let root = b.add("all \(points.count)", nil, 0)
-    nodeFor[Array(points.indices)] = root
-    b.frame("Divisive clustering starts at the opposite end from agglomerative: everything in one cluster, split downward. Both produce a dendrogram; the difference is which end of it is computed first.", active: [root])
-    for (index, step) in splits.enumerated() {
-        let parent = nodeFor[step.parent] ?? root
-        let left = b.add("\(step.left.count) pts", parent, 0)
-        let right = b.add("\(step.right.count) pts", parent, 1)
-        nodeFor[step.left] = left
-        nodeFor[step.right] = right
-        b.relabel(parent, "split @ \(fx(step.diameter))")
-        b.frame("Split \(index + 1): the least cohesive cluster is the one with the largest diameter (\(fx(step.diameter))), so it goes first. It divides into \(step.left.count) and \(step.right.count) points.", active: [left, right], path: [parent])
-    }
-    let clusters = Set(nodeFor.values).subtracting([root])
-    b.frame("The exact version of this is intractable — finding the best split of a cluster of n points means checking 2^(n−1) − 1 partitions. Practical implementations approximate, and this one uses 2-means on the chosen cluster, which is what DIANA-style implementations do.", marked: clusters)
-    b.frame("The tradeoff against agglomerative is about where each one can go wrong. Divisive makes its most consequential decision first, with the whole dataset in view, so a good top-level split is likely — but the cost is high and a bad early split is never revisited. Agglomerative decides locally and cheaply at the bottom, where a wrong early merge is equally permanent but affects far fewer points.", path: [root], marked: clusters)
-    return b.frames
-}
-
 // MARK: - Aho-Corasick
 
 private func ahoCorasickFrames() -> [TreeFrame] {
@@ -1453,77 +1430,6 @@ private func ahoCorasickFrames() -> [TreeFrame] {
     }
     b.frame("Found \(found.map { "\"\($0)\"" }.joined(separator: ", ")) in one pass over \"\(text)\". The cost is O(n + m + z) — text length, total dictionary length, matches reported — with the number of patterns absent from the scan term entirely.",
             marked: terminals, links: links)
-    return b.frames
-}
-
-// MARK: - FP-Growth
-
-private func fpGrowthFrames() -> [TreeFrame] {
-    let b = TreeBuilder()
-    let order = fpItemOrder()
-    let root = b.add("root", nil, 0)
-    b.frame("Pass 1 counts single items and throws away everything below support \(minSupport): \(order.map { "\($0)=\(support([$0]))" }.joined(separator: ", ")) survive, \(basketItems.filter { !order.contains($0) }.map { "\($0)=\(support([$0]))" }.joined(separator: ", ")) does not. The surviving items are then ordered by descending count — that order is what makes the tree compress, because the most common items become shared prefixes.",
-            active: [root])
-    var ids: [String: Int] = [:]
-    var counts: [Int: Int] = [:]
-    var perItem: [String: [Int]] = [:]
-    for (index, transaction) in transactions.enumerated() {
-        let sorted = fpSortedTransaction(transaction)
-        var parent = root
-        var touched = Set<Int>()
-        var reusedDepth = 0
-        var reusing = true
-        for (depth, item) in sorted.enumerated() {
-            let key = "\(parent)|\(item)"
-            if let existing = ids[key] {
-                counts[existing]! += 1
-                b.relabel(existing, "\(item):\(counts[existing]!)")
-                parent = existing
-                if reusing { reusedDepth = depth + 1 }
-            } else {
-                reusing = false
-                let id = b.add("\(item):1", parent, depth)
-                ids[key] = id
-                counts[id] = 1
-                perItem[item, default: []].append(id)
-                parent = id
-            }
-            touched.insert(parent)
-        }
-        let dropped = transaction.count != sorted.count ? ", which becomes \(sorted.joined()) once infrequent items are dropped" : ""
-        let tail = reusedDepth > 0
-            ? "Its first \(reusedDepth) item\(reusedDepth > 1 ? "s" : "") already exist as a path, so those nodes just have their counter incremented — no new storage at all. That reuse is the compression."
-            : "No existing path shares its prefix, so it becomes a new branch off the root."
-        b.frame("Basket \(index + 1) is \(transaction.sorted().joined())\(dropped), sorted into header order. " + tail, active: touched)
-    }
-    let tree = buildFpTree()
-    let slots = transactions.reduce(0) { $0 + fpSortedTransaction($1).count }
-    b.frame("All \(transactions.count) baskets are in. They contained \(slots) item slots between them and the tree holds \(tree.nodes.count) nodes — the database, complete, with every count recoverable and every duplicate prefix stored once. On a real basket dataset that ratio is the reason this method exists.")
-    let target = "E"
-    let chain = perItem[target] ?? []
-    let links = zip(chain, chain.dropFirst()).map { TreeLink(from: $0, to: $1) }
-    b.frame("The header table keeps, for each item, a linked list through every node holding it. Here is \(target)'s: \(chain.count) nodes scattered across the tree, \(chain.reduce(0) { $0 + counts[$1]! }) occurrences in total — which matches the \(support([target])) baskets containing \(target), as it must.",
-            active: Set(chain), links: links)
-    let base = conditionalPatternBase(tree, target)
-    var above = Set<Int>()
-    for id in chain {
-        var cur: Int? = id
-        while let c = cur { above.insert(c); cur = b.parentOf(c) }
-    }
-    b.frame("Mining \(target): walk that chain and read the path above each node. The conditional pattern base is \(base.map { "\($0.path.joined().isEmpty ? "∅" : $0.path.joined())×\($0.count)" }.joined(separator: ", ")) — every context in which \(target) occurred, with its multiplicity.",
-            path: above.subtracting(chain).subtracting([root]), marked: Set(chain), links: links)
-    var conditional: [(String, Int)] = []
-    var distinctItems: [String] = []
-    for item in base.flatMap(\.path) where !distinctItems.contains(item) { distinctItems.append(item) }
-    for item in distinctItems {
-        let total = base.filter { $0.path.contains(item) }.reduce(0) { $0 + $1.count }
-        if total >= minSupport { conditional.append((item, total)) }
-    }
-    let itemCounts = Array(Set(base.flatMap(\.path))).sorted().map { item in "\(item)=\(base.filter { $0.path.contains(item) }.reduce(0) { $0 + $1.count })" }.joined(separator: ", ")
-    b.frame("Count items within that base: \(itemCounts). Only \(conditional.isEmpty ? "nothing" : conditional.map(\.0).joined(separator: ", ")) clears support \(minSupport), so \(conditional.map { "\($0.0)\(target)" }.joined(separator: ", ")) is frequent — support \(conditional.first?.1 ?? 0), and Apriori found exactly the same set by counting candidates instead.",
-            marked: Set(chain), links: links)
-    b.frame("Two database passes total: one to count items, one to build the tree. Everything after that is recursion over conditional trees held in memory, with no candidate generation and no further scans. Apriori needed a pass per level. The cost is the tree itself — on data with little shared prefix structure it can be larger than the database, and then FP-Growth is the wrong choice.",
-            marked: Set(chain))
     return b.frames
 }
 
@@ -2022,9 +1928,7 @@ private let treeConfigs: [String: TreeConfig] = [
     "dependency_parsing": TreeConfig(intro: "One sentence parsed by arc-standard transitions, stack and buffer replayed step by step — then UAS against LAS on a wrong parse, and the crossing arc this transition system cannot build.", markedLabel: "Attached", build: dependencyFrames, cardTitle: "DEPENDENCY PARSE", cardNote: "head → dependent"),
     "constituency_parsing": TreeConfig(intro: "The same sentence as nested phrases: the spans evalb scores, a flattened VP costing recall, and head rules converting the tree into the dependency parse next door.", markedLabel: "Constituent", build: constituencyFrames, cardTitle: "CONSTITUENCY PARSE", cardNote: "phrases nest"),
     "pcfg": TreeConfig(intro: "\"she saw the man with the telescope\" parsed by probabilistic CYK: the chart bottom-up, then both attachments of the prepositional phrase scored against each other.", markedLabel: "Best parse", build: pcfgFrames, cardTitle: "PCFG PARSE", cardNote: "P = product of rules"),
-    "fp_growth": TreeConfig(intro: "Ten baskets compressed into a prefix tree in two passes, then mined by walking the header chain for one item back up to the root.", markedLabel: "Header chain", build: fpGrowthFrames, linkLabel: "Header link", cardTitle: "FP-TREE", cardNote: "shared prefixes"),
     "aho_corasick": TreeConfig(intro: "The dictionary {he, she, his, hers} as a trie, then its failure links, then one walk over \"ushers\". The dashed arcs are the failure links — they are the whole algorithm, and they are why the text pointer never backs up.", markedLabel: "Pattern ends here", build: ahoCorasickFrames, linkLabel: "Failure link", cardTitle: "AHO-CORASICK", cardNote: "trie + failure links"),
-    "hierarchical_divisive": TreeConfig(intro: "The dendrogram built top-down: repeatedly split the least cohesive cluster, with the real diameters driving which one goes next.", markedLabel: "Cluster", build: divisiveFrames, cardTitle: "DIVISIVE SPLIT", cardNote: "top down"),
     "xgboost": TreeConfig(intro: "One tree built by the real second-order gain formula: G and H sums, the closed-form leaf value, and a split that γ prunes away.", markedLabel: "Leaf", build: xgboostFrames, cardTitle: "XGBOOST TREE", cardNote: "gain per split"),
     "lightgbm": TreeConfig(intro: "The same six-leaf budget spent level-wise and then leaf-wise, so the difference in shape and in captured gain is directly comparable.", markedLabel: "Leaf", build: lightgbmFrames, cardTitle: "LEAF-WISE GROWTH", cardNote: "best leaf first"),
     "catboost": TreeConfig(intro: "Oblivious trees: one condition per level, reused across the whole level, and what that buys at inference time.", markedLabel: "Leaf", build: catboostFrames, cardTitle: "OBLIVIOUS TREE", cardNote: "one test per level"),

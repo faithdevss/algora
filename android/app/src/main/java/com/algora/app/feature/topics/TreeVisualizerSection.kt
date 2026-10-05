@@ -2210,52 +2210,6 @@ private fun catboostFrames(): List<TreeFrame> {
     return builder.frames
 }
 
-// ── Divisive hierarchical clustering ─────────────────────────────────────────
-// Agglomerative builds the dendrogram from the leaves up; divisive builds it from the root down.
-// Same tree, opposite direction, and different things go wrong at each end.
-
-private fun divisiveFrames(): List<TreeFrame> {
-    val builder = TreeBuilder()
-    val points = compactBlobs
-    val splits = divisive(points, 4)
-
-    val nodeFor = HashMap<List<Int>, Int>()
-    val root = builder.add("all ${points.size}", null, 0)
-    nodeFor[points.indices.toList()] = root
-
-    builder.frame(
-        "Divisive clustering starts at the opposite end from agglomerative: everything in one cluster, split downward. Both produce a dendrogram; the difference is which end of it is computed first.",
-        active = setOf(root),
-    )
-
-    splits.forEachIndexed { index, step ->
-        val parent = nodeFor[step.parent] ?: root
-        val left = builder.add("${step.left.size} pts", parent, 0)
-        val right = builder.add("${step.right.size} pts", parent, 1)
-        nodeFor[step.left] = left
-        nodeFor[step.right] = right
-        builder.relabel(parent, "split @ ${"%.2f".format(step.diameter)}")
-
-        builder.frame(
-            "Split ${index + 1}: the least cohesive cluster is the one with the largest diameter (${"%.2f".format(step.diameter)}), so it goes first. It divides into ${step.left.size} and ${step.right.size} points.",
-            active = setOf(left, right),
-            path = setOf(parent),
-        )
-    }
-
-    builder.frame(
-        "The exact version of this is intractable — finding the best split of a cluster of n points means checking 2^(n−1) − 1 partitions. Practical implementations approximate, and this one uses 2-means on the chosen cluster, which is what DIANA-style implementations do.",
-        marked = nodeFor.values.toSet() - root,
-    )
-
-    builder.frame(
-        "The tradeoff against agglomerative is about where each one can go wrong. Divisive makes its most consequential decision first, with the whole dataset in view, so a good top-level split is likely — but the cost is high and a bad early split is never revisited. Agglomerative decides locally and cheaply at the bottom, where a wrong early merge is equally permanent but affects far fewer points.",
-        marked = nodeFor.values.toSet() - root,
-        path = setOf(root),
-    )
-    return builder.frames
-}
-
 // ── Aho-Corasick: the trie, its failure links, then one pass over the text ───
 // The textbook dictionary, because it is the smallest one that exercises every case: "hers" fails to
 // "s" in a different branch, and "she" has to report "he" through an output link.
@@ -2381,129 +2335,6 @@ private fun ahoCorasickFrames(): List<TreeFrame> {
         links = links.toList(),
     )
     return b.frames
-}
-
-// ── FP-Growth: the tree is the algorithm ─────────────────────────────────────
-// Apriori and Eclat both search a candidate space. FP-Growth does not generate candidates at all —
-// it compresses the database into a prefix tree in two passes and then reads the frequent itemsets
-// out of it recursively. Shown here because the compression and the header links are the whole idea,
-// and neither is visible in a row of cells.
-
-private fun fpGrowthFrames(): List<TreeFrame> {
-    val builder = TreeBuilder()
-    val order = fpItemOrder()
-    val root = builder.add("root", null, 0)
-
-    builder.frame(
-        status = "Pass 1 counts single items and throws away everything below support ${MinSupport}: " +
-            "${order.joinToString { "$it=${support(setOf(it))}" }} survive, " +
-            "${basketItems.filter { it !in order }.joinToString { "$it=${support(setOf(it))}" }} does not. The " +
-            "surviving items are then ordered by descending count — that order is what makes the tree compress, " +
-            "because the most common items become shared prefixes.",
-        active = setOf(root),
-    )
-
-    // Node ids in this builder, keyed the same way the tree in AssociationMath is.
-    val ids = mutableMapOf<Pair<Int, String>, Int>()
-    val counts = mutableMapOf<Int, Int>()
-    val perItem = mutableMapOf<String, MutableList<Int>>()
-
-    transactions.forEachIndexed { index, transaction ->
-        val sorted = fpSortedTransaction(transaction)
-        var parent = root
-        val touched = mutableSetOf<Int>()
-        var reusedDepth = 0
-        var reusing = true
-        sorted.forEachIndexed { depth, item ->
-            val key = parent to item
-            val existing = ids[key]
-            if (existing != null) {
-                counts[existing] = counts.getValue(existing) + 1
-                builder.relabel(existing, "$item:${counts.getValue(existing)}")
-                parent = existing
-                if (reusing) reusedDepth = depth + 1
-            } else {
-                reusing = false
-                val id = builder.add("$item:1", parent, depth)
-                ids[key] = id
-                counts[id] = 1
-                perItem.getOrPut(item) { mutableListOf() }.add(id)
-                parent = id
-            }
-            touched += parent
-        }
-        builder.frame(
-            status = "Basket ${index + 1} is ${transaction.sorted().joinToString("")}" +
-                (if (transaction.size != sorted.size) ", which becomes ${sorted.joinToString("")} once infrequent items are dropped" else "") +
-                ", sorted into header order. " +
-                if (reusedDepth > 0) {
-                    "Its first $reusedDepth item${if (reusedDepth > 1) "s" else ""} already exist as a path, so those " +
-                        "nodes just have their counter incremented — no new storage at all. That reuse is the " +
-                        "compression."
-                } else {
-                    "No existing path shares its prefix, so it becomes a new branch off the root."
-                },
-            active = touched,
-        )
-    }
-
-    val tree = buildFpTree()
-    val slots = transactions.sumOf { fpSortedTransaction(it).size }
-    builder.frame(
-        status = "All ${transactions.size} baskets are in. They contained $slots item slots between them and the tree " +
-            "holds ${tree.nodes.size} nodes — the database, complete, with every count recoverable and every " +
-            "duplicate prefix stored once. On a real basket dataset that ratio is the reason this method exists.",
-    )
-
-    // Header links: the same-item chain the mining step walks.
-    val target = "E"
-    val chain = perItem[target].orEmpty()
-    val links = chain.zipWithNext { a, b -> TreeLink(a, b) }
-    builder.frame(
-        status = "The header table keeps, for each item, a linked list through every node holding it. Here is $target's: " +
-            "${chain.size} nodes scattered across the tree, ${chain.sumOf { counts.getValue(it) }} occurrences in " +
-            "total — which matches the ${support(setOf(target))} baskets containing $target, as it must.",
-        active = chain.toSet(),
-        links = links,
-    )
-
-    val base = conditionalPatternBase(tree, target)
-    builder.frame(
-        status = "Mining $target: walk that chain and read the path above each node. The conditional pattern base is " +
-            "${base.joinToString { "${it.path.joinToString("").ifEmpty { "∅" }}×${it.count}" }} — every context in " +
-            "which $target occurred, with its multiplicity.",
-        marked = chain.toSet(),
-        path = chain.flatMap { id ->
-            generateSequence(id) { current -> builder.parentOf(current) }.toList()
-        }.toSet() - chain.toSet() - setOf(root),
-        links = links,
-    )
-
-    val conditionalCounts = base
-        .flatMap { pattern -> pattern.path.map { it to pattern.count } }
-        .groupBy({ it.first }, { it.second })
-        .mapValues { it.value.sum() }
-        .filterValues { it >= MinSupport }
-    builder.frame(
-        status = "Count items within that base: " +
-            "${base.flatMap { p -> p.path.map { it } }.distinct().sorted().joinToString { item ->
-                "$item=${base.filter { item in it.path }.sumOf { it.count }}"
-            }}. Only ${conditionalCounts.keys.joinToString().ifEmpty { "nothing" }} clears support ${MinSupport}, so " +
-            "${conditionalCounts.keys.joinToString { "$it$target" }} is frequent — support " +
-            "${conditionalCounts.values.firstOrNull() ?: 0}, and Apriori found exactly the same set by counting " +
-            "candidates instead.",
-        marked = chain.toSet(),
-        links = links,
-    )
-
-    builder.frame(
-        status = "Two database passes total: one to count items, one to build the tree. Everything after that is " +
-            "recursion over conditional trees held in memory, with no candidate generation and no further scans. " +
-            "Apriori needed a pass per level. The cost is the tree itself — on data with little shared prefix " +
-            "structure it can be larger than the database, and then FP-Growth is the wrong choice.",
-        marked = chain.toSet(),
-    )
-    return builder.frames
 }
 
 // ── D2 · Dependency parsing: an arc-standard transition sequence ─────────────
@@ -3460,14 +3291,6 @@ private val treeConfigs = mapOf(
         cardTitle = "PCFG PARSE",
         cardNote = "P = product of rules",
     ),
-    "fp_growth" to TreeConfig(
-        intro = "Ten baskets compressed into a prefix tree in two passes, then mined by walking the header chain for one item back up to the root.",
-        markedLabel = "Header chain",
-        linkLabel = "Header link",
-        build = ::fpGrowthFrames,
-        cardTitle = "FP-TREE",
-        cardNote = "shared prefixes",
-    ),
     "aho_corasick" to TreeConfig(
         intro = "The dictionary {he, she, his, hers} as a trie, then its failure links, then one walk over \"ushers\". " +
             "The dashed arcs are the failure links — they are the whole algorithm, and they are why the text pointer never backs up.",
@@ -3476,13 +3299,6 @@ private val treeConfigs = mapOf(
         linkLabel = "Failure link",
         cardTitle = "AHO-CORASICK",
         cardNote = "trie + failure links",
-    ),
-    "hierarchical_divisive" to TreeConfig(
-        intro = "The dendrogram built top-down: repeatedly split the least cohesive cluster, with the real diameters driving which one goes next.",
-        markedLabel = "Cluster",
-        build = ::divisiveFrames,
-        cardTitle = "DIVISIVE SPLIT",
-        cardNote = "top down",
     ),
     "xgboost" to TreeConfig(
         intro = "One tree built by the real second-order gain formula: G and H sums, the closed-form leaf value, and a split that γ prunes away.",

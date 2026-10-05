@@ -9,8 +9,6 @@ private let labPoint = Color(hex: 0x7C3AED)
 private let labReference = SimColors.grey
 private let labHighlight = SimColors.red
 private let labBand = Color(hex: 0x10B981)
-private let seriesForecastColor = SimColors.red
-private let seriesComponent = SimColors.amber
 
 private struct LabCurve { let points: [(Float, Float)]; let color: Color; var dashed = false; var width: CGFloat = 3 }
 private struct LabReadout { let value: String; let label: String }
@@ -75,184 +73,6 @@ private func sampleCurve(_ xMin: Float, _ xMax: Float, _ color: Color, dashed: B
     LabCurve(points: (0...80).map { i in let x = xMin + (xMax - xMin) * Float(i) / 80; return (x, Float(f(x))) }, color: color, dashed: dashed, width: width)
 }
 
-
-// MARK: Time series
-
-private func seriesData(_ seed: Int32) -> [LabPoint] { retailSeries(seed: Int(seed)).enumerated().map { LabPoint(x: Float($0), y: Float($1)) } }
-private func heldOutIndices(_ p: [LabPoint]) -> Set<Int> { Set(p.indices.filter { $0 >= trainLength }) }
-private func seriesCurve(_ values: [Double?], _ startAt: Int, _ color: Color, dashed: Bool = false, width: CGFloat = 2.5) -> LabCurve {
-    LabCurve(points: values.enumerated().compactMap { i, v in v.map { (Float(startAt + i), Float($0)) } }, color: color, dashed: dashed, width: width)
-}
-private func seriesTrain(_ p: [LabPoint]) -> [Double] { p.prefix(trainLength).map { Double($0.y) } }
-private func seriesActual(_ p: [LabPoint]) -> [Double] { p.dropFirst(trainLength).map { Double($0.y) } }
-
-private func benchmarkNote(_ name: String, _ rmse: Double, _ bench: Double) -> String {
-    rmse < bench ? "\(name) beats the seasonal-naive benchmark (\(fmt(rmse)) against \(fmt(bench)))."
-        : "\(name) loses to the seasonal-naive benchmark — \(fmt(rmse)) against \(fmt(bench)). A method that cannot beat \"next year looks like last year\" is not yet earning its complexity."
-}
-
-private func movingAverageCfg() -> RegConfig {
-    RegConfig(
-        intro: "One slider: the window. Watch two things move in opposite directions — how much jitter is removed, and how far behind the series the smoothed line falls.",
-        data: seriesData,
-        sliders: [RegSlider(label: "Window", range: 2...12, initial: 3, step: 1, format: { "\(rInt($0)) months" })],
-        evaluate: { points, values in
-            let window = rInt(values[0])
-            let train = seriesTrain(points)
-            let smoothed = movingAverage(train, window: window)
-            let raw = roughness(train), smooth = roughness(smoothed.compactMap { $0 })
-            let lag = Double(window - 1) / 2
-            return LabResult(
-                curves: [seriesCurve(smoothed, 0, labFit)],
-                readouts: [LabReadout(value: fmt(smooth), label: "Roughness"), LabReadout(value: "−\(fmt(100 * (1 - smooth / raw)))%", label: "vs raw \(fmt(raw))"), LabReadout(value: "\(fmt(lag)) mo", label: "Lag introduced")],
-                note: "A \(window)-month trailing window cut the month-to-month jitter from \(fmt(raw)) to \(fmt(smooth)), dropped the first \(window - 1) months entirely, and put the line \(fmt(lag)) months behind the series. At a window of \(seasonPeriod) the seasonal cycle is averaged away completely, which is how a moving average is used as a trend estimate rather than as a forecast.",
-                highlighted: heldOutIndices(points))
-        },
-        legend: [(labPoint, "Observed"), (labFit, "Moving average"), (labHighlight, "Held out")])
-}
-
-private func autoregressionCfg() -> RegConfig {
-    RegConfig(
-        intro: "Regress the series on its own past. p is how many lags it may use; the forecast past month 48 is recursive — each prediction becomes the next input.",
-        data: seriesData,
-        sliders: [RegSlider(label: "Lags (p)", range: 1...12, initial: 2, step: 1, format: { "p = \(rInt($0))" })],
-        solveLabel: "✦ Best by held-out",
-        solve: { points, _ in
-            let train = seriesTrain(points), actual = seriesActual(points)
-            let best = (1...12).min { a, b in
-                forecastRmse(arForecast(fitAr(train, p: a), train, horizon: actual.count), actual) < forecastRmse(arForecast(fitAr(train, p: b), train, horizon: actual.count), actual)
-            } ?? 2
-            return [Double(best)]
-        },
-        evaluate: { points, values in
-            let p = rInt(values[0])
-            let train = seriesTrain(points), actual = seriesActual(points)
-            let fit = fitAr(train, p: p)
-            let forecast = arForecast(fit, train, horizon: actual.count)
-            let fitted: [Double?] = train.indices.map { $0 < p ? nil : train[$0] - fit.residuals[$0 - p] }
-            let out = forecastRmse(forecast, actual), bench = forecastRmse(seasonalNaiveForecast(train, horizon: actual.count), actual)
-            return LabResult(
-                curves: [seriesCurve(fitted, 0, labFit), seriesCurve(forecast, trainLength, seriesForecastColor, width: 3)],
-                readouts: [LabReadout(value: fmt(fit.rmse), label: "In-sample RMSE"), LabReadout(value: fmt(out), label: "Forecast RMSE"), LabReadout(value: fmt(fit.coefficients.count > 1 ? fit.coefficients[1] : 0), label: "φ₁")],
-                note: "AR(\(p)): \(fit.coefficients.dropFirst().map(fmt).joined(separator: ", ")). " + benchmarkNote("It", out, bench) + " An AR model has no seasonal term at all, so the only way it can reach twelve months back is to spend twelve lags getting there — which is what p = 12 is doing, and why the seasonal models that follow exist.",
-                highlighted: heldOutIndices(points))
-        },
-        legend: [(labPoint, "Observed"), (labFit, "In-sample fit"), (seriesForecastColor, "Forecast")])
-}
-
-private func arimaCfg() -> RegConfig {
-    RegConfig(
-        intro: "The three letters as three sliders. d differences the series until it is stationary, p regresses on its own lags, q regresses on past errors.",
-        data: seriesData,
-        sliders: [RegSlider(label: "AR order (p)", range: 0...4, initial: 2, step: 1, format: { "p = \(rInt($0))" }),
-                  RegSlider(label: "Differencing (d)", range: 0...2, initial: 1, step: 1, format: { "d = \(rInt($0))" }),
-                  RegSlider(label: "MA order (q)", range: 0...3, initial: 1, step: 1, format: { "q = \(rInt($0))" })],
-        evaluate: { points, values in
-            let p = rInt(values[0]), d = rInt(values[1]), q = rInt(values[2])
-            let train = seriesTrain(points), actual = seriesActual(points)
-            let fit = fitArima(train, p: p, d: d, q: q, horizon: actual.count)
-            let out = forecastRmse(fit.forecast, actual), bench = forecastRmse(seasonalNaiveForecast(train, horizon: actual.count), actual)
-            var diffd = train
-            for _ in 0..<d { diffd = difference(diffd) }
-            let raw = lag1Autocorrelation(train), now = lag1Autocorrelation(diffd)
-            let first = d == 0
-                ? "Undifferenced, the lag-1 autocorrelation is \(fmt(raw)) — close to 1, which is what a trending series looks like and what \"non-stationary\" means in practice. "
-                : "After \(d) round\(d > 1 ? "s" : "") of differencing the lag-1 autocorrelation is \(fmt(now)), down from \(fmt(raw)). Each round costs one row and removes one order of trend; over-differencing is a real failure and shows up as an ACF driven negative. "
-            return LabResult(
-                curves: [seriesCurve(fit.forecast, trainLength, seriesForecastColor, width: 3)],
-                readouts: [LabReadout(value: fmt(now), label: "Lag-1 ACF"), LabReadout(value: fmt(out), label: "Forecast RMSE"), LabReadout(value: "\(train.count - d)", label: "Usable rows")],
-                note: first + benchmarkNote("ARIMA(\(p),\(d),\(q))", out, bench) + " The MA terms are fitted by Hannan-Rissanen — a long AR first, then a regression on its own residuals — and they decay out of the forecast after q steps, because future errors are zero in expectation.",
-                highlighted: heldOutIndices(points))
-        },
-        legend: [(labPoint, "Observed"), (seriesForecastColor, "Forecast"), (labHighlight, "Held out")])
-}
-
-private func sarimaCfg() -> RegConfig {
-    RegConfig(
-        intro: "The same machinery with one addition: a difference at lag 12 rather than lag 1. Toggle it and watch both the lag-12 autocorrelation and the forecast error.",
-        data: seriesData,
-        sliders: [RegSlider(label: "AR order (p)", range: 1...6, initial: 2, step: 1, format: { "p = \(rInt($0))" }),
-                  RegSlider(label: "Seasonal difference", range: 0...1, initial: 1, step: 1, format: { rInt($0) == 1 ? "on (lag 12)" : "off" })],
-        evaluate: { points, values in
-            let p = rInt(values[0]), seasonal = rInt(values[1]) == 1
-            let train = seriesTrain(points), actual = seriesActual(points)
-            let fit = fitSarima(train, p: p, seasonalDifference: seasonal, horizon: actual.count)
-            let out = forecastRmse(fit.forecast, actual), bench = forecastRmse(seasonalNaiveForecast(train, horizon: actual.count), actual)
-            let without = forecastRmse(fitSarima(train, p: p, seasonalDifference: false, horizon: actual.count).forecast, actual)
-            return LabResult(
-                curves: [seriesCurve(fit.forecast, trainLength, seriesForecastColor, width: 3)],
-                readouts: [LabReadout(value: fmt(fit.acfAfter), label: "Lag-12 ACF"), LabReadout(value: fmt(out), label: "Forecast RMSE"), LabReadout(value: "\(fit.seasonalDifferenced.count)", label: "Usable rows")],
-                note: seasonal
-                    ? "Differencing at lag 12 — yₜ − yₜ₋₁₂ — dropped the lag-12 autocorrelation from \(fmt(fit.acfBefore)) to \(fmt(fit.acfAfter)) and cost \(seasonPeriod) rows. Forecast error \(fmt(out)) against \(fmt(without)) with the seasonal difference off. " + benchmarkNote("It", out, bench) + " That single subtraction is the whole seasonal idea: compare each month with the same month a year ago rather than with last month."
-                    : "With no seasonal difference the lag-12 autocorrelation stays at \(fmt(fit.acfBefore)), and the annual cycle is left for the AR lags to reconstruct one month at a time. Forecast error \(fmt(out)). " + benchmarkNote("It", out, bench) + " Turn the seasonal difference on and compare.",
-                highlighted: heldOutIndices(points))
-        },
-        legend: [(labPoint, "Observed"), (seriesForecastColor, "Forecast"), (labHighlight, "Held out")])
-}
-
-private func expSmoothingCfg() -> RegConfig {
-    RegConfig(
-        intro: "Three recursions, three sliders. α smooths the level, β the trend, γ the seasonal figures — each one an exponentially-weighted compromise between the newest observation and everything before it.",
-        data: seriesData,
-        sliders: [RegSlider(label: "α (level)", range: 0.05...0.95, initial: 0.3), RegSlider(label: "β (trend)", range: 0.01...0.6, initial: 0.1), RegSlider(label: "γ (seasonal)", range: 0.05...0.95, initial: 0.3)],
-        solveLabel: "✦ Best by held-out",
-        solve: { points, _ in
-            let train = seriesTrain(points), actual = seriesActual(points)
-            var best: [Double] = [0.3, 0.1, 0.3], bestRmse = Double.greatestFiniteMagnitude
-            for a: Float in [0.1, 0.2, 0.3, 0.5, 0.7, 0.9] {
-                for b: Float in [0.02, 0.05, 0.1, 0.3] {
-                    for g: Float in [0.1, 0.3, 0.5, 0.8] {
-                        let e = forecastRmse(holtWinters(train, alpha: Double(a), beta: Double(b), gamma: Double(g), horizon: actual.count).forecast, actual)
-                        if e < bestRmse { bestRmse = e; best = [Double(a), Double(b), Double(g)] }
-                    }
-                }
-            }
-            return best
-        },
-        evaluate: { points, values in
-            let train = seriesTrain(points), actual = seriesActual(points)
-            let hw = holtWinters(train, alpha: values[0], beta: values[1], gamma: values[2], horizon: actual.count)
-            let inR = rmseOf(train.indices.map { train[$0] - hw.fitted[$0] })
-            let out = forecastRmse(hw.forecast, actual), bench = forecastRmse(seasonalNaiveForecast(train, horizon: actual.count), actual)
-            var note = "The dashed line is the level component with the seasonal figures removed — the series as Holt-Winters believes it would be without its annual cycle. " + benchmarkNote("Holt-Winters", out, bench)
-            if out > inR * 2.5 {
-                note += " Note the gap between in-sample \(fmt(inR)) and forecast \(fmt(out)): with these smoothing parameters the model tracks every wobble as if it were signal, so it fits the past well and extrapolates badly. High α, β and γ are not \"more responsive\", they are less smoothed."
-            }
-            return LabResult(
-                curves: [seriesCurve(hw.level, 0, seriesComponent, dashed: true, width: 2), seriesCurve(hw.fitted, 0, labFit), seriesCurve(hw.forecast, trainLength, seriesForecastColor, width: 3)],
-                readouts: [LabReadout(value: fmt(inR), label: "In-sample RMSE"), LabReadout(value: fmt(out), label: "Forecast RMSE"), LabReadout(value: fmt(hw.trend.last ?? 0), label: "Final trend/mo")],
-                note: note, highlighted: heldOutIndices(points))
-        },
-        legend: [(labPoint, "Observed"), (labFit, "Fitted"), (seriesComponent, "Level"), (seriesForecastColor, "Forecast")])
-}
-
-private func prophetCfg() -> RegConfig {
-    RegConfig(
-        intro: "Prophet's model form, fitted as one least-squares problem: a piecewise-linear trend with candidate changepoints, plus a Fourier seasonality. The penalty slider is its sparse prior on the slope changes.",
-        data: seriesData,
-        sliders: [RegSlider(label: "Changepoints", range: 0...8, initial: 4, step: 1, format: { "\(rInt($0))" }),
-                  RegSlider(label: "Fourier order", range: 1...4, initial: 2, step: 1, format: { "\(rInt($0))" }),
-                  RegSlider(label: "log₁₀ changepoint penalty", range: -2...2, initial: 0, format: expLabel)],
-        evaluate: { points, values in
-            let cps = rInt(values[0]), order = rInt(values[1])
-            let train = seriesTrain(points), actual = seriesActual(points)
-            let fit = fitProphet(train, changepointCount: cps, fourierOrder: order, penalty: pow(10, values[2]), horizon: actual.count)
-            let out = forecastRmse(fit.forecast, actual), bench = forecastRmse(seasonalNaiveForecast(train, horizon: actual.count), actual)
-            let used = fit.deltas.filter { abs($0) > 0.15 }.count
-            var note = "y(t) = g(t) + s(t): the dashed line is the trend, the solid one adds the Fourier seasonality of order \(order) (\(2 * order) terms). "
-            if cps == 0 {
-                note += "With no changepoints the trend is a single straight line for the whole history — and this series changes slope partway through, so one line cannot describe both halves. Forecast error \(fmt(out)). Raise the changepoint count and watch it fall."
-            } else {
-                note += "\(cps) candidate changepoints at months \(fit.changepoints.map(String.init).joined(separator: ", ")); \(used) of them took a slope change larger than 0.15. The penalty is applied to those slope changes alone — the intercept, the global slope and the seasonal terms are free — which is what stops the model putting a kink at every candidate. " + benchmarkNote("It", out, bench)
-            }
-            return LabResult(
-                curves: [seriesCurve(fit.trend, 0, seriesComponent, dashed: true, width: 2), seriesCurve(fit.forecastTrend, trainLength, seriesComponent, dashed: true, width: 2),
-                         seriesCurve(fit.fitted, 0, labFit), seriesCurve(fit.forecast, trainLength, seriesForecastColor, width: 3)],
-                readouts: [LabReadout(value: fmt(fit.trainRmse), label: "In-sample RMSE"), LabReadout(value: fmt(out), label: "Forecast RMSE"), LabReadout(value: "\(used) of \(cps)", label: "Slopes used")],
-                note: note, highlighted: heldOutIndices(points))
-        },
-        legend: [(labPoint, "Observed"), (seriesComponent, "Trend g(t)"), (labFit, "g(t) + s(t)"), (seriesForecastColor, "Forecast")])
-}
 
 // MARK: Metrics
 
@@ -379,8 +199,6 @@ private func adjustedR2Cfg() -> RegConfig {
 
 private let regressionConfigs: [String: () -> RegConfig] = [
     "mse": mseCfg, "rmse": rmseCfg, "mae": maeCfg, "r_squared": rSquaredCfg, "adjusted_r_squared": adjustedR2Cfg,
-    "moving_average": movingAverageCfg, "autoregression": autoregressionCfg, "arima": arimaCfg, "sarima": sarimaCfg,
-    "exponential_smoothing": expSmoothingCfg, "prophet": prophetCfg,
 ]
 
 /// Shared by the page and the pinned controls, so both stay live.

@@ -1,5 +1,12 @@
 package com.algora.app.feature.topics
 
+import androidx.compose.foundation.border
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -83,6 +90,7 @@ import com.algora.app.feature.interviewprep.behavioral.BehavioralScreen
 import com.algora.app.feature.interviewprep.systemdesign.SystemDesignRegistry
 import com.algora.app.feature.interviewprep.systemdesign.SystemDesignScreen
 import com.algora.app.feature.interviewprep.quiz.QuizRegistry
+import com.algora.app.feature.interviewprep.quiz.QuizMode
 import com.algora.app.feature.interviewprep.quiz.QuizScreen
 import com.algora.app.feature.premium.LockedTopicBody
 import com.algora.app.feature.topics.content.TopicContentProvider
@@ -103,6 +111,10 @@ fun TopicDetailScreen(
     onBack: () -> Unit,
     onTopicClick: (String) -> Unit = {},
     onGoPremium: () -> Unit = {},
+    // "learn" / "interview" when a set list already chose how the quiz runs.
+    quizMode: String? = null,
+    // The screen under this one, for the "‹ Learning" back link.
+    backTitle: String = "Back",
 ) {
     val topic = remember(topicId) { TopicRegistry.find(topicId) }
     val context = LocalContext.current
@@ -146,6 +158,8 @@ fun TopicDetailScreen(
             onBack = onBack,
             onTopicClick = onTopicClick,
             onGoPremium = onGoPremium,
+            quizMode = quizMode,
+            backTitle = backTitle,
         )
     }
 }
@@ -183,6 +197,8 @@ private fun TopicDetailContent(
     onBack: () -> Unit,
     onTopicClick: (String) -> Unit,
     onGoPremium: () -> Unit,
+    quizMode: String?,
+    backTitle: String,
 ) {
     val topic = remember(topicId) { TopicRegistry.find(topicId) }
     val content = remember(topicId) { TopicContentProvider.get(topicId) }
@@ -201,8 +217,8 @@ private fun TopicDetailContent(
 
     val isCompleted = topicId in completedIds
 
-    // Marking complete is the funnel's tail, and it is reached from five places below (quiz,
-    // behavioral bank, primer, and the two "Mark as complete" checkboxes) — routing them all
+    // Marking complete is the funnel's tail, and it is reached from several places below (quiz,
+    // behavioral bank, primer, the lesson and board nav-bar toggles, the tool checkbox) — routing them all
     // through one lambda keeps the event and the write from ever drifting apart.
     val analytics = rememberAnalytics()
     val markCompleted: () -> Unit = {
@@ -228,6 +244,11 @@ private fun TopicDetailContent(
             onTopicClick = onTopicClick,
             onFinish = markCompleted,
             onGoPremium = onGoPremium,
+            initialMode = when (quizMode) {
+                "learn" -> QuizMode.Learn
+                "interview" -> QuizMode.Interview
+                else -> null
+            },
         )
         return
     }
@@ -248,6 +269,19 @@ private fun TopicDetailContent(
             primer = systemDesign,
             onBack = onBack,
             onComplete = markCompleted,
+        )
+        return
+    }
+
+    if (topicId in com.algora.app.feature.analysis.board.analysisBoardIds) {
+        com.algora.app.feature.analysis.board.AnalysisBoardPage(
+            topicId = topicId,
+            onBack = onBack,
+            backTitle = backTitle,
+            isBookmarked = isBookmarked,
+            onToggleBookmark = onToggleBookmark,
+            isCompleted = isCompleted,
+            onToggleCompleted = { if (isCompleted) scope.launch { repository.markIncomplete(topicId) } else markCompleted() },
         )
         return
     }
@@ -292,64 +326,168 @@ private fun TopicDetailContent(
         return
     }
 
+    // A lesson: back link with share and bookmark, a coloured category eyebrow, a large title and
+    // tagline, then pill tabs that split the page into the overview, the maths, the code and the lab.
+    val tabs = remember(content) {
+        buildList {
+            add("Overview")
+            if (content.formulas.isNotEmpty()) add("Math")
+            if (content.codeBlocks.isNotEmpty()) add("Code")
+            if (content.simulation != com.algora.app.core.data.model.SimulationType.NotYetAvailable) add("Simulate")
+        }
+    }
+    var tab by androidx.compose.runtime.saveable.rememberSaveable(topicId) { androidx.compose.runtime.mutableStateOf("Overview") }
+    val accent = Color(topic.accentColor)
     Column(modifier = Modifier.fillMaxSize()) {
-        DetailHeader(title = topic.name, onBack = onBack, isBookmarked = isBookmarked, onToggleBookmark = onToggleBookmark)
+        TopicNavBar(
+            back = backTitle,
+            onBack = onBack,
+            isBookmarked = isBookmarked,
+            onToggleBookmark = onToggleBookmark,
+            isCompleted = isCompleted,
+            onToggleCompleted = { if (isCompleted) scope.launch { repository.markIncomplete(topicId) } else markCompleted() },
+        )
 
         LazyColumn(modifier = Modifier.weight(1f)) {
-            item { HeroSection(topic, content) }
-            item { SectionTitle("How Does It Work?") }
-            content.figure?.let { figure ->
-                item {
-                    // bottom gap matches HowItWorksSection's 11.dp step spacing so the figure reads
-                    // as the first card in that stack; the title already supplies the gap above.
-                    Box(modifier = Modifier.padding(start = ScreenGutter, end = ScreenGutter, bottom = 11.dp)) {
-                        FigureCard(figure)
+            item {
+                Column(modifier = Modifier.padding(horizontal = ScreenGutter)) {
+                    Text(
+                        topicEyebrow(topic), fontSize = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp,
+                        color = accent, modifier = Modifier.padding(top = 4.dp),
+                    )
+                    Text(topic.name, fontSize = 32.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))
+                    Text(topic.tagline, fontSize = 17.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+                }
+            }
+            item { TopicTabs(tabs, tab) { tab = it } }
+            when (tab) {
+                "Math" -> item { MathSection(content.formulas, content.notationKey) }
+                "Code" -> items(content.codeBlocks.withIndex().toList()) { (index, block) ->
+                    Box(modifier = Modifier.padding(horizontal = ScreenGutter, vertical = 6.dp)) {
+                        CodeBlockCard(block = block, initiallyExpanded = index == 0)
+                    }
+                }
+                "Simulate" -> item {
+                    Box(modifier = Modifier.padding(horizontal = ScreenGutter)) {
+                        SimulationHost(topicId = topicId, type = content.simulation)
+                    }
+                }
+                else -> {
+                    items(content.whatIsIt) { paragraph ->
+                        Text(
+                            paragraph, fontSize = 17.sp, lineHeight = 26.sp,
+                            modifier = Modifier.padding(start = ScreenGutter, end = ScreenGutter, bottom = 12.dp),
+                        )
+                    }
+                    item { LessonTitle("How It Works") }
+                    content.figure?.let { figure ->
+                        item {
+                            Box(modifier = Modifier.padding(start = ScreenGutter, end = ScreenGutter, bottom = 11.dp)) {
+                                FigureCard(figure)
+                            }
+                        }
+                    }
+                    item { HowItWorksSection(content.steps) }
+                    if (content.applications.isNotEmpty()) {
+                        item { LessonTitle("Real-World Applications") }
+                        item { ApplicationsSection(content.applications) }
+                    }
+                    item { TakeawaysSection(content.takeaways) }
+                    item { PrerequisitesSection(topicId, onTopicClick) }
+                    if (content.crossLinks.isNotEmpty()) {
+                        item { RelatedTopicsSection(content.crossLinks, onTopicClick) }
                     }
                 }
             }
-            item { HowItWorksSection(content.steps) }
-            item { SectionTitle("The Mathematics") }
-            item { MathSection(content.formulas, content.notationKey) }
-            item { SectionTitle("Technical Deep Dive") }
-            items(content.codeBlocks.withIndex().toList()) { (index, block) ->
-                Box(modifier = Modifier.padding(horizontal = ScreenGutter, vertical = 6.dp)) {
-                    CodeBlockCard(block = block, initiallyExpanded = index == 0)
-                }
-            }
-            item { SectionTitle("Interactive Simulation") }
-            item {
-                Box(modifier = Modifier.padding(horizontal = ScreenGutter)) {
-                    SimulationHost(topicId = topicId, type = content.simulation)
-                }
-            }
-            item { SectionTitle("Real-World Applications") }
-            item { ApplicationsSection(content.applications) }
-            item { TakeawaysSection(content.takeaways) }
-            item { PrerequisitesSection(topicId, onTopicClick) }
-            if (content.crossLinks.isNotEmpty()) {
-                item { RelatedTopicsSection(content.crossLinks, onTopicClick) }
-            }
 
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Checkbox(
-                        checked = isCompleted,
-                        onCheckedChange = { checked ->
-                            if (checked) {
-                                markCompleted()
-                            } else {
-                                scope.launch { repository.markIncomplete(topicId) }
-                            }
-                        },
-                    )
-                    Text("Mark as complete", style = MaterialTheme.typography.bodyLarge)
-                }
+            item { Spacer(Modifier.height(24.dp)) }
+        }
+    }
+}
+
+/** "GRAPHS · INTERMEDIATE": the category without its number, then the level. */
+private fun topicEyebrow(topic: Topic): String {
+    val category = com.algora.app.core.data.CategoryRegistry.find(topic.categoryId)?.name.orEmpty()
+    val i = category.indexOf(" · ")
+    val name = if (i > 0 && category.substring(0, i).all { it.isDigit() }) category.substring(i + 3) else category
+    return (listOf(name) + listOfNotNull(topic.difficulty?.name)).filter { it.isNotEmpty() }.joinToString(" · ").uppercase()
+}
+
+/** "‹ Learning" on the left; mark-complete and bookmark on the right. */
+@Composable
+private fun TopicNavBar(back: String, onBack: () -> Unit, isBookmarked: Boolean, onToggleBookmark: () -> Unit, isCompleted: Boolean, onToggleCompleted: () -> Unit) {
+    val primary = MaterialTheme.colorScheme.primary
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(start = 10.dp, end = 4.dp, top = 4.dp).heightIn(min = 44.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            modifier = Modifier.heightIn(min = 44.dp).clickable(onClickLabel = "Back to $back", onClick = onBack),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBackIos, contentDescription = null, tint = primary, modifier = Modifier.size(20.dp))
+            Text(back, color = primary, fontSize = 17.sp, maxLines = 1)
+        }
+        Spacer(Modifier.weight(1f))
+        IconButton(onClick = onToggleCompleted) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .then(
+                        if (isCompleted) Modifier.background(SimColors.Green, androidx.compose.foundation.shape.CircleShape)
+                        else Modifier.border(1.8.dp, primary, androidx.compose.foundation.shape.CircleShape),
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Filled.Check, contentDescription = if (isCompleted) "Mark not complete" else "Mark complete",
+                    tint = if (isCompleted) Color.White else primary.copy(alpha = 0.55f), modifier = Modifier.size(16.dp),
+                )
+            }
+        }
+        IconButton(onClick = onToggleBookmark) {
+            Icon(
+                if (isBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                contentDescription = if (isBookmarked) "Remove bookmark" else "Bookmark",
+                tint = primary,
+            )
+        }
+    }
+}
+
+/** Pill tabs: the selected one filled in the accent, the rest on the neutral fill. */
+@Composable
+private fun TopicTabs(tabs: List<String>, selected: String, onSelect: (String) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(start = ScreenGutter, end = ScreenGutter, top = 16.dp, bottom = 18.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        tabs.forEach { t ->
+            val on = t == selected
+            Box(
+                modifier = Modifier
+                    .height(36.dp)
+                    .background(if (on) MaterialTheme.colorScheme.primary else SimColors.Tint, androidx.compose.foundation.shape.CircleShape)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .clickable { onSelect(t) }
+                    .padding(horizontal = 16.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(t, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = if (on) Color.White else MaterialTheme.colorScheme.onSurface)
             }
         }
     }
+}
+
+@Composable
+private fun LessonTitle(title: String) {
+    Text(
+        title, fontFamily = com.algora.app.core.ui.theme.SpaceGrotesk, fontWeight = FontWeight.Bold, fontSize = 24.sp,
+        modifier = Modifier.padding(start = ScreenGutter, end = ScreenGutter, top = 14.dp, bottom = 12.dp),
+    )
 }
 
 // Shared with the sim-only screen (feature/simulations) so both routes wear the same chrome.

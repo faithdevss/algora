@@ -1,6 +1,5 @@
 package com.algora.app.feature.simulations
 
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
@@ -34,7 +34,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -59,14 +58,14 @@ import com.algora.app.core.ui.theme.ScreenGutter
 import com.algora.app.core.ui.theme.SpaceGrotesk
 import com.algora.app.feature.topics.content.TopicContentProvider
 
-private data class SimEntry(val topic: Topic, val label: String)
+internal data class SimEntry(val topic: Topic, val label: String)
 
-private data class SimSubgroup(val key: String, val name: String, val entries: List<SimEntry>)
+internal data class SimSubgroup(val key: String, val name: String, val entries: List<SimEntry>)
 
 // One collapsible block in the catalog: a whole section (Data Structures, NLP, …) whose rows are
 // split again by the topic's own category. Two levels, because the flat catalog is 350+ labs and the
 // biggest single section (Algorithms) is ~90 of them.
-private data class SimGroup(
+internal data class SimGroup(
     val section: Section,
     val title: String,
     val iconName: String,
@@ -129,11 +128,10 @@ internal fun simLabel(type: SimulationType): String = when (type) {
     SimulationType.NotYetAvailable -> "Interactive lab"
 }
 
-// The Simulations tab: a catalog of every topic that ships a runnable interactive lab, grouped into
-// collapsible sections (and category subheaders inside them) because the flat list is 150+ rows.
-// Tapping a row opens that topic's detail page, whose Interactive Simulation section hosts the lab.
+// The Simulations tab: a catalog of every topic that ships a runnable interactive lab, one row per
+// section. A section opens its own page (SimulationSectionScreen); a search lists matching labs here.
 @Composable
-fun SimulationsScreen(onTopicClick: (String) -> Unit, modifier: Modifier = Modifier) {
+fun SimulationsScreen(onTopicClick: (String) -> Unit, onSectionClick: (String) -> Unit, modifier: Modifier = Modifier) {
     val groups = simGroups
     val total = simTotal
 
@@ -145,10 +143,6 @@ fun SimulationsScreen(onTopicClick: (String) -> Unit, modifier: Modifier = Modif
     val adUnlocks by entitlements.adUnlocks.collectAsState(initial = emptyMap())
 
     var query by rememberSaveable { mutableStateOf("") }
-    // Section names and category keys, not enum ordinals or list indices, so the saved expansion
-    // survives a reordered Section enum or a new category landing mid-list.
-    var expandedSections by rememberSaveable { mutableStateOf(listOf<String>()) }
-    var expandedCategories by rememberSaveable { mutableStateOf(listOf<String>()) }
 
     val searching = query.isNotBlank()
     val visibleGroups = remember(groups, query) { if (searching) groups.mapNotNull { it.filtered(query) } else groups }
@@ -189,50 +183,34 @@ fun SimulationsScreen(onTopicClick: (String) -> Unit, modifier: Modifier = Modif
         }
 
         visibleGroups.forEach { group ->
-            // A search shows its hits directly — collapsing them behind two taps would hide the answer.
-            val sectionOpen = searching || group.section.name in expandedSections
+            // A section opens its own page; a search shows its hits directly instead.
             item(key = "header_${group.section.name}", contentType = "section") {
                 SimGroupHeader(
                     group = group,
-                    isExpanded = sectionOpen,
-                    onClick = {
-                        expandedSections = if (group.section.name in expandedSections) {
-                            expandedSections - group.section.name
-                        } else {
-                            expandedSections + group.section.name
-                        }
-                    },
+                    isExpanded = searching,
+                    onClick = { if (!searching) onSectionClick(group.section.name) },
                 )
             }
 
-            if (sectionOpen) {
+            if (searching) {
                 group.subgroups.forEach { subgroup ->
-                    val categoryOpen = searching || subgroup.key in expandedCategories
                     item(key = "cat_${subgroup.key}", contentType = "category") {
                         AccordionHeader(
                             title = subgroup.name,
                             count = subgroup.entries.size,
                             accentColor = group.accentColor,
-                            isExpanded = categoryOpen,
+                            isExpanded = true,
                             modifier = Modifier.padding(start = 8.dp, top = 5.dp, bottom = 1.dp),
-                            onClick = {
-                                expandedCategories = if (subgroup.key in expandedCategories) {
-                                    expandedCategories - subgroup.key
-                                } else {
-                                    expandedCategories + subgroup.key
-                                }
-                            },
+                            onClick = {},
                         )
                     }
-                    if (categoryOpen) {
-                        items(subgroup.entries, key = { "${subgroup.key}_${it.topic.id}" }, contentType = { "lab" }) { entry ->
-                            SimulationRow(
-                                entry = entry,
-                                isLocked = entry.topic.isPremium && !isPremium && entry.topic.id !in adUnlocks,
-                                adUnlockable = !PaidOnly.isPaidOnlyTopic(entry.topic.id),
-                                onClick = { onTopicClick(entry.topic.id) },
-                            )
-                        }
+                    items(subgroup.entries, key = { "${subgroup.key}_${it.topic.id}" }, contentType = { "lab" }) { entry ->
+                        SimulationRow(
+                            entry = entry,
+                            isLocked = entry.topic.isPremium && !isPremium && entry.topic.id !in adUnlocks,
+                            adUnlockable = !PaidOnly.isPaidOnlyTopic(entry.topic.id),
+                            onClick = { onTopicClick(entry.topic.id) },
+                        )
                     }
                 }
             }
@@ -262,7 +240,7 @@ private fun patternGroupName(type: SimulationType): String = when (type) {
 
 // Built once per process: the catalog is static, and rebuilding it every time the tab re-enters
 // composition (back from a lab) cost a frame on the way back.
-private val simGroups: List<SimGroup> by lazy { buildGroups() }
+internal val simGroups: List<SimGroup> by lazy { buildGroups() }
 private val simTotal: Int by lazy { simGroups.sumOf { it.count } }
 
 private fun buildGroups(): List<SimGroup> {
@@ -297,7 +275,7 @@ private fun buildGroups(): List<SimGroup> {
 
 // Matches on topic name, lab label and category name, so "sort", "visualizer" and "Clustering" all
 // find their labs. Returns null when nothing in the section matches.
-private fun SimGroup.filtered(query: String): SimGroup? {
+internal fun SimGroup.filtered(query: String): SimGroup? {
     val hits = subgroups.mapNotNull { subgroup ->
         val entries = subgroup.entries.filter {
             it.topic.name.contains(query, ignoreCase = true) ||
@@ -312,7 +290,6 @@ private fun SimGroup.filtered(query: String): SimGroup? {
 @Composable
 private fun SimGroupHeader(group: SimGroup, isExpanded: Boolean, onClick: () -> Unit) {
     val accent = Color(group.accentColor)
-    val chevronRotation by animateFloatAsState(if (isExpanded) 180f else 0f, label = "chevron")
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -348,17 +325,17 @@ private fun SimGroupHeader(group: SimGroup, isExpanded: Boolean, onClick: () -> 
                 )
             }
             Icon(
-                Icons.Filled.ExpandMore,
-                contentDescription = if (isExpanded) "Collapse" else "Expand",
+                if (isExpanded) Icons.Filled.ExpandMore else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = if (isExpanded) null else "Open",
                 tint = accent,
-                modifier = Modifier.size(22.dp).rotate(chevronRotation),
+                modifier = Modifier.size(22.dp),
             )
         }
     }
 }
 
 @Composable
-private fun SimulationRow(entry: SimEntry, isLocked: Boolean, adUnlockable: Boolean, onClick: () -> Unit) {
+internal fun SimulationRow(entry: SimEntry, isLocked: Boolean, adUnlockable: Boolean, onClick: () -> Unit) {
     val accent = Color(entry.topic.accentColor)
     Surface(
         modifier = Modifier

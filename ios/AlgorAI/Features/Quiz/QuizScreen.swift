@@ -18,6 +18,8 @@ struct QuizScreen: View {
     var offerLearnMode = true
     /// Record timed runs and show the best score. Off for sets rebuilt on every open.
     var trackBest = true
+    /// Start in this mode and skip the chooser — the list it was opened from already asked.
+    var initialMode: QuizMode? = nil
 
     @Environment(AppStore.self) private var store
     @Environment(\.requestReview) private var requestReview
@@ -34,7 +36,7 @@ struct QuizScreen: View {
 
     var body: some View {
         Group {
-            if let mode = mode ?? (offerLearnMode ? nil : .interview) {
+            if let mode = mode ?? initialMode ?? (offerLearnMode ? nil : .interview) {
                 let scored = isFullQuiz && mode == .interview && trackBest
                 QuizRunner(
                     source: running ?? quiz,

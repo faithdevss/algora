@@ -232,7 +232,9 @@ private struct FeaturedLabCard: View {
                     .padding(.top, 13)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                AppIcon(name: topic.iconName, size: 36)
+                // The card's own mark, the same whichever lab it features.
+                FeaturedLabMark()
+                    .frame(width: 36, height: 36)
                     .foregroundStyle(.white)
                     .frame(width: 74, height: 74)
                     .background(.white.opacity(0.16), in: RoundedRectangle(cornerRadius: 20))
@@ -244,5 +246,48 @@ private struct FeaturedLabCard: View {
             )
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// The Featured Lab card's own mark: a flask with its liquid filled and a spark beside it, on a 24-unit grid.
+private struct FeaturedLabMark: View {
+    var body: some View {
+        Canvas { ctx, size in
+            let u = size.width / 24
+            func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: x * u, y: y * u) }
+            let style = StrokeStyle(lineWidth: 1.8 * u, lineCap: .round, lineJoin: .round)
+            var liquid = Path()
+            liquid.move(to: p(6.2, 15))
+            liquid.addLine(to: p(17.8, 15))
+            liquid.addLine(to: p(19.4, 18.2))
+            liquid.addQuadCurve(to: p(17.7, 21), control: p(20.4, 21))
+            liquid.addLine(to: p(6.3, 21))
+            liquid.addQuadCurve(to: p(4.6, 18.2), control: p(3.6, 21))
+            liquid.closeSubpath()
+            ctx.fill(liquid, with: .color(.white.opacity(0.45)))
+            var flask = Path()
+            flask.move(to: p(10, 3))
+            flask.addLine(to: p(10, 9))
+            flask.addLine(to: p(4.6, 18.2))
+            flask.addQuadCurve(to: p(6.3, 21), control: p(3.6, 21))
+            flask.addLine(to: p(17.7, 21))
+            flask.addQuadCurve(to: p(19.4, 18.2), control: p(20.4, 21))
+            flask.addLine(to: p(14, 9))
+            flask.addLine(to: p(14, 3))
+            flask.move(to: p(8.5, 3))
+            flask.addLine(to: p(15.5, 3))
+            ctx.stroke(flask, with: .color(.white), style: style)
+            for (c, r) in [(p(10.2, 17.6), 1.0 * u), (p(13.6, 18.8), 0.7 * u)] {
+                ctx.fill(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)), with: .color(.white))
+            }
+            var spark = Path()
+            spark.move(to: p(19.5, 2.5))
+            spark.addQuadCurve(to: p(22, 5), control: p(19.9, 4.6))
+            spark.addQuadCurve(to: p(19.5, 7.5), control: p(19.9, 5.4))
+            spark.addQuadCurve(to: p(17, 5), control: p(19.1, 5.4))
+            spark.addQuadCurve(to: p(19.5, 2.5), control: p(19.1, 4.6))
+            ctx.fill(spark, with: .color(.white))
+        }
+        .accessibilityHidden(true)
     }
 }

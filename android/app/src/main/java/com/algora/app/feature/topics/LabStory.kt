@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -688,8 +686,8 @@ internal fun LabValueStepper(
     val focus = androidx.compose.ui.platform.LocalFocusManager.current
     Row(
         modifier = modifier
-            .height(60.dp)
-            .background(SimColors.Tint, RoundedCornerShape(16.dp))
+            .height(52.dp)
+            .background(SimColors.Tint, RoundedCornerShape(14.dp))
             .padding(start = 14.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -726,8 +724,8 @@ internal fun LabValueStepper(
 private fun StepperButton(glyph: String, enabled: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .width(38.dp)
-            .height(34.dp)
+            .width(44.dp)
+            .height(36.dp)
             .clip(RoundedCornerShape(10.dp))
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -735,35 +733,24 @@ private fun StepperButton(glyph: String, enabled: Boolean, onClick: () -> Unit) 
         Text(
             glyph,
             fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 1f else 0.3f),
         )
     }
 }
 
-/** The run button, labelled with the operation it performs ("Enqueue →"). */
+/** The run button, labelled with the operation it performs ("Enqueue"); the same 52dp button as [LabButton]. */
 @Composable
 internal fun LabActionButton(title: String, modifier: Modifier = Modifier, enabled: Boolean = true, onClick: () -> Unit) {
-    val accent = MaterialTheme.colorScheme.primary
     Box(
         modifier = modifier
-            .height(60.dp)
-            .then(
-                if (enabled) {
-                    Modifier.shadow(14.dp, CircleShape, ambientColor = accent, spotColor = accent)
-                } else {
-                    Modifier
-                },
-            )
-            .clip(CircleShape)
-            .background(accent.copy(alpha = if (enabled) 1f else 0.45f))
+            .height(52.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = if (enabled) 1f else 0.45f))
             .clickable(onClickLabel = title, onClick = onClick)
             .padding(horizontal = 22.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(title, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1)
-            Text("→", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(start = 8.dp))
-        }
+        Text(title, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = Color.White, maxLines = 1)
     }
 }

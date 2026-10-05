@@ -53,7 +53,11 @@ enum Route: Hashable {
     case browser(BrowserKind)
     case topic(String)
     case simulation(String)
+    /// A Simulations-tab section on its own page, by Section raw value.
+    case simulationSection(String)
     case quizzes
+    /// A quiz started straight from a list, in the mode the list was set to.
+    case quizRun(String, learn: Bool)
     case weakSpotDrill
     case dailyDrill
     case problems
@@ -78,6 +82,25 @@ final class Router {
     func push(_ route: Route) { paths[selectedTab, default: []].append(route) }
 
     func pop() { _ = paths[selectedTab]?.popLast() }
+
+    /// The title of the screen a back button returns to: the route under the top one, or the tab's root.
+    var backTitle: String {
+        let path = paths[selectedTab] ?? []
+        if path.count >= 2 {
+            switch path[path.count - 2] {
+            case .browser(let kind): return kind.title
+            case .quizzes: return "Quizzes"
+            case .problems: return "Problems"
+            default: return "Back"
+            }
+        }
+        switch selectedTab {
+        case .learning: return "Learning"
+        case .simulations: return "Simulations"
+        case .practice: return "Practice"
+        case .progress: return "Progress"
+        }
+    }
 
     /// Jump to a tab at its root — a reminder tap or a tab re-tap.
     func open(_ tab: AppTab, then route: Route? = nil) {

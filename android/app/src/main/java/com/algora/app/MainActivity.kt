@@ -61,6 +61,7 @@ import com.algora.app.core.nav.ReviewRoute
 import com.algora.app.core.nav.ProgressRoute
 import com.algora.app.core.nav.Screen
 import com.algora.app.core.nav.SimulationDetailRoute
+import com.algora.app.core.nav.SimulationSectionRoute
 import com.algora.app.core.nav.SimulationsRoute
 import com.algora.app.core.ui.components.resolveIcon
 import com.algora.app.core.ui.theme.AlgoraTheme
@@ -244,7 +245,7 @@ fun AlgoraApp(
                     NavTab.entries.forEach { tab ->
                         val selected = when (tab) {
                             NavTab.LEARNING -> onRoute(Screen.Home.route)
-                            NavTab.SIMULATIONS -> onRoute(SimulationsRoute.ROUTE)
+                            NavTab.SIMULATIONS -> onRoute(SimulationsRoute.ROUTE) || onRoute(SimulationSectionRoute.PATTERN)
                             // Practice stays lit while inside any of its sub-surfaces.
                             NavTab.PRACTICE -> onRoute(PracticeRoute.ROUTE) ||
                                 onRoute(ProblemsRoute.ROUTE) ||

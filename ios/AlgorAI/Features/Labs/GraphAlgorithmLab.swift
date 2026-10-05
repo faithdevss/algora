@@ -69,7 +69,6 @@ private enum GraphTone { case active, rejected, done }
 
 private struct GraphSpan { let text: String; var tone: GraphTone? }
 
-
 private struct GConfig {
     let intro: String
     let def: GraphDef
@@ -185,14 +184,10 @@ private let mstGraph = GraphDef(
     edges: [e("A", "B", 4), e("A", "D", 3), e("B", "C", 5), e("B", "D", 6), e("B", "E", 2), e("C", "E", 7), e("C", "F", 4), e("D", "E", 3), e("E", "F", 5)]
 )
 
-
 private let variantsGraph = GraphDef(
     nodes: [n("A", 0.08, 0.22), n("B", 0.42, 0.06), n("C", 0.78, 0.24), n("D", 0.30, 0.60), n("E", 0.70, 0.66), n("F", 0.44, 0.96)],
     edges: [d("A", "B", 7), d("A", "D", 1), d("B", "C", 1), d("D", "B", 1), d("D", "E", 9), d("C", "E", 1), d("E", "F", 2), d("F", "D", 1)]
 )
-
-
-
 
 private let dagDpGraph = GraphDef(
     nodes: [n("A", 0.08, 0.20), n("B", 0.08, 0.80), n("C", 0.38, 0.50), n("D", 0.68, 0.18), n("E", 0.68, 0.82), n("F", 0.94, 0.50)],
@@ -214,8 +209,6 @@ private let bayesNetGraph = GraphDef(
     edges: [d("Cloudy", "Sprinkler"), d("Cloudy", "Rain"), d("Sprinkler", "WetGrass"), d("Rain", "WetGrass")]
 )
 
-
-
 private let courseGraph = GraphDef(
     nodes: [n("101", 0.08, 0.50), n("201", 0.34, 0.18), n("210", 0.34, 0.82), n("301", 0.62, 0.50), n("330", 0.90, 0.18), n("401", 0.90, 0.82)],
     edges: [d("101", "201"), d("101", "210"), d("201", "301"), d("210", "301"), d("301", "330"), d("301", "401"), d("401", "201")]
@@ -226,28 +219,7 @@ private let unionFindGraph = GraphDef(
     edges: [e("A", "B"), e("C", "D"), e("B", "C"), e("A", "D"), e("E", "F"), e("D", "E")]
 )
 
-private let smallBridgeGraph = GraphDef(
-    nodes: [n("0", 0.15, 0.22), n("1", 0.15, 0.78), n("2", 0.38, 0.50), n("3", 0.62, 0.50), n("4", 0.85, 0.22), n("5", 0.85, 0.78)],
-    edges: [e("0", "1"), e("1", "2"), e("0", "2"), e("3", "4"), e("4", "5"), e("3", "5"), e("2", "3")]
-)
-
 private func distText(_ v: Int) -> String { v >= graphInf ? "∞" : "\(v)" }
-
-private func neighboursOf(_ def: GraphDef, _ id: String, reversed: Bool = false) -> [String] {
-    def.edges.compactMap { e -> String? in
-        let from = reversed ? e.to : e.from
-        let to = reversed ? e.from : e.to
-        if from == id { return to }
-        if !e.directed && to == id { return from }
-        return nil
-    }.sorted()
-}
-
-private func undirectedAdjacency(_ def: GraphDef) -> [String: [String]] {
-    Dictionary(uniqueKeysWithValues: def.ids.map { id in
-        (id, def.edges.compactMap { $0.from == id ? $0.to : $0.to == id ? $0.from : nil }.sorted())
-    })
-}
 
 private func positionBadges(_ path: [String]) -> [String: String] {
     Dictionary(path.enumerated().map { ($1, "#\($0 + 1)") }, uniquingKeysWith: { _, b in b })
@@ -771,47 +743,12 @@ private func unionFindFrames() -> [GFrame] {
 
 // MARK: - GCN / GAT on two triangles bridged by one edge (SpecializedMath.kt's SmallGraph)
 
-private func gcnFrames() -> [GFrame] {
-    let trace = GcnLab.layers(GcnLab.initialFeatures(), depth: 100)
-    return [0, 1, 2, 5, 20, 100].map { depth in
-        let features = trace[depth]
-        let badges = Dictionary(uniqueKeysWithValues: (0..<SmallGraph.nodes).map { ("\($0)", fx(features[$0][0])) })
-        let groups = Dictionary(uniqueKeysWithValues: (0..<SmallGraph.nodes).map { ("\($0)", $0 < 3 ? 0 : 1) })
-        let s = GcnLab.separation(features)
-        let status: String
-        switch depth {
-        case 0: status = "Two triangles, one bridge edge (2–3). Badges are each node's first feature value; colour is the true triangle. Cross-triangle distance is \(fx(s))x the within-triangle distance."
-        case 1: status = "One layer of neighbor-averaging already blurs the split: the ratio drops to \(fx(s))."
-        case 100: status = "By depth 100 the ratio has converged to \(fx(s, 3)) -- exactly two-thirds, not one. Nodes 2 and 3 (the bridge, degree 4 on both sides) are now nearly identical despite sitting in different triangles."
-        default: status = "Depth \(depth): ratio now \(fx(s)). The bridge's weak connectivity slows this convergence down."
-        }
-        return GFrame(status: status, badges: badges, groups: groups, undirected: true, hideWeights: true)
-    }
-}
-
-private func gatFrames() -> [GFrame] {
-    // Node 2's neighbors are 0, 1 and 3 -- edge indices 2, 1 and 6.
-    let scored = edgeMarks([1, 2, 6], .active)
-    func badges(_ w: [Int: Double]) -> [String: String] { Dictionary(uniqueKeysWithValues: w.map { ("\($0.key)", fx($0.value, 3)) }) }
-    return [
-        GFrame(status: "Node 2's neighborhood: 0, 1 and 3. GCN's weight is 1/√(deg·deg) -- fixed by the graph alone, computed once, and blind to whatever the features say.",
-               nodeMarks: ["2": .active], badges: badges(GatLab.gcnWeights()), edgeMarks: scored, undirected: true, hideWeights: true),
-        GFrame(status: "GAT's attention on the identical neighborhood, computed from the real feature values: nodes 0 and 1 (feature-similar to node 2) take 92% of the mass between them; node 3 (very different features) gets 0.083.",
-               nodeMarks: ["2": .active], badges: badges(GatLab.attentionWeights(GatLab.baseFeatures)), edgeMarks: scored, undirected: true, hideWeights: true),
-        GFrame(status: "Move node 3's features to match node 2's exactly, and recompute both weightings. GAT's weight on that edge roughly quadruples (0.083 -> 0.331); GCN's weight on the same edge does not move at all -- it never read the features to begin with.",
-               nodeMarks: ["2": .active, "3": .updated], badges: badges(GatLab.attentionWeights(GatLab.perturbedFeatures)), edgeMarks: scored, undirected: true, hideWeights: true),
-        GFrame(status: "GCN's weight on that same edge, recomputed after the identical perturbation: 0.250, unchanged to the last decimal. Degree-normalization has no feature input to react to.",
-               nodeMarks: ["2": .active, "3": .updated], badges: badges(GatLab.gcnWeights()), edgeMarks: scored, undirected: true, hideWeights: true),
-    ]
-}
-
 // MARK: - Config
 
 private func legend(_ items: [(NodeMark, String)]) -> [(Color, String)] { items.map { (nodeColor($0.0), $0.1) } }
 
 private let shortestPathLegend = legend([(.active, "Relaxing from"), (.updated, "Improved"), (.done, "Final")])
 private let kruskalLegend: [(Color, String)] = [(edgeColor(.active), "Current"), (edgeColor(.accepted), "In tree"), (edgeColor(.rejected), "Skipped: cycle")]
-private let mstLegend = kruskalLegend
 /// Prim never rejects an edge — a crossing edge that loses simply stays a candidate.
 private let primLegend: [(Color, String)] = [(edgeColor(.active), "Crossing the cut"), (edgeColor(.accepted), "In tree")]
 private let sccLegend: [(Color, String)] = [(nodeColor(.active), "Current"), (nodeColor(.frontier), "On stack"), (groupColors[0], "Component")]
@@ -1400,10 +1337,6 @@ private let graphConfigs: [String: GConfig] = [
                               def: variantsGraph, legend: [(Color(hex: 0x0EA5E9), "Reachable"), (SimColors.green, "Cheapest route"), (SimColors.red, "Blocked / cycle")], build: graphVariantsFrames),
     "eulerian_path": GConfig(intro: "Two triangles hinged at C. Badges start as degrees, because the degrees decide existence outright — then Hierholzer walks until stuck and splices the leftover circuit in at the hinge.",
                              def: eulerPathGraph, legend: [(nodeColor(.active), "Current vertex"), (nodeColor(.frontier), "Splice point"), (edgeColor(.accepted), "Edge used")], build: { eulerStoryFrames(circuit: false) }, variants: [GraphVariant(label: "Path", def: eulerPathGraph, build: { eulerStoryFrames(circuit: false) }), GraphVariant(label: "Circuit", def: eulerCircuitGraph, build: { eulerStoryFrames(circuit: true) })]),
-    "gcn": GConfig(intro: "Two triangles bridged by one edge, aggregated through the normalized adjacency matrix, depth after depth -- oversmoothing measured as an exact limit rather than asserted.",
-                   def: smallBridgeGraph, legend: [(groupColors[0], "Triangle A"), (groupColors[1], "Triangle B")], build: gcnFrames),
-    "gat": GConfig(intro: "The same neighborhood GCN reads by degree alone, reweighted by feature content instead -- and a direct perturbation showing which weighting reacts to it.",
-                   def: smallBridgeGraph, legend: [(nodeColor(.active), "Center node"), (nodeColor(.updated), "Perturbed neighbor"), (edgeColor(.active), "Scored edge")], build: gatFrames),
     "hamiltonian_path": GConfig(intro: "The same question about vertices instead of edges, and no counting argument to settle it. Badges are position in the path; the frames include every dead end the search has to undo before the circuit appears.",
                                 def: hamiltonStoryGraph, legend: legend([(.active, "Just extended"), (.frontier, "On the path"), (.updated, "Path but no closing edge")]), build: { hamiltonStoryFrames(cycle: false) }, variants: [GraphVariant(label: "Path", def: hamiltonStoryGraph, build: { hamiltonStoryFrames(cycle: false) }), GraphVariant(label: "Cycle", def: hamiltonStoryGraph, build: { hamiltonStoryFrames(cycle: true) })]),
 ]
@@ -1654,7 +1587,6 @@ private struct DistanceMatrix: View {
             .padding(2)
     }
 }
-
 
 // MARK: - Story UI
 

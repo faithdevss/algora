@@ -37,6 +37,7 @@ internal fun SimulationHost(topicId: String, type: SimulationType) {
     // The storyboarded string and array labs span several simulation types; they are routed first.
     if (topicId in textStoryTopicIds) return TextStorySection(topicId)
     if (topicId in neuralStoryTopicIds) return NeuralStorySection(topicId)
+    if (topicId in deepStoryTopicIds) return DeepStorySection(topicId)
     if (topicId in mlStoryTopicIds) return MlStorySection(topicId)
     if (topicId in regressionStoryTopicIds) return RegressionStorySection(topicId)
     if (topicId in bayesStoryTopicIds) return BayesStorySection(topicId)
@@ -44,6 +45,12 @@ internal fun SimulationHost(topicId: String, type: SimulationType) {
     if (topicId in metricStoryTopicIds) return MetricStorySection(topicId)
     if (topicId in evalStoryTopicIds) return EvalStorySection(topicId)
     if (topicId in rlStoryTopicIds) return RlStorySection(topicId)
+    if (topicId in rlBoardTopicIds) return RlBoardSection(topicId)
+    if (topicId in preprocessStoryTopicIds) return PreprocessStorySection(topicId)
+    if (topicId in clusterStoryTopicIds) return ClusterStorySection(topicId)
+    if (topicId in dimStoryTopicIds) return DimStorySection(topicId)
+    if (topicId in seriesStoryTopicIds) return SeriesStorySection(topicId)
+    if (topicId in llmStoryTopicIds) return LlmStorySection(topicId)
     patternLabAliases[topicId]?.let { (id, labType) -> return SimulationHost(id, labType) }
     when (type) {
         SimulationType.ArrayVisualizer -> ArraySimulationSection()
@@ -77,7 +84,8 @@ internal fun SimulationHost(topicId: String, type: SimulationType) {
         SimulationType.RegressionExplorer -> RegressionSimulationSection()
         SimulationType.RegressionLab -> RegressionLabSection(topicId)
         SimulationType.DecisionSurface -> DecisionSurfaceSection(topicId)
-        SimulationType.FeatureMapPlayer -> FeatureMapSection(topicId)
+        // Every feature-map topic is a deep-learning storyboard now.
+        SimulationType.FeatureMapPlayer -> DeepStorySection(topicId)
         SimulationType.BitBoardPlayer ->
             if (topicId in bitStoryTopicIds) BitStorySection(topicId) else BitBoardSection(topicId)
         SimulationType.PerceptronVisualizer -> PerceptronSimulationSection()

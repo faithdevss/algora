@@ -45,8 +45,36 @@ class SimulationFrameTest {
         check("NeuralStory", neuralStoryTopicIds, ::neuralStoryFrameCount)
 
     @Test
+    fun `every deep-learning story builds frames at every setting`() =
+        check("DeepStory", deepStoryTopicIds, ::deepStoryFrameCount)
+
+    @Test
+    fun `every fine-tuning, beyond-transformer and nlp-metric story builds frames on every tab`() =
+        check("LlmStory", llmStoryTopicIds, ::llmStoryFrameCount)
+
+    @Test
+    fun `every reinforcement-learning board builds frames on every option`() =
+        check("RlBoard", rlBoardTopicIds, ::rlBoardFrameCount)
+
+    @Test
     fun `every ml story builds frames`() =
         check("MlStory", mlStoryTopicIds, ::mlStoryFrameCount)
+
+    @Test
+    fun `every preprocessing story builds frames at every setting`() =
+        check("PreprocessStory", preprocessStoryTopicIds, ::preprocessStoryFrameCount)
+
+    @Test
+    fun `every clustering story builds frames at every setting`() =
+        check("ClusterStory", clusterStoryTopicIds, ::clusterStoryFrameCount)
+
+    @Test
+    fun `every dimensionality-reduction story builds frames at every setting`() =
+        check("DimStory", dimStoryTopicIds, ::dimStoryFrameCount)
+
+    @Test
+    fun `every forecasting and pattern-mining story builds frames at every setting`() =
+        check("SeriesStory", seriesStoryTopicIds, ::seriesStoryFrameCount)
 
     @Test
     fun `every regression story evaluates at every stepper value`() =
@@ -90,14 +118,6 @@ class SimulationFrameTest {
     @Test
     fun `every neural-net config builds frames inside its declared axes`() =
         check("NeuralNet", neuralNetTopicIds, ::neuralNetFrameCount)
-
-    // Added with C3, extended by C4. The three mechanics labs rebuild every frame from the
-    // kernel/stride/padding on screen, so the helper runs the whole control sweep — including
-    // combinations that empty the feature map, which are two taps away. C4's labs draw boxes and
-    // label masks, so the same helper also checks that no box escapes its own scene.
-    @Test
-    fun `every feature-map config builds frames that match the geometry they claim`() =
-        check("FeatureMap", featureMapTopicIds, ::featureMapFrameCount)
 
     // Added with D1. The token strip carries a third of the AI section's labs — every preprocessing,
     // statistical-NLP and naive-Bayes topic — and had no guard at all. It also checks the two things

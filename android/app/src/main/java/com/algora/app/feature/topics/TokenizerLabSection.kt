@@ -311,134 +311,15 @@ private fun bpeLab(): TokenizerLabConfig {
 
 // ── BPE vs WordPiece vs Unigram, trained on one corpus ──────────────────────
 
-private fun hfTokenizersLab(): TokenizerLabConfig {
-    val heldOut = TokenizerLab.heldOut
-    val sentence = heldOut.joinToString(" ")
-    val unseen = "unbelievable"
-    val frames = mutableListOf<TokFrame>()
-
-    fun perWord(pieces: Int) = "%.2f".format(pieces.toDouble() / heldOut.size)
-
-    val algorithms = listOf(
-        // "</w>" stays a piece: it is one, and fertility counts it.
-        Triple("BPE", "BPE · replay merges", { w: String -> TokenizerLab.bpeEncode(w) }),
-        Triple("WordPiece", "WordPiece · longest match first", { w: String -> TokenizerLab.wordPieceEncode(w) }),
-        Triple("Unigram", "Unigram · most probable split", { w: String -> TokenizerLab.unigramEncode(w) }),
-    )
-    val details = mapOf(
-        "BPE" to "It replays the most frequent pair merges learned from the ${TokenizerLab.corpus.size}-sentence corpus.",
-        "WordPiece" to "It merges the pair that most raises corpus likelihood, then encodes greedily from the left. " +
-            "\"##\" marks a piece that continues a word.",
-        "Unigram" to "It starts from a large vocabulary, prunes it, then picks the most probable split with Viterbi.",
-    )
-    algorithms.forEach { (name, method, encode) ->
-        val perWordPieces = heldOut.map(encode)
-        val count = perWordPieces.sumOf { it.size }
-        val unknown = perWordPieces.flatten().count { it == "[UNK]" }
-        frames += TokFrame(
-            input = sentence,
-            // An [UNK] covers its whole word, so it contributes no split inside it.
-            splits = pieceSplits(
-                perWordPieces.mapIndexed { i, pieces ->
-                    if ("[UNK]" in pieces) listOf(heldOut[i]) else pieces.map { stripEnd(it.removePrefix("##")) }.filter { it.isNotEmpty() }
-                },
-            ),
-            method = method,
-            tokens = perWordPieces.flatten().map { TokChip(it, kind = if (it == "[UNK]") TokKind.UNKNOWN else TokKind.VOCAB) },
-            readout = "tokens = $count · per word = ${perWord(count)} · unknown = $unknown",
-            headline = "$name splits the held-out sentence into $count tokens.",
-            highlight = "$count tokens",
-            detail = details.getValue(name),
-        )
-    }
-
-    val segmentations = TokenizerLab.segmentations(unseen)
-    val wordPieceUnseen = segmentations.getValue("WordPiece")
-    frames += TokFrame(
-        input = unseen,
-        splits = pieceSplits(listOf(wordPieceUnseen.filter { it != "[UNK]" }.map { it.removePrefix("##") })),
-        method = "WordPiece on an unseen word",
-        tokens = wordPieceUnseen.map { TokChip(it, kind = if (it == "[UNK]") TokKind.UNKNOWN else TokKind.VOCAB) },
-        rows = segmentations.map { (name, pieces) -> TokRow(name, pieces.map(::stripEnd).filter { it.isNotEmpty() }.joinToString(" · ")) },
-        readout = "unknown = ${wordPieceUnseen.count { it == "[UNK]" }}",
-        headline = "On an unseen word, WordPiece gives up with [UNK].",
-        highlight = "[UNK]",
-        detail = "BPE falls back to characters and Unigram to its smallest pieces. Greedy longest-match has no " +
-            "fallback when nothing matches, which is why byte-level BPE has no [UNK] at all.",
-    )
-
-    val fertilities = TokenizerLab.fertilities.filter { !it.name.contains("floor") }
-    val best = fertilities.minBy { it.perWord }
-    val bpePieces = fertilities.first { it.name == "BPE" }.pieces
-    val unigramPieces = fertilities.first { it.name == "Unigram" }.pieces
-    frames += TokFrame(
-        input = sentence,
-        splits = pieceSplits(heldOut.map { w -> TokenizerLab.unigramEncode(w).let { if ("[UNK]" in it) listOf(w) else it } }),
-        method = "compare at the same vocabulary size",
-        tokensLabel = "PIECES PER WORD",
-        tokens = fertilities.map { TokChip(it.name, "%.3f".format(it.perWord), if (it == best) TokKind.NEW else TokKind.VOCAB) },
-        readout = fertilities.joinToString(" · ") { "${it.name} = ${it.pieces}" },
-        headline = "${best.name} needs the fewest pieces per word at the same vocabulary size.",
-        highlight = "fewest pieces per word",
-        detail = "Sequence length is attention cost: $bpePieces pieces cost ${TokenizerLab.attentionCost(bpePieces)} " +
-            "pairwise scores and $unigramPieces cost ${TokenizerLab.attentionCost(unigramPieces)}, on every sequence " +
-            "for the life of the model.",
-    )
-
-    val floored = TokenizerLab.fertilities.first { it.name == "WordPiece" }
-    val unfloored = TokenizerLab.fertilities.first { it.name.contains("floor") }
-    val characters = heldOut.sumOf { it.length }.toDouble() / heldOut.size
-    frames += TokFrame(
-        input = sentence,
-        splits = pieceSplits(
-            heldOut.map { w ->
-                TokenizerLab.wordPieceEncode(w, TokenizerLab.wordPieceUnfloored).let { pieces ->
-                    if ("[UNK]" in pieces) listOf(w) else pieces.map { it.removePrefix("##") }
-                }
-            },
-        ),
-        method = "WordPiece without a frequency floor",
-        tokensLabel = "PIECES PER WORD",
-        tokens = listOf(
-            TokChip("no floor", "%.3f".format(unfloored.perWord), TokKind.UNKNOWN),
-            TokChip("floor ${TokenizerLab.MIN_PAIR_FREQUENCY}", "%.3f".format(floored.perWord)),
-            TokChip("characters", "%.3f".format(characters), TokKind.PAIR),
-        ),
-        readout = "no floor = ${"%.2f".format(unfloored.perWord)} · floor = ${"%.2f".format(floored.perWord)}",
-        headline = "Without a frequency floor, WordPiece spends its budget on one-off pairs.",
-        highlight = "one-off pairs",
-        detail = "Its score freq(ab)/(freq(a)·freq(b)) is highest when both halves occur once. A floor of " +
-            "${TokenizerLab.MIN_PAIR_FREQUENCY} fixes it here; real trainers see billions of tokens.",
-    )
-    return TokenizerLabConfig(
-        intro = "BPE, WordPiece and Unigram trained on one corpus and compared on held-out text: how many pieces " +
-            "each needs, what happens to an unseen word, and what that costs a transformer.",
-        legend = splitVocabUnknown.dropLast(1) + TokLegend(TokLegendKind.UNKNOWN, "Unknown / worse"),
-        frames = frames,
-    )
-}
-
 /** Built once; also exported for iOS by IosContentExportTest. */
 internal val tokenizerLabConfigs: Map<String, TokenizerLabConfig> by lazy {
     linkedMapOf(
         "tokenization" to tokenizationLab(),
         "bpe" to bpeLab(),
-        "hf_tokenizers" to hfTokenizersLab(),
     )
 }
 
-internal val tokenizerLabTopicIds: Set<String> = setOf("tokenization", "bpe", "hf_tokenizers")
-
-/** Frame guard: split points must fall inside the input, and every frame must draw tokens. */
-internal fun tokenizerLabFrameCount(topicId: String): Int {
-    val config = tokenizerLabConfigs.getValue(topicId)
-    config.frames.forEachIndexed { i, frame ->
-        require(frame.tokens.isNotEmpty()) { "$topicId frame $i has no tokens" }
-        require(frame.splits.all { it in 1 until frame.input.length }) { "$topicId frame $i splits outside \"${frame.input}\"" }
-        require(frame.highlight == null || frame.headline.contains(frame.highlight)) { "$topicId frame $i highlights text its headline lacks" }
-    }
-    return config.frames.size
-}
+internal val tokenizerLabTopicIds: Set<String> = setOf("tokenization", "bpe")
 
 // ── UI ───────────────────────────────────────────────────────────────────────
 
@@ -646,4 +527,15 @@ private fun TokenizerNarration(frame: TokFrame, modifier: Modifier) {
             modifier = Modifier.padding(top = 8.dp),
         )
     }
+}
+
+/** Frame guard: split points must fall inside the input, and every frame must draw tokens. */
+internal fun tokenizerLabFrameCount(topicId: String): Int {
+    val config = tokenizerLabConfigs.getValue(topicId)
+    config.frames.forEachIndexed { i, frame ->
+        require(frame.tokens.isNotEmpty()) { "$topicId frame $i has no tokens" }
+        require(frame.splits.all { it in 1 until frame.input.length }) { "$topicId frame $i splits outside \"${frame.input}\"" }
+        require(frame.highlight == null || frame.headline.contains(frame.highlight)) { "$topicId frame $i highlights text its headline lacks" }
+    }
+    return config.frames.size
 }

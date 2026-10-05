@@ -461,7 +461,8 @@ private fun FeaturedLabCard(mode: AppMode, featured: Featured, onClick: () -> Un
                     .background(Color.White.copy(alpha = 0.16f), RoundedCornerShape(20.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(resolveIcon(featured.iconName), contentDescription = null, tint = Color.White, modifier = Modifier.size(36.dp))
+                // The card's own mark, the same whichever lab it features.
+                FeaturedLabMark(modifier = Modifier.size(36.dp))
             }
         }
     }
@@ -499,4 +500,56 @@ private fun pickFeatured(
     if (pool.isEmpty()) return null
     val topic = pool[todayEpochDay().mod(pool.size)]
     return Featured(topic.id, topic.name, topic.tagline, topic.iconName)
+}
+
+/** The Featured Lab card's own mark: a flask with its liquid filled and a spark beside it, on a 24-unit grid. */
+@Composable
+private fun FeaturedLabMark(modifier: Modifier = Modifier) {
+    androidx.compose.foundation.Canvas(modifier = modifier) {
+        val u = size.width / 24f
+        fun p(x: Float, y: Float) = androidx.compose.ui.geometry.Offset(x * u, y * u)
+        val white = Color.White
+        val stroke = androidx.compose.ui.graphics.drawscope.Stroke(
+            width = 1.8f * u,
+            cap = androidx.compose.ui.graphics.StrokeCap.Round,
+            join = androidx.compose.ui.graphics.StrokeJoin.Round,
+        )
+        // Liquid: the lower part of the body.
+        val liquid = androidx.compose.ui.graphics.Path().apply {
+            moveTo(6.2f * u, 15f * u)
+            lineTo(17.8f * u, 15f * u)
+            lineTo(19.4f * u, 18.2f * u)
+            quadraticTo(20.4f * u, 21f * u, 17.7f * u, 21f * u)
+            lineTo(6.3f * u, 21f * u)
+            quadraticTo(3.6f * u, 21f * u, 4.6f * u, 18.2f * u)
+            close()
+        }
+        drawPath(liquid, white.copy(alpha = 0.45f))
+        // Outline: neck, shoulders, rounded base.
+        val flask = androidx.compose.ui.graphics.Path().apply {
+            moveTo(10f * u, 3f * u)
+            lineTo(10f * u, 9f * u)
+            lineTo(4.6f * u, 18.2f * u)
+            quadraticTo(3.6f * u, 21f * u, 6.3f * u, 21f * u)
+            lineTo(17.7f * u, 21f * u)
+            quadraticTo(20.4f * u, 21f * u, 19.4f * u, 18.2f * u)
+            lineTo(14f * u, 9f * u)
+            lineTo(14f * u, 3f * u)
+        }
+        drawPath(flask, white, style = stroke)
+        drawLine(white, p(8.5f, 3f), p(15.5f, 3f), strokeWidth = 1.8f * u, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+        // Bubbles.
+        drawCircle(white, radius = 1f * u, center = p(10.2f, 17.6f))
+        drawCircle(white, radius = 0.7f * u, center = p(13.6f, 18.8f))
+        // Spark: a four-point star up and to the right.
+        val spark = androidx.compose.ui.graphics.Path().apply {
+            moveTo(19.5f * u, 2.5f * u)
+            quadraticTo(19.9f * u, 4.6f * u, 22f * u, 5f * u)
+            quadraticTo(19.9f * u, 5.4f * u, 19.5f * u, 7.5f * u)
+            quadraticTo(19.1f * u, 5.4f * u, 17f * u, 5f * u)
+            quadraticTo(19.1f * u, 4.6f * u, 19.5f * u, 2.5f * u)
+            close()
+        }
+        drawPath(spark, white)
+    }
 }

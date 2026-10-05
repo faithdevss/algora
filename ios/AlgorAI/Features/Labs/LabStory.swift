@@ -652,23 +652,23 @@ struct LabValueStepper: View {
                 .fixedSize()
             Spacer(minLength: 0)
             HStack(spacing: 0) {
-                button("minus", -1, canDecrease)
+                button("−", -1, canDecrease)
                 Rectangle().fill(palette.muted.opacity(0.35)).frame(width: 1, height: 18)
-                button("plus", 1, canIncrease)
+                button("+", 1, canIncrease)
             }
             .background(palette.muted.opacity(0.18), in: RoundedRectangle(cornerRadius: 10))
         }
         .padding(.leading, 14)
         .padding(.trailing, 8)
-        .frame(height: 60)
-        .background(SimColors.tint, in: RoundedRectangle(cornerRadius: 16))
+        .frame(height: 52)
+        .background(SimColors.tint, in: RoundedRectangle(cornerRadius: 14))
     }
 
-    private func button(_ icon: String, _ delta: Int, _ enabled: Bool) -> some View {
+    private func button(_ glyph: String, _ delta: Int, _ enabled: Bool) -> some View {
         Button { editing = false; onStep(delta) } label: {
-            Image(systemName: icon).font(.system(size: 15, weight: .bold))
+            Text(glyph).font(AppFont.sans(20, .medium))
                 .foregroundStyle(palette.onSurface.opacity(enabled ? 1 : 0.3))
-                .frame(width: 38, height: 34).contentShape(Rectangle())
+                .frame(width: 44, height: 36).contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
@@ -686,16 +686,12 @@ struct LabActionButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
-                Text(title).font(AppFont.sans(18, .semibold)).lineLimit(1).minimumScaleFactor(0.8)
-                Image(systemName: "arrow.right").font(.system(size: 15, weight: .bold))
-            }
-            .foregroundStyle(.white)
-            .padding(.horizontal, 22)
-            .frame(height: 60)
-            .frame(minWidth: 0, maxWidth: fill ? .infinity : nil)
-            .background(palette.primary.opacity(enabled ? 1 : 0.45), in: Capsule())
-            .shadow(color: palette.primary.opacity(enabled ? 0.45 : 0), radius: 14, y: 4)
+            Text(title).font(AppFont.sans(17, .semibold)).lineLimit(1).minimumScaleFactor(0.8)
+                .foregroundStyle(.white)
+                .padding(.horizontal, 22)
+                .frame(height: 52)
+                .frame(minWidth: 0, maxWidth: fill ? .infinity : nil)
+                .background(palette.primary.opacity(enabled ? 1 : 0.45), in: RoundedRectangle(cornerRadius: 14))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)

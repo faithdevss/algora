@@ -40,13 +40,12 @@ import kotlin.math.min
 // Learning from a fixed dataset, or from demonstrations, instead of from your own exploration.
 // Every number a frame states is produced by an experiment run when the frames are built: fitted
 // Q-iteration over a real logged dataset, behaviour cloning and DAgger on a slippery corridor,
-// occupancy matching against a discriminator, max-entropy IRL, and a Bradley-Terry reward model
-// fitted to preferences that were labelled on what a rater can actually see.
+// occupancy matching against a discriminator, and max-entropy IRL.
 //
-// Three environments are shared across the nine labs, so the comparisons between them are fair:
+// Three environments are shared across the labs, so the comparisons between them are fair:
 //   A. a six-state chain carrying a rarely-sampled mean-zero lottery action  (offline_rl, cql)
 //   B. a 3x8 corridor where every move slips a row  (imitation_learning, gail, irl)
-//   C. the chain again, with a per-step cost  (decision_transformer, rlhf)
+//   C. the chain again, with a per-step cost  (decision_transformer)
 //
 // Render parts: labelled curve plots, signed bar rows, the corridor grid, and small count tables.
 
@@ -521,7 +520,7 @@ private fun behaviourClone(pairs: List<Pair<Int, Int>>): BcPolicy {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// Environment C — the chain with a per-step cost, for return conditioning and RLHF.
+// Environment C — the chain with a per-step cost, for return conditioning.
 // ═════════════════════════════════════════════════════════════════════════════
 
 private const val DT_COST = 0.05
@@ -612,165 +611,6 @@ private fun dtCloneRollout(ds: DtDataset): Pair<Double, Int> {
         if (ns == CH_GOAL) break
     }
     return got to steps
-}
-
-// ── RLHF ─────────────────────────────────────────────────────────────────────
-// A "dash" action advances two states at once. It also carries a cost that never appears in
-// anything a rater sees, which is the only reason the reward model can be wrong about it.
-
-private const val DASH_P = 0.35
-private const val DASH_COST = 0.8
-private val REF_POLICY = doubleArrayOf(0.40, 0.45, 0.15)   // left / right / dash
-
-private fun rlhfNext(s: Int, a: Int) = when (a) {
-    0 -> max(s - 1, 0)
-    1 -> min(s + 1, CH_GOAL)
-    else -> min(s + 2, CH_GOAL)
-}
-
-private class PrefSegment(val steps: List<Triple<Int, Int, Int>>, val observed: Double, val truth: Double)
-
-private fun rlhfRollout(pol: Array<DoubleArray>, rng: OffRng): PrefSegment {
-    var s = 0
-    val steps = mutableListOf<Triple<Int, Int, Int>>()
-    var obs = 0.0
-    var truth = 0.0
-    for (t in 0 until 20) {
-        val u = rng.next()
-        var a = 2
-        var acc = 0.0
-        for (j in 0 until 3) {
-            acc += pol[s][j]
-            if (u <= acc) { a = j; break }
-        }
-        val ns = rlhfNext(s, a)
-        val o = (if (ns == CH_GOAL) 1.0 else 0.0) - DT_COST
-        obs += o
-        truth += o - (if (a == 2 && rng.next() < DASH_P) DASH_COST else 0.0)
-        steps += Triple(s, a, ns)
-        s = ns
-        if (ns == CH_GOAL) break
-    }
-    return PrefSegment(steps, obs, truth)
-}
-
-private fun segFeatures(seg: PrefSegment) = doubleArrayOf(
-    seg.steps.count { it.second == 2 }.toDouble(),
-    seg.steps.count { it.second == 1 }.toDouble(),
-    if (seg.steps.isNotEmpty() && seg.steps.last().third == CH_GOAL) 1.0 else 0.0,
-)
-
-private class RewardModel(val w: DoubleArray, val agreement: Double, val segments: List<PrefSegment>)
-
-/** Bradley-Terry fit to pairwise comparisons, labelled on the observable return only. */
-private fun fitRewardModel(seed: Int): RewardModel {
-    val rng = OffRng(seed)
-    val mixes = listOf(0.25 to 0.05, 0.5 to 0.10, 0.7 to 0.15, 0.85 to 0.10, 0.6 to 0.30)
-    val segs = mutableListOf<PrefSegment>()
-    repeat(500) {
-        val (pr, pd) = mixes[rng.nextInt(mixes.size)]
-        val pol = Array(CH_N) { doubleArrayOf(max(0.0, 1 - pr - pd), pr, pd) }
-        segs += rlhfRollout(pol, rng)
-    }
-    val pairs = mutableListOf<Pair<DoubleArray, DoubleArray>>()
-    repeat(1500) {
-        val i = rng.nextInt(segs.size)
-        val j = rng.nextInt(segs.size)
-        if (i == j || segs[i].observed == segs[j].observed) return@repeat
-        var better = if (segs[i].observed > segs[j].observed) i else j
-        var worse = if (better == i) j else i
-        if (rng.next() < 0.10) {   // raters are not perfect
-            val t = better; better = worse; worse = t
-        }
-        pairs += segFeatures(segs[better]) to segFeatures(segs[worse])
-    }
-    val w = DoubleArray(3)
-    repeat(8000) {
-        val g = DoubleArray(3)
-        for ((fb, fw) in pairs) {
-            var d = 0.0
-            for (k in 0 until 3) d += w[k] * (fb[k] - fw[k])
-            val p = 1.0 / (1.0 + exp(-d))
-            for (k in 0 until 3) g[k] += (1 - p) * (fb[k] - fw[k])
-        }
-        for (k in 0 until 3) w[k] += 0.02 * g[k] / pairs.size
-    }
-    var hit = 0
-    var total = 0
-    repeat(3000) {
-        val i = rng.nextInt(segs.size)
-        val j = rng.nextInt(segs.size)
-        if (i == j || segs[i].observed == segs[j].observed) return@repeat
-        total++
-        var mi = 0.0
-        var mj = 0.0
-        val fi = segFeatures(segs[i])
-        val fj = segFeatures(segs[j])
-        for (k in 0 until 3) {
-            mi += w[k] * fi[k]
-            mj += w[k] * fj[k]
-        }
-        if ((mi > mj) == (segs[i].observed > segs[j].observed)) hit++
-    }
-    return RewardModel(w, hit.toDouble() / total, segs)
-}
-
-private fun proxyReward(w: DoubleArray, a: Int, ns: Int) =
-    (if (a == 2) w[0] else 0.0) + (if (a == 1) w[1] else 0.0) + (if (ns == CH_GOAL) w[2] else 0.0)
-
-/** KL-anchored optimisation: the solution is pi_ref(a|s)·exp(Q/beta), renormalised. */
-private fun klOptimise(w: DoubleArray, beta: Double, sweeps: Int = 800): Array<DoubleArray> {
-    var v = DoubleArray(CH_N)
-    var pol = Array(CH_N) { doubleArrayOf(1.0 / 3, 1.0 / 3, 1.0 / 3) }
-    repeat(sweeps) {
-        val nv = DoubleArray(CH_N)
-        val np = Array(CH_N) { DoubleArray(3) }
-        for (s in 0 until CH_N) {
-            if (s == CH_GOAL) {
-                nv[s] = 0.0
-                np[s] = doubleArrayOf(1.0 / 3, 1.0 / 3, 1.0 / 3)
-                continue
-            }
-            val q = DoubleArray(3) { a -> proxyReward(w, a, rlhfNext(s, a)) + 0.99 * v[rlhfNext(s, a)] }
-            val m = q.max()
-            val z = DoubleArray(3) { REF_POLICY[it] * exp((q[it] - m) / beta) }
-            val zs = z.sum()
-            nv[s] = m + beta * ln(zs)
-            for (a in 0 until 3) np[s][a] = z[a] / zs
-        }
-        v = nv
-        pol = np
-    }
-    return pol
-}
-
-private class RlhfEval(val proxy: Double, val truth: Double, val dashes: Double)
-
-private fun evalRlhf(w: DoubleArray, pol: Array<DoubleArray>, runs: Int = 800): RlhfEval {
-    var proxy = 0.0
-    var truth = 0.0
-    var dashes = 0.0
-    for (i in 0 until runs) {
-        val rng = OffRng(7700 + i * 13)
-        var s = 0
-        for (t in 0 until 20) {
-            val u = rng.next()
-            var a = 2
-            var acc = 0.0
-            for (j in 0 until 3) {
-                acc += pol[s][j]
-                if (u <= acc) { a = j; break }
-            }
-            val ns = rlhfNext(s, a)
-            proxy += proxyReward(w, a, ns)
-            truth += (if (ns == CH_GOAL) 1.0 else 0.0) - DT_COST -
-                (if (a == 2 && rng.next() < DASH_P) DASH_COST else 0.0)
-            if (a == 2) dashes += 1.0
-            s = ns
-            if (ns == CH_GOAL) break
-        }
-    }
-    return RlhfEval(proxy / runs, truth / runs, dashes / runs)
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1487,115 +1327,6 @@ private fun irlFrames(): List<OffFrame> {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// rlhf
-// ═════════════════════════════════════════════════════════════════════════════
-
-private fun rlhfFrames(): List<OffFrame> {
-    val rm = fitRewardModel(29)
-    val betas = listOf(0.02, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0)
-    val evals = betas.map { evalRlhf(rm.w, klOptimise(rm.w, it)) }
-    val reference = evalRlhf(rm.w, Array(CH_N) { REF_POLICY.copyOf() })
-    val bestTrue = evals.indices.maxByOrNull { evals[it].truth }!!
-    val bestProxy = evals.indices.maxByOrNull { evals[it].proxy }!!
-    val observedGap = rm.segments.map { it.observed - it.truth }.average()
-
-    val frames = mutableListOf<OffFrame>()
-
-    frames += OffFrame(
-        status = "The chain gains a \"dash\" that advances two states at once. It also fails ${fmt(DASH_P, 2)} of the " +
-            "time at a cost of ${fmt(DASH_COST, 1)} — a cost that appears in no segment a rater is shown. Across " +
-            "the ${rm.segments.size} segments collected here, what the rater sees is on average " +
-            "${fmt(observedGap, 3)} better than what actually happened.",
-        bars = listOf(
-            OffBar(
-                "mean return over the collected segments",
-                listOf(rm.segments.map { it.observed }.average().toFloat(), rm.segments.map { it.truth }.average().toFloat()),
-                AccentColor,
-                listOf("as rated", "as it truly was"),
-            ),
-        ),
-        readout = "preferences are labelled on the left bar; the right bar is what we care about",
-    )
-    frames += OffFrame(
-        status = "A Bradley-Terry reward model is fitted to those pairwise comparisons, 10% of which are mislabelled. " +
-            "It agrees with the raters on ${fmt(rm.agreement * 100, 1)}% of held-out pairs — by the only metric " +
-            "available at training time, a good reward model. It scores dashing at ${fmt(rm.w[0], 3)} and reaching " +
-            "the goal at ${fmt(rm.w[2], 3)}.",
-        bars = listOf(
-            OffBar(
-                "learned reward weights",
-                listOf(rm.w[0].toFloat(), rm.w[1].toFloat(), rm.w[2].toFloat()),
-                HighlightColor,
-                listOf("dash", "step right", "reached goal"),
-            ),
-        ),
-        readout = "held-out agreement with rater preferences: ${fmt(rm.agreement * 100, 1)}%",
-    )
-    frames += OffFrame(
-        status = "Optimise against it as hard as possible — a KL weight of ${fmt(betas.first(), 2)} — and the proxy " +
-            "reward climbs to its maximum, ${fmt(reference.proxy, 3)} → ${fmt(evals.first().proxy, 3)}. True " +
-            "return over the same policy: ${fmt(evals.first().truth, 3)}, which is no better than the untuned " +
-            "reference it started from (${fmt(reference.truth, 3)}). All that optimisation pressure went into " +
-            "dashing ${fmt(evals.first().dashes, 2)} times an episode, because the reward model has no term for " +
-            "what dashing costs.",
-        bars = listOf(
-            OffBar(
-                "reward-model score",
-                listOf(reference.proxy.toFloat(), evals.first().proxy.toFloat()),
-                HighlightColor,
-                listOf("reference", "optimised"),
-            ),
-            OffBar(
-                "true return",
-                listOf(reference.truth.toFloat(), evals.first().truth.toFloat()),
-                WarnColor,
-                listOf("reference", "optimised"),
-            ),
-        ),
-        readout = "the proxy went up; the thing it stands for did not",
-    )
-    frames += OffFrame(
-        status = "Sweeping the KL weight puts the whole problem on one chart, and the two curves peak in different " +
-            "places: the proxy is maximised at β = ${fmt(betas[bestProxy], 2)}, the true return at " +
-            "β = ${fmt(betas[bestTrue], 2)}. Optimising the measure past that point degrades the thing it was " +
-            "measuring. That is Goodhart's law with numbers attached, and it is the entire reason the KL term is " +
-            "in the objective.",
-        plot = OffPlot(
-            "proxy against truth, by KL weight",
-            listOf(
-                OffCurve("reward-model score", evals.map { it.proxy.toFloat() }, HighlightColor),
-                OffCurve("true return", evals.map { it.truth.toFloat() }, ImprovedColor),
-            ),
-            -0.3f..1.3f,
-            "β = " + betas.joinToString(" · ") { fmt(it, 2) },
-        ),
-        readout = "best proxy at β=${fmt(betas[bestProxy], 2)}, best truth at β=${fmt(betas[bestTrue], 2)}",
-    )
-    frames += OffFrame(
-        status = "At the best setting the policy still improves on the reference — ${fmt(reference.truth, 3)} to " +
-            "${fmt(evals[bestTrue].truth, 3)} — and dashes ${fmt(evals[bestTrue].dashes, 2)} times an episode " +
-            "instead of ${fmt(evals.first().dashes, 2)}. β is not a safety margin bolted on afterwards; it is the " +
-            "admission that the reward model is only trustworthy near the data it was fitted on.",
-        bars = listOf(
-            OffBar(
-                "true return by KL weight",
-                evals.map { it.truth.toFloat() },
-                ImprovedColor,
-                betas.map { fmt(it, 2) },
-            ),
-            OffBar(
-                "dashes per episode",
-                evals.map { it.dashes.toFloat() },
-                WarnColor,
-                betas.map { fmt(it, 2) },
-            ),
-        ),
-        readout = "reference ${fmt(reference.truth, 3)} → best ${fmt(evals[bestTrue].truth, 3)} at β=${fmt(betas[bestTrue], 2)}",
-    )
-    return frames
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
 // Config
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -1649,16 +1380,6 @@ private val offlineConfigs = mapOf(
             WarnColor to "Mismatch",
         ),
         build = ::irlFrames,
-    ),
-    "rlhf" to OffConfig(
-        intro = "A reward model fitted to preferences that were labelled on what a rater can see, then optimised " +
-            "against at nine different KL weights. The two curves do not peak in the same place.",
-        legend = listOf(
-            HighlightColor to "Proxy reward",
-            ImprovedColor to "True return",
-            WarnColor to "Hidden cost",
-        ),
-        build = ::rlhfFrames,
     ),
 )
 

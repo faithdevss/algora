@@ -7,6 +7,10 @@ import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sqrt
 
+/** Lowercased word tokens: letters, digits and apostrophes. */
+internal fun words(text: String): List<String> =
+    text.lowercase().split(Regex("[^a-z0-9']+")).filter { it.isNotEmpty() }
+
 // ── D3 · Word embedding math ─────────────────────────────────────────────────
 // The word2vec, GloVe, FastText and ELMo labs. Everything here trains for real on a toy corpus —
 // there are no hand-set vectors in this file, which is the difference between it and the older

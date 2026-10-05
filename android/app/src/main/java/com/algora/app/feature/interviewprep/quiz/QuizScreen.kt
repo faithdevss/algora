@@ -100,6 +100,8 @@ fun QuizScreen(
     // Record timed runs as attempts and show the best score. Off for sets rebuilt on every open,
     // where "best 8/10" would compare different questions.
     trackBest: Boolean = true,
+    // Start in this mode and skip the chooser — the set list it was opened from already asked.
+    initialMode: QuizMode? = null,
 ) {
     val context = LocalContext.current
     val settings = remember { SettingsRepository(context.settingsDataStore) }
@@ -117,7 +119,7 @@ fun QuizScreen(
     val baseKeys = remember(quiz, quizId) {
         questionKeys ?: quiz.questions.indices.map { questionKey(quizId, it) }
     }
-    var mode by remember { mutableStateOf(if (offerLearnMode) null else QuizMode.Interview) }
+    var mode by remember { mutableStateOf(initialMode ?: if (offerLearnMode) null else QuizMode.Interview) }
     // Parallel to `running`: the source key of each question in the current run, so a missed-only
     // retry still reports back to the questions it was cut from.
     var runningKeys by remember { mutableStateOf(baseKeys) }

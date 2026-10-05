@@ -42,10 +42,10 @@ func simLabel(_ type: SimulationType) -> String {
     }
 }
 
-private struct SimEntry: Hashable { let topic: Topic; let label: String }
-private struct SimSubgroup: Hashable { let key: String; let name: String; var entries: [SimEntry] }
+struct SimEntry: Hashable { let topic: Topic; let label: String }
+struct SimSubgroup: Hashable { let key: String; let name: String; var entries: [SimEntry] }
 
-private struct SimGroup: Hashable {
+struct SimGroup: Hashable {
     let section: Section
     let title: String
     let icon: String
@@ -97,7 +97,7 @@ private func patternGroupName(_ type: SimulationType) -> String {
     }
 }
 
-private let simGroups: [SimGroup] = {
+let simGroups: [SimGroup] = {
     let content = ContentStore.shared
     var bySection: [Section: [(String, [SimEntry])]] = [:]
     for (topicId, type) in content.runnableSimulations {
@@ -123,7 +123,6 @@ struct SimulationsScreen: View {
     @Environment(Router.self) private var router
     @Environment(\.palette) private var palette
     @State private var query = ""
-    @State private var openSections: Set<Section> = []
     @State private var openCategories: Set<String> = []
 
     var body: some View {
@@ -140,20 +139,16 @@ struct SimulationsScreen: View {
                     Text("No labs match “\(query)”.").font(.bodyMedium).foregroundStyle(palette.muted).padding(.top, 24)
                 }
                 ForEach(groups, id: \.section) { group in
-                    // A search shows its hits directly.
-                    let sectionOpen = searching || openSections.contains(group.section)
-                    GroupHeader(group: group, expanded: sectionOpen) { toggle(&openSections, group.section) }
-                    if sectionOpen {
+                    // A section opens its own page; a search shows its hits directly instead.
+                    GroupHeader(group: group, expanded: searching) {
+                        if !searching { router.push(.simulationSection(group.section.rawValue)) }
+                    }
+                    if searching {
                         ForEach(group.subgroups, id: \.key) { sub in
-                            let open = searching || openCategories.contains(sub.key)
-                            AccordionHeader(title: sub.name, count: sub.entries.count, accent: Color(argb: group.accent), isExpanded: open) {
-                                toggle(&openCategories, sub.key)
-                            }
-                            .padding(.leading, 8).padding(.top, 5).padding(.bottom, 1)
-                            if open {
-                                ForEach(sub.entries, id: \.topic.id) { entry in
-                                    SimRow(entry: entry) { router.push(.simulation(entry.topic.id)) }
-                                }
+                            AccordionHeader(title: sub.name, count: sub.entries.count, accent: Color(argb: group.accent), isExpanded: true) {}
+                                .padding(.leading, 8).padding(.top, 5).padding(.bottom, 1)
+                            ForEach(sub.entries, id: \.topic.id) { entry in
+                                SimRow(entry: entry) { router.push(.simulation(entry.topic.id)) }
                             }
                         }
                     }
@@ -163,10 +158,6 @@ struct SimulationsScreen: View {
             .padding(.bottom, screenBottomInset)
         }
         .scrollDismissesKeyboard(.immediately)
-    }
-
-    private func toggle<T: Hashable>(_ set: inout Set<T>, _ value: T) {
-        if set.contains(value) { set.remove(value) } else { set.insert(value) }
     }
 }
 
@@ -190,8 +181,7 @@ private struct GroupHeader: View {
                     Text("\(group.count) labs · \(group.subgroups.count) categories").font(AppFont.sans(12.5)).foregroundStyle(palette.muted)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                Image(systemName: "chevron.down").font(.system(size: 15, weight: .semibold)).foregroundStyle(accent)
-                    .rotationEffect(.degrees(expanded ? 180 : 0))
+                Image(systemName: expanded ? "chevron.down" : "chevron.right").font(.system(size: 15, weight: .semibold)).foregroundStyle(accent)
             }
             .padding(14)
             .background(expanded ? accent.opacity(0.07) : palette.surface, in: RoundedRectangle(cornerRadius: 16))

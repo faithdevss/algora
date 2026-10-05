@@ -1,35 +1,8 @@
 import Foundation
 
-// Port of TimeSeriesMath.kt: the six B7 time-series estimators, all on one monthly series.
+// Port of TimeSeriesMath.kt: the estimators behind the forecasting storyboards (SeriesStoryLabs).
 
 let seasonPeriod = 12
-/// Index of the first forecast point; everything at or past it is held out.
-let trainLength = 48
-
-/// The Kotlin series generator: a 32-bit LCG with wrapping arithmetic, reproduced exactly.
-private struct SeriesRng {
-    var state: Int32
-    mutating func next() -> Double {
-        state = state &* 1_103_515_245 &+ 12345
-        return Double((UInt32(bitPattern: state) >> 16) & 0x7fff) / 32767.0
-    }
-    mutating func gaussian() -> Double {
-        let u1 = max(next(), 1e-9)
-        let u2 = next()
-        return (-2 * log(u1)).squareRoot() * cos(2 * Double.pi * u2)
-    }
-}
-
-/// Sixty months: a trend that changes slope once, an annual cycle, and noise.
-func retailSeries(seed: Int = 5) -> [Double] {
-    var rng = SeriesRng(state: Int32(truncatingIfNeeded: seed &* 7919 &+ 13))
-    return (0..<(trainLength + 12)).map { t in
-        let trend = t < 30 ? 100.0 + 1.30 * Double(t) : 100.0 + 1.30 * 30 + 0.35 * Double(t - 30)
-        let seasonal = 9.0 * sin(2 * Double.pi * Double(t) / Double(seasonPeriod)) + 4.0 * cos(4 * Double.pi * Double(t) / Double(seasonPeriod))
-        return trend + seasonal + rng.gaussian() * 3.0
-    }
-}
-
 func mean(_ xs: [Double]) -> Double { xs.isEmpty ? 0 : xs.reduce(0, +) / Double(xs.count) }
 
 /// Trailing moving average — nil until enough history exists.
@@ -116,22 +89,6 @@ func difference(_ series: [Double], lag: Int = 1) -> [Double] {
     series.count <= lag ? [] : (lag..<series.count).map { series[$0] - series[$0 - lag] }
 }
 
-/// Undo d rounds of lag-1 differencing on a forecast.
-func integrate(_ forecastDiff: [Double], lastValues: [Double], d: Int) -> [Double] {
-    if d == 0 { return forecastDiff }
-    var current = forecastDiff
-    var anchors = lastValues
-    for _ in 0..<d {
-        var undone: [Double] = []
-        var previous = anchors.last!
-        for step in current { previous += step; undone.append(previous) }
-        current = undone
-        anchors = Array(anchors.dropLast())
-        if anchors.isEmpty { anchors = [0] }
-    }
-    return current
-}
-
 func lag1Autocorrelation(_ series: [Double]) -> Double { autocorrelation(series, lag: 1) }
 
 func autocorrelation(_ series: [Double], lag: Int) -> Double {
@@ -143,69 +100,6 @@ func autocorrelation(_ series: [Double], lag: Int) -> Double {
         if i >= lag { num += (series[i] - m) * (series[i - lag] - m) }
     }
     return den < 1e-12 ? 0 : num / den
-}
-
-struct ArimaFit { let ar: [Double]; let ma: [Double]; let intercept: Double; let forecast: [Double]; let fitted: [Double]; let trainRmse: Double }
-
-/// ARIMA(p, d, q) by Hannan–Rissanen two-stage regression.
-func fitArima(_ train: [Double], p: Int, d: Int, q: Int, horizon: Int) -> ArimaFit {
-    var work = train
-    for _ in 0..<d { work = difference(work) }
-    let longOrder = min(max(p + q + 2, 6), work.count / 3)
-    let stageOne = fitAr(work, p: longOrder, lambda: 1e-6)
-    var innovations = [Double](repeating: 0, count: work.count)
-    for (i, e) in stageOne.residuals.enumerated() { innovations[i + longOrder] = e }
-    let start = max(p, q) + longOrder
-    let rows = work.count - start
-    let terms = 1 + p + q
-    let x = (0..<max(rows, 0)).map { r in (0..<terms).map { c -> Double in
-        c == 0 ? 1 : c <= p ? work[start + r - c] : innovations[start + r - (c - p)]
-    } }
-    let y = (0..<max(rows, 0)).map { work[start + $0] }
-    let beta = rows > terms ? ridgeSolve(x, y, 1e-6) : [Double](repeating: 0, count: terms)
-    let fittedDiff = x.map { row in (0..<terms).reduce(0.0) { $0 + row[$1] * beta[$1] } }
-    let residuals = fittedDiff.indices.map { y[$0] - fittedDiff[$0] }
-    var history = work
-    var future = (0..<q).map { i -> Double in
-        let idx = work.count - q + i
-        return innovations.indices.contains(idx) ? innovations[idx] : 0
-    }
-    let forecastDiff = (0..<horizon).map { _ -> Double in
-        var v = beta[0]
-        if p >= 1 { for c in 1...p { v += beta[c] * history[history.count - c] } }
-        if q >= 1 {
-            for c in 1...q {
-                let idx = future.count - c
-                v += beta[p + c] * (future.indices.contains(idx) ? future[idx] : 0)
-            }
-        }
-        history.append(v)
-        future.append(0)
-        return v
-    }
-    return ArimaFit(ar: (0..<p).map { beta[$0 + 1] }, ma: (0..<q).map { beta[p + $0 + 1] }, intercept: beta[0],
-                    forecast: integrate(forecastDiff, lastValues: Array(train.suffix(max(d, 1))), d: d),
-                    fitted: fittedDiff, trainRmse: rmseOf(residuals))
-}
-
-struct SarimaFit { let forecast: [Double]; let seasonalDifferenced: [Double]; let acfBefore: Double; let acfAfter: Double; let trainRmse: Double }
-
-func fitSarima(_ train: [Double], p: Int, seasonalDifference: Bool, horizon: Int) -> SarimaFit {
-    let acfBefore = autocorrelation(train, lag: seasonPeriod)
-    let work = seasonalDifference ? difference(train, lag: seasonPeriod) : train
-    let acfAfter = autocorrelation(work, lag: seasonPeriod)
-    let fit = fitAr(work, p: max(p, 1), lambda: 1e-6)
-    let diffForecast = arForecast(fit, work, horizon: horizon)
-    var forecast = diffForecast
-    if seasonalDifference {
-        var out: [Double] = []
-        for (h, step) in diffForecast.enumerated() {
-            let ago = train.count + h - seasonPeriod
-            out.append((ago < train.count ? train[ago] : out[ago - train.count]) + step)
-        }
-        forecast = out
-    }
-    return SarimaFit(forecast: forecast, seasonalDifferenced: work, acfBefore: acfBefore, acfAfter: acfAfter, trainRmse: fit.rmse)
 }
 
 struct ProphetFit {

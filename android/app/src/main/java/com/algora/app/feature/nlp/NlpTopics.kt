@@ -150,22 +150,22 @@ private val recurrentTopics = listOf(
 // is now free too, because one topic id cannot be gated two ways.
 private val fineTuningTopics = listOf(
     topic("transfer_learning", "Transfer Learning", fineTuning, "Reuse a pretrained network's features and retrain only the head.", difficulty = Difficulty.INTERMEDIATE),
-    topic("fine_tuning_full", "Fine-Tuning (Full)", fineTuning, "Unfreeze everything — and measure what the model forgets doing it.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
-    topic("rlhf", "RLHF", fineTuning, "Reinforcement learning from human feedback aligns LLMs.", isPremium = true),
-    topic("dpo", "DPO (Direct Preference Optimization)", fineTuning, "The same optimum without a reward model — and the ceiling neither of them clears.", isPremium = true, difficulty = Difficulty.ADVANCED),
-    topic("peft", "PEFT (Parameter-Efficient Fine-Tuning)", fineTuning, "0.27% trainable, 1.8× less memory — and why those are not the same number.", isPremium = true),
-    topic("lora_qlora", "LoRA & QLoRA", fineTuning, "Rank as a dial, measured against the theorem that says where it stops paying.", isPremium = true, difficulty = Difficulty.ADVANCED),
-    topic("quantization", "Quantization (4-bit / 8-bit)", fineTuning, "Fewer bits per weight, and the one outlier that decides which scheme survives.", isPremium = true, difficulty = Difficulty.ADVANCED),
-    topic("flash_attention", "Flash Attention", fineTuning, "Same answer, same arithmetic, different memory — and the saving is exactly 2·Br/d.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("fine_tuning_full", "Fine-Tuning (Full)", fineTuning, "Sixteen examples: a pretrained body with a new head reaches 95%, from scratch only 55%.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("rlhf", "RLHF", fineTuning, "A reward model blind to one hidden cost — and the KL leash that decides how hard it gets exploited.", isPremium = true),
+    topic("dpo", "DPO (Direct Preference Optimization)", fineTuning, "Preferences straight into the policy — no reward model, no RL loop, and β setting how far it moves.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("peft", "PEFT (Parameter-Efficient Fine-Tuning)", fineTuning, "Six ways to tune BERT-base: LoRA trains 0.27% of the weights, and the real win is the per-task file.", isPremium = true),
+    topic("lora_qlora", "LoRA & QLoRA", fineTuning, "The update is low-rank, not the model — rank 4 already keeps 93% of it.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("quantization", "Quantization (4-bit / 8-bit)", fineTuning, "4,096 weights at 8, 4 and 3 bits — and the per-block scales that tame one outlier.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("flash_attention", "Flash Attention", fineTuning, "The online softmax: three running numbers, the exact answer, and no N² score matrix.", isPremium = true, difficulty = Difficulty.ADVANCED),
 )
 
 // D6. Ordered as the argument develops: the linear system, the thing it cannot do, the fix, the
 // other fix, and the cost that motivates all of it.
 private val beyondTransformerTopics = listOf(
-    topic("ssm", "State Space Models (SSMs)", beyondTransformers, "One system, two forms — a scan to decode with, a convolution to train with.", isPremium = true, difficulty = Difficulty.ADVANCED),
-    topic("mamba", "Mamba Architecture", beyondTransformers, "Make Δ depend on the token, and the copying task a fixed system cannot do falls out.", isPremium = true, difficulty = Difficulty.ADVANCED),
-    topic("rwkv", "RWKV", beyondTransformers, "Attention-shaped training, RNN-shaped inference, and the retrieval it gives up.", isPremium = true, difficulty = Difficulty.ADVANCED),
-    topic("long_context", "Long Context Windows", beyondTransformers, "512 GB of cache at 1M tokens, and the crossover at exactly 6·d.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("ssm", "State Space Models (SSMs)", beyondTransformers, "A linear recurrence that is also a convolution — train in parallel, decode in constant memory.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("mamba", "Mamba Architecture", beyondTransformers, "One signal, seven fillers: a fixed decay forgets it, an input-dependent gate keeps it intact.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("rwkv", "RWKV", beyondTransformers, "Attention without a query — a decaying weighted average that runs as an RNN with no KV cache.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("long_context", "Long Context Windows", beyondTransformers, "LLaMA-2-7B at 128K: a 68.7 GB cache, and attention is 84% of the prefill compute.", isPremium = true, difficulty = Difficulty.ADVANCED),
 )
 
 // D6. Ordered by what each metric scores rather than by name: one that needs no reference at all,
@@ -173,12 +173,12 @@ private val beyondTransformerTopics = listOf(
 // to read it, and one that is not a metric but a benchmark — which is the distinction the last topic
 // is about. Gating is the doc's, verbatim: Perplexity and WER carry no lock, the other four do.
 private val metricTopics = listOf(
-    topic("perplexity", "Perplexity", metrics, "The only one needing no reference — and it ranks two tokenizers backwards.", difficulty = Difficulty.INTERMEDIATE, isPremium = true),
-    topic("wer", "WER (Word Error Rate)", metrics, "Unbounded above, and it scores a reversed sentence a third of a harmless one.", difficulty = Difficulty.BEGINNER),
-    topic("bleu", "BLEU Score (Translation)", metrics, "Clipping, the brevity penalty, and the good paraphrase that scores exactly 0.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
-    topic("rouge", "ROUGE Score (Summarization)", metrics, "Copy the whole document and recall 0.800 — the baseline recall-only reporting rewards.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
-    topic("meteor", "METEOR", metrics, "Stems, recall weighting and a fragmentation penalty that a full shuffle drives to its ceiling.", isPremium = true, difficulty = Difficulty.ADVANCED),
-    topic("mmlu", "MMLU (Massive Multitask Benchmark)", metrics, "0.702 against 0.694 is 1.46 standard errors — the leaderboard is reporting noise.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("perplexity", "Perplexity", metrics, "No reference answer needed — and the same words scrambled jump from 4.95 to 13.02.", difficulty = Difficulty.INTERMEDIATE, isPremium = true),
+    topic("wer", "WER (Word Error Rate)", metrics, "Delete “not” and WER is just 0.111 — the best score goes to the reversed meaning.", difficulty = Difficulty.BEGINNER),
+    topic("bleu", "BLEU Score (Translation)", metrics, "Clipping, the brevity penalty, and a correct reordering that scores exactly 0.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("rouge", "ROUGE Score (Summarization)", metrics, "Submit the whole document for perfect recall — and watch F1 expose it.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("meteor", "METEOR", metrics, "Alignment, recall weighting and a fragmentation penalty — 0.45 on a paraphrase BLEU scores 0.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("mmlu", "MMLU (Massive Multitask Benchmark)", metrics, "0.712 against 0.698: significant on all 14,042 questions, a coin flip on 100.", isPremium = true, difficulty = Difficulty.ADVANCED),
 )
 
 object NlpTopics {

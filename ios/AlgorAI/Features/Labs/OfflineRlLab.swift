@@ -2,11 +2,10 @@ import SwiftUI
 
 // Port of OfflineRlSection.kt: learning from a fixed dataset or from demonstrations. Fitted
 // Q-iteration over a logged dataset, behaviour cloning and DAgger on a slippery corridor, occupancy
-// matching against a discriminator, max-entropy IRL, and a Bradley-Terry reward model fitted to
-// preferences labelled on what a rater can see. Three shared environments:
+// matching against a discriminator, and max-entropy IRL. Three shared environments:
 //   A. a six-state chain with a mean-zero lottery action (offline_rl, cql)
 //   B. a 3×8 corridor where every move slips a row (imitation_learning, gail, irl)
-//   C. the chain with a per-step cost (decision_transformer, rlhf)
+//   C. the chain with a per-step cost (decision_transformer)
 
 private struct OffCell { let shade: Float; let glyph: String; let color: Color }
 private struct OffGrid { let label: String; let cells: [OffCell] }
@@ -476,146 +475,6 @@ private func dtCloneRollout(_ ds: DtDataset) -> (Double, Int) {
     return (got, steps)
 }
 
-// MARK: - RLHF: a "dash" that advances two states and hides a cost no rater sees
-
-private let dashP = 0.35
-private let dashCost = 0.8
-private let refPolicy = [0.40, 0.45, 0.15] // left / right / dash
-
-private func rlhfNext(_ s: Int, _ a: Int) -> Int {
-    switch a {
-    case 0: max(s - 1, 0)
-    case 1: min(s + 1, chGoal)
-    default: min(s + 2, chGoal)
-    }
-}
-
-private struct PrefSegment { let steps: [(Int, Int, Int)]; let observed: Double; let truth: Double }
-
-private func sampleAction(_ probs: [Double], _ u: Double) -> Int {
-    var acc = 0.0
-    for j in 0..<3 {
-        acc += probs[j]
-        if u <= acc { return j }
-    }
-    return 2
-}
-
-private func rlhfRollout(_ pol: [[Double]], _ rng: inout Lcg) -> PrefSegment {
-    var s = 0
-    var steps: [(Int, Int, Int)] = []
-    var obs = 0.0, truth = 0.0
-    for _ in 0..<20 {
-        let a = sampleAction(pol[s], rng.next())
-        let ns = rlhfNext(s, a)
-        let o = (ns == chGoal ? 1.0 : 0.0) - dtCost
-        obs += o
-        truth += o - (a == 2 && rng.next() < dashP ? dashCost : 0)
-        steps.append((s, a, ns))
-        s = ns
-        if ns == chGoal { break }
-    }
-    return PrefSegment(steps: steps, observed: obs, truth: truth)
-}
-
-private func segFeatures(_ seg: PrefSegment) -> [Double] {
-    [Double(seg.steps.filter { $0.1 == 2 }.count), Double(seg.steps.filter { $0.1 == 1 }.count),
-     seg.steps.last.map { $0.2 == chGoal ? 1.0 : 0.0 } ?? 0]
-}
-
-private struct RewardModel { let w: [Double]; let agreement: Double; let segments: [PrefSegment] }
-
-/// Bradley-Terry fit to pairwise comparisons, labelled on the observable return only.
-private func fitRewardModel(_ seed: Int) -> RewardModel {
-    var rng = Lcg(seed)
-    let mixes: [(Double, Double)] = [(0.25, 0.05), (0.5, 0.10), (0.7, 0.15), (0.85, 0.10), (0.6, 0.30)]
-    var segs: [PrefSegment] = []
-    for _ in 0..<500 {
-        let (pr, pd) = mixes[rng.nextInt(mixes.count)]
-        let pol = [[Double]](repeating: [max(0, 1 - pr - pd), pr, pd], count: chN)
-        segs.append(rlhfRollout(pol, &rng))
-    }
-    var pairs: [([Double], [Double])] = []
-    for _ in 0..<1500 {
-        let i = rng.nextInt(segs.count)
-        let j = rng.nextInt(segs.count)
-        if i == j || segs[i].observed == segs[j].observed { continue }
-        var better = segs[i].observed > segs[j].observed ? i : j
-        var worse = better == i ? j : i
-        if rng.next() < 0.10 { swap(&better, &worse) } // raters are not perfect
-        pairs.append((segFeatures(segs[better]), segFeatures(segs[worse])))
-    }
-    var w = [0.0, 0.0, 0.0]
-    for _ in 0..<8000 {
-        var g = [0.0, 0.0, 0.0]
-        for (fb, fw) in pairs {
-            var d = 0.0
-            for k in 0..<3 { d += w[k] * (fb[k] - fw[k]) }
-            let p = 1 / (1 + exp(-d))
-            for k in 0..<3 { g[k] += (1 - p) * (fb[k] - fw[k]) }
-        }
-        for k in 0..<3 { w[k] += 0.02 * g[k] / Double(pairs.count) }
-    }
-    var hit = 0, total = 0
-    for _ in 0..<3000 {
-        let i = rng.nextInt(segs.count)
-        let j = rng.nextInt(segs.count)
-        if i == j || segs[i].observed == segs[j].observed { continue }
-        total += 1
-        let fi = segFeatures(segs[i]), fj = segFeatures(segs[j])
-        var mi = 0.0, mj = 0.0
-        for k in 0..<3 { mi += w[k] * fi[k]; mj += w[k] * fj[k] }
-        if (mi > mj) == (segs[i].observed > segs[j].observed) { hit += 1 }
-    }
-    return RewardModel(w: w, agreement: Double(hit) / Double(total), segments: segs)
-}
-
-private func proxyReward(_ w: [Double], _ a: Int, _ ns: Int) -> Double {
-    (a == 2 ? w[0] : 0) + (a == 1 ? w[1] : 0) + (ns == chGoal ? w[2] : 0)
-}
-
-/// KL-anchored optimisation: π_ref(a|s)·exp(Q/β), renormalised.
-private func klOptimise(_ w: [Double], _ beta: Double, sweeps: Int = 800) -> [[Double]] {
-    let third = [1.0 / 3, 1.0 / 3, 1.0 / 3]
-    var v = [Double](repeating: 0, count: chN)
-    var pol = [[Double]](repeating: third, count: chN)
-    for _ in 0..<sweeps {
-        var nv = [Double](repeating: 0, count: chN)
-        var np = [[Double]](repeating: third, count: chN)
-        for s in 0..<chN where s != chGoal {
-            let q = (0..<3).map { proxyReward(w, $0, rlhfNext(s, $0)) + 0.99 * v[rlhfNext(s, $0)] }
-            let m = q.max()!
-            let z = (0..<3).map { refPolicy[$0] * exp((q[$0] - m) / beta) }
-            let zs = z.reduce(0, +)
-            nv[s] = m + beta * log(zs)
-            np[s] = z.map { $0 / zs }
-        }
-        v = nv
-        pol = np
-    }
-    return pol
-}
-
-private struct RlhfEval { let proxy: Double; let truth: Double; let dashes: Double }
-
-private func evalRlhf(_ w: [Double], _ pol: [[Double]], runs: Int = 800) -> RlhfEval {
-    var proxy = 0.0, truth = 0.0, dashes = 0.0
-    for i in 0..<runs {
-        var rng = Lcg(7700 + i * 13)
-        var s = 0
-        for _ in 0..<20 {
-            let a = sampleAction(pol[s], rng.next())
-            let ns = rlhfNext(s, a)
-            proxy += proxyReward(w, a, ns)
-            truth += (ns == chGoal ? 1.0 : 0.0) - dtCost - (a == 2 && rng.next() < dashP ? dashCost : 0)
-            if a == 2 { dashes += 1 }
-            s = ns
-            if ns == chGoal { break }
-        }
-    }
-    return RlhfEval(proxy: proxy / Double(runs), truth: truth / Double(runs), dashes: dashes / Double(runs))
-}
-
 // MARK: - Shared frame helpers
 
 private func coverageTable(_ data: [Trans]) -> OffTable {
@@ -949,47 +808,6 @@ private func irlFrames() -> [OffFrame] {
     ]
 }
 
-// MARK: - rlhf
-
-private func rlhfFrames() -> [OffFrame] {
-    let rm = fitRewardModel(29)
-    let betas = [0.02, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0]
-    let evals = betas.map { evalRlhf(rm.w, klOptimise(rm.w, $0)) }
-    let reference = evalRlhf(rm.w, [[Double]](repeating: refPolicy, count: chN))
-    let bestTrue = argmaxFirst(evals.map(\.truth))
-    let bestProxy = argmaxFirst(evals.map(\.proxy))
-    let observedGap = rm.segments.map { $0.observed - $0.truth }.average
-    let betaCaps = betas.map { fmt($0, 2) }
-    let first = evals[0]
-
-    return [
-        OffFrame(status: "The chain gains a \"dash\" that advances two states at once. It also fails \(fmt(dashP, 2)) of the time at a cost of \(fmt(dashCost, 1)) — a cost that appears in no segment a rater is shown. Across the \(rm.segments.count) segments collected here, what the rater sees is on average \(fmt(observedGap, 3)) better than what actually happened.",
-                 bars: [FrameBars(label: "mean return over the collected segments", values: floats([rm.segments.map(\.observed).average, rm.segments.map(\.truth).average]), color: accentColor, captions: ["as rated", "as it truly was"])],
-                 readout: "preferences are labelled on the left bar; the right bar is what we care about"),
-        OffFrame(status: "A Bradley-Terry reward model is fitted to those pairwise comparisons, 10% of which are mislabelled. It agrees with the raters on \(fmt(rm.agreement * 100, 1))% of held-out pairs — by the only metric available at training time, a good reward model. It scores dashing at \(fmt(rm.w[0], 3)) and reaching the goal at \(fmt(rm.w[2], 3)).",
-                 bars: [FrameBars(label: "learned reward weights", values: floats(rm.w), color: highlightColor, captions: ["dash", "step right", "reached goal"])],
-                 readout: "held-out agreement with rater preferences: \(fmt(rm.agreement * 100, 1))%"),
-        OffFrame(status: "Optimise against it as hard as possible — a KL weight of \(fmt(betas[0], 2)) — and the proxy reward climbs to its maximum, \(fmt(reference.proxy, 3)) → \(fmt(first.proxy, 3)). True return over the same policy: \(fmt(first.truth, 3)), which is no better than the untuned reference it started from (\(fmt(reference.truth, 3))). All that optimisation pressure went into dashing \(fmt(first.dashes, 2)) times an episode, because the reward model has no term for what dashing costs.",
-                 bars: [
-                    FrameBars(label: "reward-model score", values: floats([reference.proxy, first.proxy]), color: highlightColor, captions: ["reference", "optimised"]),
-                    FrameBars(label: "true return", values: floats([reference.truth, first.truth]), color: warnColor, captions: ["reference", "optimised"]),
-                 ],
-                 readout: "the proxy went up; the thing it stands for did not"),
-        OffFrame(status: "Sweeping the KL weight puts the whole problem on one chart, and the two curves peak in different places: the proxy is maximised at β = \(fmt(betas[bestProxy], 2)), the true return at β = \(fmt(betas[bestTrue], 2)). Optimising the measure past that point degrades the thing it was measuring. That is Goodhart's law with numbers attached, and it is the entire reason the KL term is in the objective.",
-                 plot: FramePlot(label: "proxy against truth, by KL weight", curves: [
-                    FrameCurve(label: "reward-model score", values: floats(evals.map(\.proxy)), color: highlightColor),
-                    FrameCurve(label: "true return", values: floats(evals.map(\.truth)), color: improvedColor),
-                 ], yRange: -0.3...1.3, xLabel: "β = " + betaCaps.joined(separator: " · ")),
-                 readout: "best proxy at β=\(fmt(betas[bestProxy], 2)), best truth at β=\(fmt(betas[bestTrue], 2))"),
-        OffFrame(status: "At the best setting the policy still improves on the reference — \(fmt(reference.truth, 3)) to \(fmt(evals[bestTrue].truth, 3)) — and dashes \(fmt(evals[bestTrue].dashes, 2)) times an episode instead of \(fmt(first.dashes, 2)). β is not a safety margin bolted on afterwards; it is the admission that the reward model is only trustworthy near the data it was fitted on.",
-                 bars: [
-                    FrameBars(label: "true return by KL weight", values: floats(evals.map(\.truth)), color: improvedColor, captions: betaCaps),
-                    FrameBars(label: "dashes per episode", values: floats(evals.map(\.dashes)), color: warnColor, captions: betaCaps),
-                 ],
-                 readout: "reference \(fmt(reference.truth, 3)) → best \(fmt(evals[bestTrue].truth, 3)) at β=\(fmt(betas[bestTrue], 2))"),
-    ]
-}
-
 // MARK: - Config
 
 private let comparisonLegend: [(Color, String)] = [(baselineColor, "Baseline"), (improvedColor, "Improved"), (warnColor, "Failure mode")]
@@ -1003,8 +821,6 @@ private let offlineConfigs: [String: OffConfig] = [
     "gail": OffConfig(intro: "Imitation as a distribution-matching game: a discriminator that separates expert from agent, and the occupancy distance closing until it cannot.", legend: comparisonLegend, build: gailFrames),
     "irl": OffConfig(intro: "Recovering the objective instead of the actions — by matching state visitation — and then the test that only a reward can pass: the environment changes.",
                      legend: [(highlightColor, "Recovered reward"), (improvedColor, "Improved"), (warnColor, "Mismatch")], build: irlFrames),
-    "rlhf": OffConfig(intro: "A reward model fitted to preferences that were labelled on what a rater can see, then optimised against at nine different KL weights. The two curves do not peak in the same place.",
-                      legend: [(highlightColor, "Proxy reward"), (improvedColor, "True return"), (warnColor, "Hidden cost")], build: rlhfFrames),
 ]
 
 // MARK: - UI

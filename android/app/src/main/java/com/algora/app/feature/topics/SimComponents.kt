@@ -422,6 +422,8 @@ fun LabTransportBar(
      * step it starts over.
      */
     action: ((Int) -> String)? = null,
+    /** Drawn under the step label in place of the play or action row (a stepper that re-runs the story). */
+    footer: (@Composable () -> Unit)? = null,
 ) {
     // Auto-advance while playing; the rate is read fresh each tick so a change takes effect live.
     LaunchedEffect(state, state.playing) {
@@ -471,7 +473,9 @@ fun LabTransportBar(
                 }
             }
         }
-        if (action != null) {
+        if (footer != null) {
+            footer()
+        } else if (action != null) {
             LabBackActionRow(
                 action = action(state.index),
                 backEnabled = state.index > 0,
