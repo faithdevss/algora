@@ -65,9 +65,9 @@ import kotlin.math.max
 internal val deepStoryTopicIds = setOf(
     "biological_neuron", "neural_network_basics", "vanishing_gradient", "exploding_gradient",
     "sigmoid", "tanh", "relu", "leaky_relu", "prelu", "elu", "selu", "swish", "gelu", "softmax",
-) + cnnStoryTopicIds + detectStoryTopicIds + rnnStoryTopicIds + transformerStoryTopicIds + modernStoryTopicIds + optimStoryTopicIds
+) + cnnStoryTopicIds + detectStoryTopicIds + rnnStoryTopicIds + transformerStoryTopicIds + modernStoryTopicIds + optimStoryTopicIds + genStoryTopicIds
 
-internal enum class DkInk { Blue, Pink, Green, Orange, Grey, Yellow, Violet, Slate, Sky }
+internal enum class DkInk { Blue, Pink, Green, Orange, Grey, Yellow, Violet, Slate, Sky, Cyan }
 
 internal class DkP(val x: Double, val y: Double)
 
@@ -337,6 +337,15 @@ private fun DkBody(frame: DkFrame) {
                 is DkHist -> DkHistView(stage)
                 is DkTokens -> DkTokensView(stage)
                 is DkGraph -> DkGraphView(stage)
+                is DkGan -> DkGanView(stage)
+                is DkDiffusion -> DkDiffusionView(stage)
+                is DkVae -> DkVaeView(stage)
+                is DkCycle -> DkCycleView(stage)
+                is DkCoverage -> DkCoverageView(stage)
+                is DkShrink -> DkShrinkView(stage)
+                is DkFakeArch -> DkFakeArchView(stage)
+                is DkWarp -> DkWarpView(stage)
+                is DkGram -> DkGramView(stage)
             }
             if (frame.legend.isNotEmpty()) {
                 StoryLegendRow(frame.legend.map { Triple(dkColor(it.ink), it.style, it.label) }, Modifier.padding(top = 14.dp))
@@ -391,6 +400,7 @@ internal fun dkColor(ink: DkInk): Color = when (ink) {
     DkInk.Violet -> SimColors.Answer
     DkInk.Slate -> DkOffFill
     DkInk.Sky -> Color(0xFF8AA4E8)
+    DkInk.Cyan -> Color(0xFF0EA5E9)
 }
 
 internal fun Modifier.dkStage() = this.clip(RoundedCornerShape(12.dp)).background(Color.Black.copy(alpha = 0.16f))

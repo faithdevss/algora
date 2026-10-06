@@ -9,9 +9,9 @@ import SwiftUI
 let deepStoryTopicIds: Set<String> = Set<String>([
     "biological_neuron", "neural_network_basics", "vanishing_gradient", "exploding_gradient",
     "sigmoid", "tanh", "relu", "leaky_relu", "prelu", "elu", "selu", "swish", "gelu", "softmax",
-] as [String]).union(cnnStoryTopicIds).union(detectStoryTopicIds).union(rnnStoryTopicIds).union(transformerStoryTopicIds).union(modernStoryTopicIds).union(optimStoryTopicIds)
+] as [String]).union(cnnStoryTopicIds).union(detectStoryTopicIds).union(rnnStoryTopicIds).union(transformerStoryTopicIds).union(modernStoryTopicIds).union(optimStoryTopicIds).union(genStoryTopicIds)
 
-enum DkInk { case blue, pink, green, orange, grey, yellow, violet, slate, sky }
+enum DkInk { case blue, pink, green, orange, grey, yellow, violet, slate, sky, cyan }
 
 struct DkP { let x: Double; let y: Double; init(_ x: Double, _ y: Double) { self.x = x; self.y = y } }
 
@@ -87,7 +87,8 @@ struct DkEdge { let from: Int; let to: Int; let w: Double; let state: DkEdgeStat
 
 struct DkNet { let nodes: [DkNode]; let edges: [DkEdge]; let footers: [(CGFloat, String)] }
 
-enum DkStage { case plot(DkPlot), bars(DkBars), net(DkNet), grids(DkGrids), rows(DkRows), segs(DkSegs), boxes(DkBoxes), unet(DkUNet), tiles(DkTiles), pipeline(DkPipeline), hist(DkHist), tokens(DkTokens), graph(DkGraph) }
+enum DkStage { case plot(DkPlot), bars(DkBars), net(DkNet), grids(DkGrids), rows(DkRows), segs(DkSegs), boxes(DkBoxes), unet(DkUNet), tiles(DkTiles), pipeline(DkPipeline), hist(DkHist), tokens(DkTokens), graph(DkGraph),
+    gan(DkGan), diffusion(DkDiffusion), vae(DkVae), cycle(DkCycle), coverage(DkCoverage), shrink(DkShrink), fakeArch(DkFakeArch), warp(DkWarp), gram(DkGram) }
 
 struct DkLegend { let ink: DkInk; let style: SwatchStyle; let label: String }
 
@@ -320,6 +321,15 @@ private struct DkBody: View {
                 case .hist(let h): DkHistView(stage: h)
                 case .tokens(let t): DkTokensView(stage: t)
                 case .graph(let g): DkGraphView(stage: g)
+                case .gan(let g): DkGanView(stage: g)
+                case .diffusion(let d): DkDiffusionView(stage: d)
+                case .vae(let v): DkVaeView(stage: v)
+                case .cycle(let c): DkCycleView(stage: c)
+                case .coverage(let c): DkCoverageView(stage: c)
+                case .shrink(let s): DkShrinkView(stage: s)
+                case .fakeArch(let f): DkFakeArchView(stage: f)
+                case .warp(let w): DkWarpView(stage: w)
+                case .gram(let g): DkGramView(stage: g)
                 }
                 if !frame.legend.isEmpty {
                     StoryLegendRow(items: frame.legend.map { (color: dkColor($0.ink), style: $0.style, label: $0.label) }).padding(.top, 14)
@@ -371,6 +381,7 @@ func dkColor(_ ink: DkInk) -> Color {
     case .violet: SimColors.answer
     case .slate: dkOffFill
     case .sky: Color(hex: 0x8AA4E8)
+    case .cyan: Color(hex: 0x0EA5E9)
     }
 }
 

@@ -51,6 +51,7 @@ internal fun SimulationHost(topicId: String, type: SimulationType) {
     if (topicId in dimStoryTopicIds) return DimStorySection(topicId)
     if (topicId in seriesStoryTopicIds) return SeriesStorySection(topicId)
     if (topicId in llmStoryTopicIds) return LlmStorySection(topicId)
+    if (topicId in nlpStoryTopicIds) return NlpStorySection(topicId)
     patternLabAliases[topicId]?.let { (id, labType) -> return SimulationHost(id, labType) }
     when (type) {
         SimulationType.ArrayVisualizer -> ArraySimulationSection()

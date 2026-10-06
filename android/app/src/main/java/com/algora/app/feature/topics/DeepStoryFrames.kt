@@ -21,7 +21,7 @@ import kotlin.math.tanh
 // facts by a fine grid or a numeric integral. The generator is a plain LCG so the iOS port
 // (DeepStoryFrames.swift) reproduces the same numbers.
 
-internal fun deepLab(topicId: String): DkLab = cnnLab(topicId) ?: detectLab(topicId) ?: rnnLab(topicId) ?: transformerLab(topicId) ?: modernLab(topicId) ?: optimLab(topicId) ?: when (topicId) {
+internal fun deepLab(topicId: String): DkLab = cnnLab(topicId) ?: detectLab(topicId) ?: rnnLab(topicId) ?: transformerLab(topicId) ?: modernLab(topicId) ?: optimLab(topicId) ?: genLab(topicId) ?: when (topicId) {
     "biological_neuron" -> neuronLab()
     "neural_network_basics" -> feedforwardLab()
     "vanishing_gradient" -> vanishingLab()

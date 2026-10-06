@@ -45,6 +45,10 @@ class SimulationFrameTest {
         check("NeuralStory", neuralStoryTopicIds, ::neuralStoryFrameCount)
 
     @Test
+    fun `every nlp and llm board story builds frames`() =
+        check("NlpStory", nlpStoryTopicIds, ::nlpStoryFrameCount)
+
+    @Test
     fun `every deep-learning story builds frames at every setting`() =
         check("DeepStory", deepStoryTopicIds, ::deepStoryFrameCount)
 

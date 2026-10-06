@@ -12,6 +12,7 @@ func deepLab(_ topicId: String) -> DkLab {
     if let lab = transformerLab(topicId) { return lab }
     if let lab = modernLab(topicId) { return lab }
     if let lab = optimLab(topicId) { return lab }
+    if let lab = genLab(topicId) { return lab }
     return switch topicId {
     case "biological_neuron": neuronLab()
     case "neural_network_basics": feedforwardLab()

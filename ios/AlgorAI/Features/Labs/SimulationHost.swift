@@ -36,6 +36,7 @@ struct SimulationHost: View {
         else if dimStoryTopicIds.contains(topicId) { DimStoryLab(topicId: topicId).id(topicId) }
         else if seriesStoryTopicIds.contains(topicId) { SeriesStoryLab(topicId: topicId).id(topicId) }
         else if llmStoryTopicIds.contains(topicId) { LlmStoryLab(topicId: topicId).id(topicId) }
+        else if nlpStoryTopicIds.contains(topicId) { NlpStoryLab(topicId: topicId).id(topicId) }
         else if let alias = patternLabAliases[topicId] { SimulationHost(topicId: alias.topicId, type: alias.type) }
         else { lab }
     }

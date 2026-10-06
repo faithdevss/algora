@@ -1433,85 +1433,6 @@ private func ahoCorasickFrames() -> [TreeFrame] {
     return b.frames
 }
 
-// MARK: - Dependency parsing
-
-private func dependencyFrames() -> [TreeFrame] {
-    let b = TreeBuilder()
-    let words = DependencyLab.sentence
-    let steps = DependencyLab.parse()
-    let rootId = b.add("ROOT", nil, 0)
-    var nodeOf: [Int: Int] = [:]
-    for i in words.indices { nodeOf[i + 1] = b.add(words[i], nil, i + 1) }
-    let allWords = Set(nodeOf.values)
-    b.frame("A dependency parse is a set of labelled arcs, one per word: every token gets exactly one head, and one token — the main verb here — is headed by ROOT. No phrase nodes exist at all, which is the difference from a constituency tree.", active: allWords)
-    b.frame("Arc-standard parsing runs a stack, a buffer and three moves. SHIFT pushes the next word; LEFT-ARC attaches the second stack item to the top and pops it; RIGHT-ARC attaches the top to the second and pops it. An arc is only drawn once its dependent has all of its own children, so nothing has to be revisited.", marked: [rootId])
-    for (index, step) in steps.enumerated() {
-        for word in 1...words.count {
-            let id = nodeOf[word]!
-            if let arc = step.arcs.first(where: { $0.dependent == word }) {
-                b.reparent(id, arc.head == 0 ? rootId : nodeOf[arc.head]!, word)
-            } else {
-                b.reparent(id, nil, word)
-            }
-        }
-        for arc in step.arcs { b.relabel(nodeOf[arc.dependent]!, "\(words[arc.dependent - 1]) · \(arc.label)") }
-        let stackText = step.stack.map(DependencyLab.wordAt).joined(separator: " ")
-        let bufferText = step.buffer.map(DependencyLab.wordAt).joined(separator: " ")
-        let moveText: String
-        switch step.move {
-        case .shift: moveText = "SHIFT — push the next word; no arc yet."
-        case .leftArc: moveText = "LEFT-ARC (\(step.label!)) — the second stack item becomes a dependent of the top and is removed."
-        case .rightArc: moveText = "RIGHT-ARC (\(step.label!)) — the top becomes a dependent of the second item and is removed."
-        }
-        b.frame("Step \(index + 1) of \(steps.count): \(moveText)  ·  stack [\(stackText)]  buffer [\(bufferText)]  ·  \(step.arcs.count) arc\(step.arcs.count == 1 ? "" : "s") built.",
-                active: Set(step.stack.compactMap { $0 == 0 ? rootId : nodeOf[$0] }), marked: Set(step.arcs.map { nodeOf[$0.dependent]! }))
-    }
-    b.frame("Done in \(DependencyLab.transitionCount()) transitions, which is exactly 2n for \(words.count) words — every word is shifted once and attached once, so a greedy parser is linear in sentence length. Chart-based (graph) parsers are O(n²) or O(n³) but search globally; the transition family trades that for speed and a classifier that only has to pick the next move.",
-            path: [rootId], marked: allWords)
-    b.frame("Scoring is per word. UAS counts heads only; LAS also requires the relation to match. A parse with \"small\" attached to the verb instead of the noun, and \"cat\" labelled nsubj instead of obj, scores UAS \(fx(DependencyLab.uas(DependencyLab.predictedHeads))) and LAS \(fx(DependencyLab.las(DependencyLab.predictedHeads, DependencyLab.predictedLabels))) — the gap between them is entirely label errors on attachments that were right.",
-            marked: [nodeOf[2]!, nodeOf[6]!])
-    b.frame("One structural limit: arc-standard can only build projective trees — no two arcs may cross. \"A hearing is scheduled on the issue today\" needs a crossing arc (hearing → on crosses scheduled → today) and is unreachable by any sequence of these three moves. Roughly 1% of English sentences and far more in German or Czech are non-projective, which is why pseudo-projective transforms, the swap transition and graph-based parsers exist.",
-            marked: allWords)
-    return b.frames
-}
-
-// MARK: - Constituency parsing
-
-private func constituencyFrames() -> [TreeFrame] {
-    let b = TreeBuilder()
-    let gold = ConstituencyLab.gold
-    var ids: [String: Int] = [:]
-    func build(_ node: ConstituencyLab.Node, _ parent: Int?, _ order: Int, _ path: String) -> Int {
-        let id = b.add(node.isLeaf ? "\(node.label) \(node.word!)" : node.label, parent, order)
-        ids[path] = id
-        for (i, child) in node.children.enumerated() { _ = build(child, id, i, "\(path)/\(i)") }
-        return id
-    }
-    let root = build(gold, nil, 0, "")
-    b.frame("A constituency parse groups words into nested phrases: the sentence is an NP and a VP, the NP is a determiner, an adjective and a noun. Every internal node is a phrase, and the words only appear at the leaves — where a dependency parse has arcs between words and no phrase nodes at all.", marked: [root])
-    let spanText = ConstituencyLab.spanList(gold).map { "\($0.label)[\($0.start),\($0.end))" }.joined(separator: ", ")
-    b.frame("The units it is scored on are labelled spans: \(spanText). Part-of-speech nodes are excluded by convention, because a tagger's accuracy would otherwise inflate the parser's score.",
-            marked: [root, ids["/0"]!, ids["/1"]!, ids["/1/1"]!])
-    let objectNp = ids["/1/1"]!, vp = ids["/1"]!, det = ids["/1/1/0"]!, noun = ids["/1/1/1"]!
-    b.reparent(det, vp, 1)
-    b.reparent(noun, vp, 2)
-    b.remove(objectNp)
-    let evalb = ConstituencyLab.evalb()
-    b.frame("Here is a parse that misses one phrase: the object NP is flattened into the VP. Every bracket it does predict is correct, so precision is \(fx(evalb.precision)), but it recovers only \(ConstituencyLab.spanList(ConstituencyLab.predicted).count) of the gold tree's \(ConstituencyLab.spanList(gold).count) spans, so recall is \(fx(evalb.recall)) and F1 is \(fx(evalb.f1)). That asymmetry is why evalb reports all three: a parser that emits fewer, safer brackets can hold precision at 1.00 indefinitely.",
-            active: [det, noun], marked: [vp])
-    let restoredNp = b.add("NP", vp, 1)
-    b.reparent(det, restoredNp, 0)
-    b.reparent(noun, restoredNp, 1)
-    b.frame("Restored. The two formalisms are convertible, and the conversion is a table of head rules: the head of a VP is its verb, the head of an NP is its rightmost noun, the head of an S is its VP's head. Percolate those upward and every phrase gets a head word.",
-            marked: [restoredNp, vp, ids["/0"]!])
-    let heads = ConstituencyLab.toDependencies()
-    b.frame("Running that conversion on this tree produces heads \(heads.map(String.init).joined(separator: ", ")) — identical to the dependency lab's gold parse for the same sentence, computed here rather than asserted. This is how the Penn Treebank became a dependency treebank, and why a claim that one formalism carries more information than the other needs to be about the *annotation*, not the notation.",
-            path: Set(ids.values).subtracting([root]), marked: [root])
-    b.frame("Which to use: constituency when the phrase itself is the object of interest — extracting noun phrases, grammar checking, anything that asks \"is this a well-formed clause\" — and dependency when the question is what relates to what, which is most of information extraction and nearly all multilingual work, because dependency annotation transfers across languages with far less redesign (that is the entire premise of Universal Dependencies).",
-            marked: [root])
-    return b.frames
-}
-
 // MARK: - PCFG: CYK over an ambiguous sentence
 
 private func pcfgProb(_ p: Double) -> String { p >= 0.01 ? fx(p) : fx(p, 4) }
@@ -1601,89 +1522,6 @@ private func pcfgFrames() -> [TreeFrame] {
     b.frame("And the limit worth remembering: the rule probabilities here are estimated from a treebank and are context-free by construction, so this grammar prefers VP attachment for *every* sentence of this shape — it has no idea a telescope is an instrument of seeing. Lexicalised PCFGs condition each rule on its head word (saw … with … telescope) to fix exactly this, at the cost of a far sparser table.",
             marked: [sWinner])
     return b.frames
-}
-
-// MARK: - Tree of Thoughts
-
-private func chainNodes(_ builder: TreeBuilder, _ trace: [String], _ root: Int) -> [Int] {
-    var parent = root
-    return trace.map { step in
-        let id = builder.add(step, parent, 0)
-        parent = id
-        return id
-    }
-}
-
-private func afterEquals(_ s: String) -> String { s.components(separatedBy: "= ").dropFirst().joined(separator: "= ").isEmpty ? s : s.components(separatedBy: "= ").dropFirst().joined(separator: "= ") }
-
-private func treeOfThoughtsFrames() -> [TreeFrame] {
-    var frames: [TreeFrame] = []
-    let (expanded, solutions) = TotLab.exhaustive()
-    let puzzleLabel = TotLab.label(TotLab.puzzle)
-
-    let intro = TreeBuilder()
-    let introRoot = intro.add(puzzleLabel, nil, 0)
-    intro.frame("Game of 24: combine \(puzzleLabel) with + − × ÷ until one number is left and it is 24. Each operation replaces two numbers with one, so the search is exactly three moves deep. Expanded exhaustively this tree visits \(expanded) states and ends at 24 along \(solutions) of them — small enough to check every claim below by brute force.",
-                active: [introRoot])
-    frames += intro.frames
-
-    let greedy = TotLab.beam(1, depth: 1)
-    let gb = TreeBuilder()
-    let greedyRoot = gb.add(puzzleLabel, nil, 0)
-    let greedyNodes = chainNodes(gb, greedy.trace, greedyRoot)
-    for (index, id) in greedyNodes.enumerated() {
-        let status: String
-        switch index {
-        case 0: status = "A chain of thought is beam width 1: pick the best-looking next step and commit. The evaluator here is the cheap one — \"could one more operation on some pair land on 24?\" — which is the stand-in for the paper's value prompt, and it likes \(greedy.trace[0])."
-        case 1: status = "Second move, still no way back. The state is now three numbers and the same evaluator picks \(greedy.trace[1]). Nothing has gone visibly wrong yet, which is the problem: a single chain gives no signal that it is already in a dead branch."
-        default: status = "Third move, and the chain lands on \(afterEquals(greedy.trace.last!)) rather than 24. It cannot backtrack, because it never kept an alternative. Width 1 fails on this puzzle for a reason that has nothing to do with arithmetic."
-        }
-        gb.frame(status, active: [id], path: Set(greedyNodes.prefix(index)).union([greedyRoot]))
-    }
-    frames += gb.frames
-
-    let ranked = TotLab.rankedFrontier(depth: 1)
-    let (firstSolvableRank, solvableInTopFive, frontierSize) = TotLab.evaluatorQuality(5, depth: 1)
-    let rb = TreeBuilder()
-    let rankRoot = rb.add(puzzleLabel, nil, 0)
-    let shown = ranked.prefix(5).enumerated().map { rb.add("\(TotLab.label($1.state))  (\(fx($1.score, 1)))", rankRoot, $0) }
-    let best = ranked[firstSolvableRank - 1]
-    let bestNode = rb.add("\(TotLab.label(best.state))  (\(fx(best.score, 1)))", rankRoot, 5)
-    rb.frame("So before widening the search, measure the evaluator. It ranks \(frontierSize) distinct first moves, and the highest-ranked move that can still reach 24 is its \(firstSolvableRank)th — the five it likes best contain \(solvableInTopFive) that can. This is not a bad implementation; it is what a cheap one-step heuristic is worth on a four-number state, because it ignores the numbers left over.",
-             active: Set(shown), marked: [bestNode])
-    frames += rb.frames
-
-    let narrow = TotLab.beam(5, depth: 1)
-    let needed = TotLab.widthNeeded(1)
-    let winner = TotLab.beam(needed, depth: 1)
-    let wb = TreeBuilder()
-    let widthRoot = wb.add(puzzleLabel, nil, 0)
-    let keptFive = ranked.prefix(5).enumerated().map { wb.add(TotLab.label($1.state), widthRoot, $0) }
-    wb.frame("Beam width 5 keeps the evaluator's top five and drops the other \(frontierSize - 5). Since none of those five can reach 24, the beam is already lost at depth 1 and spends the rest of the search confirming it: \(narrow.expanded) states expanded, best result \(afterEquals(narrow.trace.last!)).",
-             active: Set(keptFive))
-    let extra = ranked[5..<needed].enumerated().map { (wb.add(TotLab.label($1.state), widthRoot, 5 + $0), $1.solvable) }
-    let firstSolvable = extra.first { $0.1 }!.0
-    wb.frame("Width \(needed) is where it turns over — the smallest beam that keeps a state the puzzle can be solved from. Nothing about the evaluator changed. The search simply stopped trusting it enough to throw the answer away, which is the entire argument for Tree of Thoughts.",
-             active: Set(extra.filter(\.1).map(\.0)), path: Set(keptFive))
-    let winPath = chainNodes(wb, winner.trace, firstSolvable)
-    wb.frame("The solution the surviving branch reaches: \(winner.trace.joined(separator: ", ")). It cost \(winner.expanded) expanded states and \(winner.evaluatorCalls) evaluator calls against \(greedy.expanded) and \(greedy.evaluatorCalls) for the greedy chain — roughly \(fx(Double(winner.evaluatorCalls) / Double(greedy.evaluatorCalls), 0))× the evaluation, for the difference between failing and finishing.",
-             path: [widthRoot, firstSolvable], marked: Set(winPath))
-    frames += wb.frames
-
-    let deep = TotLab.beam(1, depth: 2)
-    let deepWidth = TotLab.widthNeeded(2)
-    let (deepRank, deepTopFive, _) = TotLab.evaluatorQuality(5, depth: 2)
-    let db = TreeBuilder()
-    let deepRoot = db.add(puzzleLabel, nil, 0)
-    let deepNodes = Set(chainNodes(db, deep.trace, deepRoot))
-    db.frame("Width is not the only axis. Give the evaluator one more operation of lookahead and its ranking changes completely: the best-ranked solvable state is now its \(deepRank)th and \(deepTopFive) of its top five can reach 24. Width \(deepWidth) is then enough — a single chain solves the puzzle, because the evaluator no longer throws the answer away.",
-             path: [deepRoot], marked: deepNodes)
-    db.frame("But price the two. The cheap evaluator at width \(needed) spends \(winner.evaluatorCalls) evaluator calls; the deep evaluator at width \(deepWidth) spends \(deep.evaluatorCalls). The better evaluator is \(fx(Double(deep.evaluatorCalls) / Double(winner.evaluatorCalls), 1))× *more* expensive here, not less. Width and evaluator quality are substitutes, and which one is cheaper is a measurement, not a principle — with an LLM as the evaluator, each of those calls is a request.",
-             marked: deepNodes)
-    db.frame("The rest of Tree of Thoughts is bookkeeping on top of this: a frontier instead of a single state, an evaluator that scores partial states, and pruning that is allowed to be wrong because the beam keeps alternatives. Exhaustive search over this puzzle visits \(expanded) states and finds \(solutions) solution paths — the beam found one of them after \(winner.expanded) expansions, which is \(fx(Double(expanded) / Double(winner.expanded), 1))× less of the tree.",
-             marked: deepNodes)
-    frames += db.frames
-    return frames
 }
 
 // MARK: - Interview-prep pattern trees
@@ -1924,9 +1762,6 @@ private let treeConfigs: [String: TreeConfig] = [
     "binary_lifting_pattern": TreeConfig(intro: "The jump table built row by row, then spent twice: a 3rd-ancestor query decomposed into 2 + 1, and an LCA that lifts both nodes without ever overshooting.", markedLabel: "Answer", build: binaryLiftingPatternFrames, cardTitle: "BINARY LIFTING", cardNote: "jumps of 2^k"),
     "tree_bfs_pattern": TreeConfig(intro: "Level-order traversal with the queue size frozen per level. Watch the queue hold two levels at once mid-sweep — that is exactly what the frozen size protects against.", markedLabel: "Visited", build: treeBfsPatternFrames, cardTitle: "LEVEL ORDER", cardNote: "queue"),
     "tree_dfs_pattern": TreeConfig(intro: "Root-to-leaf paths summing to 22. The budget is carried down as an argument and the path is popped on the way out, so siblings never inherit each other's state.", markedLabel: "On a matching path", build: treeDfsPatternFrames, cardTitle: "DEPTH-FIRST", cardNote: "stack"),
-    "tree_of_thoughts": TreeConfig(intro: "Game of 24 searched for real: the greedy chain that fails, the evaluator's ranking measured against what can actually reach 24, and the beam width that fixes it — priced against a better evaluator.", markedLabel: "Reaches 24", build: treeOfThoughtsFrames, cardTitle: "TREE OF THOUGHTS", cardNote: "search over steps"),
-    "dependency_parsing": TreeConfig(intro: "One sentence parsed by arc-standard transitions, stack and buffer replayed step by step — then UAS against LAS on a wrong parse, and the crossing arc this transition system cannot build.", markedLabel: "Attached", build: dependencyFrames, cardTitle: "DEPENDENCY PARSE", cardNote: "head → dependent"),
-    "constituency_parsing": TreeConfig(intro: "The same sentence as nested phrases: the spans evalb scores, a flattened VP costing recall, and head rules converting the tree into the dependency parse next door.", markedLabel: "Constituent", build: constituencyFrames, cardTitle: "CONSTITUENCY PARSE", cardNote: "phrases nest"),
     "pcfg": TreeConfig(intro: "\"she saw the man with the telescope\" parsed by probabilistic CYK: the chart bottom-up, then both attachments of the prepositional phrase scored against each other.", markedLabel: "Best parse", build: pcfgFrames, cardTitle: "PCFG PARSE", cardNote: "P = product of rules"),
     "aho_corasick": TreeConfig(intro: "The dictionary {he, she, his, hers} as a trie, then its failure links, then one walk over \"ushers\". The dashed arcs are the failure links — they are the whole algorithm, and they are why the text pointer never backs up.", markedLabel: "Pattern ends here", build: ahoCorasickFrames, linkLabel: "Failure link", cardTitle: "AHO-CORASICK", cardNote: "trie + failure links"),
     "xgboost": TreeConfig(intro: "One tree built by the real second-order gain formula: G and H sums, the closed-form leaf value, and a split that γ prunes away.", markedLabel: "Leaf", build: xgboostFrames, cardTitle: "XGBOOST TREE", cardNote: "gain per split"),

@@ -6,20 +6,6 @@ Generated 2026-10-05 from `ios/AlgorAI/Resources/Content/topic_content.json` aga
 
 **47 topics in 6 groups** (29 TokenStrip, 11 NeuralNet, 7 PointCloud).
 
-## Generative deep learning (9)
-
-| Done | Topic id | Title | Android today |
-|---|---|---|---|
-| [ ] | `gans` | GANs | `NeuralNetSection` |
-| [ ] | `vae` | Variational Autoencoders (VAE) | `NeuralNetSection` |
-| [ ] | `dcgan` | DCGAN (Deep Convolutional GAN) | `NeuralNetSection` |
-| [ ] | `stylegan` | StyleGAN | `PointCloudSection` |
-| [ ] | `cyclegan` | CycleGAN (Image-to-Image) | `PointCloudSection` |
-| [ ] | `diffusion_models` | Diffusion Models | `PointCloudSection` |
-| [ ] | `stable_diffusion` | Stable Diffusion Architecture | `NeuralNetSection` |
-| [ ] | `neural_style_transfer` | Neural Style Transfer | `NeuralNetSection` |
-| [ ] | `deepfakes` | DeepFakes (Concept) | `NeuralNetSection` |
-
 ## NLP preprocessing & statistical NLP (10)
 
 | Done | Topic id | Title | Android today |
