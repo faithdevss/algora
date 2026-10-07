@@ -12,22 +12,22 @@ import com.algora.app.core.data.model.TopicContent
 internal val complementNbContent = TopicContent(
     topicId = "complement_nb",
     whatIsIt = listOf(
-        "Complement naive Bayes fixes a specific failure of multinomial NB on imbalanced data. Instead of estimating a class's parameters from that class's own documents, it estimates them from every *other* class's documents — the class's complement — and then negates, because a term common outside a class is evidence against it.",
-        "Imbalance hurts multinomial NB twice, and both need fixing. The prior directly favours the majority. Less obviously, so does the likelihood: a rare class has few tokens, so its per-term estimates are noisy and its smoothing constant α|V| dominates a small denominator, systematically flattening its distribution toward uniform. Estimating from the complement means every class's parameters come from a similarly large pool, so the noise is comparable across classes. A second step — L1-normalizing the weights per class — removes the remaining magnitude advantage that a class with more training tokens would otherwise accumulate.",
+        "Complement naive Bayes fixes a specific failure of multinomial NB on imbalanced data. Instead of estimating a class's parameters from that class's own documents, it estimates them from every *other* class's documents — the class's complement — and takes their log, because a term common outside a class is evidence against it (Rennie et al. keep the sign as log θ̃ and take the minimum; scikit-learn stores −log θ̃ and takes the maximum, which is the same rule).",
+        "Imbalance hurts multinomial NB twice, and both need fixing. The prior directly favours the majority. Less obviously, so does the likelihood: a rare class has few tokens, so its per-term estimates are noisy and its smoothing constant α|V| dominates a small denominator, systematically flattening its distribution toward uniform. Estimating from the complement means every class's parameters come from a similarly large pool, so the noise is comparable across classes. A second step — L1-normalizing the weights per class — corrects the weight-magnitude bias that dependent features cause under the independence assumption (Rennie et al.).",
         "Because the weights measure evidence *against* a class, the decision rule inverts: predict the class with the lowest complement score. Rennie et al. introduced this in 2003 alongside two related corrections (TF-IDF-style weighting and length normalization), and on skewed text benchmarks the combination substantially closes the gap to an SVM while keeping the one-pass training cost. On balanced data it offers no advantage over multinomial and is simply an unfamiliar way to write the same thing.",
     ),
     steps = listOf(
         StepCard(1, "Count the Complement", "For each class, count terms across all the *other* classes.", 0xFF14B8A6),
         StepCard(2, "Smooth and Divide", "Same Laplace form, applied to those complement counts.", 0xFF818CF8),
-        StepCard(3, "Take the Negative Log", "A term frequent outside the class argues against it, so the sign flips.", 0xFF60A5FA),
-        StepCard(4, "L1-Normalize per Class", "Divide by the sum of absolute weights, cancelling the majority's magnitude edge.", 0xFF10B981),
+        StepCard(3, "Take the Log", "A term frequent outside the class has a high log-probability, which is evidence against the class.", 0xFF60A5FA),
+        StepCard(4, "L1-Normalize per Class", "Divide by the sum of absolute weights, correcting weight-magnitude bias from dependent features.", 0xFF10B981),
         StepCard(5, "Score and Take the Minimum", "Lowest score wins — least evidence against.", 0xFFF59E0B),
         StepCard(6, "Check It Is Actually Needed", "On balanced data it matches multinomial. The gain is specifically from skew.", 0xFFEC4899),
     ),
     formulas = listOf(
         FormulaEntry("Complement count", "Ñₜ,c = Σ_{c′≠c} Nₜ,c′", "Every class except this one."),
-        FormulaEntry("Weight", "wₜ,c = −log((Ñₜ,c + α) / (Ñc + α|V|))", "Negated: evidence against."),
-        FormulaEntry("Normalize", "wₜ,c ← wₜ,c / Σₜ|wₜ,c|", "The step that removes the size advantage."),
+        FormulaEntry("Weight", "wₜ,c = log((Ñₜ,c + α) / (Ñc + α|V|))", "High when the term is common outside c: evidence against c. (scikit-learn negates this and takes argmax.)"),
+        FormulaEntry("Normalize", "wₜ,c ← wₜ,c / Σₜ|wₜ,c|", "Corrects weight-magnitude bias from dependent features."),
         FormulaEntry("Decision", "argmin_c Σₜ count(t)·wₜ,c", "Minimum, not maximum."),
         FormulaEntry("Balanced case", "≈ multinomial NB", "The correction only bites under skew."),
         FormulaEntry("Cost", "O(total tokens)", "Still one pass."),
@@ -90,10 +90,10 @@ internal val complementNbContent = TopicContent(
         ApplicationCard("history", 0xFF10B981, "Rennie et al. 2003", "\"Tackling the Poor Assumptions of Naive Bayes Text Classifiers\" — this plus two related corrections."),
     ),
     takeaways = listOf(
-        "Parameters are estimated from every other class, then negated — the weights measure evidence against.",
+        "Parameters are estimated from every other class, so the weights measure evidence against.",
         "Imbalance biases multinomial NB through both the prior and the smoothed likelihood; CNB addresses both.",
-        "L1-normalizing weights per class removes the majority's remaining magnitude advantage.",
-        "The decision rule is argmin, and on balanced data there is no advantage over multinomial.",
+        "L1-normalizing weights per class corrects weight-magnitude bias from dependent features.",
+        "The decision rule is argmin of log weights (argmax if you negate them, as scikit-learn does), and on balanced data there is no advantage over multinomial.",
     ),
     crossLinks = listOf(
         CrossLink("multinomial_nb", "Multinomial Naive Bayes"),

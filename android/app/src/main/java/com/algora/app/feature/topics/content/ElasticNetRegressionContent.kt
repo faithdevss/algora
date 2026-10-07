@@ -108,7 +108,7 @@ internal val elasticNetRegressionContent = TopicContent(
     applications = listOf(
         ApplicationCard("flask", 0xFF6366F1, "Genomics", "Genes in a shared pathway are correlated by biology; keeping the group is the scientifically meaningful result."),
         ApplicationCard("chart", 0xFF818CF8, "Marketing Mix", "Ad channels move together, and attributing everything to one of them is an artifact rather than an insight."),
-        ApplicationCard("finance", 0xFF10B981, "Netflix Prize", "The competition that popularized it — many correlated predictors, and a need for both sparsity and stability."),
+        ApplicationCard("book", 0xFF10B981, "Text Classification", "Sparse high-dimensional bag-of-words models — many correlated features, and a need for both sparsity and stability."),
     ),
     takeaways = listOf(
         "ElasticNet mixes L1 and L2, so α sets the kind of regularization and λ sets the amount.",

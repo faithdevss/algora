@@ -99,7 +99,7 @@ internal val adaGradContent = TopicContent(
                         rate_sparse = lr / math.sqrt(G_sparse + eps)
                         print(t, "dense:", round(rate_dense, 4), "sparse:", round(rate_sparse, 4))
                 # 200   dense: 0.0354  sparse: 0.0559   <- sparse keeps 1.58x
-                # 2000  dense: 0.0112  sparse: 0.0559   <- dense has kept shrinking; sparse hasn't fired since t=2000
+                # 2000  dense: 0.0112  sparse: 0.0177   <- both shrink as 1/sqrt(t); the 1.58x ratio holds
             """.trimIndent(),
         ),
         CodeBlock(

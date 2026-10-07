@@ -17,7 +17,7 @@ import com.algora.app.core.data.model.TopicContent
 internal val convexHullContent = TopicContent(
     topicId = "convex_hull",
     figure = Figure(
-        caption = "The hull is the rubber-band polygon: every other point is strictly inside it, and " +
+        caption = "The hull is the rubber-band polygon: every other point is inside it or on one of its edges, and " +
             "there is exactly one such polygon for any set. Graham scan gets there by sorting the " +
             "points by polar angle around the lowest one and then walking that order with a stack, " +
             "checking the turn made by the last two entries and the new point — a left turn is convex " +
@@ -47,7 +47,7 @@ internal val convexHullContent = TopicContent(
         ),
     ),
     whatIsIt = listOf(
-        "The convex hull of a point set is the smallest convex polygon containing all of it — the shape a rubber band snaps to when released around a board of pins. Every input point is either a vertex of that polygon or strictly inside it, and there is exactly one such polygon for any set.",
+        "The convex hull of a point set is the smallest convex polygon containing all of it — the shape a rubber band snaps to when released around a board of pins. Every input point is either a vertex of that polygon, on one of its edges, or strictly inside it, and there is exactly one such polygon for any set.",
         "Graham scan gets there by sorting. Pick the lowest point, sort the rest by polar angle around it, then walk the sorted list maintaining a stack of the hull so far. At each new point, check the turn the last two stack entries and the new point make: a left turn is convex and the point is pushed, a right turn means the middle point was a mistake, so pop it and re-check. Each point is pushed once and popped at most once, so the scan is linear and the O(n log n) total is entirely the sort's.",
         "Jarvis march — gift wrapping — takes the opposite trade. Start at the leftmost point and repeatedly find the point that is most counter-clockwise from the current one, which is one linear sweep per hull vertex. That is O(n·h) where h is the number of hull vertices, so it beats Graham scan whenever the hull is small relative to the input: a thousand points with a five-point hull costs 5,000 tests rather than a full sort. When almost every point is on the hull it degrades to O(n²). Chan's algorithm combines the two into O(n log h), which is optimal. The one thing all of them share is the orientation test, and the one thing that breaks all of them is degeneracy — three collinear points on a hull edge, which every implementation has to decide to keep or discard, consistently.",
     ),

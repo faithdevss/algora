@@ -14,7 +14,7 @@ internal val dynamicProgrammingContent = TopicContent(
     whatIsIt = listOf(
         "Dynamic programming solves an MDP exactly by sweeping the whole state space, using the transition and reward functions directly. It is the same DP you already know from coin change or longest common subsequence — overlapping subproblems, optimal substructure, results reused instead of recomputed — with a state's value playing the role of the memo table entry.",
         "The distinguishing precondition is the model. DP queries P(s′|s,a) and R(s,a) as functions you can call, so it never runs an episode and never touches the environment. In RL vocabulary this makes it planning rather than learning. Everything after it in this section — Monte Carlo, TD, Q-learning, DQN — exists to recover DP's answers when those functions are unavailable, which in practice is nearly always.",
-        "Its second limitation is the sweep itself. Every iteration touches every state, so cost scales with |S|·|A|, and |S| explodes combinatorially in any interesting problem — Bellman's own \"curse of dimensionality\". Backgammon has around 10²⁰ states and a sweep is not merely slow but impossible. This is exactly the pressure that produces sampling (visit only states you actually reach) and function approximation (generalize across states rather than tabulate them), which together are the whole of modern RL.",
+        "Its second limitation is the sweep itself. Every iteration touches every state, so cost scales with |S|²·|A| (every successor of every state-action pair), and |S| explodes combinatorially in any interesting problem — Bellman's own \"curse of dimensionality\". Backgammon has around 10²⁰ states and a sweep is not merely slow but impossible. This is exactly the pressure that produces sampling (visit only states you actually reach) and function approximation (generalize across states rather than tabulate them), which together are the whole of modern RL.",
     ),
     steps = listOf(
         StepCard(1, "Require the Model", "P and R must be known and queryable. Without them, none of this applies.", 0xFF6366F1),
@@ -22,7 +22,7 @@ internal val dynamicProgrammingContent = TopicContent(
         StepCard(3, "Sweep Every State", "Apply the Bellman backup to each state in turn — the DP transition step.", 0xFF60A5FA),
         StepCard(4, "Reuse Neighbours' Answers", "Each backup consumes values already computed. Overlapping subproblems, memoized.", 0xFF10B981),
         StepCard(5, "Iterate to Convergence", "Repeat until the largest change falls below a threshold. Contraction guarantees this terminates.", 0xFFF59E0B),
-        StepCard(6, "Notice the Ceiling", "Cost is per-sweep |S|·|A|. Beyond modest |S| you must sample or approximate instead.", 0xFFEC4899),
+        StepCard(6, "Notice the Ceiling", "Cost is per-sweep |S|²·|A|. Beyond modest |S| you must sample or approximate instead.", 0xFFEC4899),
     ),
     formulas = listOf(
         FormulaEntry("The backup", "V(s) ← maxₐ Σₛ′ P(s′|s,a)[r + γV(s′)]", "One DP transition, applied per state."),
@@ -93,7 +93,7 @@ internal val dynamicProgrammingContent = TopicContent(
         "RL's DP is the DP you already know: overlapping subproblems and optimal substructure over states.",
         "It requires the model, which makes it planning rather than learning.",
         "Cyclic dependencies mean you iterate to a fixed point instead of filling a table in topological order.",
-        "Full sweeps cost |S|·|A|, and |S| explodes — the pressure that produced sampling and function approximation.",
+        "Full sweeps cost |S|²·|A|, and |S| explodes — the pressure that produced sampling and function approximation.",
     ),
     crossLinks = listOf(
         CrossLink("bellman_equation", "Bellman Equation"),

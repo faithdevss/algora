@@ -12,14 +12,14 @@ import com.algora.app.core.data.model.TopicContent
 internal val trpoContent = TopicContent(
     topicId = "trpo",
     whatIsIt = listOf(
-        "Trust Region Policy Optimization (TRPO) improves a policy while guaranteeing each update stays within a 'trust region' — a bounded KL divergence from the old policy.",
-        "That constraint prevents the destructively large policy jumps that plague vanilla policy gradients, giving monotonic, stable improvement.",
+        "Trust Region Policy Optimization (TRPO) improves a policy while constraining each update to stay within a 'trust region' — a bounded KL divergence from the old policy.",
+        "That constraint prevents the destructively large policy jumps that plague vanilla policy gradients, motivated by a monotonic-improvement bound, and in practice giving stable updates (not a guaranteed improvement).",
     ),
     steps = listOf(
         StepCard(1, "Surrogate Objective", "Maximize an importance-weighted advantage objective over the new policy.", 0xFF818CF8),
         StepCard(2, "KL Constraint", "Require the new policy to stay within a small KL distance of the old one.", 0xFF60A5FA),
         StepCard(3, "Solve Approximately", "Use a conjugate-gradient step on the natural gradient, then line-search to satisfy the constraint.", 0xFF10B981),
-        StepCard(4, "Guaranteed Improvement", "The trust region ensures the update doesn't degrade performance.", 0xFFF59E0B),
+        StepCard(4, "Stable Improvement", "The trust region keeps updates reliably stable; exact monotonic improvement is only guaranteed for the theoretical KL-penalized surrogate.", 0xFFF59E0B),
     ),
     formulas = listOf(
         FormulaEntry("Objective", "max E[ (π/π_old)·A ]", "Importance-weighted advantage."),
@@ -47,7 +47,7 @@ internal val trpoContent = TopicContent(
     simulation = SimulationType.PolicyGradientPlayer,
     applications = listOf(
         ApplicationCard("robot", 0xFF818CF8, "Continuous Control", "TRPO delivered stable locomotion policies on MuJoCo benchmarks."),
-        ApplicationCard("bulb", 0xFF60A5FA, "Monotonic Improvement", "Its theory guarantees updates don't collapse the policy."),
+        ApplicationCard("bulb", 0xFF60A5FA, "Monotonic Improvement", "Its theory motivates updates that don't collapse the policy (a bound for the exact penalized surrogate, not a guarantee in practice)."),
         ApplicationCard("chip", 0xFF10B981, "Precursor to PPO", "PPO simplifies TRPO's constraint into a clipped objective."),
     ),
     takeaways = listOf(

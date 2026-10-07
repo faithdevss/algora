@@ -57,7 +57,7 @@ internal val valueFunctionContent = TopicContent(
     ),
     steps = listOf(
         StepCard(1, "Fix a Policy", "Value is defined relative to behaviour. Nothing can be evaluated until π is pinned down.", 0xFF818CF8),
-        StepCard(2, "Initialize V", "Zeros everywhere except terminals, whose value is their reward and never changes.", 0xFF60A5FA),
+        StepCard(2, "Initialize V", "Zeros everywhere; terminal states are fixed at 0 (their reward is received on the transition into them).", 0xFF60A5FA),
         StepCard(3, "Back Up One Step", "Replace V(s) with the expected immediate reward plus γ times the value of where π lands.", 0xFF8B5CF6),
         StepCard(4, "Sweep Until Stable", "Repeat over all states. The Bellman operator is a γ-contraction, so it converges to a unique Vπ.", 0xFF10B981),
         StepCard(5, "Read the Gradient", "Value now spreads outward from reward. Higher-valued neighbours mark the direction of the goal.", 0xFFF59E0B),

@@ -51,7 +51,7 @@ internal val chainOfThoughtContent = TopicContent(
                 client = anthropic.Anthropic()
 
                 PROMPT = (
-                    "A shop sold 17 boxes of 24 pens, then restocked 3 boxes. "
+                    "A shop had 50 boxes of 24 pens, sold 17, then restocked 3. "
                     "How many pens are in stock? Work step by step, then give the final "
                     "number on its own line prefixed with 'ANSWER:'."
                 )

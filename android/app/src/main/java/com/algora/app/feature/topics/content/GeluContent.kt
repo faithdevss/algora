@@ -37,7 +37,7 @@ internal val geluContent = TopicContent(
         NotationEntry("erf", "the error function; how Φ is actually computed"),
         NotationEntry("stochastic regulariser", "the dropout-style framing GELU takes the expectation of"),
         NotationEntry("approximate='tanh'", "the framework flag selecting the BERT/GPT-2 form"),
-        NotationEntry("GEGLU", "the gated variant used in T5 and PaLM feed-forward blocks"),
+        NotationEntry("GEGLU", "the gated variant used in T5 v1.1 feed-forward blocks; the Swish-gated sibling SwiGLU is used in PaLM and LLaMA"),
     ),
     codeBlocks = listOf(
         CodeBlock(
@@ -79,7 +79,7 @@ internal val geluContent = TopicContent(
                         return self.down(self.act(self.up(x)))
 
                 # GEGLU, from the "GLU Variants Improve Transformer" line of work: split the
-                # projection and use half of it as a gate. T5 v1.1 and PaLM use this.
+                # projection and use half of it as a gate. T5 v1.1 uses this; PaLM and LLaMA use the Swish-gated SwiGLU.
                 class GeGLU(nn.Module):
                     def __init__(self, d, hidden):
                         super().__init__()

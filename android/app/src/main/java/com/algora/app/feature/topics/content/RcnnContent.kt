@@ -43,7 +43,7 @@ internal val rcnnContent = TopicContent(
     ),
     whatIsIt = listOf(
         "Classification asks what is in an image. Detection asks what, where, and how many — and the number of answers is not known in advance, so it cannot be a fixed-size output layer. R-CNN's move in 2014 was to turn the problem back into classification: propose about 2,000 candidate regions with selective search, warp each to 227×227, run the CNN on it, and classify. \"Regions with CNN features\" is the whole name and the whole idea.",
-        "It worked spectacularly and cost accordingly. On VOC 2012 it reached 53.3% mAP against the previous best of 35.1% from deformable part models — a jump of eighteen points in a field used to arguing over one. It also runs the convolutional stack 2,000 times per image with no computation shared between heavily overlapping regions, which is 47 seconds per image with VGG-16, and it is three models trained in three separate stages: the CNN fine-tuned for classification, a linear SVM per class trained on cached features, and a bounding-box regressor trained after that.",
+        "It worked spectacularly and cost accordingly. On VOC 2012 it reached 53.3% mAP, more than a 30% relative improvement over the previous best — and on VOC 2010 it scored 53.7% against 35.1% for the best prior system and 33.4% for deformable part models, a jump of eighteen points in a field used to arguing over one. It also runs the convolutional stack 2,000 times per image with no computation shared between heavily overlapping regions, which is 47 seconds per image with VGG-16, and it is three models trained in three separate stages: the CNN fine-tuned for classification, a linear SVM per class trained on cached features, and a bounding-box regressor trained after that.",
         "Two pieces of machinery introduced here outlive the architecture completely, and the simulation runs both for real. Non-maximum suppression: overlapping proposals of the same object all score highly, so keep the best box and delete anything overlapping it by more than an IoU threshold. And average precision, which is why NMS is part of the score rather than tidying — a second detection of an object already found counts as a false positive. On the lab's six boxes, AP@0.5 is 0.833 with the duplicate left in and 1.000 after suppression, from identical features.",
     ),
     steps = listOf(
@@ -93,7 +93,7 @@ internal val rcnnContent = TopicContent(
 
                 boxes  = [(18,44,88,148), (24,36,96,156), (112,58,178,142)]
                 scores = [0.94, 0.88, 0.81]
-                print(iou(boxes[0], boxes[1]))     # 0.80 -- same object, twice
+                print(iou(boxes[0], boxes[1]))     # 0.72 -- same object, twice
                 print(nms(boxes, scores))          # [0, 2]
             """.trimIndent(),
         ),
@@ -128,7 +128,7 @@ internal val rcnnContent = TopicContent(
     ),
     takeaways = listOf(
         "Detection is not classification because the number of outputs varies — R-CNN's fix is to propose regions and classify each one.",
-        "It jumped VOC 2012 mAP from 35.1% to 53.3%, and cost 47 seconds per image with VGG-16.",
+        "It lifted VOC 2012 mAP to 53.3% (over 30% relative improvement), and cost 47 seconds per image with VGG-16.",
         "2,000 forward passes with no shared computation, and three models trained in three separate stages.",
         "NMS is part of the metric, not cleanup: a duplicate detection is scored as a false positive.",
         "On the lab's boxes AP@0.5 goes 0.833 → 1.000 with NMS alone — and VOC2007's older 11-point rule reports 0.848 for the same detections.",

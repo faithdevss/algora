@@ -26,7 +26,7 @@ internal val coreferenceContent = TopicContent(
     ),
     formulas = listOf(
         FormulaEntry("Candidate pairs", "m(m−1)/2 = 15 for 6 mentions", "Quadratic in document length — the reason for mention ranking and pruning."),
-        FormulaEntry("Pair vs chain scoring", "67% on immediate links, 100% on chain entities", "Measured on the lab's document; \"her\" → \"She\" is a correct link and a wrong entity."),
+        FormulaEntry("Pair vs chain scoring", "67% when each pronoun's immediate antecedent must be the named mention, 100% on chain entities", "A flawed link check, not true link scoring: \"her\" → \"She\" is a correct link but not the named mention."),
         FormulaEntry("Winograd baseline", "recency = 50% on the pair", "One word flips the gold answer; nothing syntactic changes."),
         FormulaEntry("CoNLL F1", "mean of MUC, B³ and CEAF", "Each metric alone rewards a different degenerate strategy."),
         FormulaEntry("MUC", "link-based recall/precision over chain edges", "Blind to singleton entities, which B³ fixes."),
@@ -64,7 +64,7 @@ internal val coreferenceContent = TopicContent(
                     return cur
 
                 print(entity(5))              # 'Ada Lovelace'
-                # 67% correct scored on links, 100% scored on entities. Score the chains.
+                # 67% when immediate antecedents must be the named mention, 100% scored on entities. Score the chains.
             """.trimIndent(),
         ),
         CodeBlock(
@@ -101,7 +101,7 @@ internal val coreferenceContent = TopicContent(
     takeaways = listOf(
         "Two steps: detect mentions, then partition them into chains — one chain per entity.",
         "Number, gender and animacy agreement resolves the easy majority with no model at all.",
-        "Score chains, not links: the lab's resolver is 67% on immediate antecedents and 100% on the entities they close to.",
+        "Score chains, not links: the lab's resolver is 67% when each antecedent must be the named mention (a flawed check) and 100% on the entities they close to.",
         "Winograd pairs pin every syntactic heuristic to 50% — one word flips the answer and the parse is identical.",
         "Mention-pair scoring is O(m²), and CoNLL F1 averages MUC, B³ and CEAF because each alone can be gamed.",
     ),

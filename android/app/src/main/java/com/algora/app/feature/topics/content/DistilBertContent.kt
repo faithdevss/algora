@@ -25,9 +25,9 @@ internal val distilBertContent = TopicContent(
         StepCard(6, "Read the Table", "39.4% smaller, not 50% — the embeddings do not move.", 0xFFEC4899),
     ),
     formulas = listOf(
-        FormulaEntry("Soft targets", "pᵢ = softmax(zᵢ / T)", "T = 4 in DistilBERT."),
-        FormulaEntry("Distillation loss", "L = T²·KL(student ‖ teacher) + L_mlm + L_cos", "Three terms, not one."),
-        FormulaEntry("Why T²", "soft gradients scale as 1/T²", "16× at T = 4, so the terms stay comparable."),
+        FormulaEntry("Soft targets", "pᵢ = softmax(zᵢ / T)", "T = 2 in DistilBERT's released recipe; T = 4 is used here as an illustration."),
+        FormulaEntry("Distillation loss", "L = T²·KL(teacher ‖ student) + L_mlm + L_cos", "Three terms, not one."),
+        FormulaEntry("Why T²", "soft gradients scale as 1/T²", "16× at T = 4 (4× at DistilBERT's T = 2), so the terms stay comparable."),
         FormulaEntry("Measured teacher", "top 0.296 · off-top 0.704", "Runner-up at 0.675 of the winner."),
         FormulaEntry("Size", "66,362,880 vs 109,482,240", "39.4% smaller at half the layers."),
         FormulaEntry("Embeddings", "23,835,648 in both", "36% of the student, 22% of the teacher."),

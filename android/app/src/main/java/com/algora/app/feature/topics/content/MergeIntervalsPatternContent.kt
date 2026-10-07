@@ -43,7 +43,7 @@ internal val mergeIntervalsPatternContent = TopicContent(
     formulas = listOf(
         FormulaEntry("Time", "O(n log n)", "The sort dominates; the sweep itself is a single O(n) pass."),
         FormulaEntry("Space", "O(n)", "Output list of merged intervals (O(1) beyond it if merging in place)."),
-        FormulaEntry("Overlap test", "aₛ ≤ bₑ", "Two intervals touch when the later start is within the earlier end."),
+        FormulaEntry("Overlap test", "s ≤ last.e", "Two intervals touch when the current start is at or before the end of the last kept interval."),
     ),
     notationKey = listOf(
         NotationEntry("[s, e]", "an interval with start s and end e"),

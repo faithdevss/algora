@@ -13,7 +13,7 @@ internal val efficientNetContent = TopicContent(
     topicId = "efficientnet",
     whatIsIt = listOf(
         "There are exactly three ways to make a convolutional network bigger: more layers (depth), more channels per layer (width), or larger input images (resolution). Every architecture before EfficientNet scaled one of them by hand — ResNet-50 to ResNet-152 is depth, WideResNet is width — and each axis saturates on its own. Accuracy flattens while the FLOPs keep climbing, because a deeper network on small images runs out of detail to see and a wider one on few layers runs out of abstraction to build.",
-        "Compound scaling ties all three to a single exponent: depth = 1.2^φ, width = 1.1^φ, resolution = 1.15^φ. The constants come from a small grid search under the constraint α·β²·γ² ≈ 2 — the squares are there because compute scales linearly with depth but quadratically with both width and resolution — which makes each unit of φ exactly a doubling of FLOPs. At φ = 6 that is depth ×2.99, width ×1.77 and resolution ×2.31, and the simulation plots all three growing together, with resolution rising fastest per unit of compute. That is why the family's input grows from 224² to 600² while its layer count barely triples.",
+        "Compound scaling ties all three to a single exponent: depth = 1.2^φ, width = 1.1^φ, resolution = 1.15^φ. The constants come from a small grid search under the constraint α·β²·γ² ≈ 2 — the squares are there because compute scales linearly with depth but quadratically with both width and resolution — which makes each unit of φ approximately a doubling of FLOPs (α·β²·γ² = 1.92). At φ = 6 that is depth ×2.99, width ×1.77 and resolution ×2.31, and the simulation plots all three growing together, with depth growing fastest and resolution taking the largest share of the added compute (γ² = 1.32 per step). That is why the family's input grows from 224² to 600² while its layer count barely triples.",
         "The measured payoff is large: EfficientNet-B7 reached 84.3% ImageNet top-1 with about 66M parameters, against GPipe's 557M at the same accuracy — 8.4× smaller and 6.1× faster to run. Two caveats keep this honest. The B0 backbone was itself found by neural architecture search over MobileNetV2-style inverted-residual blocks with squeeze-and-excitation, so compound scaling is what was applied to an already good small model rather than a substitute for having one. And FLOPs are not latency: the depthwise-heavy blocks that make B0 cheap on paper are memory-bandwidth-bound on GPUs, which is exactly what EfficientNetV2 went back and fixed by using ordinary convolutions in the early stages.",
     ),
     steps = listOf(
@@ -21,19 +21,19 @@ internal val efficientNetContent = TopicContent(
         StepCard(2, "Watch Each One Saturate", "Scaling any single axis flattens in accuracy long before it flattens in cost.", 0xFF06B6D4),
         StepCard(3, "Tie Them to One Exponent", "d = α^φ, w = β^φ, r = γ^φ, with α·β²·γ² ≈ 2.", 0xFF6366F1),
         StepCard(4, "Search the Constants Once", "1.2, 1.1, 1.15 — found on B0 by a small grid search, then reused.", 0xFF8B5CF6),
-        StepCard(5, "Turn One Dial", "φ = 0…6 gives B0…B6, each step doubling the FLOPs.", 0xFFF59E0B),
+        StepCard(5, "Turn One Dial", "φ = 0…6 approximately gives B0…B6, each step roughly doubling the FLOPs (the released B-models use hand-set coefficients).", 0xFFF59E0B),
         StepCard(6, "Start From a Good Backbone", "B0 came from architecture search; scaling amplifies it, it does not replace it.", 0xFFEC4899),
     ),
     formulas = listOf(
         FormulaEntry("Compound scaling", "d = α^φ, w = β^φ, r = γ^φ", "One exponent drives all three axes."),
         FormulaEntry("The constraint", "α·β²·γ² ≈ 2", "1.2 · 1.1² · 1.15² = 1.920 — each unit of φ doubles the FLOPs."),
         FormulaEntry("Why the squares", "cost ∝ d · w² · r²", "Linear in depth, quadratic in width and in each spatial axis."),
-        FormulaEntry("At φ = 6", "d ×2.99 · w ×1.77 · r ×2.31", "Resolution grows fastest per unit of compute."),
+        FormulaEntry("At φ = 6", "d ×2.99 · w ×1.77 · r ×2.31", "Depth grows fastest; resolution takes the largest share of added compute (γ² = 1.32 per step)."),
         FormulaEntry("Total FLOPs", "≈2^φ × baseline", "The scaling law the constants were chosen to produce."),
         FormulaEntry("B7 vs GPipe", "66M vs 557M parameters at 84.3% top-1", "8.4× smaller, 6.1× faster."),
     ),
     notationKey = listOf(
-        NotationEntry("φ (phi)", "the single compound coefficient; B0 through B7 are φ = 0 through 7"),
+        NotationEntry("φ (phi)", "the single compound coefficient; B0 through B7 map to it only approximately — the released models use hand-set coefficients"),
         NotationEntry("MBConv", "the inverted-residual block from MobileNetV2, with squeeze-and-excitation added"),
         NotationEntry("NAS", "the neural architecture search that produced the B0 baseline"),
         NotationEntry("squeeze-and-excitation", "per-channel gating learned from a global pooled summary"),
@@ -94,7 +94,7 @@ internal val efficientNetContent = TopicContent(
     takeaways = listOf(
         "Depth, width and resolution are the only three axes, and each saturates when scaled alone.",
         "Compound scaling drives all three from one exponent: 1.2^φ, 1.1^φ, 1.15^φ.",
-        "α·β²·γ² ≈ 2 makes each unit of φ a doubling of FLOPs; the squares reflect width and resolution both costing quadratically.",
+        "α·β²·γ² ≈ 2 makes each unit of φ approximately a doubling of FLOPs; the squares reflect width and resolution both costing quadratically.",
         "B7 hit 84.3% ImageNet top-1 with 66M parameters against GPipe's 557M — 8.4× smaller at equal accuracy.",
         "FLOPs are not latency: the depthwise-heavy B0 is bandwidth-bound on GPUs, which is what EfficientNetV2 corrected.",
     ),

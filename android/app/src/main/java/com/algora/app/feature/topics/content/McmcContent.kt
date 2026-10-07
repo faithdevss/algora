@@ -99,7 +99,7 @@ internal val mcmcContent = TopicContent(
         "MCMC samples a posterior without computing its normalizing constant — the ratio is all that is needed.",
         "Accepting downhill moves with probability p(new)/p(old) is what stops the chain collapsing onto the mode.",
         "Burn-in must be discarded, and effective sample size is the number that matters, not iteration count.",
-        "Step size fails in both directions, and convergence can only be failed to disprove — check R̂ and the traces.",
+        "Step size fails in both directions, and convergence can never be proven, only checked for failure — check R̂ and the traces.",
     ),
     crossLinks = listOf(
         CrossLink("bayesian_networks", "Bayesian Networks"),

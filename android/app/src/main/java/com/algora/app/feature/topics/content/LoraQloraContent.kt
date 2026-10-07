@@ -128,8 +128,8 @@ internal val loraQloraContent = TopicContent(
                 print(eff_rank)                # 3.05   (the base weights: 11.51)
 
                 # The floor any rank-r adapter must respect, with no training involved:
-                predicted = [(s[r:] ** 2).sum() / delta.shape[0] for r in range(1, 9)]
-                # 0.298, 0.111, 0.043, 0.020, ...   and the trained sweep landed at
+                predicted = [(s[r:] ** 2).sum() / delta.shape[0] for r in (1, 2, 4, 8)]
+                # 0.298, 0.111, 0.043, 0.020 at r = 1, 2, 4, 8   and the trained sweep landed at
                 # 0.309, 0.121, 0.047, 0.023, ...   -- just above, at every rank.
 
                 # And scale the rate with the rank, or low ranks blow up:

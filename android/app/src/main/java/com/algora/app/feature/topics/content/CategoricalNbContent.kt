@@ -28,7 +28,7 @@ internal val categoricalNbContent = TopicContent(
         FormulaEntry("Likelihood", "P(xⱼ=v | c) = (N_{j,v,c} + α) / (Nc + α·|values(j)|)", "One table per feature."),
         FormulaEntry("Score", "log P(c) + Σⱼ log P(xⱼ | c)", "Sum over features."),
         FormulaEntry("Parameters", "K · Σⱼ |values(j)|", "Linear in cardinality, not multiplicative."),
-        FormulaEntry("Full joint instead", "K · ∏ⱼ |values(j)| − 1", "The combinatorial cost the assumption avoids."),
+        FormulaEntry("Full joint instead", "K · (∏ⱼ |values(j)| − 1)", "The combinatorial cost the assumption avoids."),
         FormulaEntry("Smoothing denominator", "+α·|values(j)|", "Per-feature, not vocabulary-wide."),
         FormulaEntry("Unseen value", "no column exists", "A hard failure, unlike an unseen word."),
     ),
@@ -51,15 +51,17 @@ internal val categoricalNbContent = TopicContent(
                 # OrdinalEncoder here is a storage format, not a claim about order —
                 # CategoricalNB reads the integers as table indices and never compares them.
                 # handle_unknown matters: without it, a category the training set never
-                # contained raises at predict time rather than degrading.
+                # contained raises at predict time. unknown_value must be NON-NEGATIVE —
+                # CategoricalNB rejects -1 with a ValueError — so map unknowns to a reserved
+                # index and size min_categories to include it. The unseen value then falls
+                # back to the smoothed prior for that feature.
                 model = make_pipeline(
-                    OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1),
-                    CategoricalNB(alpha=1.0),
+                    OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=3),
+                    CategoricalNB(alpha=1.0, min_categories=4),
                 ).fit(X_train, y_train)
 
-                # min_categories reserves table columns for values you know exist but that
-                # happen not to appear in this particular training split.
-                CategoricalNB(alpha=1.0, min_categories=[3, 3, 2, 2])
+                # min_categories also reserves table columns for values you know exist but
+                # that happen not to appear in this particular training split.
             """.trimIndent(),
         ),
         CodeBlock(

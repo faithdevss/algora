@@ -61,7 +61,8 @@ internal val smoteContent = TopicContent(
                 ])
                 print(cross_val_score(pipeline, X, y, cv=5, scoring="recall").mean())
 
-                # The lab measures the gap between these two at 0.954 vs 0.908 over 5 folds. It is
+                # The lab measures the gap between these two at 0.954 vs 0.908 over 5 folds (with its own
+                # 1-NN estimator); this 5-NN recall code will print different numbers. It is
                 # not a subtle bug -- it produces a number you will be asked to reproduce.
             """.trimIndent(),
         ),

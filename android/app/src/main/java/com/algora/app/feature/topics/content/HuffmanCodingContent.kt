@@ -60,15 +60,15 @@ internal val huffmanCodingContent = TopicContent(
             title = "Building the Huffman tree",
             accentColor = 0xFF6366F1,
             code = """
-                class Node(val freq: Int, val left: Node? = null, val right: Node? = null)
+                class Node(val freq: Int, val ch: Char? = null, val left: Node? = null, val right: Node? = null)
 
                 fun buildHuffman(freqs: Map<Char, Int>): Node {
                     val pq = java.util.PriorityQueue<Node>(compareBy { it.freq })
-                    for ((_, f) in freqs) pq.add(Node(f))
+                    for ((c, f) in freqs) pq.add(Node(f, ch = c))   // leaves keep their symbol
                     while (pq.size > 1) {
                         val a = pq.poll()
                         val b = pq.poll()
-                        pq.add(Node(a.freq + b.freq, a, b))   // merge two smallest
+                        pq.add(Node(a.freq + b.freq, left = a, right = b))   // merge two smallest
                     }
                     return pq.poll()
                 }

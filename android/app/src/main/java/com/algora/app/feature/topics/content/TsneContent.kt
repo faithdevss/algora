@@ -68,7 +68,7 @@ internal val tsneContent = TopicContent(
         StepCard(1, "Solve σᵢ per Point", "Binary search each point's Gaussian width so its neighbourhood entropy equals log(perplexity).", 0xFFEC4899),
         StepCard(2, "Build P", "Symmetrise the conditional probabilities into a joint distribution over pairs.", 0xFFF472B6),
         StepCard(3, "Initialise the Map", "Small random values, or a PCA initialisation — which is the cheapest way to keep some global structure.", 0xFF8B5CF6),
-        StepCard(4, "Exaggerate Early", "Multiply P by ~4 for the first ~250 iterations so clusters separate before repulsion takes over.", 0xFF6366F1),
+        StepCard(4, "Exaggerate Early", "Multiply P by ~4–12 (12 in scikit-learn) for the first ~50–250 iterations (250 in scikit-learn) so clusters separate before repulsion takes over.", 0xFF6366F1),
         StepCard(5, "Descend on KL(P‖Q)", "Q is a Student-t with one degree of freedom; its heavy tail is the crowding fix.", 0xFF10B981),
         StepCard(6, "Read It With Discipline", "Groups: yes. Cluster sizes, gaps, and anything about points that were far apart: no.", 0xFF14B8A6),
     ),

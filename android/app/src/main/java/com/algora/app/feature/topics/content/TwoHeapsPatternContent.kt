@@ -91,7 +91,7 @@ internal val twoHeapsPatternContent = TopicContent(
     takeaways = listOf(
         "Two heaps buy O(1) median for O(log n) insert — the sorted order you never fully materialise.",
         "The invariant is everything: max(lo) ≤ min(hi), sizes differing by at most one.",
-        "Always push-then-transfer; inserting straight into the \"correct\" heap breaks the ordering invariant.",
+        "Push-then-transfer is the simplest way to keep the invariant; comparing with the lower heap's top, inserting into the right heap and then rebalancing sizes also works.",
         "For a sliding window, pair the heaps with a delete-later map — heaps cannot remove an interior element.",
     ),
     crossLinks = listOf(

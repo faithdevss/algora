@@ -13,8 +13,8 @@ internal val flashAttentionContent = TopicContent(
     topicId = "flash_attention",
     whatIsIt = listOf(
         "Flash Attention computes exactly the same function as standard attention and never builds the N×N score matrix. It tiles the keys and values, streams them through on-chip memory, and carries three running numbers per query block — a maximum, a denominator and an output — rescaling the accumulator whenever a new block raises the maximum. The lab runs both algorithms on the same 512 scores: they differ by 3e-16, which is floating-point noise. This is not an approximation, and the block size changes nothing about the answer.",
-        "The running maximum is not an optimisation, it is what makes the sum finite. Without it every term is exp(score), which overflows a float64 above 709.78 — and attention logits routinely reach that in long-context models. A peak score of 500 survives; 710 returns NaN.",
-        "What it buys is memory, and that saving is enormous. The score matrix at N = 65,536 across 32 heads is **256 GB** of activations, and the tiled kernel allocates none of it. That term is what made long-sequence training impossible and its removal is what made 128k-token training routine.",
+        "The running maximum is not an optimisation, it is what makes the sum finite. Without it every term is exp(score), which overflows a float64 above 709.78 (and far sooner in the precisions kernels actually use: ≈88.7 in fp32/bf16, ≈11.1 in fp16). A peak score of 500 survives in float64; 710 returns NaN.",
+        "What it buys is memory, and that saving is enormous. The score matrix at N = 65,536 across 32 heads is **256 GiB** of activations, and the tiled kernel allocates none of it. That term is what made long-sequence training impossible and its removal is what made 128k-token training routine.",
         "The traffic saving is smaller than the folklore, and worth stating precisely because the folklore has no denominator. Standard attention moves about 4N² elements through HBM; the tiled kernel re-reads K and V once per query block, which is 2N²·d/Br. The ratio is exactly **2·Br/d** — a property of the tile size and the head dimension, with no N in it at all. At Br = 128 and d = 64 that is 4×, and it measures 4.00× at N = 65,536. It also *costs* arithmetic: the backward pass has no stored scores to read, so it recomputes QKᵀ — 16.7% more FLOPs across forward and backward. It is faster anyway, which is the lesson: on this hardware the arithmetic is nearly free and the memory traffic is not.",
     ),
     steps = listOf(
@@ -30,7 +30,7 @@ internal val flashAttentionContent = TopicContent(
         FormulaEntry("Exactness", "max difference 3e-16", "Against the naive softmax on the same 512 scores."),
         FormulaEntry("Overflow", "exp overflows above 709.78", "Which is why the running max is load-bearing."),
         FormulaEntry("Traffic ratio", "2·Br / d", "Exactly — no N in it. 4× at Br=128, d=64."),
-        FormulaEntry("Score matrix", "256 GB at N=65,536 over 32 heads", "Never allocated. This is the real saving."),
+        FormulaEntry("Score matrix", "256 GiB at N=65,536 over 32 heads", "Never allocated. This is the real saving."),
         FormulaEntry("FLOP cost", "1.167× forward+backward", "Recomputation is arithmetic bought back for traffic."),
     ),
     notationKey = listOf(
@@ -80,7 +80,7 @@ internal val flashAttentionContent = TopicContent(
                 # What it saved, and what it cost:
                 N, d, Br, heads = 65_536, 64, 128, 32
 
-                score_matrix_gb = heads * N * N * 2 / 1e9        # 256 GB, never allocated
+                score_matrix_gb = heads * N * N * 2 / 2**30      # 256 GiB, never allocated
                 traffic_ratio   = 2 * Br / d                      # 4.0x, exactly, for any N
                 flop_overhead   = 1.167                           # recomputation in backward
 
@@ -99,8 +99,8 @@ internal val flashAttentionContent = TopicContent(
     ),
     takeaways = listOf(
         "Flash Attention is exact: 3e-16 from the textbook softmax, and the block size does not affect the answer.",
-        "The running maximum is what keeps the sum finite — exp overflows above 709.78, which long-context logits reach.",
-        "The real win is the 256 GB score matrix at N=65,536 that is never allocated, not the traffic saving.",
+        "The running maximum is what keeps the sum finite — exp overflows above 709.78 in float64 and ≈88.7 in fp32 (≈11.1 in fp16), which is why kernels subtract the running max.",
+        "The real win is the 256 GiB score matrix at N=65,536 that is never allocated, not the traffic saving.",
         "The traffic saving is exactly 2·Br/d — 4× at Br=128, d=64, with no dependence on sequence length whatsoever.",
         "It costs 16.7% more FLOPs to recompute QKᵀ in the backward pass, and is faster anyway. Traffic dominates arithmetic.",
     ),

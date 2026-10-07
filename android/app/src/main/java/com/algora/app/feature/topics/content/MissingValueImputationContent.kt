@@ -17,14 +17,14 @@ internal val missingValueImputationContent = TopicContent(
     topicId = "missing_value_imputation",
     figure = Figure(
         caption = "At 30% missing completely at random, mean imputation drops this column's variance " +
-            "from 8.09 to 5.89 — a 0.728 ratio, close to the 0.70 the missing rate alone predicts — and " +
+            "from 8.09 to 5.89 — a filled ÷ observed variance of 5.89 / 8.44 = 0.698, close to the 0.70 the missing rate alone predicts — and " +
             "its correlation with a partner column from 0.982 to 0.829, because the filled rows carry " +
             "none of that relationship. Dropping the 60 affected rows instead keeps both statistics " +
             "within noise of the original, at the cost of 30% of the sample.",
         shape = FigureShape.Plot(
             bars = listOf(
                 FigureBar("Var, observed", 1f),
-                FigureBar("Var, imputed", 0.728f, FigureTone.Warn),
+                FigureBar("Var, imputed", 0.698f, FigureTone.Warn),
                 FigureBar("Corr, observed", 0.982f),
                 FigureBar("Corr, imputed", 0.829f, FigureTone.Warn),
             ),
@@ -33,20 +33,20 @@ internal val missingValueImputationContent = TopicContent(
     ),
     whatIsIt = listOf(
         "Imputation fills missing values so that models which cannot accept them will run. The cheapest version is a constant — the mean of what was observed — and it does exactly what it promises: nothing crashes, no rows are lost, every downstream step works. What it also does is change the column, and the lab measures that against the complete data the holes were cut from.",
-        "With 30% of a column missing completely at random, mean imputation drops its variance from 8.09 to 5.89 — a ratio of 0.728, against the 0.70 that the missing rate alone predicts, because the filled values contribute nothing to the spread. The damage is not confined to one column either: this column's correlation with another falls from 0.982 to 0.829, because 30% of the rows now carry a value that has nothing to do with their partner. Imputation attenuates every relationship the column was in, and it does so silently.",
+        "With 30% of a column missing completely at random, mean imputation drops its variance from 8.09 to 5.89 — a filled ÷ observed variance ratio of 5.89 / 8.44 = 0.698, against the 0.70 that the missing rate alone predicts, because the filled values contribute nothing to the spread. The damage is not confined to one column either: this column's correlation with another falls from 0.982 to 0.829, because 30% of the rows now carry a value that has nothing to do with their partner. Imputation attenuates every relationship the column was in, and it does so silently.",
         "Dropping the rows keeps the column honest — variance 8.44, correlation 0.982, both essentially the originals — at a cost of 60 of 200 rows. That trade is the actual decision, and it is only this clean because the values here are missing at random; when missingness depends on the value itself (income unreported because it is high) dropping rows biases the sample and no constant can repair it. One more choice the constant hides: on a skewed column the mean is 43.3 and the median 5.3, so filling with the mean inserts a value almost no real row has. Median for skewed columns, mode for categorical ones, mean only when the column is roughly symmetric — and add a was-missing indicator column, because the fact of absence is often the signal.",
     ),
     steps = listOf(
         StepCard(1, "Count and Classify", "How much is missing, and is it missing at random?", 0xFFF97316),
         StepCard(2, "Choose the Filler", "Mean, median or mode — the column's shape decides.", 0xFF3B82F6),
         StepCard(3, "Fill", "Nothing crashes; the column is now different.", 0xFF10B981),
-        StepCard(4, "Measure the Damage", "Variance 8.09 → 5.89, ratio 0.728.", 0xFFEC4899),
+        StepCard(4, "Measure the Damage", "Variance 8.09 → 5.89; filled ÷ observed = 5.89 / 8.44 = 0.698.", 0xFFEC4899),
         StepCard(5, "Check the Correlations", "0.982 → 0.829 with a partner column.", 0xFF8B5CF6),
         StepCard(6, "Keep the Indicator", "Was-missing is a feature, and often a strong one.", 0xFF6366F1),
     ),
     formulas = listOf(
         FormulaEntry("Mean imputation", "xᵢ = x̄ for missing i", "Estimated on observed values only."),
-        FormulaEntry("Variance ratio", "≈ 1 − p", "0.70 predicted at p = 0.30; 0.728 measured."),
+        FormulaEntry("Variance ratio", "≈ 1 − p", "0.70 predicted at p = 0.30; 0.698 measured (filled ÷ observed variance)."),
         FormulaEntry("Correlation attenuation", "0.982 → 0.829", "The filled rows carry no relationship."),
         FormulaEntry("Complete-case cost", "60 of 200 rows", "Unbiased under MCAR, biased otherwise."),
         FormulaEntry("Skewed column", "mean 43.3 · median 5.3", "The mean is a value nearly no row has."),
@@ -101,7 +101,7 @@ internal val missingValueImputationContent = TopicContent(
                         "corr_filled":    filled.corr(df["partner"]),
                     })
 
-                # On the lab's column: var_ratio 0.728, corr 0.982 -> 0.829.
+                # On the lab's column: var_ratio 0.698 (5.89 / 8.44), corr 0.982 -> 0.829.
                 # If the variance ratio is close to 1 - missing_rate, you are looking at pure
                 # shrinkage: the model downstream will see a column with less signal than the data
                 # actually contains, and no amount of tuning recovers it.
@@ -117,7 +117,7 @@ internal val missingValueImputationContent = TopicContent(
     ),
     takeaways = listOf(
         "Constant imputation makes models run; it also changes the column, measurably.",
-        "At 30% missing, mean imputation took variance 8.09 → 5.89 — a 0.728 ratio against the 0.70 the rate predicts.",
+        "At 30% missing, mean imputation took variance 8.09 → 5.89 — a 0.698 filled ÷ observed ratio against the 0.70 the rate predicts.",
         "Correlation with a partner column fell 0.982 → 0.829: the damage crosses columns.",
         "Dropping rows kept both statistics intact and cost 60 of 200 rows — that trade is the real decision.",
         "It is only a clean trade under MCAR; when missingness depends on the value, nothing repairs it.",

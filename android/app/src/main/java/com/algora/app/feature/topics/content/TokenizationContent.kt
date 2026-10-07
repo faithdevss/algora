@@ -18,7 +18,7 @@ internal val tokenizationContent = TopicContent(
     topicId = "tokenization",
     figure = Figure(
         caption = "Four words, five tokens, and none of the boundaries are where a reader would put " +
-            "them. A subword vocabulary never has to say \"unknown\": a rare word is spelled out of " +
+            "them. A byte-level subword vocabulary never has to say \"unknown\": a rare word is spelled out of " +
             "pieces it already holds, which is why \"tokenization\" costs two tokens and \"is\" costs " +
             "one. Everything downstream is priced in this row — context length, the cost of a " +
             "generated word, and which languages fit in a budget at all.",
@@ -28,7 +28,7 @@ internal val tokenizationContent = TopicContent(
                 FigureBand(0, 1, "one rare word"),
                 FigureBand(3, 4, "a contraction split", FigureTone.Accent),
             ),
-            pointers = listOf(FigurePointer(1, "no OOV here")),
+            pointers = listOf(FigurePointer(1, "byte-level")),
             aux = listOf("9421", "2734", "318", "470", "1327"),
             auxLabel = "ids — what the model actually receives",
         ),
@@ -40,13 +40,13 @@ internal val tokenizationContent = TopicContent(
     steps = listOf(
         StepCard(1, "Choose Granularity", "Split into words, characters, or subwords — each trades vocabulary size against sequence length.", 0xFF818CF8),
         StepCard(2, "Handle the Messy Bits", "Punctuation, contractions, casing, and unknown symbols all need consistent rules.", 0xFF60A5FA),
-        StepCard(3, "Subword Merging", "BPE/WordPiece build a vocabulary by merging frequent character pairs, so rare words become known pieces.", 0xFF10B981),
+        StepCard(3, "Subword Merging", "BPE merges the most frequent pair; WordPiece merges the pair with the largest likelihood gain. Either way rare words become known pieces.", 0xFF10B981),
         StepCard(4, "Map to IDs", "Each token becomes an integer index the model can embed.", 0xFFF59E0B),
     ),
     formulas = listOf(
         FormulaEntry("BPE merge", "merge most frequent pair", "Repeatedly, until the vocab reaches target size."),
         FormulaEntry("Trade-off", "vocab size ↔ sequence length", "Smaller vocab means longer token sequences."),
-        FormulaEntry("Coverage", "no true OOV with subwords", "Any word decomposes into known subword units."),
+        FormulaEntry("Coverage", "no OOV with a byte-level base", "With a byte-level base any word decomposes into known units; character-base models (e.g. BERT WordPiece) still emit [UNK] for unseen characters."),
     ),
     notationKey = listOf(
         NotationEntry("token", "the atomic text unit fed to a model"),
@@ -74,7 +74,7 @@ internal val tokenizationContent = TopicContent(
     ),
     takeaways = listOf(
         "Tokenization converts text into the units a model processes — the pipeline's first step.",
-        "Subword methods (BPE, WordPiece) balance vocabulary size against sequence length and kill true OOV.",
+        "Subword methods (BPE, WordPiece) balance vocabulary size against sequence length and eliminate OOV with a byte-level base (greatly reducing it otherwise).",
         "Token count directly determines LLM context usage and API cost.",
         "The tokenizer must match the model it was trained with.",
     ),

@@ -56,7 +56,7 @@ internal val lleContent = TopicContent(
     ),
     whatIsIt = listOf(
         "Locally Linear Embedding rests on one observation: a curved surface is flat if you look at a small enough piece of it. So although the data as a whole is not linear, each point *is* approximately a linear combination of its few nearest neighbours — and the coefficients of that combination describe the local geometry without reference to any coordinate system.",
-        "That last part is what makes the method work. The reconstruction weights are constrained to sum to one, which makes them invariant to translating, rotating and rescaling the patch they were computed in. They therefore describe the patch's shape rather than its position, and the same weights remain meaningful in a completely different space. LLE finds low-dimensional coordinates in which each point is still reconstructed by its neighbours using those same weights — which turns out to be an eigenvector problem, solvable in closed form with no gradient descent, no learning rate and no random restarts.",
+        "That last part is what makes the method work. The reconstruction weights are constrained to sum to one, which, together with the least-squares form, makes them invariant to translating, rotating and rescaling the patch they were computed in (rotation and scale invariance come from the least-squares form; the constraint adds translation invariance). They therefore describe the patch's shape rather than its position, and the same weights remain meaningful in a completely different space. LLE finds low-dimensional coordinates in which each point is still reconstructed by its neighbours using those same weights — which turns out to be an eigenvector problem, solvable in closed form with no gradient descent, no learning rate and no random restarts.",
         "The eigenvector detail is worth knowing because it is a common source of confusion. You take the *bottom* eigenvectors of M = (I−W)ᵀ(I−W), not the top, since you are minimising a quadratic form rather than maximising one; and the very bottom one is always the constant vector with eigenvalue zero, which carries no information and is discarded. The failure mode is equally worth knowing: everything depends on k, and if the neighbourhoods short-circuit — connecting parts of the manifold that are close in the ambient space but far along the surface — the weights stop describing a curve and the embedding collapses. This topic's simulation shows exactly that, with the number of short-circuit links and the recovered rank correlation both measured at two values of k.",
     ),
     steps = listOf(
@@ -69,7 +69,7 @@ internal val lleContent = TopicContent(
     ),
     formulas = listOf(
         FormulaEntry("Reconstruction error", "ε(W) = Σᵢ ‖xᵢ − Σⱼ wᵢⱼxⱼ‖²", "Only over the k neighbours; wᵢⱼ = 0 otherwise."),
-        FormulaEntry("Constraint", "Σⱼ wᵢⱼ = 1", "What buys invariance to translation, rotation and scale."),
+        FormulaEntry("Constraint", "Σⱼ wᵢⱼ = 1", "Gives translation invariance; rotation and rescaling invariance come from the least-squares form itself."),
         FormulaEntry("Local Gram matrix", "Cⱼₖ = (xᵢ−xⱼ)·(xᵢ−xₖ)", "The weights come from solving Cw = 1 and renormalising."),
         FormulaEntry("Regularisation", "C ← C + δ·tr(C)·I", "Needed whenever k > d, where C is singular."),
         FormulaEntry("Embedding cost", "Φ(Y) = Σᵢ ‖yᵢ − Σⱼ wᵢⱼyⱼ‖² = tr(YᵀMY)", "Same weights, new coordinates."),
@@ -144,7 +144,7 @@ internal val lleContent = TopicContent(
     ),
     takeaways = listOf(
         "It assumes only local linearity: each point is a weighted combination of its neighbours.",
-        "The sum-to-one constraint makes the weights invariant to translation, rotation and scale, which is what lets them transfer to a new space.",
+        "The weights are invariant to rotation and rescaling by construction, and the sum-to-one constraint adds translation invariance — which is what lets them transfer to a new space.",
         "Closed form via eigenvectors — no learning rate, no initialisation, no restarts.",
         "Take the *bottom* eigenvectors of (I−W)ᵀ(I−W) and discard the constant one.",
         "k decides everything: short-circuits across a fold collapse the embedding, and the plot will not warn you.",

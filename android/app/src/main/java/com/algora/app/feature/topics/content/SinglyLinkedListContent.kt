@@ -40,7 +40,8 @@ internal val singlyLinkedListContent = TopicContent(
     ),
     formulas = listOf(
         FormulaEntry("Insert / Delete at head", "O(1)", "Just repoint the head — no shifting needed."),
-        FormulaEntry("Insert / Delete at tail", "O(n)*", "*O(1) if a tail pointer is maintained; O(n) to find it otherwise."),
+        FormulaEntry("Insert at tail", "O(n)*", "*O(1) if a tail pointer is maintained."),
+        FormulaEntry("Delete at tail", "O(n)", "Needs the predecessor, so it is an O(n) walk even with a tail pointer; O(1) only in a doubly linked list."),
         FormulaEntry("Access / Search by value", "O(n)", "Must walk from the head — no direct addressing."),
     ),
     notationKey = listOf(

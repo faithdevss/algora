@@ -26,13 +26,13 @@ internal val regularizationContent = TopicContent(
         FormulaEntry("Ridge (L2)", "J = Σ(yᵢ − ŷᵢ)² + λ Σ wⱼ²", "Smooth, has a closed form, keeps all features."),
         FormulaEntry("Lasso (L1)", "J = Σ(yᵢ − ŷᵢ)² + λ Σ |wⱼ|", "Non-differentiable at 0 — which is exactly why weights land there."),
         FormulaEntry("Elastic net", "J = loss + λ(α Σ|wⱼ| + (1−α) Σ wⱼ²)", "Sparsity plus stability under correlated features."),
-        FormulaEntry("Ridge gradient step", "w ← w(1 − ην·λ) − η∇loss", "Weight decay: every step scales w down before the data pulls it back."),
+        FormulaEntry("Ridge gradient step", "w ← w(1 − 2ηλ) − η∇loss", "Weight decay: every step scales w down before the data pulls it back."),
     ),
     notationKey = listOf(
         NotationEntry("λ", "regularization strength — the knob you tune"),
         NotationEntry("w", "model weights, excluding the bias/intercept"),
         NotationEntry("α", "elastic-net mixing ratio between L1 and L2"),
-        NotationEntry("weight decay", "the optimizer's name for L2 regularization"),
+        NotationEntry("weight decay", "equivalent to L2 for plain SGD; differs for adaptive optimizers like Adam (see AdamW)"),
     ),
     codeBlocks = listOf(
         CodeBlock(

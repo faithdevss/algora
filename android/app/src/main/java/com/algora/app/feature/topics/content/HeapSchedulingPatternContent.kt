@@ -46,7 +46,7 @@ internal val heapSchedulingPatternContent = TopicContent(
     formulas = listOf(
         FormulaEntry("Time / Space", "O(n log n) / O(n)", "One sort plus one push and pop per task."),
         FormulaEntry("Meeting rooms", "answer = max heap size", "Equivalent to the sweep-line overlap peak."),
-        FormulaEntry("Task scheduler", "idle slots = (maxCount - 1) · (cooldown + 1)", "Closed form when one task dominates the schedule."),
+        FormulaEntry("Task scheduler", "total = max(len(tasks), (maxCount - 1) · (cooldown + 1) + numMax)", "Closed form; idle slots = total - len(tasks). numMax = tasks sharing the max count."),
     ),
     notationKey = listOf(
         NotationEntry("pq", "min-heap of end times, or max-heap of remaining counts"),

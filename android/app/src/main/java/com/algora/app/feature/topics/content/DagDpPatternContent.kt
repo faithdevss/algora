@@ -49,12 +49,12 @@ internal val dagDpPatternContent = TopicContent(
         StepCard(1, "Spot the Signal", "Prerequisites or one-way dependencies plus a best/count/longest question — course chains, build times, path counts, matrix increasing-path length.", 0xFFF59E0B),
         StepCard(2, "Prove It Is Acyclic", "Kahn's algorithm produces a full order only if the graph is a DAG. A short order means a cycle, and the DP is undefined.", 0xFF3B82F6),
         StepCard(3, "Relax Forward in Order", "For each u in topological order and each edge u → v: dp[v] = best(dp[v], dp[u] + w). No vertex is read before it is settled.", 0xFFEF4444),
-        StepCard(4, "Pick the Aggregate", "max for longest path, min for earliest completion, sum for counting paths. Only the combining operator changes.", 0xFF10B981),
+        StepCard(4, "Pick the Aggregate", "max for longest path (and for earliest start/completion with dependencies — the critical path), min for shortest path, sum for counting paths. Only the combining operator changes.", 0xFF10B981),
     ),
     formulas = listOf(
         FormulaEntry("Time / Space", "O(V + E) / O(V)", "One topological sort plus one relaxation sweep."),
         FormulaEntry("Longest path", "dp[v] = max(dp[u] + w(u,v)) over incoming u", "NP-hard on general graphs, linear on a DAG."),
-        FormulaEntry("Path counting", "ways[v] = Σ ways[u]", "Same sweep, sum instead of max — take it modulo when asked."),
+        FormulaEntry("Path counting", "ways[v] = 1 + Σ ways[u]", "Same sweep, sum instead of max — counts paths ending at v from any start (the empty path is the 1); seed only the source with 1 for source-to-v paths. Take it modulo when asked."),
     ),
     notationKey = listOf(
         NotationEntry("dp[v]", "best value of any path ending at v"),
@@ -87,7 +87,7 @@ internal val dagDpPatternContent = TopicContent(
                         raise ValueError("graph has a cycle — DP undefined")
 
                     longest = [0] * n
-                    ways = [1] * n                         # paths ending at each source
+                    ways = [1] * n                         # paths ending at v from ANY start (empty path = 1)
                     for u in order:                        # every edge relaxed once, forward
                         for v, w in adj[u]:
                             longest[v] = max(longest[v], longest[u] + w)

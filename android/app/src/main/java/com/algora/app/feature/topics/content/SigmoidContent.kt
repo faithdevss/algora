@@ -57,7 +57,7 @@ internal val sigmoidContent = TopicContent(
     whatIsIt = listOf(
         "σ(z) = 1/(1+e⁻ᶻ) takes any real number and returns something in (0, 1). It is smooth, monotone, and its output reads directly as a probability — which is why it was the default hidden activation for three decades and why it remains exactly the right choice as the output of a binary classifier.",
         "Its problem is the derivative. σ′(z) = σ(z)(1−σ(z)) peaks at exactly 0.25, at z = 0, and falls away quickly on both sides. Backpropagation multiplies one such factor per layer, so a deep sigmoid stack multiplies the gradient by at most a quarter per layer before the weights are even considered — the simulation runs twenty layers and measures the first layer's gradient at around 10¹¹ times weaker than the last's.",
-        "It has a second, subtler flaw that motivated tanh: it is not zero-centred. Measured over standard normal input the mean output is 0.497, so every activation a downstream unit sees is positive. That makes all the weights in that unit's gradient share a sign, so an update can only move them all up or all down, and the path to the minimum becomes a zig-zag. Worth noting that saturation is not a fixed property of the curve but of how wide the pre-activations are: at a pre-activation standard deviation of 1 essentially nothing is saturated, and at 16 more than three quarters is — which is why the same activation can look fine in a shallow well-scaled network and stall a deep one.",
+        "It has a second, subtler flaw that motivated tanh: it is not zero-centred. Measured over standard normal input the mean output is ≈0.500, so every activation a downstream unit sees is positive. That makes all the weights in that unit's gradient share a sign, so an update can only move them all up or all down, and the path to the minimum becomes a zig-zag. Worth noting that saturation is not a fixed property of the curve but of how wide the pre-activations are: at a pre-activation standard deviation of 1 essentially nothing is saturated, and at 16 more than three quarters is — which is why the same activation can look fine in a shallow well-scaled network and stall a deep one.",
     ),
     steps = listOf(
         StepCard(1, "Squash to (0, 1)", "Any real input, a bounded output. The bounding is what makes it read as a probability.", 0xFFF59E0B),
@@ -97,10 +97,12 @@ internal val sigmoidContent = TopicContent(
                 # Use the fused loss, always. BCEWithLogitsLoss applies the log-sum-exp trick
                 # internally; sigmoid followed by BCELoss computes log(sigmoid(z)) in two steps and
                 # loses precision (or returns inf) once |z| is large.
-                logits = torch.tensor([-40.0, 40.0])
-                target = torch.tensor([0.0, 1.0])
-                print(nn.BCEWithLogitsLoss()(logits, target))          # 0.0, stable
-                print(nn.BCELoss()(torch.sigmoid(logits), target))     # underflows
+                # A confidently WRONG prediction is where the two-step version fails:
+                logits = torch.tensor([40.0])
+                target = torch.tensor([0.0])
+                print(nn.BCEWithLogitsLoss()(logits, target))          # 40.0, exact
+                print(nn.BCELoss()(torch.sigmoid(logits), target))     # 100.0: sigmoid(40) rounds to 1.0,
+                                                                       # log(0) is clamped to -100
             """.trimIndent(),
         ),
         CodeBlock(

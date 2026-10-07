@@ -160,7 +160,8 @@ internal val gaussianNbContent = TopicContent(
 
                 # Correlated features are counted as independent evidence, so the same signal
                 # gets multiplied in repeatedly. Isotonic or Platt calibration fixes the
-                # numbers without changing the ranking at all — AUC is unmoved.
+                # numbers; AUC is typically similar, though isotonic creates ties and the
+                # cv=5 ensemble refits, so it can shift.
                 cal = CalibratedClassifierCV(GaussianNB(), method="isotonic", cv=5)
                 cal.fit(X_train, y_train)
                 print(brier_score_loss(y_test, cal.predict_proba(X_test)[:, 1]))

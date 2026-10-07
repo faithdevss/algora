@@ -18,8 +18,8 @@ internal val aprioriContent = TopicContent(
     topicId = "apriori",
     figure = Figure(
         caption = "The lattice Apriori refuses to search. With d items there are 2ᵈ subsets, so a " +
-            "hundred products give more candidates than there are atoms in the observable " +
-            "universe. One observation makes it tractable: an itemset cannot appear in more " +
+            "hundred products give over 10³⁰ candidates, and about 266 items would pass the " +
+            "~10⁸⁰ atoms in the observable universe. One observation makes it tractable: an itemset cannot appear in more " +
             "baskets by demanding more things, so if {C} is infrequent then {A,C}, {B,C} and " +
             "{A,B,C} are too — discarded before a single basket is read, which is the entire " +
             "algorithm. What survives level by level is the left spine: {A}, {B}, {A,B}. The trap " +
@@ -48,7 +48,7 @@ internal val aprioriContent = TopicContent(
         ),
     ),
     whatIsIt = listOf(
-        "Association rule mining asks which things co-occur in a collection of sets — baskets in a shop, pages in a session, symptoms in a chart. The obstacle is arithmetic: with d items there are 2ᵈ possible itemsets, so a hundred products give more subsets than there are atoms in the observable universe. No amount of engineering scans that space.",
+        "Association rule mining asks which things co-occur in a collection of sets — baskets in a shop, pages in a session, symptoms in a chart. The obstacle is arithmetic: with d items there are 2ᵈ possible itemsets, so a hundred products give over 10³⁰ subsets (about 266 items would pass the ~10⁸⁰ atoms in the observable universe). No amount of engineering scans that space.",
         "Apriori's contribution is a single observation that makes the space searchable. If an itemset is infrequent, every superset of it is infrequent too — you cannot appear in more baskets by demanding more things. So the search can proceed level by level, and any candidate with an infrequent subset is discarded before a single basket is read. That is the Apriori property, sometimes called downward closure, and it is the whole algorithm; everything else is bookkeeping.",
         "The cost is that it needs one pass over the database per level, and it generates candidates it then has to count. On a database with long frequent itemsets this becomes painful, which is exactly what Eclat and FP-Growth are responses to. It also produces rules, not just itemsets — and that step brings its own trap, because the obvious rule score, confidence, is blind to how common the consequent is. The simulation shows a rule with 75% confidence whose lift is 0.83: the antecedent makes the consequent *less* likely, and confidence alone reports it as a strong finding.",
     ),

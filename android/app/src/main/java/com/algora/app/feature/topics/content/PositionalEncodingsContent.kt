@@ -54,7 +54,7 @@ internal val positionalEncodingsContent = TopicContent(
         StepCard(6, "Test Past the Training Length", "Extrapolation is where the schemes actually differ, and where learned tables die.", 0xFFEC4899),
     ),
     formulas = listOf(
-        FormulaEntry("Sinusoidal", "PE(p, 2i) = sin(p / 10000^(2i/d)) · PE(p, 2i+1) = cos(…)", "Wavelengths from 6.3 to 198.7 positions in the lab's 16-dimensional table."),
+        FormulaEntry("Sinusoidal", "PE(p, 2i) = sin(p / 10000^(2i/d)) · PE(p, 2i+1) = cos(…)", "Wavelengths from 6.3 to ≈19,869 positions in the lab's 16-dimensional table."),
         FormulaEntry("Offset invariance", "PE(p)·PE(p+k) is a function of k only", "Measured spread across p ∈ {0,4,8,12}: 0.0000."),
         FormulaEntry("Not monotone", "similarity rises again at offsets 4, 5, 6, 11, 12", "A sum of cosines, not a decay curve — the usual diagram is wrong."),
         FormulaEntry("RoPE", "⟨R_m q, R_n k⟩ = f(q, k, m − n)", "An identity, not an approximation: measured spread 0.000000."),

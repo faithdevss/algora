@@ -55,7 +55,7 @@ internal val mobileNetContent = TopicContent(
     ),
     whatIsIt = listOf(
         "A standard convolution does two jobs at once: it filters spatially and it mixes channels, because every output channel reads every input channel through its own k×k kernel. MobileNet's observation is that those two jobs can be separated. A depthwise convolution applies one k×k kernel per input channel and mixes nothing; a pointwise 1×1 mixes channels and does no spatial work. Together they produce the same output shape as the standard layer.",
-        "The saving is exact and independent of image size. The cost ratio is 1/N + 1/k², where N is the output channel count — at 128 → 256 channels with k = 3 that is 0.1150, so the layer drops from 294,912 parameters to 33,920, 8.7× cheaper, and the same factor applies to its multiply-accumulates. Because the 1/k² term dominates once N is large, the saving parks near 8–9× for 3×3 kernels and stays there; the simulation sweeps N to show the curve flattening. MobileNetV1 is that block repeated 28 times: 4.2M parameters and 569M MACs, within about a point of VGG-16's ImageNet accuracy at 33× fewer parameters.",
+        "The saving is exact and independent of image size. The cost ratio is 1/N + 1/k², where N is the output channel count — at 128 → 256 channels with k = 3 that is 0.1150, so the layer drops from 294,912 parameters to 33,920, 8.7× cheaper, and the same factor applies to its multiply-accumulates. Because the 1/k² term dominates once N is large, the saving parks near 8–9× for 3×3 kernels and stays there; the simulation sweeps N to show the curve flattening. MobileNetV1 is 13 depthwise-separable blocks (28 layers counting depthwise and pointwise separately): 4.2M parameters and 569M MACs, within about a point of VGG-16's ImageNet accuracy at 33× fewer parameters.",
         "V2 added the inverted residual, which reads backwards until you see the reason. A standard bottleneck goes wide → narrow → wide; V2 goes narrow → wide → narrow: expand with a 1×1, filter depthwise in the expanded space, project back down, and put the skip connection between the *narrow* ends. Depthwise convolutions are cheap enough to run wide, and the projection's output is deliberately linear — no ReLU — because ReLU destroys information in a low-dimensional space, which the paper demonstrates rather than assumes. V3 then tuned the whole thing by architecture search and added squeeze-and-excitation plus the h-swish activation.",
     ),
     steps = listOf(
@@ -80,7 +80,7 @@ internal val mobileNetContent = TopicContent(
         NotationEntry("inverted residual", "V2's narrow → wide → narrow block with the skip between narrow ends"),
         NotationEntry("linear bottleneck", "no ReLU on the projection, because it would discard low-dimensional information"),
         NotationEntry("squeeze-and-excitation", "V3's per-channel gating, learned from a global pooled summary"),
-        NotationEntry("h-swish", "V3's piecewise-linear swish, chosen because it is cheap on mobile hardware"),
+        NotationEntry("h-swish", "V3's swish with a piecewise-linear (hard-sigmoid) gate, x·ReLU6(x+3)/6, chosen because it is cheap on mobile hardware"),
     ),
     codeBlocks = listOf(
         CodeBlock(

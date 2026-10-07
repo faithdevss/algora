@@ -38,7 +38,7 @@ internal val bitBasicsContent = TopicContent(
     ),
     whatIsIt = listOf(
         "An integer is a row of places, each worth a power of two, and bit manipulation is arithmetic performed by naming places rather than by computing values. The operators are the whole vocabulary: & keeps bits set in both operands, | keeps bits set in either, xor keeps bits where they differ, inv flips every bit, and shl / shr slide the whole row left or right.",
-        "Three idioms account for most real uses. n and 1 isolates the ones place, which alone decides parity — and unlike n % 2 it is still correct for negative numbers, since Kotlin's % returns −1 for −3 % 2 while (−3) and 1 gives 1. Shifting by k multiplies or divides by 2ᵏ, though shr on a negative number keeps the sign bit and therefore rounds toward negative infinity rather than toward zero, which is not what integer division does. And n and (n − 1) clears the lowest set bit, because subtracting one flips that bit off and turns everything below it on, leaving nothing for the & to keep.",
+        "Three idioms account for most real uses. n and 1 isolates the ones place, which alone decides parity — and it never yields a negative result, whereas Kotlin's % returns −1 for −3 % 2, so only the test n % 2 == 1 breaks on negative odd numbers (n % 2 == 0 and n % 2 != 0 are fine). Shifting by k multiplies or divides by 2ᵏ, though shr on a negative number keeps the sign bit and therefore rounds toward negative infinity rather than toward zero, which is not what integer division does. And n and (n − 1) clears the lowest set bit, because subtracting one flips that bit off and turns everything below it on, leaving nothing for the & to keep.",
         "That last identity is the one worth internalising, because several tests are corollaries of it. A power of two has exactly one set bit, so n and (n − 1) == 0 identifies one in a single instruction — with the caveat that zero passes the test and is not a power of two, so the guard n > 0 is mandatory. Repeating the operation until the value reaches zero counts the set bits in one iteration per bit, which is Brian Kernighan's algorithm. Its mirror image, n and −n, keeps only the lowest set bit and is what a Fenwick tree walks. The honest caveat is readability: these compile to one instruction each and belong in hot paths, but n % 2 == 0 tells a reader what is meant and n and 1 == 0 does not, so outside those paths the clear form wins.",
     ),
     steps = listOf(
@@ -50,7 +50,7 @@ internal val bitBasicsContent = TopicContent(
         StepCard(6, "Isolate the Lowest Set Bit", "n and −n keeps that bit and nothing else — the step a Fenwick tree walks.", 0xFFEC4899),
     ),
     formulas = listOf(
-        FormulaEntry("Parity", "n and 1", "0 when even. Correct for negatives, where n % 2 is not."),
+        FormulaEntry("Parity", "n and 1", "0 when even. Never negative; n % 2 == 1 fails on negative odds, though n % 2 == 0 is fine."),
         FormulaEntry("Scale", "n shl k = n · 2ᵏ", "shr divides, but rounds toward −∞ on negative values."),
         FormulaEntry("Clear lowest set bit", "n and (n − 1)", "44 and 43 = 40 — the 4 is gone."),
         FormulaEntry("Power of two", "n > 0 && n and (n − 1) == 0", "Exactly one set bit. Zero fails the guard, not the test."),
@@ -70,7 +70,7 @@ internal val bitBasicsContent = TopicContent(
             accentColor = 0xFF10B981,
             code = """
                 fun isEven(n: Int) = n and 1 == 0
-                // Correct for negatives, which n % 2 == 0 is not in Kotlin:
+                // n % 2 == 0 is also correct for negatives; only n % 2 == 1 is not:
                 //   (-3) % 2  == -1   → the == 0 test is fine but the == 1 test is not
                 //   (-3) and 1 == 1   → always 0 or 1, never negative
 

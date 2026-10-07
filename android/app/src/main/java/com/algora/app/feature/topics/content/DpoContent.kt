@@ -14,7 +14,7 @@ internal val dpoContent = TopicContent(
     whatIsIt = listOf(
         "DPO removes the reward model from preference tuning. RLHF fits a Bradley-Terry reward to pairwise preferences and then runs reinforcement learning against it; DPO observes that the KL-regularised optimum of that second stage has a closed form, inverts it to express the reward in terms of the policy, and substitutes. What is left is a supervised loss on preference pairs with no sampling, no value function and no reward network.",
         "The lab runs both pipelines end to end on one prompt with six candidate responses, a reference policy whose mode is \"fluent and unsupported\" at 39%, and fifteen preference pairs labelled by three annotators each. The theorem checks out and it is worth watching it check out: find the β whose closed-form RLHF policy sits at the DPO run's own divergence, and the two policies agree on every response to floating-point precision. The reward model was never load-bearing — it was a parameterisation of the policy.",
-        "The interesting result is the number neither method moves. Two of the fifteen pairs come back contradicting the ground truth, and those two flips create a preference **cycle**: cites the passage > hedged and correct > correct-without-citation > cites the passage. Bradley-Terry assigns one scalar per response, so no setting of its parameters can represent a cycle. It is forced to give all three the same reward and caps out at **80% accuracy on its own training data**. More preferences do not help. A bigger reward network does not help.",
+        "The interesting result is the number neither method moves. Two of the fifteen pairs come back contradicting the ground truth, and those two flips create a preference **cycle**: cites the passage > hedged and correct > correct-without-citation > cites the passage. Bradley-Terry assigns one scalar per response, so no setting of its parameters can represent a cycle. Its maximum-likelihood fit ties the three cycle members at the same reward and scores **80% accuracy on its own training data** (no scalar ranking can do better than 14 of 15, since one cycle pair is always wrong). More preferences do not help. A bigger reward network does not help.",
         "Downstream of that, both pipelines converge to expected quality 1.739 while the best available response is worth 2.400 — **28% of the achievable quality left on the table by two mislabelled pairs**. No value of β recovers it, and switching between RLHF and DPO does not touch it. When an aligned model plateaus, the first thing to audit is the annotation, not the optimizer.",
     ),
     steps = listOf(
@@ -30,7 +30,7 @@ internal val dpoContent = TopicContent(
         FormulaEntry("Inverted", "r(y) = β·log(π(y)/π_ref(y)) + β·log Z", "The log Z cancels inside a pairwise comparison."),
         FormulaEntry("DPO loss", "−log σ(β·log(π_w/π_ref,w) − β·log(π_l/π_ref,l))", "No reward model, no rollouts, no value head."),
         FormulaEntry("Agreement", "max |π_DPO − π_RLHF| < 1e-16 at matched KL", "Measured, not quoted."),
-        FormulaEntry("Cycle cost", "reward accuracy caps at 80%", "3 responses locked at identical reward by one cycle."),
+        FormulaEntry("Cycle cost", "BT fit scores 80%", "The fit ties the 3 cycle responses at one reward; any scalar ranking still misses one cycle pair (14/15 best)."),
         FormulaEntry("Alignment ceiling", "1.739 reached, 2.400 available", "28% lost to 2 of 15 labels."),
     ),
     notationKey = listOf(
@@ -71,15 +71,16 @@ internal val dpoContent = TopicContent(
             accentColor = 0xFF3B82F6,
             code = """
                 # A cycle is not noise you can average away -- it is a shape Bradley-Terry
-                # cannot express, and it silently caps the reward model's accuracy.
+                # cannot express, and it silently holds the reward model's fit at 80% accuracy.
 
                 beats = {(w, l) for w, l in majority_labels}
                 cycles = [(a, b, c)
                           for a, b, c in combinations(responses, 3)
-                          if (a, b) in beats and (b, c) in beats and (c, a) in beats]
+                          if ((a, b) in beats and (b, c) in beats and (c, a) in beats)
+                          or ((a, c) in beats and (c, b) in beats and (b, a) in beats)]   # both orientations
 
                 print(cycles)                 # [(cites, hedged, correct_no_citation)]
-                print(reward_accuracy())      # 0.800  <- and it will not go higher
+                print(reward_accuracy())      # 0.800  <- the ML fit ties the cycle (a perfect scalar ranking would still miss 1 pair)
 
                 # The three responses in the cycle all receive the same fitted reward:
                 print(reward_model)           # [1.119, 1.119, 1.119, -1.080, -1.959, -0.318]
@@ -100,7 +101,7 @@ internal val dpoContent = TopicContent(
     takeaways = listOf(
         "DPO and RLHF reach the same policy: at matched KL the two agree to floating-point precision on every response.",
         "The reward model was a parameterisation of the policy, which is why it can be substituted away rather than approximated.",
-        "Two flipped labels in fifteen created a preference cycle, and a cycle caps Bradley-Terry at 80% accuracy permanently.",
+        "Two flipped labels in fifteen created a preference cycle, and a cycle holds the Bradley-Terry fit at 80% accuracy (at best 14 of 15 for any scalar ranking).",
         "Both pipelines converge to quality 1.739 against an available 2.400 — the ceiling is the annotation, not the algorithm.",
         "β is the only dial and it is a leash, not a quality knob: it decides how far the policy may move from the reference.",
     ),

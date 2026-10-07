@@ -64,8 +64,8 @@ internal val adamContent = TopicContent(
         StepCard(6, "Check Without Correction", "The uncorrected ratio peaks at 6.569 (step 12) before settling near 1.", 0xFF10B981),
     ),
     formulas = listOf(
-        FormulaEntry("First moment", "m_t = 0.9·m_{t-1} + 0.1·g_t", "Momentum's own update, reused."),
-        FormulaEntry("Second moment", "v_t = 0.999·v_{t-1} + 0.001·g_t²", "RMSprop's own update, reused."),
+        FormulaEntry("First moment", "m_t = 0.9·m_{t-1} + 0.1·g_t", "An exponential moving average of the gradient — a rescaled form of the momentum update."),
+        FormulaEntry("Second moment", "v_t = 0.999·v_{t-1} + 0.001·g_t²", "RMSprop-style EMA of g², with Adam's own β₂ = 0.999 (RMSprop's usual coefficient is 0.9)."),
         FormulaEntry("Bias correction", "m̂_t = m_t/(1−0.9^t), v̂_t = v_t/(1−0.999^t)", "Recovers the true value even in early steps."),
         FormulaEntry("Corrected ratio", "m̂_t/√v̂_t = 1.000", "Exact at every t on a constant gradient — an identity."),
         FormulaEntry("Uncorrected ratio, step 1", "3.162", "Already off by more than 3x before any correction."),
@@ -121,7 +121,7 @@ internal val adamContent = TopicContent(
         ApplicationCard("chip", 0xFF0EA5E9, "Default Deep-Learning Optimizer", "The most common default for training neural networks from scratch, across vision, NLP and RL."),
         ApplicationCard("trend", 0xFF3B82F6, "Fast Early Convergence", "The bias correction means good, well-scaled steps from the very first update, not after warming up."),
         ApplicationCard("check", 0xFF8B5CF6, "Robust to Rate Choice", "Adapts per-parameter, so it's less sensitive to a suboptimal global learning rate than plain SGD."),
-        ApplicationCard("help", 0xFFEC4899, "Not Always Best", "On clean, well-conditioned problems, tuned SGD+momentum can generalize better — see gradient_descent_variants."),
+        ApplicationCard("help", 0xFFEC4899, "Not Always Best", "On clean, well-conditioned problems, tuned SGD+momentum can generalize better — see the Gradient Descent Variants topic."),
     ),
     takeaways = listOf(
         "Adam combines momentum's first-moment EMA and RMSprop's second-moment EMA, then steps by m̂_t/√v̂_t.",
@@ -129,7 +129,7 @@ internal val adamContent = TopicContent(
         "On a constant gradient, the corrected ratio m̂_t/√v̂_t is exactly 1.000 at every single step — an identity, verified.",
         "Without correction, the same ratio starts at 3.162, peaks at 6.569 around step 12, and is still 3.241 by step 100.",
         "Correction isn't asymptotic cleanup — it's the difference between the exact answer immediately and a measurably wrong one 100 steps in.",
-        "β1=0.9 and β2=0.999 are momentum's and RMSprop's own coefficients, reused rather than newly invented.",
+        "β1=0.9 echoes momentum's usual coefficient; β2=0.999 is Adam's own default and differs from RMSprop's usual 0.9.",
         "Adam inherits both halves' behavior: momentum's compounding on consistent gradients, RMSprop's per-parameter adaptive scale.",
     ),
     crossLinks = listOf(

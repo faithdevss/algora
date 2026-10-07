@@ -12,17 +12,17 @@ import com.algora.app.core.data.model.TopicContent
 internal val lrSchedulersContent = TopicContent(
     topicId = "lr_schedulers",
     whatIsIt = listOf(
-        "A learning rate scheduler makes the rate itself a function of the step: constant, step decay (halved every fixed interval), cosine annealing (smoothly to zero, or to a floor), or warmup-then-decay (a linear ramp before the decay begins). The folklore is that decay always helps. Run it on the same noise-free bowl gradient_descent_variants and momentum use and the folklore is only half right.",
+        "A learning rate scheduler makes the rate itself a function of the step: constant, step decay (halved every fixed interval), cosine annealing (smoothly to zero, or to a floor), or warmup-then-decay (a linear ramp before the decay begins). The folklore is that decay always helps. Run it on the same noise-free ill-conditioned bowl the Momentum topic uses and the folklore is only half right.",
         "On that clean bowl, constant (lr=0.05) and step decay (start 0.09, halve every 20 steps) actually finish best — step decay at 0.0398, constant at 0.0453 — while cosine (to 0) finishes at 0.0553 and warmup+cosine at 0.0574, both worse than doing nothing. The decaying schedules can afford to start hotter (0.09, close to the steep axis's own stability limit of 0.1) because they immediately move away from it — but shrinking the rate before the flat axis has finished using it costs more than the hot start saves, on a landscape with no noise to justify decaying at all.",
-        "Add a fixed disturbance every step instead — standing in for gradient noise, deterministic so the result doesn't depend on a random seed — and the story flips. A rate decayed from 0.05 to 0.02 shrinks the steady-state loss floor to 0.0000366, against a constant rate's 0.000223 — a 6.1× reduction, close to the (lr ratio)² = 6.25 the floor's own scaling law predicts. Under noise, a constant rate never stops bouncing around the minimum by an amount proportional to the rate; a decaying one keeps shrinking that bounce.",
+        "Add a fixed disturbance every step instead — standing in for gradient noise, deterministic so the result doesn't depend on a random seed — and the story flips. A rate decayed from 0.05 to 0.02 shrinks the steady-state loss floor to 0.0000366, against a constant rate's 0.000223 — a 6.1× reduction, close to the (lr ratio)² = 6.25 — a scaling that holds for this deterministic periodic disturbance; real SGD gradient noise gives a floor roughly linear in lr (floor ∝ lr, ≈ lr·σ²/4), i.e. about 2.5× here. Under noise, a constant rate never stops bouncing around the minimum by an amount proportional to the rate; a decaying one keeps shrinking that bounce.",
     ),
     steps = listOf(
         StepCard(1, "Pick a Schedule", "Constant, step decay, cosine, or warmup+cosine.", 0xFF0EA5E9),
-        StepCard(2, "Run on a Clean Bowl", "Same problem gradient_descent_variants and momentum use, 60 steps.", 0xFF3B82F6),
+        StepCard(2, "Run on a Clean Bowl", "The same ill-conditioned bowl the Momentum topic uses, 60 steps.", 0xFF3B82F6),
         StepCard(3, "Compare Final Loss", "Step decay 0.0398, constant 0.0453 -- both beat cosine's 0.0553 and warmup's 0.0574.", 0xFF8B5CF6),
         StepCard(4, "Add a Persistent Disturbance", "A fixed, deterministic perturbation every step -- standing in for gradient noise.", 0xFFF59E0B),
         StepCard(5, "Compare the Noise Floor", "Constant: 0.000223. Decayed (0.05 to 0.02): 0.0000366 -- 6.1x lower.", 0xFFEC4899),
-        StepCard(6, "Check the Scaling Law", "6.1x is close to (lr ratio)² = 6.25 -- the floor scales with the rate squared.", 0xFF10B981),
+        StepCard(6, "Check the Scaling Law", "6.1x is close to (lr ratio)² = 6.25 -- for this periodic disturbance the floor scales with the rate squared (random SGD noise: roughly linearly).", 0xFF10B981),
     ),
     formulas = listOf(
         FormulaEntry("Step decay", "lr_t = lr_0 · 0.5^⌊(t−1)/20⌋", "Halves every 20 steps."),
@@ -97,7 +97,7 @@ internal val lrSchedulersContent = TopicContent(
         "On a clean, noise-free bowl, step decay (0.0398) and constant (0.0453) actually beat cosine (0.0553) and warmup+cosine (0.0574).",
         "Decaying schedules can start hotter (0.09, near the steep axis's own stability limit) precisely because they move away from it fast.",
         "Add a fixed per-step disturbance standing in for gradient noise, and decay wins clearly: floor 0.0000366 against constant's 0.000223.",
-        "That's a 6.1x reduction, close to the (lr ratio)² = 6.25 predicted by the floor's own scaling law under persistent perturbation.",
+        "That's a 6.1x reduction, close to the (lr ratio)² = 6.25 predicted for this deterministic periodic disturbance (random gradient noise scales the floor roughly linearly in lr).",
         "The two halves of the story aren't in tension — decay's cost shows up without noise, its benefit shows up with it.",
         "Choosing a schedule is choosing which regime training is actually in: clean and short, or noisy and long.",
     ),

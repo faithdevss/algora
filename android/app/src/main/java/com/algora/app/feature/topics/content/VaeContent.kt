@@ -105,7 +105,7 @@ internal val vaeContent = TopicContent(
                     eps = torch.randn(samples, d)
                     z = mu + eps                                  # sigma = 1
 
-                    # Reparameterized: differentiate the sample path. d f/d mu_0 = 2(z_0 - c_0).
+                    # Reparameterized: differentiate the sample path. d f/d mu_0 = 2*z_0 (for f = sum of z_i squared).
                     reparam = 2 * z[:, 0]
 
                     # Score function: f(z) * d/d mu_0 log q(z). Also unbiased -- and unusable.

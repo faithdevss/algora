@@ -144,7 +144,7 @@ internal val retinaNetContent = TopicContent(
     ),
     simulation = SimulationType.FeatureMapPlayer,
     applications = listOf(
-        ApplicationCard("target", 0xFF3B82F6, "Dense Detection", "The default one-stage loss; FCOS, YOLO v3+ and most modern detectors use focal loss or a descendant."),
+        ApplicationCard("target", 0xFF3B82F6, "Dense Detection", "The default one-stage loss; FCOS, later YOLO versions (v8's DFL) and most modern dense detectors use focal loss or a descendant (YOLOv3 tried it and lost about 2 mAP)."),
         ApplicationCard("flask", 0xFF06B6D4, "Rare-Event Classification", "Fraud, defects and disease screening face the same imbalance — the loss transfers directly out of detection."),
         ApplicationCard("search", 0xFF8B5CF6, "Segmentation", "Focal loss is standard for pixel-level tasks where the object occupies a small fraction of the image."),
         ApplicationCard("bulb", 0xFFF59E0B, "Loss Design", "The general lesson: an imbalance heuristic in the training loop is often a missing term in the loss."),

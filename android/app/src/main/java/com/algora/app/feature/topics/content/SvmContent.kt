@@ -61,26 +61,26 @@ internal val svmContent = TopicContent(
         StepCard(1, "Maximize the Margin", "Find the separating hyperplane farthest from the closest points of both classes.", 0xFF818CF8),
         StepCard(2, "Support Vectors", "Only the borderline points (the support vectors) determine the boundary; the rest are irrelevant.", 0xFF60A5FA),
         StepCard(3, "Soft Margin", "Allow a few misclassifications, controlled by C, to handle overlapping classes.", 0xFF10B981),
-        StepCard(4, "Kernel Trick", "Replace dot products with a kernel (RBF, polynomial) to bend the boundary non-linearly.", 0xFFF59E0B),
+        StepCard(4, "Kernel Trick", "Replace dot products with a kernel (RBF, polynomial) to bend the boundary non-linearly — see the RBF topic.", 0xFFF59E0B),
     ),
     formulas = listOf(
         FormulaEntry("Decision", "f(x) = sign(w·x + b)", "Side of the hyperplane."),
         FormulaEntry("Margin objective", "min ½‖w‖² s.t. yᵢ(w·xᵢ+b) ≥ 1", "Widest margin, correct side."),
-        FormulaEntry("RBF kernel", "K(x, x′) = exp(−γ‖x−x′‖²)", "Similarity in an implicit high-dim space."),
+        FormulaEntry("Linear kernel", "K(x, x′) = x·x′", "The plain dot product; kernels such as RBF are covered in the SVM (RBF) topic."),
     ),
     notationKey = listOf(
         NotationEntry("w, b", "hyperplane weights and offset"),
         NotationEntry("C", "soft-margin penalty for misclassifications"),
-        NotationEntry("γ", "RBF kernel width"),
+        NotationEntry("γ", "RBF kernel parameter, an inverse width (larger γ = narrower kernel); see the SVM (RBF) topic"),
     ),
     codeBlocks = listOf(
         CodeBlock(
-            title = "SVM with an RBF kernel (scikit-learn)",
+            title = "Linear SVM (scikit-learn)",
             accentColor = 0xFF6366F1,
             code = """
                 from sklearn.svm import SVC
 
-                clf = SVC(kernel="rbf", C=1.0, gamma="scale")
+                clf = SVC(kernel="linear", C=1.0)   # or LinearSVC for large n
                 clf.fit(X_train, y_train)
 
                 preds = clf.predict(X_test)

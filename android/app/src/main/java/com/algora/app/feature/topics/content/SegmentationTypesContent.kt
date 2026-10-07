@@ -120,7 +120,7 @@ internal val segmentationTypesContent = TopicContent(
                 print((pred == truth).mean())                            # 0.938 pixel accuracy
 
                 # Pixel accuracy is the trap: predict "background" for everything in this image and
-                # it still scores 0.68, because background is most of the pixels. mIoU is the
+                # it still scores 0.57, because background is most of the pixels. mIoU is the
                 # semantic default for that reason.
                 #
                 # And note what neither number can see: a prediction that merges the two sheep into

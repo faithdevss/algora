@@ -13,7 +13,7 @@ internal val gcnContent = TopicContent(
     topicId = "gcn",
     whatIsIt = listOf(
         "A Graph Convolutional Network layer replaces a normal layer's fixed input pattern with a graph: every node updates its features by averaging its neighbors' features, weighted by degree, then applying a shared weight matrix. That averaging step — multiplying the feature matrix by a degree-normalized adjacency matrix — is the entire mechanism, and stacking layers means running it repeatedly. Repeated averaging is graph Laplacian smoothing, and its long-run behavior is exact linear algebra rather than a vague warning: on a connected graph, the normalized adjacency matrix has one eigenvalue equal to 1, with an eigenvector proportional to each node's square-root degree, and every other eigenvalue has magnitude strictly less than 1.",
-        "That single fact predicts the entire depth curve, measured here on a graph of two triangles joined by one bridge edge: with distinct initial features per triangle, one layer already blurs the split (a between-triangle-to-within-triangle distance ratio of 10.7 drops to 6.9), and by roughly 50 layers the ratio has collapsed to 0.82, converging to exactly 2/3 by around 100 layers and staying there through 400. Not 1 — two-thirds. The reason is in the eigenvector: every component that once distinguished the triangles decays away, and what survives is proportional to each node's own degree, not to which triangle it sits in.",
+        "That single fact predicts the entire depth curve, measured here on a graph of two triangles joined by one bridge edge: with distinct initial features per triangle, one layer already blurs the split (a between-triangle-to-within-triangle distance ratio of 10.7 drops to 6.9), and by roughly 50 layers the ratio has collapsed to 0.82, converging to exactly 2/3 by around 100 layers and staying there through 400. Not 1 — two-thirds. The reason is in the eigenvector: every component that once distinguished the triangles decays away, and what survives is proportional to the square root of each node's degree, not to which triangle it sits in.",
         "This graph's own degrees make that concrete rather than abstract: the two bridge nodes each have one extra neighbor, giving them degree 4 while every other node has degree 3. At full convergence, both bridge nodes converge to the identical embedding — distance essentially zero — despite sitting in different triangles, because they share a degree. A same-triangle pair of different degrees never converges to the same point. Oversmoothing does not make a GCN blind; it makes it blind to everything except the one structural quantity — degree — that the propagation rule's fixed point is built from, which is why real GCNs stay shallow, typically two or three layers, rather than stacking dozens the way a CNN does.",
     ),
     steps = listOf(
@@ -51,11 +51,11 @@ internal val gcnContent = TopicContent(
                 a_norm = normalized_adjacency(two_triangles_one_bridge)
 
                 h = initial_features            # (6 nodes, 2 dims) -- two visibly different groups
-                for depth in range(400):
-                    h = a_norm @ h               # identity W, no nonlinearity: pure smoothing
-
+                for depth in range(401):
                     if depth in (0, 1, 2, 5, 10, 20, 50, 100, 400):
-                        print(depth, separation_ratio(h))
+                        print(depth, separation_ratio(h))   # depth = layers applied so far
+
+                    h = a_norm @ h               # identity W, no nonlinearity: pure smoothing
 
                 # depth   0: 10.67   (well separated)
                 # depth   1:  6.93   (one layer already blurs it)

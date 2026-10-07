@@ -40,7 +40,7 @@ internal val coinChangeGreedyContent = TopicContent(
         StepCard(1, "Sort Denominations Descending", "Largest coin first — the order the greedy rule consumes them in.", 0xFF10B981),
         StepCard(2, "Take the Largest That Fits", "While the current coin is ≤ the remaining amount, take it and subtract.", 0xFF3B82F6),
         StepCard(3, "Move Down on Overshoot", "When the coin exceeds what is left, drop to the next denomination.", 0xFFF59E0B),
-        StepCard(4, "Stop at Zero", "The remainder reaching zero ends the sweep; a nonzero dead end means the amount is unmakeable.", 0xFFEC4899),
+        StepCard(4, "Stop at Zero", "The remainder reaching zero ends the sweep; a nonzero dead end only means greedy failed — the amount may still be makeable, so use the DP to decide.", 0xFFEC4899),
         StepCard(5, "Check the System, Not the Run", "Greed's answer is optimal only if the denominations are canonical — verify that separately.", 0xFFEF4444),
         StepCard(6, "Fall Back to DP", "For arbitrary denominations, tabulate dp[a] = 1 + min over coins of dp[a − coin].", 0xFF8B5CF6),
     ),
@@ -73,8 +73,9 @@ internal val coinChangeGreedyContent = TopicContent(
                             remaining -= coin
                         }
                     }
-                    // Greed can dead-end entirely: coins {3,4} cannot make 5, and neither
-                    // can it make 5 by any other route, so null is honest here.
+                    // Greed can dead-end on amounts that ARE makeable: coins {3,4}, amount 6 —
+                    // greedy takes 4, is left with 2 and returns null, though 3+3 works. null
+                    // means "greedy failed", not "impossible"; use the DP below to decide.
                     return if (remaining == 0) used else null
                 }
 

@@ -78,9 +78,9 @@ internal val gradientDescentVariantsContent = TopicContent(
     formulas = listOf(
         FormulaEntry("SGD", "θ := θ − α·∇θ", "Step opposite the (mini-batch) gradient."),
         FormulaEntry("Momentum", "v := βv + ∇θ; θ := θ − α·v", "Velocity smooths the trajectory."),
-        FormulaEntry("RMSProp", "v := βv + (1−β)∇²; θ := θ − α∇/(√v+ε)", "Per-parameter scaling by recent gradient size."),
+        FormulaEntry("RMSProp", "v := βv + (1−β)(∇θ)²; θ := θ − α∇/(√v+ε)", "Per-parameter scaling by recent gradient size."),
         FormulaEntry("Adam", "m, v estimates → θ := θ − α·m̂/(√v̂+ε)", "Momentum plus adaptive scaling."),
-        FormulaEntry("Bias correction", "m̂ = m/(1−β₁ᵗ),  v̂ = v/(1−β₂ᵗ)", "Matters most in the first few hundred steps."),
+        FormulaEntry("Bias correction", "m̂ = m/(1−β₁ᵗ),  v̂ = v/(1−β₂ᵗ)", "Matters most in the first few hundred steps: uncorrected, m/√v is ≈ 3.16× too large at step 1."),
         FormulaEntry("AdamW", "θ := θ − α·m̂/(√v̂+ε) − αλθ", "Decoupled weight decay — not the same as L2 inside the gradient."),
     ),
     notationKey = listOf(
@@ -123,7 +123,7 @@ internal val gradientDescentVariantsContent = TopicContent(
                             m[i] = beta1 * m[i] + (1 - beta1) * grads[i]
                             v[i] = beta2 * v[i] + (1 - beta2) * grads[i] * grads[i]
 
-                            // Both moments start at 0, which biases early steps toward zero.
+                            // Both moments start at 0, which biases m and v toward zero (v far more than m, so uncorrected early steps are too LARGE).
                             val mHat = m[i] / (1 - Math.pow(beta1, t.toDouble()))
                             val vHat = v[i] / (1 - Math.pow(beta2, t.toDouble()))
 
@@ -146,7 +146,7 @@ internal val gradientDescentVariantsContent = TopicContent(
         "Batch/stochastic/mini-batch trade gradient accuracy against speed and noise.",
         "Momentum accelerates descent and dampens oscillation across a ravine.",
         "Adaptive methods (RMSProp, Adam) give each parameter its own effective learning rate.",
-        "Bias correction is what keeps Adam's first few hundred steps from being far too small.",
+        "Bias correction removes the zero-initialization bias in m and v; without it the first steps are far too large, because v (β₂ = 0.999) is underestimated much more than m.",
         "AdamW's decoupled weight decay is not equivalent to adding L2 to the gradient — with adaptive scaling the two differ, and AdamW is the one that generalizes.",
         "Adam is the default, but well-tuned SGD+momentum can generalize better.",
     ),

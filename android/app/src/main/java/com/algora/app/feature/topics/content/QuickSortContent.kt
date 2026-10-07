@@ -44,7 +44,7 @@ internal val quickSortContent = TopicContent(
     formulas = listOf(
         FormulaEntry("Average / best", "O(n log n)", "Balanced partitions halve the array log n times."),
         FormulaEntry("Worst case", "O(n²)", "Consistently bad pivots (e.g. already-sorted input, first-element pivot) shrink by one."),
-        FormulaEntry("Space", "O(log n)", "In-place, but recursion uses stack proportional to depth."),
+        FormulaEntry("Space", "O(log n) avg, O(n) worst", "In-place, but recursion uses stack proportional to depth. Recursing on the smaller side first guarantees O(log n)."),
     ),
     notationKey = listOf(
         NotationEntry("pivot", "the element partitioned around"),

@@ -57,7 +57,8 @@ internal val segmentTreeContent = TopicContent(
             title = "Segment tree — range sum query",
             accentColor = 0xFF6366F1,
             code = """
-                // tree sized 2n; build and query for range sums.
+                // tree sized 4n (recursive 1-indexed layout; the 2n layout is only for the iterative
+                // bottom-up segment tree); build and query for range sums.
                 fun query(tree: IntArray, node: Int, lo: Int, hi: Int, l: Int, r: Int): Int {
                     if (r < lo || hi < l) return 0                 // no overlap
                     if (l <= lo && hi <= r) return tree[node]      // full overlap

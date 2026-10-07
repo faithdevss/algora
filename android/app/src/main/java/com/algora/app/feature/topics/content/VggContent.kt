@@ -39,7 +39,7 @@ internal val vggContent = TopicContent(
     whatIsIt = listOf(
         "VGG is one design decision applied without exception: every convolution is 3×3, stride 1, padded; every pooling layer is 2×2 stride 2; channels double after each pool — 64, 128, 256, 512, 512. VGG-16 has thirteen convolutions and three dense layers, VGG-19 has three more convolutions. The paper's contribution is the controlled experiment: hold the kernel at the smallest useful size, vary only depth, and show that accuracy keeps improving to 16–19 layers.",
         "The case for the small kernel is arithmetic, and the simulation prices it. Two stacked 3×3 layers see the same 5×5 receptive field as one 5×5 layer, with 4,718,592 parameters against 6,553,600 at 512 channels — 28% fewer — and a non-linearity in between that the single large kernel does not have. Three stacked 3×3s reach 7×7 the same way, at 45% fewer parameters than one 7×7. More depth, more non-linearity and fewer weights, all from refusing to use a big kernel.",
-        "Where VGG is expensive is the part it inherited rather than designed. Of its 138,357,544 parameters, the dense layers hold 123,642,856 — 89.4% — and fc6 alone is 102.8M, because flattening a 7×7×512 map into 25,088 features and connecting them to 4,096 units is the most expensive thing you can do with a feature map. Compute is the mirror image: about 15.5 GMACs per image, 99.2% of it in the convolutions. VGG is a small, extremely slow feature extractor wearing a huge, nearly free classifier — which is exactly the trade GoogLeNet and ResNet went on to fix.",
+        "Where VGG is expensive is the part it inherited rather than designed. Of its 138,357,544 parameters, the dense layers hold 123,642,856 — 89.4% — and fc6 alone is 102.8M, because flattening a 7×7×512 map into 25,088 features and connecting them to 4,096 units is the most expensive thing you can do with a feature map. Compute is the mirror image: about 15.5 GMACs per image, 99.2% of it in the convolutions. VGG is a small, extremely slow feature extractor wearing a huge, nearly free classifier — which is exactly the trade ResNet went on to fix, and which GoogLeNet — developed in parallel — avoided.",
     ),
     steps = listOf(
         StepCard(1, "Fix the Kernel at 3×3", "The smallest kernel with a notion of left/right and up/down.", 0xFF10B981),
@@ -128,7 +128,7 @@ internal val vggContent = TopicContent(
         "Two stacked 3×3s match a 5×5's receptive field with 28% fewer parameters and an extra non-linearity.",
         "138.4M parameters, 89.4% of them in the dense head — fc6 alone is 102.8M.",
         "Compute is the mirror image: ~15.5 GMACs, 99.2% in the convolutions. Parameters and FLOPs are separate budgets.",
-        "Its expense is what motivated GoogLeNet's 1×1 bottlenecks and the global-average-pool head that replaced fc6.",
+        "GoogLeNet, developed in parallel, avoided exactly this cost with 1×1 bottlenecks and a global-average-pool head in place of fc6.",
     ),
     crossLinks = listOf(
         CrossLink("alexnet", "AlexNet"),

@@ -46,7 +46,7 @@ internal val unionFindPatternContent = TopicContent(
     ),
     steps = listOf(
         StepCard(1, "Spot the Signal", "Merging groups, counting components, or detecting a cycle as undirected edges are added.", 0xFFF59E0B),
-        StepCard(2, "Find the Root", "Follow parent pointers to the representative. Path compression re-points every node visited straight at the root.", 0xFF3B82F6),
+        StepCard(2, "Find the Root", "Follow parent pointers to the representative. Path compression re-points visited nodes at the root; the one-pass variant, path halving, points each at its grandparent and has the same α(n) bound.", 0xFF3B82F6),
         StepCard(3, "Union by Rank/Size", "Attach the smaller tree under the larger one so depth stays shallow.", 0xFF8B5CF6),
         StepCard(4, "Read the Counter", "Start with n components and decrement on each successful union. A union that finds equal roots is a cycle.", 0xFF10B981),
     ),
@@ -73,7 +73,7 @@ internal val unionFindPatternContent = TopicContent(
 
                     def find(self, x):
                         while self.parent[x] != x:
-                            self.parent[x] = self.parent[self.parent[x]]   # path compression
+                            self.parent[x] = self.parent[self.parent[x]]   # path halving
                             x = self.parent[x]
                         return x
 

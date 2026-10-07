@@ -49,7 +49,7 @@ internal val monotonicStackPatternContent = TopicContent(
     ),
     formulas = listOf(
         FormulaEntry("Time", "O(n)", "Each index is pushed once and popped at most once."),
-        FormulaEntry("Space", "O(n)", "Worst case the whole array sits on the stack (already sorted input)."),
+        FormulaEntry("Space", "O(n)", "Worst case the whole array sits on the stack (strictly decreasing input for a next-greater stack)."),
         FormulaEntry("Brute force it replaces", "O(n²)", "Scanning right from every index to find its next greater element."),
     ),
     notationKey = listOf(

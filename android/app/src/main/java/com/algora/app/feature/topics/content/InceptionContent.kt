@@ -119,7 +119,7 @@ internal val inceptionContent = TopicContent(
     ),
     simulation = SimulationType.FeatureMapPlayer,
     applications = listOf(
-        ApplicationCard("target", 0xFF10B981, "ImageNet 2014 Winner", "6.67% top-5 error with 12× fewer parameters than VGG-16, which took second place."),
+        ApplicationCard("target", 0xFF10B981, "ImageNet 2014 Winner", "6.67% top-5 error with about 20× fewer parameters than VGG-16 (6.8M vs 138.4M), which took second place, and 12× fewer than AlexNet."),
         ApplicationCard("chip", 0xFF06B6D4, "Efficient Inference", "The bottleneck pattern is now standard in every architecture designed for a compute budget."),
         ApplicationCard("flask", 0xFF8B5CF6, "Medical Imaging", "Inception-v3 is the transfer-learning backbone behind several published diagnostic models."),
         ApplicationCard("chart", 0xFFF59E0B, "FID and Inception Score", "Generative-model evaluation is defined in terms of a pretrained Inception network's features."),

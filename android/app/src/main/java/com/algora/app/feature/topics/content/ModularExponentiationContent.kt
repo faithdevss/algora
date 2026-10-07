@@ -20,7 +20,7 @@ internal val modularExponentiationContent = TopicContent(
             "immediately — 3, 9, 81 ≡ 13, 169 ≡ 16 — which is legitimate because multiplication " +
             "commutes with taking remainders, so every intermediate stays below the modulus. Combining " +
             "the marked powers gives 16 · 13 = 208 ≡ 4, then 4 · 3 = 12. The unreduced 3¹³ is 1594323 " +
-            "and nothing above ever held a number bigger than 208; at cryptographic sizes that " +
+            "and no intermediate product exceeded mod² = 289; at cryptographic sizes that " +
             "difference is between a number with more digits than the universe has atoms and a few " +
             "dozen cheap multiplications. It also unlocks division: by Fermat, a^(p−2) is a's inverse " +
             "modulo a prime, computable by exactly this routine and nothing else. Two engineering " +
@@ -39,7 +39,7 @@ internal val modularExponentiationContent = TopicContent(
         ),
     ),
     whatIsIt = listOf(
-        "Modular exponentiation computes aⁿ mod m without ever forming aⁿ. It is binary exponentiation with one reduction added after every multiplication, and that single addition is what turns an impossible computation into a cheap one — 2^2048 has more digits than there are atoms in the observable universe, while 2^2048 mod m is a few dozen multiplications of numbers no larger than m².",
+        "Modular exponentiation computes aⁿ mod m without ever forming aⁿ. It is binary exponentiation with one reduction added after every multiplication, and that single addition is what turns an impossible computation into a cheap one — an unreduced aⁿ with a 2048-bit exponent n would have on the order of 2^2048 digits, vastly more than the ~10⁸⁰ atoms in the observable universe, while aⁿ mod m is a few dozen multiplications of numbers no larger than m².",
         "The reduction is legitimate because multiplication commutes with taking remainders: (x·y) mod m depends only on x mod m and y mod m. So every intermediate value can be kept inside 0 … m−1 rather than growing. Following 3¹³ mod 17: 3¹ = 3, 3² = 9, 3⁴ = 9² = 81 ≡ 13, 3⁸ = 13² = 169 ≡ 16. Since 13 = 1101₂, the answer is 3⁸ · 3⁴ · 3¹ = 16 · 13 · 3, and reducing as you go gives 16·13 = 208 ≡ 4, then 4·3 = 12. The unreduced 3¹³ is 1594323, and 1594323 mod 17 is indeed 12 — but nothing above ever held a number larger than 208.",
         "The second thing this unlocks is division. Fermat's little theorem says that for prime p and a not divisible by p, a^(p−1) ≡ 1, so a^(p−2) is a's modular inverse — computable by exactly this routine and nothing else. Mod 17, 3^15 ≡ 6, and 3 × 6 = 18 ≡ 1, so 6 is 3⁻¹. That makes modular exponentiation the workhorse behind binomial coefficients mod a prime, fraction arithmetic in competitive programming, and RSA itself, where encryption and decryption are both a single call to it. Two engineering notes: the intermediate product needs a type twice the modulus's width, since two values just under m multiply to nearly m², and cryptographic implementations must run in constant time, because a version that skips work on zero bits leaks the exponent through timing.",
     ),
@@ -87,7 +87,7 @@ internal val modularExponentiationContent = TopicContent(
                 powMod(3, 13, 17)   // 12
                 // 3¹ = 3, 3² = 9, 3⁴ ≡ 13, 3⁸ ≡ 16.  13 = 1101₂, so 3⁸ · 3⁴ · 3¹:
                 //   16 × 13 = 208 ≡ 4,  4 × 3 = 12.
-                // The unreduced 3¹³ is 1594323; nothing above ever held a value over 208.
+                // The unreduced 3¹³ is 1594323; no intermediate product exceeded mod² = 289.
             """.trimIndent(),
         ),
         CodeBlock(
@@ -122,7 +122,7 @@ internal val modularExponentiationContent = TopicContent(
     ),
     simulation = SimulationType.RecursionTreeVisualizer,
     applications = listOf(
-        ApplicationCard("chip", 0xFFF59E0B, "RSA & Diffie-Hellman", "Encryption, decryption and key agreement are each one call to this routine with a huge exponent."),
+        ApplicationCard("chip", 0xFFF59E0B, "RSA & Diffie-Hellman", "Decryption, signing and key agreement are each one call to this routine with a huge exponent (RSA encryption usually uses e = 65537)."),
         ApplicationCard("stack", 0xFF06B6D4, "Combinatorics mod p", "Binomial coefficients, Catalan numbers and any counting answer reported mod 10⁹ + 7."),
         ApplicationCard("bulb", 0xFF3B82F6, "Primality Testing", "Miller-Rabin and the Fermat test are both a sequence of modular exponentiations."),
     ),

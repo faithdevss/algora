@@ -41,7 +41,7 @@ internal val transferLearningContent = TopicContent(
         StepCard(2, "Replace the Head", "Swap the final classifier for one shaped to your label set, randomly initialized.", 0xFF3B82F6),
         StepCard(3, "Freeze and Train the Head", "With the backbone frozen only the new layer learns — fast, and safe on tiny datasets.", 0xFFF59E0B),
         StepCard(4, "Unfreeze and Fine-Tune", "Release the upper layers and continue at a much smaller learning rate.", 0xFF10B981),
-        StepCard(5, "Use Discriminative Rates", "Deeper layers hold the most general features, so give them the smallest learning rates.", 0xFF8B5CF6),
+        StepCard(5, "Use Discriminative Rates", "Earlier (lower) layers hold the most general features, so give them the smallest learning rates.", 0xFF8B5CF6),
     ),
     formulas = listOf(
         FormulaEntry("Frozen features", "θ_backbone fixed, only θ_head updated", "Feature extraction — the cheapest mode."),

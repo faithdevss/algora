@@ -33,14 +33,16 @@ internal val llmsContent = TopicContent(
     ),
     codeBlocks = listOf(
         CodeBlock(
-            title = "Calling an instruction-tuned LLM",
+            title = "Sampling from a causal LLM",
             accentColor = 0xFF6366F1,
             code = """
                 from transformers import pipeline
 
                 gen = pipeline("text-generation", model="gpt2")
+                # gpt2 is a base model, not instruction-tuned; swap in an instruct model for chat.
+                # temperature is ignored unless sampling is on:
                 out = gen("The key idea behind attention is",
-                          max_new_tokens=30, temperature=0.7)
+                          max_new_tokens=30, do_sample=True, temperature=0.7)
                 print(out[0]["generated_text"])
             """.trimIndent(),
         ),

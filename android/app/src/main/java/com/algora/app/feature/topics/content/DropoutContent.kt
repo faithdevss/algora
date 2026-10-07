@@ -32,7 +32,7 @@ internal val dropoutContent = TopicContent(
     ),
     whatIsIt = listOf(
         "Dropout randomly zeroes a fraction p of a layer's units on every training step, so the network can never rely on any single neuron being present.",
-        "The effect is co-adaptation breaking: features must be individually useful rather than useful only in combination with a specific partner. Equivalently, training samples from an exponential family of thinned sub-networks, and inference averages over them — a very cheap ensemble.",
+        "The effect is co-adaptation breaking: features must be individually useful rather than useful only in combination with a specific partner. Equivalently, training samples from an exponentially large set (2ⁿ) of thinned sub-networks, and inference averages over them — a very cheap ensemble.",
     ),
     steps = listOf(
         StepCard(1, "Sample a Mask", "Each unit is kept with probability 1 − p, independently, on every forward pass.", 0xFFEC4899),

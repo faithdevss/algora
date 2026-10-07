@@ -80,7 +80,7 @@ private val greedyTopics = listOf(
     topic("kruskals_mst", "Kruskal's MST", greedy, "Builds a minimum spanning tree by adding cheapest edges.", isPremium = true),
     topic("prims_mst", "Prim's MST", greedy, "Grows a minimum spanning tree from a starting node.", isPremium = true),
     topic("dijkstras_algorithm", "Dijkstra's Algorithm", greedy, "Greedy shortest paths from a single source.", isPremium = true),
-    topic("job_sequencing", "Job Sequencing with Deadlines", greedy, "Greedy scheduling to maximize completed jobs.", isPremium = true),
+    topic("job_sequencing", "Job Sequencing with Deadlines", greedy, "Greedy scheduling to maximize total profit.", isPremium = true),
     topic("activity_selection", "Activity Selection", greedy, "Earliest-finish-first scheduling of non-overlapping intervals.", isPremium = true),
     topic("coin_change_greedy", "Coin Change (Greedy)", greedy, "Largest coin first — and the coin systems where that is wrong.", isPremium = true),
 )
@@ -90,7 +90,7 @@ private val dpTopics = listOf(
     topic("knapsack_01", "0/1 Knapsack", dp, "Tabulated take-or-leave item packing.", isPremium = true),
     topic("edit_distance", "Edit Distance", dp, "Minimum edits to turn one string into another.", isPremium = true),
     topic("matrix_chain_multiplication", "Matrix Chain Multiplication", dp, "Optimal parenthesization to minimize multiplication cost.", isPremium = true),
-    topic("longest_increasing_subsequence", "Longest Increasing Subsequence", dp, "Longest strictly increasing run within a sequence.", isPremium = true),
+    topic("longest_increasing_subsequence", "Longest Increasing Subsequence", dp, "Longest strictly increasing subsequence (not necessarily contiguous).", isPremium = true),
     topic("coin_change", "Coin Change", dp, "Minimum coins (or ways) to make a target amount.", isPremium = true),
     topic("fibonacci_dp", "Fibonacci (Dynamic Programming)", dp, "Memoized/tabulated Fibonacci — linear instead of exponential.", isPremium = true),
     topic("rod_cutting", "Rod Cutting", dp, "Optimal way to cut a rod to maximize revenue.", isPremium = true),

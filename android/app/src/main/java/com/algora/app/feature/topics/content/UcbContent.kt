@@ -22,7 +22,7 @@ internal val ucbContent = TopicContent(
         StepCard(4, "Shrink with Experience", "As an action's count rises, its bonus shrinks and its estimate sharpens.", 0xFFF59E0B),
     ),
     formulas = listOf(
-        FormulaEntry("UCB1", "Q(a) + c·√(ln t / n(a))", "Mean plus exploration bonus."),
+        FormulaEntry("UCB", "Q(a) + c·√(ln t / n(a))", "Mean plus exploration bonus. UCB1 (Auer et al. 2002) is c = √2."),
         FormulaEntry("Bonus", "√(ln t / n(a))", "Large for rarely-tried actions."),
         FormulaEntry("Regret", "O(log t)", "Near-optimal for stochastic bandits."),
     ),
@@ -33,12 +33,12 @@ internal val ucbContent = TopicContent(
     ),
     codeBlocks = listOf(
         CodeBlock(
-            title = "UCB1 action selection",
+            title = "UCB action selection (UCB1 is c = √2)",
             accentColor = 0xFF6366F1,
             code = """
                 import math
 
-                def ucb_select(Q, counts, t, c=2.0):
+                def ucb_select(Q, counts, t, c=2 ** 0.5):
                     return max(range(len(Q)), key=lambda a:
                         Q[a] + c * math.sqrt(math.log(t + 1) / (counts[a] + 1e-9)))
             """.trimIndent(),

@@ -36,11 +36,11 @@ internal val textCleaningContent = TopicContent(
     ),
     whatIsIt = listOf(
         "Cleaning is everything done to a string before it is split into tokens: Unicode normalisation, case folding, URL and number placeholders, punctuation handling, accent folding and whitespace collapse. Each stage exists to merge spellings that mean the same thing, because a model that counts words treats \"Apple's\", \"Apple's\" (curly apostrophe) and \"apple\" as three unrelated types with a third of the evidence each. On the lab's four-document corpus the pipeline takes the vocabulary from 35 types to 29.",
-        "The order is not arbitrary. Unicode normalisation comes first, before anything compares or measures a string, because NFKC is what makes the curly apostrophe and the ASCII one the same character. Placeholder substitution (URLs, numbers, e-mails) comes before punctuation stripping, or the URL is shredded into fragments that will never be seen again. Whitespace collapse comes last, so splitting on spaces is safe from that point on. Get the order wrong and later stages operate on text earlier ones were supposed to have fixed.",
+        "The order is not arbitrary. Unicode normalisation comes first, before anything compares or measures a string, because NFKC folds ligatures, full-width forms and other compatibility variants onto one character (curly quotes are not among them — they need an explicit replacement). Placeholder substitution (URLs, numbers, e-mails) comes before punctuation stripping, or the URL is shredded into fragments that will never be seen again. Whitespace collapse comes last, so splitting on spaces is safe from that point on. Get the order wrong and later stages operate on text earlier ones were supposed to have fixed.",
         "Every stage is also a loss, and lowercasing is the clearest case: in the lab's corpus it merges \"Apple's\" with \"apple\" — useful, two types become one — and in the same pass merges \"US\" the country with \"us\" the pronoun. Truecasing (lowercase only sentence-initial words, or restore case with a model) is the principled fix and is almost never applied. The rule that survives contact with real pipelines: clean for the model you are feeding. Count-based models want aggressive folding; subword-tokenized transformers want the raw string, because BERT-cased and its successors learn that \"US\" and \"us\" are different tokens and use the difference.",
     ),
     steps = listOf(
-        StepCard(1, "Normalise Unicode", "NFKC first, before any comparison — it folds curly quotes, ligatures and full-width forms onto canonical characters.", 0xFF14B8A6),
+        StepCard(1, "Normalise Unicode", "NFKC first, before any comparison — it folds ligatures and full-width forms onto canonical characters; curly quotes need an explicit mapping.", 0xFF14B8A6),
         StepCard(2, "Replace, Don't Delete", "URLs, e-mails, handles and numbers become placeholders; the fact that one was there is signal.", 0xFF06B6D4),
         StepCard(3, "Decide on Case", "Lowercase for count models; keep case for NER, acronyms and anything transformer-based.", 0xFF3B82F6),
         StepCard(4, "Handle Punctuation", "Stripping is cheap and lossy — it splits clitics and decimals. A regex tokenizer is the better tool.", 0xFF6366F1),
@@ -52,7 +52,7 @@ internal val textCleaningContent = TopicContent(
         FormulaEntry("Where the drops happen", "emoji −1, lowercase −2, punctuation −1, digits −2", "Per-stage, so a stage that pays for itself is distinguishable from one that does not."),
         FormulaEntry("The merge that pays", "{Apple's, apple} → {apple}", "2 types → 1, doubling the evidence for the same word."),
         FormulaEntry("The merge that costs", "{US, us} → {us}", "2 senses → 1 type, in the same pass, on the same corpus."),
-        FormulaEntry("NFKC", "compatibility decomposition, then canonical composition", "The normalisation form that folds typographic variants; NFC keeps them apart."),
+        FormulaEntry("NFKC", "compatibility decomposition, then canonical composition", "The normalisation form that folds compatibility variants (ligatures, full-width forms); NFC keeps them apart."),
         FormulaEntry("Digit folding", "\\d+(\\.\\d+)? → <num>", "\"12%\" and \"5.2%\" were unique types with no shared meaning; the placeholder keeps the fact of a number."),
     ),
     notationKey = listOf(
@@ -72,12 +72,13 @@ internal val textCleaningContent = TopicContent(
 
                 def clean(text: str) -> str:
                     text = unicodedata.normalize("NFKC", text)      # 1. before anything compares
-                    text = text.replace("’", "'")
+                    text = text.replace("’", "'")                    #    NFKC leaves curly quotes alone
                     text = re.sub(r"https?://\S+", " <url> ", text)  # 2. replace, don't delete
                     text = re.sub(r"\S+@\S+\.\w+", " <email> ", text)
+                    text = re.sub(r"\d+(?:\.\d+)?", "<num>", text)   #    numbers BEFORE punctuation strip,
+                                                                     #    or "5.2" is already "5 2"
                     text = text.lower()                              # 3. the lossy one
                     text = re.sub(r"[^\w\s<>]", " ", text)           # 4. crude; a tokenizer is better
-                    text = re.sub(r"\d+(?:\.\d+)?", "<num>", text)   # 5. one token for all numbers
                     text = "".join(c for c in unicodedata.normalize("NFD", text)
                                    if unicodedata.category(c) != "Mn")   # 6. cafe <- café
                     return re.sub(r"\s+", " ", text).strip()         # 7. last, so split() is safe

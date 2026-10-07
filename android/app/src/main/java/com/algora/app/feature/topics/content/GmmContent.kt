@@ -120,7 +120,7 @@ internal val gmmContent = TopicContent(
                 print(best, round(results[best], 1))
 
                 # And what k-means cannot give you at all:
-                gmm = GaussianMixture(n_components=best[0]).fit(X)
+                gmm = GaussianMixture(n_components=best[0], covariance_type=best[1]).fit(X)
                 proba = gmm.predict_proba(X)                  # per-point posteriors
                 ambiguous = X[proba.max(axis=1) < 0.8]        # points genuinely between clusters
                 new_samples, _ = gmm.sample(500)              # it is generative

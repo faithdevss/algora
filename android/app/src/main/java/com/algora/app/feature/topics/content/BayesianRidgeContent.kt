@@ -36,29 +36,31 @@ internal val bayesianRidgeContent = TopicContent(
         ),
     ),
     whatIsIt = listOf(
-        "Bayesian ridge regression returns a distribution over coefficients rather than a single vector. Put a Gaussian prior β ~ N(0, α⁻¹I) on the weights and a Gaussian likelihood on the data, and the posterior is Gaussian too — available in closed form, with a mean and a full covariance matrix.",
+        "Bayesian ridge regression returns a distribution over coefficients rather than a single vector. Put a Gaussian prior w ~ N(0, α⁻¹I) on the weights and a Gaussian likelihood on the data, and the posterior is Gaussian too — available in closed form, with a mean and a full covariance matrix.",
         "The mean of that posterior is exactly the ridge estimate with λ = α/β. So ordinary ridge was already doing Bayesian inference; it simply threw away everything except the peak. What the covariance buys you is calibrated uncertainty: the predictive variance at a point is σ² + φ(x)ᵀSφ(x), where the second term grows wherever the data does not constrain the fit. The model can say \"I do not know here\", and it says it loudest in the gaps between observations and beyond the edges of the training range — which is precisely where a point estimate is most confidently wrong.",
         "The other practical gain is that the hyperparameters stop being a cross-validation problem. Maximizing the marginal likelihood — evidence maximization, or empirical Bayes — estimates α and the noise level from the data directly, in a single fit, with no held-out split. This is why Bayesian ridge is attractive on small datasets where carving out a validation set is expensive. The limits are the assumptions: Gaussian everything, and closed form only for linear models. Drop either and you are into MCMC or variational inference, which is where the cost comes back.",
     ),
     steps = listOf(
-        StepCard(1, "Put a Prior on β", "N(0, α⁻¹I) — a belief that coefficients are small before seeing data.", 0xFF6366F1),
-        StepCard(2, "Write the Likelihood", "y ~ N(Xβ, σ²I). Gaussian noise around a linear mean.", 0xFF818CF8),
+        StepCard(1, "Put a Prior on w", "N(0, α⁻¹I) — a belief that coefficients are small before seeing data.", 0xFF6366F1),
+        StepCard(2, "Write the Likelihood", "y ~ N(Xw, β⁻¹I). Gaussian noise around a linear mean.", 0xFF818CF8),
         StepCard(3, "Multiply, and Get a Gaussian", "Conjugacy: the posterior is Gaussian with closed-form mean and covariance.", 0xFF60A5FA),
         StepCard(4, "Note the Mean Is Ridge", "The posterior mean equals the ridge solution with λ = α/β. Ridge is its MAP estimate.", 0xFF10B981),
         StepCard(5, "Propagate to Predictions", "Predictive variance = noise + φᵀSφ. The second term is the model's own ignorance.", 0xFFF59E0B),
         StepCard(6, "Learn α and σ² from Evidence", "Maximize the marginal likelihood — no cross-validation split needed.", 0xFFEC4899),
     ),
     formulas = listOf(
-        FormulaEntry("Prior", "p(β) = N(0, α⁻¹I)", "α is the prior precision."),
+        FormulaEntry("Prior", "p(w) = N(0, α⁻¹I)", "α is the prior precision."),
         FormulaEntry("Posterior covariance", "S = (αI + βXᵀX)⁻¹", "β here is noise precision, 1/σ²."),
         FormulaEntry("Posterior mean", "μ = βSXᵀy", "Identical to ridge with λ = α/β."),
         FormulaEntry("Predictive variance", "σ²(x) = 1/β + φ(x)ᵀSφ(x)", "Irreducible noise plus model uncertainty."),
         FormulaEntry("Evidence", "p(y|α,β) = ∫ p(y|β,w)p(w|α)dw", "Maximized to choose the hyperparameters."),
-        FormulaEntry("Effective parameters", "γ = Σᵢ λᵢ/(α + λᵢ)", "How many directions the data actually pinned down."),
+        FormulaEntry("Effective parameters", "γ = Σᵢ λᵢ/(α + λᵢ)", "How many directions the data actually pinned down; λᵢ are the eigenvalues of βXᵀX."),
     ),
     notationKey = listOf(
         NotationEntry("α", "prior precision on the coefficients"),
-        NotationEntry("β", "noise precision, 1/σ² (not a coefficient here)"),
+        NotationEntry("β", "noise precision, 1/σ² (not a coefficient here — coefficients are w)"),
+        NotationEntry("λᵢ", "eigenvalues of βXᵀX, used in the effective-parameter count"),
+        NotationEntry("sklearn names", "sklearn's alpha_ is our β (noise precision) and its lambda_ is our α (weight precision)"),
         NotationEntry("S", "posterior covariance matrix"),
         NotationEntry("φ(x)", "the basis functions evaluated at x"),
         NotationEntry("conjugacy", "prior and posterior in the same family, giving closed form"),
@@ -80,7 +82,8 @@ internal val bayesianRidgeContent = TopicContent(
 
                 # Two components, and they behave differently:
                 #   aleatoric  = 1/alpha_  -> noise in y. More data does NOT reduce it.
-                #   epistemic  = phi^T S phi -> ignorance about beta. More data DOES.
+                #   epistemic  = phi^T S phi -> ignorance about w. More data DOES.
+                # (sklearn's alpha_ = noise precision = our beta; lambda_ = weight precision = our alpha)
                 print(np.sqrt(1 / model.alpha_))       # the floor std can never go below
             """.trimIndent(),
         ),

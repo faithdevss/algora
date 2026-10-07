@@ -78,7 +78,9 @@ internal val word2vecSkipgramContent = TopicContent(
                 import numpy as np
 
                 # The 3/4 power is not cosmetic: it decides which words act as negatives.
-                counts = np.array([corpus.count(w) for w in vocab], dtype=float)
+                from collections import Counter
+                freq = Counter(w for sent in corpus for w in sent)   # corpus is a list of token lists
+                counts = np.array([freq[w] for w in vocab], dtype=float)
                 noise  = counts ** 0.75
                 noise /= noise.sum()
 

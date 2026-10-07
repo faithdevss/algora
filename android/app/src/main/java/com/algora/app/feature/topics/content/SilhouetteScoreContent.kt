@@ -37,7 +37,7 @@ internal val silhouetteScoreContent = TopicContent(
         NotationEntry("b", "mean distance from a point to the nearest other cluster"),
         NotationEntry("negative silhouette", "a point closer, on average, to another cluster than its own"),
         NotationEntry("compactness assumption", "silhouette implicitly rewards convex, tightly grouped clusters"),
-        NotationEntry("elbow", "the point in a k-sweep where the metric peaks — a heuristic for choosing k"),
+        NotationEntry("elbow", "the bend in an inertia/WCSS vs. k curve where improvements level off; silhouette picks the peak instead"),
         NotationEntry("Davies-Bouldin", "a related index that fails the same way on the same data — see that topic"),
     ),
     codeBlocks = listOf(

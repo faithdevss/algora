@@ -34,7 +34,7 @@ internal val dutchFlagPatternContent = TopicContent(
         ),
     ),
     whatIsIt = listOf(
-        "In-place partitioning sweeps once and rearranges the array into regions — smaller, equal, larger — using pointers that mark the region boundaries. No extra array, one pass, stable regions by construction of the invariant.",
+        "In-place partitioning sweeps once and rearranges the array into regions — smaller, equal, larger — using pointers that mark the region boundaries. No extra array, one pass, with the region boundaries guaranteed by the invariant (the sort is not stable).",
         "The three-way version (Dijkstra's Dutch national flag) keeps low, mid and high. Everything before low is small, everything after high is large, and mid scans the unclassified middle until it meets high.",
     ),
     steps = listOf(
@@ -86,7 +86,7 @@ internal val dutchFlagPatternContent = TopicContent(
     applications = listOf(
         ApplicationCard("chart", 0xFF3B82F6, "Bucketing In Place", "Group records by a small number of categories without allocating."),
         ApplicationCard("target", 0xFF10B981, "Quickselect", "Partitioning around a pivot is the core loop of selection and quicksort."),
-        ApplicationCard("chip", 0xFF8B5CF6, "Memory-Constrained Sorting", "Duplicate-heavy keys sort in O(n) with three-way partitioning."),
+        ApplicationCard("chip", 0xFF8B5CF6, "Memory-Constrained Sorting", "Duplicate-heavy keys sort in near-linear time with three-way partitioning (O(n) when there are only a few distinct keys)."),
     ),
     takeaways = listOf(
         "State the invariant first; the three branches are then forced.",

@@ -12,9 +12,9 @@ import com.algora.app.core.data.model.TopicContent
 internal val giniImpurityContent = TopicContent(
     topicId = "gini_impurity",
     whatIsIt = listOf(
-        "Gini impurity is a splitting criterion a decision tree uses while growing, not a metric reported once a model is finished: 1 − Σp², the chance two randomly drawn labels from a node disagree. It is unrelated to the economics Gini coefficient of inequality despite the shared name and shared author's field of statistics — different formula, different subject.",
+        "Gini impurity is a splitting criterion a decision tree uses while growing, not a metric reported once a model is finished: 1 − Σp², the chance two randomly drawn labels from a node disagree. It is a different measure from the economics Gini coefficient of inequality — both are named after the statistician Corrado Gini (impurity is his \"mutability\" / Gini–Simpson index), but one measures heterogeneity and the other inequality.",
         "On a parent node of 400 examples split evenly (200/200), gini is 0.500 — the maximum for two classes — and entropy is 1.000, also its maximum. Four candidate splits of that node score: a perfect split (200/0 · 0/200) maxes every criterion at once — gini gain 0.5000, entropy gain 1.0000, error-rate gain 0.5000. The other three splits disagree with each other in a way that matters for which one a tree picks.",
-        "Splits A (300/100 · 100/300) and C (200/100 · 0/100) get identical misclassification-rate gain — 0.2500 for both — but Gini and entropy both correctly prefer C (gini gain 0.1667 vs 0.1250, entropy 0.3113 vs 0.1887). Misclassification rate is blind to a real difference the smoother criteria can see, which is the actual reason trees are grown on Gini or entropy and not on error rate directly.",
+        "Splits A (150/50 · 50/150) and C (200/100 · 0/100) get identical misclassification-rate gain — 0.2500 for both — but Gini and entropy both correctly prefer C (gini gain 0.1667 vs 0.1250, entropy 0.3113 vs 0.1887). Misclassification rate is blind to a real difference the smoother criteria can see, which is the actual reason trees are grown on Gini or entropy and not on error rate directly.",
     ),
     steps = listOf(
         StepCard(1, "Score the Parent", "200/200 node: gini 0.500, entropy 1.000 — both at maximum.", 0xFF0EA5E9),
@@ -38,7 +38,7 @@ internal val giniImpurityContent = TopicContent(
         NotationEntry("misclassification rate", "1 − max(p) — the criterion that ties on A vs C"),
         NotationEntry("weighted", "each child's impurity scaled by its share of the parent's examples"),
         NotationEntry("splitting criterion", "what a tree optimizes while growing, distinct from a reported evaluation metric"),
-        NotationEntry("Gini coefficient", "the unrelated economics measure of inequality — not this"),
+        NotationEntry("Gini coefficient", "the economics measure of inequality, from the same statistician — a different measure, not this"),
     ),
     codeBlocks = listOf(
         CodeBlock(
@@ -57,7 +57,7 @@ internal val giniImpurityContent = TopicContent(
                     return 1 - max(pos, neg) / n
 
                 # Splits of a 200/200 parent:
-                split_a = (300, 100, 100, 300)  # gini gain 0.1250, error gain 0.2500
+                split_a = (150, 50, 50, 150)  # gini gain 0.1250, error gain 0.2500
                 split_c = (200, 100, 0, 100)    # gini gain 0.1667, error gain 0.2500
                 #
                 # Error-rate gain ties at 0.2500 for both splits. Gini gain does not -- and Gini's
@@ -94,7 +94,7 @@ internal val giniImpurityContent = TopicContent(
         "Splits A and C tie on misclassification-rate gain at 0.2500 — indistinguishable by that criterion.",
         "Gini gain tells them apart: 0.1250 vs 0.1667, correctly preferring C, and entropy agrees.",
         "That blind spot is the actual reason trees split on Gini or entropy, not on error rate.",
-        "Not to be confused with the economics Gini coefficient — same name, unrelated formula.",
+        "Not to be confused with the economics Gini coefficient — same statistician, different measure.",
     ),
     crossLinks = listOf(
         CrossLink("random_forest", "Random Forests"),

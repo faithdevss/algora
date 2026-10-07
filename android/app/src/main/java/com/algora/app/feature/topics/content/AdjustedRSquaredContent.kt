@@ -55,7 +55,7 @@ internal val adjustedRSquaredContent = TopicContent(
                 # ['0.6014', '0.5947', '0.5880', '0.5792', '0.5875', '0.5766', '0.5699', '0.5638', '0.5514']
                 #
                 # R^2 rises at all 8 steps. Adjusted R^2 falls net -- 0.6014 to 0.5514 -- with one
-                # step (p=4) rising against the trend, which the penalty term does not prevent; it
+                # step (p=5, the 4th noise column) rising against the trend, which the penalty term does not prevent; it
                 # only makes an unhelpful column *usually* cost more than it earns.
             """.trimIndent(),
         ),
@@ -87,7 +87,7 @@ internal val adjustedRSquaredContent = TopicContent(
         "Adjusted R² adds a penalty term, (n−1)/(n−p−1), that grows with the predictor count p.",
         "Adding 8 columns of pure noise makes plain R² rise every single step: 0.6106 → 0.6453.",
         "Adjusted R² on the identical fits nets a 5-point drop over the same run: 0.6014 → 0.5514.",
-        "It isn't perfectly monotone — one step (p=4) actually rises, 0.5792 → 0.5875.",
+        "It isn't perfectly monotone — one step (p=5, the 4th noise column) actually rises, 0.5792 → 0.5875.",
         "The lesson is \"can fall, and net does,\" not \"always falls at every step.\"",
         "Plain R² cannot fall when a predictor is added, no matter how useless; adjusted R² can.",
         "Use it, not plain R², whenever comparing models with different numbers of predictors.",

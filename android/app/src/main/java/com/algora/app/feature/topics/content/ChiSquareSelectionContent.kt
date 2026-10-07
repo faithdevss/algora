@@ -71,7 +71,9 @@ internal val chiSquareSelectionContent = TopicContent(
                 y = a ^ b                      # the pair determines the label exactly
 
                 scores, _ = chi2(X, y)
-                print(scores.round(2))         # [3.79 1.98 2.62]  <- noise ranks first
+                print(scores.round(2))         # all three are sampling noise: the order depends on the seed
+                                               # (the lab's draw gave [3.79 1.98 2.62], noise first;
+                                               # this seed gives [0.08 0.17 2.15])
                 print(f"a alone: {(y == a).mean():.2f}, b alone: {(y == b).mean():.2f}")   # ~0.50
 
                 # Each feature is individually independent of the label -- 50% agreement -- so no

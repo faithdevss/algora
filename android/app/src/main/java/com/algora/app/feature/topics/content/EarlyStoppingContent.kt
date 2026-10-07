@@ -24,7 +24,7 @@ internal val earlyStoppingContent = TopicContent(
             "gets to see during training, bottoms out at step 100 and then climbs 37% above its " +
             "floor by the end. That divergence is overfitting, and it is the only place it is " +
             "visible. Validation loss is the proxy you actually have: its own minimum lands at " +
-            "step 120, close to true risk's 100, and then it jitters within 0.3% of that minimum " +
+            "step 120, close to true risk's 100, and then it jitters within about 1% of that minimum " +
             "for the remaining 3,880 steps. The bet early stopping makes is that a noisy estimate " +
             "of roughly the right place beats a clean training curve's promise that more is better.",
         shape = FigureShape.Plot(
@@ -73,7 +73,7 @@ internal val earlyStoppingContent = TopicContent(
         ),
     ),
     whatIsIt = listOf(
-        "Early stopping halts training at the point a held-out validation set says to, rather than running to a fixed epoch count. The usual picture is a clean U: validation loss falls, bottoms out, then rises as the model starts fitting noise the validation set does not share. Fit here for real — a degree-9 polynomial trained by gradient descent on 20 noisy points, watched against a 20-point validation set and scored, separately, against the noise-free function underneath both — the picture is messier and more informative than the textbook curve. Validation loss reaches its minimum at step 120 of a 4,000-step run, then wanders within about 0.3% of that minimum for the rest of training: it neither collapses nor recovers cleanly, it jitters, because 20 points is a small and noisy sample of the true generalization error.",
+        "Early stopping halts training at the point a held-out validation set says to, rather than running to a fixed epoch count. The usual picture is a clean U: validation loss falls, bottoms out, then rises as the model starts fitting noise the validation set does not share. Fit here for real — a degree-9 polynomial trained by gradient descent on 20 noisy points, watched against a 20-point validation set and scored, separately, against the noise-free function underneath both — the picture is messier and more informative than the textbook curve. Validation loss reaches its minimum at step 120 of a 4,000-step run, then wanders within about 1% of that minimum for the rest of training: it neither collapses nor recovers cleanly, it jitters, because 20 points is a small and noisy sample of the true generalization error.",
         "The true-risk curve — error against the clean function the training and validation noise were both added to, which no real deployment ever gets to measure directly but which is exactly what early stopping is trying to protect — tells a cleaner story: it falls from step 20 to a true minimum at step 100, then climbs monotonically for the rest of the run, ending 37% higher at step 4,000 than at its floor. Training loss, over the same stretch, keeps falling the entire time (0.0111 at step 120 down to 0.0101 at step 4,000) — the model is still improving on the data it can see while getting worse on the function that data was drawn from. That divergence, not any single number, is overfitting.",
         "Validation loss's own minimum (step 120) lands close to but not exactly at true risk's minimum (step 100) — it is an estimate of the quantity that actually matters, built from 20 noisy points, and estimates have their own noise. What makes it useful anyway is asymmetric: stopping a little early or a little late near a shallow validation minimum costs almost nothing, because true risk is nearly flat near its own floor, while training to the end costs a measured 37% in the metric nobody can directly observe during training. Early stopping is a bet that a noisy proxy's rough location is worth far more than a clean training curve's false promise that more steps are always better.",
     ),
@@ -116,7 +116,7 @@ internal val earlyStoppingContent = TopicContent(
                 # step= 800  val=0.02080  true=0.00525  train=0.01061   <- val is noisy, not monotone
                 # step=4000  val=0.02068  true=0.00639  train=0.01012   <- true risk: 37% worse than its floor
                 #
-                # Validation loss moves by about 0.3% across this whole stretch -- it would not look
+                # Validation loss moves by about 1% across this whole stretch -- it would not look
                 # dramatic on a chart. True risk against the function nobody gets to see moves by 37%.
             """.trimIndent(),
         ),
@@ -130,7 +130,7 @@ internal val earlyStoppingContent = TopicContent(
     ),
     takeaways = listOf(
         "Training loss falls for the entire run — 0.0111 to 0.0101 — which is exactly why it cannot be the stopping signal.",
-        "Validation loss bottoms at step 120 of 4,000, then jitters within about 0.3% of that floor for the rest of training.",
+        "Validation loss bottoms at step 120 of 4,000, then jitters within about 1% of that floor for the rest of training.",
         "True risk — error against the noise-free function, never directly observable during training — bottoms at step 100 and then climbs monotonically.",
         "By step 4,000, true risk is 37% worse than at its own floor, even though validation loss barely moved.",
         "The two minima (validation at 120, true risk at 100) are close but not identical — validation is an estimate of the thing that matters, not the thing itself.",

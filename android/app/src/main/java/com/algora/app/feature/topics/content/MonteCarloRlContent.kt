@@ -60,12 +60,14 @@ internal val monteCarloRlContent = TopicContent(
                             s = s2
 
                         # 2. Walk backwards so each G is built in O(1) from the one after it.
-                        G, seen = 0.0, set()
+                        first_idx = {}
+                        for t, (s, _) in enumerate(trajectory):
+                            first_idx.setdefault(s, t)   # earliest time each state appears
+                        G = 0.0
                         for t in reversed(range(len(trajectory))):
                             s, r = trajectory[t]
                             G = r + gamma * G
-                            if s not in seen:            # first-visit: skip later duplicates
-                                seen.add(s)
+                            if first_idx[s] == t:        # first-visit: only the earliest occurrence
                                 returns_sum[s] += G
                                 counts[s] += 1
                                 V[s] = returns_sum[s] / counts[s]

@@ -63,7 +63,7 @@ internal val polynomialRegressionContent = TopicContent(
         FormulaEntry("Design matrix", "Xᵢⱼ = xᵢ^j", "The Vandermonde matrix — notoriously ill-conditioned."),
         FormulaEntry("Solution", "β̂ = (XᵀX)⁻¹Xᵀy", "Unchanged from ordinary linear regression."),
         FormulaEntry("Parameters", "d + 1", "Interpolates any d + 1 points exactly."),
-        FormulaEntry("Runge's phenomenon", "oscillation ∝ degree near the edges", "Why splines beat high-degree polynomials."),
+        FormulaEntry("Runge's phenomenon", "edge error grows exponentially with degree (equispaced nodes)", "Why splines beat high-degree polynomials."),
     ),
     notationKey = listOf(
         NotationEntry("d", "polynomial degree"),
@@ -107,11 +107,11 @@ internal val polynomialRegressionContent = TopicContent(
             code = """
                 x = np.linspace(0, 9, 40)
 
-                raw = np.vander(x, 10)                       # columns 1, x, ..., x^9
-                print(np.linalg.cond(raw))                   # ~1e13 — catastrophic
+                raw = np.vander(x, 10)                       # columns x^9, ..., x, 1 (decreasing powers by default)
+                print(np.linalg.cond(raw))                   # ~1e10 — catastrophic
 
                 scaled = np.vander((x - x.mean()) / x.std(), 10)
-                print(np.linalg.cond(scaled))                # ~1e4 — workable
+                print(np.linalg.cond(scaled))                # ~1e3 — workable
 
                 # Orthogonal polynomials (numpy.polynomial.legendre, or QR on the raw basis)
                 # push this further: same fitted curve, condition number near 1.

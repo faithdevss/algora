@@ -48,7 +48,7 @@ internal val nuSvcContent = TopicContent(
     whatIsIt = listOf(
         "The standard SVM's C is an awkward hyperparameter: it runs from 0 to infinity, its useful range shifts with the data's scale and size, and no value of it corresponds to any quantity you care about. You find it by grid search because there is nothing else to do.",
         "ν-SVC reparameterizes the same problem so the knob means something. ν lives in (0,1] and satisfies a two-sided bound: the fraction of margin errors is at most ν, and the fraction of support vectors is at least ν. Set ν = 0.1 and you have asserted that no more than 10% of training points may violate the margin, and at least 10% will be support vectors. That is a specification, not a search result.",
-        "The two formulations solve equivalent problems — for every ν there is a C giving the identical classifier — so the choice is about which parameter you would rather reason about, not about accuracy. ν is the better interface when you have a prior on the noise level, and it also makes the model's sparsity directly controllable, since the support-vector fraction is bounded below. Two cautions: the bounds are asymptotic and can sit slightly outside on small samples, and not every ν is feasible — values above roughly 2·min(n₊,n₋)/n produce no solution at all on imbalanced data.",
+        "The two formulations solve equivalent problems — for every ν there is a C giving the identical classifier — so the choice is about which parameter you would rather reason about, not about accuracy. ν is the better interface when you have a prior on the noise level, and it also makes the model's sparsity directly controllable, since the support-vector fraction is bounded below. Two cautions: the bounds hold exactly at the optimum (what is asymptotic is that both fractions converge to ν), and not every ν is feasible — values above roughly 2·min(n₊,n₋)/n produce no solution at all on imbalanced data.",
     ),
     steps = listOf(
         StepCard(1, "Pick ν, Not C", "A fraction in (0,1] rather than an unbounded penalty with no units.", 0xFF8B5CF6),
@@ -88,7 +88,7 @@ internal val nuSvcContent = TopicContent(
                     margins = y_signed * fit.decision_function(X)
                     error_fraction = (margins < 1).mean()
                     print(f"nu={nu}  errors={error_fraction:.3f}  sv={sv_fraction:.3f}")
-                    # errors <= nu <= sv, up to the asymptotic slack on finite samples
+                    # errors <= nu <= sv holds exactly at the optimum; any tiny excess is solver tolerance
             """.trimIndent(),
         ),
         CodeBlock(
@@ -119,7 +119,7 @@ internal val nuSvcContent = TopicContent(
     takeaways = listOf(
         "ν-SVC and C-SVC solve equivalent problems — the difference is that ν means something.",
         "ν upper-bounds the margin-error fraction and lower-bounds the support-vector fraction, simultaneously.",
-        "The bounds are asymptotic, so small samples can land slightly outside them.",
+        "The bounds hold exactly; asymptotically both fractions approach ν.",
         "Not every ν is feasible: imbalanced classes cap the usable range at about 2·min(n₊,n₋)/n.",
     ),
     crossLinks = listOf(

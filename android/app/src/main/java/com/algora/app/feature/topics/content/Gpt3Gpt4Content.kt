@@ -13,7 +13,7 @@ internal val gpt3Gpt4Content = TopicContent(
     topicId = "gpt3_gpt4",
     whatIsIt = listOf(
         "GPT-3's contribution was not architectural — it is a decoder-only transformer of the same shape as GPT-2, scaled to 175B parameters and 300B training tokens. What that scale produced was qualitative rather than incremental: in-context learning, where the model performs a task from a handful of examples in the prompt with no gradient update at all. The interface to a language model stopped being fine-tuning and became prompting, which is the reason the paper is titled \"Language Models are Few-Shot Learners\".",
-        "Scaling laws are why anyone spent the money. Test loss falls as a smooth power law in parameters, data and compute across many orders of magnitude, so the return on a larger run is predictable before it starts. Chinchilla then showed GPT-3 had allocated its budget wrongly: for a fixed compute budget, loss is minimised at roughly 20 training tokens per parameter, and GPT-3 used 1.7. It was not too large — it was under-trained for its size, and a 70B model on 1.4T tokens beat it using less compute. Every lab's budget arithmetic changed after that paper.",
+        "Scaling laws are why anyone spent the money. Test loss falls as a smooth power law in parameters, data and compute across many orders of magnitude, so the return on a larger run is predictable before it starts. Chinchilla then showed GPT-3 had allocated its budget wrongly: for a fixed compute budget, loss is minimised at roughly 20 training tokens per parameter, and GPT-3 used 1.7. It was not too large — it was under-trained for its size, and Chinchilla — a 70B model on 1.4T tokens, trained with the same compute as the 280B Gopher (about 1.9× GPT-3's) — outperformed GPT-3, Gopher and larger models. Every lab's budget arithmetic changed after that paper.",
         "GPT-4's technical report published no parameter count, no dataset size and no architecture. Its methodological contribution was predictable scaling: the final model's performance was forecast in advance from runs using 1,000–10,000× less compute, which is a real capability independent of any one model. Two things the loss curves do not capture then decided how these systems are actually used. Post-training — instruction tuning and RLHF — mattered more than raw scale for usefulness: InstructGPT's 1.3B model was preferred by human raters to the raw 175B GPT-3, a 100× parameter gap closed by alignment. And once next-token loss stopped being the differentiator, competition moved to multimodality, tool use, and context length.",
     ),
     steps = listOf(
@@ -56,7 +56,7 @@ internal val gpt3Gpt4Content = TopicContent(
                 for name, (n, d) in models.items():
                     print(f"{name}: {d/n:5.1f} tokens/param, {training_flops(n, d):.2e} FLOPs")
                 # GPT-3:        1.7 tokens/param, 3.15e+23 FLOPs
-                # Chinchilla:  20.0 tokens/param, 5.88e+23 FLOPs   <- better model, similar budget
+                # Chinchilla:  20.0 tokens/param, 5.88e+23 FLOPs   <- better model; same budget as Gopher (280B), ~1.9x GPT-3's
                 # LLaMA-3 70B: 214.3 tokens/param, 6.30e+24 FLOPs  <- deliberately past optimal
 
                 # Chinchilla-optimal minimises TRAINING loss for a fixed budget. It does not

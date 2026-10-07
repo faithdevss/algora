@@ -35,7 +35,7 @@ internal val selfCrossAttentionContent = TopicContent(
     whatIsIt = listOf(
         "Self-attention and cross-attention are the same operation. Score every query against every key, softmax the scores, return that weighted mixture of the values — softmax(QKᵀ/√d)·V, identically in both cases. What differs is only where the three come from. In self-attention Q, K and V are all projections of one sequence, so every position is refining its own representation using the rest of the sequence. In cross-attention the queries come from the sequence being generated and the keys and values from a different one, so the decoder is reading the encoder.",
         "That distinction is what turns an encoder-decoder from a bottleneck into an architecture. The encoder-decoder topic measures a fixed context vector failing: on a copy task it scores 0.292 exact match, collapsing to zero by length four, and a linear probe shows the vector holds only what the encoder read last. This lab retrains the same model, on the same 120 pairs, for the same 100 epochs, with cross-attention in place of that single handover — and it scores 0.867, with the per-length curve flat until the very end. The decoder no longer has to receive the source; it can go and look.",
-        "The obvious objection is parameters, and it is answered by measurement rather than argument. Widening the fixed-vector model until its parameter count matches the attention model's — 1,069 against 1,087 — moves it from 0.292 to 0.300, and the collapse with length is exactly where it was. Capacity was never the missing ingredient; the missing ingredient was a path from each decoder step to every source position. What that path costs is quadratic: self-attention over n tokens computes n² scores, and the whole matrix has to exist.",
+        "The obvious objection is parameters, and it is answered by measurement rather than argument. Widening the fixed-vector model until its parameter count matches the attention model's — 1,069 against 1,087 — moves it from 0.292 to 0.300, and the collapse with length is exactly where it was. Capacity was never the missing ingredient; the missing ingredient was a path from each decoder step to every source position. What that path costs is quadratic: self-attention over n tokens computes n² scores — naive implementations also store the full matrix, while fused kernels such as FlashAttention avoid that memory.",
     ),
     steps = listOf(
         StepCard(1, "Project", "Q, K, V from whichever sequences the wiring says.", 0xFF6366F1),
@@ -109,7 +109,9 @@ internal val selfCrossAttentionContent = TopicContent(
                     model.decode(target, memory)
                     for h in hooks:
                         h.remove()
-                    return torch.stack(weights).mean(dim=(0, 1))          # over layers and heads
+                    return torch.stack(weights).mean(dim=(0, 2))          # over layers and heads -> (batch, tgt, src)
+                # needs need_weights=True and average_attn_weights=False; nn.TransformerDecoderLayer
+                # calls attention with need_weights=False, so hook a custom layer or recompute
 
                 # A diagonal-ish matrix means the model found the alignment. A matrix with all its
                 # mass in one column usually means it is ignoring the source and running as a
@@ -130,7 +132,7 @@ internal val selfCrossAttentionContent = TopicContent(
         "On the same copy task, same data and same budget: a fixed context vector scores 0.292, cross-attention 0.867.",
         "Widening the fixed-vector model to a matched 1,069 parameters moves it to 0.300 — the gap is not capacity.",
         "The learned alignment puts 0.942 of its mass on the position each step should read, without ever being told.",
-        "The cost is quadratic: n tokens means n² scores, and the whole matrix has to be materialised.",
+        "The cost is quadratic: n tokens means n² scores; naive implementations store the whole matrix, while fused kernels avoid that memory.",
         "The attention gradients here are checked against finite differences — the first check failed on a loss-scale mismatch, not a derivation error.",
     ),
     crossLinks = listOf(

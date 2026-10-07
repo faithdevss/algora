@@ -35,7 +35,7 @@ internal val cnnContent = TopicContent(
     ),
     whatIsIt = listOf(
         "Convolutional neural networks (CNNs) process grid-like data — especially images — by sliding small learnable filters across the input to detect local patterns.",
-        "Two ideas make them efficient: weight sharing (the same filter everywhere) and translation invariance (a feature is detected wherever it appears).",
+        "Two ideas make them efficient: weight sharing (the same filter everywhere) and translation equivariance (a shifted input gives a shifted feature map; pooling then adds approximate invariance).",
     ),
     steps = listOf(
         StepCard(1, "Convolution", "Slide filters over the input; each produces a feature map highlighting where its pattern occurs.", 0xFF818CF8),
@@ -75,7 +75,7 @@ internal val cnnContent = TopicContent(
         ApplicationCard("music", 0xFF10B981, "Audio & Signals", "1D convolutions capture local structure in audio and time series too."),
     ),
     takeaways = listOf(
-        "CNNs slide shared filters to detect local patterns, giving translation invariance.",
+        "CNNs slide shared filters to detect local patterns, giving translation equivariance (pooling adds approximate invariance).",
         "Weight sharing makes them vastly more parameter-efficient than dense nets on images.",
         "Stacked conv/pool layers build a hierarchy from edges to objects.",
         "They dominated vision until Transformers began rivaling them at scale.",

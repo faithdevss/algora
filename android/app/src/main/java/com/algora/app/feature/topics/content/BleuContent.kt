@@ -118,7 +118,7 @@ internal val bleuContent = TopicContent(
     ),
     simulation = SimulationType.TokenStripPlayer,
     applications = listOf(
-        ApplicationCard("translate", 0xFF0EA5E9, "Machine Translation", "The field's default system-level score for three decades."),
+        ApplicationCard("translate", 0xFF0EA5E9, "Machine Translation", "The field's default system-level score for over two decades."),
         ApplicationCard("chart", 0xFF3B82F6, "A/B System Comparison", "Valid use: two systems, one test set, one tokenizer, thousands of sentences."),
         ApplicationCard("code", 0xFF10B981, "Code Generation", "CodeBLEU adapts it with AST and dataflow matching, because token overlap alone is worse here."),
         ApplicationCard("help", 0xFFF59E0B, "What Not To Do", "One sentence, across test sets, or across papers — all invalid."),

@@ -15,7 +15,7 @@ internal val mambaContent = TopicContent(
         "Mamba makes a state space model's parameters depend on the token. In an LTI system Ā, B̄ and C are the same at every position, so the model decides what to remember before it has seen anything. Mamba computes Δ, B and C from the current input, which means the recurrence can choose to write a token into the state or to hold the state unchanged and ignore it.",
         "The lab runs the selective-copying task the paper is built around, on three one-channel systems that differ only in that. One token worth remembering arrives first, then filler tokens carrying a non-zero value, then a read-out. The measurement is the *signal contribution* — the difference the signal token makes to the answer — because the raw recovered value flatters the decaying arm badly: at 100 fillers it reports 0.700 against a target of 1.0, which reads like a 30% error and is in fact the filler steady state with no trace of the signal in it at all.",
         "Measured that way the two time-invariant arms fail in opposite directions, and neither failure is fixable by tuning. A fixed decay of 0.90 can forget the fillers, which is what you want — but it forgets on a timer, so the signal's contribution collapses from 3.0e-2 to **8.0e-7 over 100 fillers**, a factor of 37,000. No decay at all (a = 1.00) forgets nothing, including every filler: the state reaches 71.0, of which the signal is a fixed 0.300 and the rest is noise the system had no way to refuse. The selective arm holds **0.9817 at every distance**, because holding costs it nothing.",
-        "Selectivity is not free: it costs the convolution. An LTI system is one fixed kernel, which is why SSMs can train in parallel through an FFT; a selective one has a different kernel at every position, and the best single fixed kernel fitted to this system's own outputs still leaves a residual of 0.721. That is why Mamba needs a hardware-aware parallel scan instead — the scan survives input-dependence, the convolution does not. What it buys at inference is a state that does not grow: 64 KB per layer whatever the length, against a transformer layer's KV cache 131,072× larger at 1M tokens.",
+        "Selectivity is not free: it costs the convolution. An LTI system is one fixed kernel, which is why SSMs can train in parallel through an FFT; a selective one has a different kernel at every position, and the best single fixed kernel fitted to this system's own outputs still leaves a residual of 0.721. That is why Mamba needs a hardware-aware parallel scan instead — the scan survives input-dependence, the convolution does not. What it buys at inference is a state that does not grow: 128 KB per layer whatever the length, against a transformer layer's KV cache 65,536× larger at 1M tokens.",
     ),
     steps = listOf(
         StepCard(1, "Project Δ From The Token", "Δ = softplus(W_Δ·x). A large Δ writes; Δ ≈ 0 holds the state.", 0xFF06B6D4),
@@ -86,9 +86,9 @@ internal val mambaContent = TopicContent(
                 # trade Flash Attention makes.
 
                 # Buys: an inference state that does not grow with the sequence.
-                mamba_state   = 2 * 2048 * 16 * 2          # 64 KB per layer, constant
+                mamba_state   = 2 * 2048 * 16 * 2          # 128 KB per layer, constant
                 kv_cache_1m   = 2 * 1_048_576 * 32 * 64 * 2  # 8 GB per layer at 1M tokens
-                print(kv_cache_1m / mamba_state)             # 131,072x
+                print(kv_cache_1m / mamba_state)             # 65,536x
             """.trimIndent(),
         ),
     ),

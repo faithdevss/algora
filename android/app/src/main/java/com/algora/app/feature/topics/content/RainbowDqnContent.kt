@@ -13,7 +13,7 @@ internal val rainbowDqnContent = TopicContent(
     topicId = "rainbow_dqn",
     whatIsIt = listOf(
         "Rainbow DQN combines six independent improvements to DQN into a single agent that substantially outperforms any of them alone.",
-        "It's the empirical answer to 'which DQN tricks actually stack?' — and the ablation showed each component contributes.",
+        "It's the empirical answer to 'which DQN tricks actually stack?' — and the ablation showed most components contribute — prioritized replay, multi-step returns and distributional RL matter most, while double and dueling had small effects.",
     ),
     steps = listOf(
         StepCard(1, "Double + Dueling", "Decoupled action selection plus separate value/advantage streams.", 0xFF818CF8),
@@ -54,7 +54,7 @@ internal val rainbowDqnContent = TopicContent(
     ),
     takeaways = listOf(
         "Rainbow fuses six DQN improvements into one strong agent.",
-        "The ablation confirmed each component adds value.",
+        "The ablation showed most components matter, with PER, multi-step and distributional the most critical and double/dueling small.",
         "It became the go-to value-based baseline on Atari.",
         "Its lesson — combine complementary tricks — recurs across modern RL.",
     ),

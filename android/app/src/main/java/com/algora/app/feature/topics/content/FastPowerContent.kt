@@ -23,9 +23,8 @@ internal val fastPowerContent = TopicContent(
             "this above a micro-optimisation is that it works in any monoid, anything with an " +
             "associative operation and an identity. Substitute 2×2 matrix multiplication and the nth " +
             "Fibonacci number falls out in O(log n); substitute modular multiplication and you have the " +
-            "routine RSA and Diffie-Hellman are built on. For floating-point bases repeated squaring " +
-            "compounds rounding error faster than a linear product does, which is why numerics " +
-            "libraries use exp(n · ln a) instead — and for plain integers the result overflows long " +
+            "routine RSA and Diffie-Hellman are built on. For general real exponents numerics " +
+            "libraries use exp(y · ln a) instead — and for plain integers the result overflows long " +
             "before log n starts to matter, which is why the modular version is the one that gets used.",
         shape = FigureShape.Strip(
             cells = listOf("1", "1", "0", "1"),
@@ -41,7 +40,7 @@ internal val fastPowerContent = TopicContent(
     whatIsIt = listOf(
         "Fast power — binary exponentiation, or exponentiation by squaring — computes aⁿ in O(log n) multiplications instead of the n − 1 a naive loop needs. The idea is one line: to raise something to an even power, square the half-power; to raise it to an odd power, do that and multiply by one more copy of the base.",
         "Following it on 3¹³ shows where the saving comes from. 13 is odd, so 3¹³ = 3 · 3¹²; 12 is even, so 3¹² = (3⁶)²; 6 is even, so 3⁶ = (3³)²; 3 is odd, so 3³ = 3 · 3²; and 3² = (3¹)². That is five multiplications rather than twelve, and the recursion depth is ⌊log₂ 13⌋ + 1 = 4. The iterative form makes the same computation look like binary: 13 is 1101₂, so 3¹³ = 3⁸ · 3⁴ · 3¹ = 6561 · 81 · 3 = 1594323, one squaring per bit and one extra multiply per set bit.",
-        "What makes this more than a micro-optimisation is that it works in any monoid — anything with an associative operation and an identity. Substituting 2×2 matrix multiplication for integer multiplication computes the nth Fibonacci number in O(log n) operations, because [[1,1],[1,0]]ⁿ has F(n) in its off-diagonal. Substituting modular multiplication gives modular exponentiation, which is what makes RSA and Diffie-Hellman computable at all. The one caveat is that the naive loop is not always the thing being beaten: for floating-point bases, repeated squaring compounds rounding error faster than a linear product does, so a numerics library will use exp(n · ln a) instead. And for integers the answer overflows long before n is large enough for the log to matter, which is precisely why the modular version is the one that gets used.",
+        "What makes this more than a micro-optimisation is that it works in any monoid — anything with an associative operation and an identity. Substituting 2×2 matrix multiplication for integer multiplication computes the nth Fibonacci number in O(log n) operations, because [[1,1],[1,0]]ⁿ has F(n) in its off-diagonal. Substituting modular multiplication gives modular exponentiation, which is what makes RSA and Diffie-Hellman computable at all. The one caveat is that the naive loop is not always the thing being beaten: for general real exponents a numerics library will use exp(y · ln a) (computed in extended precision) instead. And for integers the answer overflows long before n is large enough for the log to matter, which is precisely why the modular version is the one that gets used.",
     ),
     steps = listOf(
         StepCard(1, "Split on Parity", "Even exponent → square the half-power. Odd → peel off one factor and recurse on n − 1.", 0xFFF59E0B),
@@ -129,7 +128,7 @@ internal val fastPowerContent = TopicContent(
     ),
     simulation = SimulationType.RecursionTreeVisualizer,
     applications = listOf(
-        ApplicationCard("chip", 0xFFF59E0B, "Cryptography", "Every RSA or Diffie-Hellman operation is one modular exponentiation with a 2048-bit exponent."),
+        ApplicationCard("chip", 0xFFF59E0B, "Cryptography", "RSA private-key operations and Diffie-Hellman are one modular exponentiation with an exponent of hundreds to thousands of bits (RSA public keys usually use e = 65537)."),
         ApplicationCard("stack", 0xFFEC4899, "Linear Recurrences", "Any constant-coefficient recurrence becomes a matrix power, and then O(log n) instead of O(n)."),
         ApplicationCard("bulb", 0xFF3B82F6, "Any Associative Operation", "Composing permutations, transition matrices or graph adjacency n times reuses the same skeleton."),
     ),

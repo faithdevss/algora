@@ -105,7 +105,7 @@ internal val movingAverageContent = TopicContent(
                 def best_lag(a, b, max_lag=12):
                     a, b = a.dropna(), b.dropna()
                     idx = a.index.intersection(b.index)
-                    return max(range(max_lag), key=lambda k: a[idx].shift(k).corr(b[idx]))
+                    return max(range(max_lag), key=lambda k: a[idx].corr(b[idx].shift(k)))   # lag the RAW series to line it up
 
                 print(best_lag(trailing, s))    # ~5-6, i.e. (w-1)/2
 

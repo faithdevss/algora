@@ -114,7 +114,7 @@ internal val klDivergenceContent = TopicContent(
         FormulaEntry("KL divergence", "KL(P‖Q) = Σ P(x)·ln(P(x)/Q(x))", "Zero iff P=Q everywhere; otherwise strictly positive."),
         FormulaEntry("Asymmetry", "KL(P‖Q) ≠ KL(Q‖P)", "0.2442 vs 0.3112 on the example distributions."),
         FormulaEntry("Entropy-CE identity", "CE(P,Q) = H(P) + KL(P‖Q)", "1.3863 = 1.1421 + 0.2442, verified exact."),
-        FormulaEntry("Forward-KL fit", "argmin_Q KL(P‖Q): μ=0.0, σ=3.0", "Mode-covering — wide, spans both modes."),
+        FormulaEntry("Forward-KL fit", "argmin_Q KL(P‖Q): μ=0.0, σ=3.0", "Mode-covering — wide, spans both modes. Exact moment matching gives σ ≈ 2.6; 3.0 is a grid-limited fit."),
         FormulaEntry("Reverse-KL fit", "argmin_Q KL(Q‖P): μ=−2.5, σ=0.8", "Mode-seeking — narrow, locks onto one mode."),
         FormulaEntry("Fit costs", "forward-KL 0.4685 vs reverse-KL 0.6906", "Not directly comparable — different divergences, different scales."),
     ),

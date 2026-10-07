@@ -34,7 +34,7 @@ internal val precisionRecallContent = TopicContent(
     whatIsIt = listOf(
         "Precision and recall split a model's errors into the two kinds a decision can care about. Precision is TP / (TP + FP): of everything flagged, how much was real. Recall is TP / (TP + FN): of everything real, how much was found. Neither one mentions the true negatives, which is what makes them the right pair when the positive class is the subject and the negative class is background.",
         "The trade is not a subtlety, it is the entire behaviour. At t = 0.5 the lab's model has precision 1.000 and recall 0.398 — everything it flags is real, and it misses 53 of 88 positives. Drop the threshold to 0.1 and it has recall 1.000 at precision 0.213, so 79% of the flags are false alarms. Same model, same scores, nothing retrained: the threshold is a business decision about which error hurts more, and reporting one number without the other hides which decision was made.",
-        "Both metrics have a blind spot worth naming precisely: neither uses TN, so neither can see the size of the negative class. Recall is entirely independent of it. Precision depends on the base rate but not on how many negatives there are in total — the same precision would appear with ten times as many negatives if the model flagged ten times as many of them. That is why they are always quoted as a pair, always with the threshold, and usually alongside a curve rather than a point.",
+        "Both metrics have a blind spot worth naming precisely: neither uses TN, so neither can see how many true negatives there are. Recall is entirely independent of the negative class. Precision is not: false positives scale with the number of negatives (FP = FPR × N_neg), so ten times as many negatives at the same false-positive rate means ten times the false alarms and a much lower precision. That is why precision-recall curves react to imbalance. It is also why they are always quoted as a pair, always with the threshold, and usually alongside a curve rather than a point.",
     ),
     steps = listOf(
         StepCard(1, "Split the Errors", "False alarms against misses.", 0xFF0EA5E9),
@@ -112,7 +112,7 @@ internal val precisionRecallContent = TopicContent(
         "At t = 0.5 the lab's model is precise and timid: precision 1.000, recall 0.398, 53 misses.",
         "At t = 0.1 it is thorough and noisy: recall 1.000, precision 0.213, 325 false alarms.",
         "Same model and same scores — the threshold is a decision about which error costs more.",
-        "Neither metric uses TN, so both are blind to the size of the negative class.",
+        "Neither metric uses TN; recall ignores the negative class entirely, while precision still falls as negatives (and so false alarms) grow.",
         "At 80% recall the best precision available on this model is 0.645.",
         "Report both with the threshold, and prefer the curve to any single point on it.",
     ),

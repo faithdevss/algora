@@ -45,7 +45,7 @@ internal val qdaContent = TopicContent(
     whatIsIt = listOf(
         "QDA is LDA with one assumption removed: each class gets its own covariance matrix instead of sharing a pooled one. Everything else is identical — still Gaussian per class, still classify by the higher density.",
         "Removing the shared covariance changes the boundary's type. In LDA the quadratic terms −½xᵀΣ⁻¹x cancel when the two log-densities are subtracted, because they are the same term. With Σ₀ ≠ Σ₁ they do not cancel, and what survives is quadratic in x — so the boundary becomes a conic: an ellipse, parabola or hyperbola depending on the two shapes. One class tightly clustered inside a broader one produces a closed elliptical boundary that no linear model can express.",
-        "The cost is parameters, and it grows fast. Each covariance holds p(p+1)/2 free values, so K classes need K·p(p+1)/2 covariance parameters against LDA's single p(p+1)/2. At p = 50 that is 1,275 per class, and any class with fewer than p samples has a singular covariance whose inverse does not exist. This is the concrete bias-variance tradeoff: LDA is biased when the shapes genuinely differ, QDA has high variance when data per class is thin, and Regularized Discriminant Analysis interpolates between them with a shrinkage parameter you can cross-validate.",
+        "The cost is parameters, and it grows fast. Each covariance holds p(p+1)/2 free values, so K classes need K·p(p+1)/2 covariance parameters against LDA's single p(p+1)/2. At p = 50 that is 1,275 per class, and any class with p or fewer samples has a singular covariance whose inverse does not exist. This is the concrete bias-variance tradeoff: LDA is biased when the shapes genuinely differ, QDA has high variance when data per class is thin, and Regularized Discriminant Analysis interpolates between them with a shrinkage parameter you can cross-validate.",
     ),
     steps = listOf(
         StepCard(1, "Estimate a Mean per Class", "Same as LDA — one centre per cloud.", 0xFF8B5CF6),
@@ -60,7 +60,7 @@ internal val qdaContent = TopicContent(
         FormulaEntry("Discriminant", "δₖ(x) = −½ln|Σₖ| − ½(x−μₖ)ᵀΣₖ⁻¹(x−μₖ) + ln πₖ", "Quadratic in x."),
         FormulaEntry("Boundary", "xᵀAx + bᵀx + c = 0", "A conic section."),
         FormulaEntry("Parameters", "K·p(p+1)/2 + Kp", "Against LDA's p(p+1)/2 + Kp."),
-        FormulaEntry("Singularity risk", "nₖ < p ⟹ Σₖ not invertible", "A hard failure, not a soft one."),
+        FormulaEntry("Singularity risk", "nₖ ≤ p ⟹ Σₖ singular", "A hard failure, not a soft one."),
         FormulaEntry("RDA", "Σₖ(α) = αΣₖ + (1−α)Σ_pooled", "α = 1 is QDA, α = 0 is LDA."),
     ),
     notationKey = listOf(

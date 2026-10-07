@@ -24,8 +24,8 @@ internal val subsetsBitmaskContent = TopicContent(
             "more is that a mask is an ordinary integer and can therefore index an array, which turns " +
             "the encoding into a dynamic-programming state — Held-Karp's dp[mask][i] is exactly this. " +
             "The hard limit is the exponent rather than the representation: 2²⁰ masks is about a " +
-            "million and entirely routine, 2⁴⁰ is a trillion and out of reach, and at n = 64 a mask no " +
-            "longer fits in a Long at all.",
+            "million and entirely routine, 2⁴⁰ is a trillion and out of reach, and from n = 63 the " +
+            "loop bound 2ⁿ overflows a signed Long.",
         shape = FigureShape.Grid(
             rows = listOf(
                 listOf("·", "·", "·"),
@@ -157,7 +157,7 @@ internal val subsetsBitmaskContent = TopicContent(
         "An n-bit integer is a subset, so counting 0 … 2ⁿ − 1 enumerates every subset exactly once with no recursion.",
         "Union, intersection, complement and cardinality all become single operations on that integer.",
         "The mask doubles as an array index, which is what makes it a DP state — Held-Karp is O(2ⁿ·n²) rather than O(n!).",
-        "The ceiling is the exponent: about n = 20–25 in practice, and the mask stops fitting a Long at 64.",
+        "The ceiling is the exponent: about n = 20–25 in practice, and the loop bound 2ⁿ overflows a signed Long from n = 63.",
     ),
     crossLinks = listOf(
         CrossLink("bitmask_dp", "Bitmask DP"),

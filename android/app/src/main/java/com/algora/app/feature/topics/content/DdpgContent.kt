@@ -21,7 +21,7 @@ internal val ddpgContent = TopicContent(
         StepCard(2, "Off-Policy Replay", "Sample past transitions from a buffer, as in DQN.", 0xFF60A5FA),
         StepCard(3, "Exploration Noise", "Add noise (Ornstein-Uhlenbeck or Gaussian) to the deterministic action for exploration.", 0xFF10B981),
         StepCard(4, "Train the Critic", "Regress Q(s,a) onto the bootstrapped target y — plain TD learning, exactly as in DQN.", 0xFF8B5CF6),
-        StepCard(5, "Push the Actor Uphill", "Backpropagate ∂Q/∂a through the critic into the actor's weights; the critic must be frozen for this step.", 0xFFEC4899),
+        StepCard(5, "Push the Actor Uphill", "Backpropagate ∂Q/∂a through the critic into the actor's weights; only the actor's optimizer steps, so the critic's weights cannot change; disabling critic gradients just saves compute.", 0xFFEC4899),
         StepCard(6, "Soft Updates", "Slowly Polyak-average the targets toward the online networks.", 0xFFF59E0B),
     ),
     formulas = listOf(
@@ -62,7 +62,8 @@ internal val ddpgContent = TopicContent(
                 critic_opt.zero_grad(); critic_loss.backward(); critic_opt.step()
 
                 # --- actor: climb the critic's action-gradient ---
-                # Freeze the critic here, or its weights get dragged toward inflating Q.
+                # Only actor_opt.step() runs, so the critic's weights cannot change here; disabling its
+                # gradients only saves compute and avoids stale accumulated gradients.
                 for p in critic.parameters():
                     p.requires_grad = False
                 actor_loss = -critic(s, actor(s)).mean()

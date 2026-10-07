@@ -58,7 +58,7 @@ internal val bpttContent = TopicContent(
     formulas = listOf(
         FormulaEntry("Unrolled state", "hₜ = tanh(W·hₜ₋₁ + U·xₜ + b)", "One cell, T applications, one set of weights."),
         FormulaEntry("Shared-weight gradient", "∂L/∂W = Σₜ (∂L/∂hₜ)(∂hₜ/∂W)", "The sum every recurrent gradient is."),
-        FormulaEntry("The chain that decays", "∂hₜ/∂hₖ = Πⱼ diag(1−h²)·Wᵀ", "t−k factors; a product, so it vanishes or explodes."),
+        FormulaEntry("The chain that decays", "∂hₜ/∂hₖ = Πⱼ diag(1−hⱼ²)·W", "t−k factors; a product, so it vanishes or explodes."),
         FormulaEntry("Measured decay", "0.480 → 0.0085 over 9 steps", "‖∂L/∂h‖ at initialization, averaged over the training set."),
         FormulaEntry("Truncation", "stop after k steps", "Stores k·H activations instead of T·H: 36 instead of 120 here."),
         FormulaEntry("Alignment ≠ learnability", "cos = 0.990 at k = 3", "And that window solves the task on 1 of 3 seeds."),

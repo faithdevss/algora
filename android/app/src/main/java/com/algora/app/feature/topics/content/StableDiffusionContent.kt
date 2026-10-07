@@ -17,7 +17,7 @@ internal val stableDiffusionContent = TopicContent(
         "A checkpoint is three networks, not one, and only one of them is denoised. The VAE encoder and decoder are about 84M parameters, the CLIP text encoder about 123M, and the UNet about 860M — roughly 1,067M in total, of which the UNet is 81%. The other two run once each per image, at the start and the end; the UNet runs once per step, fifty times. This is also where the model's characteristic failures live. Fine detail that the autoencoder cannot represent in 4 channels at 1/8 resolution — small faces, hands, text — is lost before diffusion begins, and no amount of sampling recovers it, because the information was gone from the latent the UNet was handed.",
     ),
     steps = listOf(
-        StepCard(1, "Encode Into a Latent", "512×512×3 → 64×64×4 with a pretrained VAE. Done once.", 0xFF10B981),
+        StepCard(1, "Start From a Latent", "A 64×64×4 noise latent. The VAE encoder (512×512×3 → 64×64×4) is only used in training and img2img/inpainting.", 0xFF10B981),
         StepCard(2, "Encode the Prompt", "CLIP turns the text into 77 conditioning tokens.", 0xFF3B82F6),
         StepCard(3, "Denoise in the Latent", "The UNet runs once per step — 50, not 1,000.", 0xFF8B5CF6),
         StepCard(4, "Attend, Twice Per Block", "Self-attention over 4,096 tokens; cross-attention against the 77.", 0xFFF59E0B),

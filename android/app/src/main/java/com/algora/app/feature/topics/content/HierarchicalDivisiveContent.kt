@@ -53,15 +53,17 @@ internal val hierarchicalDivisiveContent = TopicContent(
                     while len(clusters) < k:
                         # Split whichever cluster is least cohesive. Diameter is the usual
                         # choice; average within-cluster dissimilarity is the DIANA one.
-                        target = max(
-                            (c for c in clusters if len(c) > 1),
-                            key=lambda c: pdist(X[c]).max(),
+                        # Track clusters by index: list.remove() on NumPy arrays compares them
+                        # element-wise and raises "truth value ... is ambiguous".
+                        i = max(
+                            (j for j, c in enumerate(clusters) if len(c) > 1),
+                            key=lambda j: pdist(X[clusters[j]]).max(),
                             default=None,
                         )
-                        if target is None:
+                        if i is None:
                             break
+                        target = clusters.pop(i)
                         labels = KMeans(n_clusters=2, n_init=10).fit_predict(X[target])
-                        clusters.remove(target)
                         clusters += [target[labels == 0], target[labels == 1]]
                     return clusters
 

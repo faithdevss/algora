@@ -31,7 +31,7 @@ internal val fastSlowPointersContent = TopicContent(
     ),
     whatIsIt = listOf(
         "The fast & slow pointer pattern (Floyd's tortoise and hare) runs two pointers at different speeds through a sequence or linked list.",
-        "Because the fast pointer gains one step per move, it detects cycles, finds the midpoint, and locates the k-th-from-end node without measuring length first.",
+        "Because the fast pointer gains one step per move, it detects cycles and finds the midpoint without measuring length first; a fixed-gap pair of same-speed pointers does the same for the k-th-from-end node.",
     ),
     steps = listOf(
         StepCard(1, "Two Speeds", "Advance slow by one node and fast by two on every iteration.", 0xFF8B5CF6),

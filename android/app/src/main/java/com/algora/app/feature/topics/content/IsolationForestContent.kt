@@ -48,7 +48,7 @@ internal val isolationForestContent = TopicContent(
     whatIsIt = listOf(
         "Most anomaly detectors build a model of what normal looks like and flag whatever sits far from it. Isolation Forest inverts that: it never models normality at all, and instead asks how many random cuts it takes to separate each point from everything else.",
         "The insight is that anomalies are *few and different*, which makes them easy to isolate. A point in a sparse region gets cut off from the crowd almost immediately, while a point in the middle of a dense cluster survives many cuts because each one leaves neighbours on the same side. Build a tree by repeatedly picking a random feature and a random split value, and the depth at which a point ends up alone — its path length — is the anomaly score. Short path means anomalous. Average over many trees and the estimate stabilizes.",
-        "Two consequences follow from never computing a distance. Training is O(n log n) with no pairwise comparisons, so it scales where distance- or density-based methods do not, and it sidesteps the curse of dimensionality that makes Euclidean distance meaningless in high dimensions. More surprisingly, subsampling *helps*: the original paper uses 256 rows per tree by default, because a smaller sample makes sparse regions sparser and stops dense clusters from being over-partitioned — larger samples make anomalies harder to isolate, not easier. The main caveat is the axis-aligned cuts, which produce rectangular artifacts and can miss anomalies that are only unusual along a diagonal; Extended Isolation Forest uses random hyperplanes to fix exactly that.",
+        "Two consequences follow from never computing a distance. Training is O(t·ψ log ψ) — independent of n once you subsample — with no pairwise comparisons, and scoring is linear in n, so it scales where distance- or density-based methods do not, and it sidesteps the curse of dimensionality that makes Euclidean distance meaningless in high dimensions. More surprisingly, subsampling *helps*: the original paper uses 256 rows per tree by default, because a smaller sample makes sparse regions sparser and stops dense clusters from being over-partitioned — larger samples make anomalies harder to isolate, not easier. The main caveat is the axis-aligned cuts, which produce rectangular artifacts and can miss anomalies that are only unusual along a diagonal; Extended Isolation Forest uses random hyperplanes to fix exactly that.",
     ),
     steps = listOf(
         StepCard(1, "Subsample", "256 rows per tree by default. Smaller genuinely works better here.", 0xFFF59E0B),
@@ -94,6 +94,8 @@ internal val isolationForestContent = TopicContent(
                 # Counter-intuitive, and worth checking on your own data: bigger samples
                 # often score WORSE. More rows fill in the sparse regions that made the
                 # anomalies easy to isolate in the first place.
+                # y_true: ground-truth anomaly labels, needed only for this check.
+                from sklearn.metrics import roc_auc_score
                 for m in (64, 256, 1024, 4096):
                     fit = IsolationForest(max_samples=m, random_state=0).fit(X)
                     print(m, round(roc_auc_score(y_true, -fit.score_samples(X)), 4))
@@ -134,7 +136,7 @@ internal val isolationForestContent = TopicContent(
     ),
     takeaways = listOf(
         "It isolates anomalies rather than modelling normality — path length is the score.",
-        "No distance computations, so it is O(n log n) and survives high dimensions.",
+        "No distance computations, so training is O(t·ψ log ψ), independent of n, scoring is linear in n, and it survives high dimensions.",
         "Small subsamples work better, which is the opposite of the usual intuition.",
         "Axis-aligned cuts miss diagonal anomalies; Extended Isolation Forest uses random hyperplanes instead.",
     ),

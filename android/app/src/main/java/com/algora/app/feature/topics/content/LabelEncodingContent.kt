@@ -19,7 +19,7 @@ internal val labelEncodingContent = TopicContent(
         caption = "Scored on a target that is non-monotone in the label-code order, a linear fit " +
             "reaches MSE 11.26 on the raw code and 0.280 on one-hot — 40× worse — because it must pass " +
             "one straight line through four unordered levels. A tree grown on the same label-coded " +
-            "column needs only two splits to reach 0.280, one-hot's number exactly: it never reads the " +
+            "column needs only a depth-2 tree (three splits) to reach 0.280, one-hot's number exactly: it never reads the " +
             "code as a distance, only as a place to cut.",
         shape = FigureShape.Plot(
             bars = listOf(
@@ -33,7 +33,7 @@ internal val labelEncodingContent = TopicContent(
     whatIsIt = listOf(
         "Label encoding replaces each category with an integer: red 0, green 1, blue 2, yellow 3. It costs one column instead of four and it is the fastest thing you can do to a categorical feature. The received rule is that you should not do it, and the rule is half right in a way worth being precise about, because the other half is used by every gradient-boosting library in production.",
         "What the encoding introduces is a geometry the categories do not have. Under those codes red sits 3 away from yellow and 1 away from green, and a model that multiplies the code by a weight reads that literally. Scored on data whose true effect per category is non-monotone in the code order, a least-squares fit reaches MSE 11.26 on the label code against 0.280 on one-hot — 40× worse — because it has to pass one straight line through four unordered levels.",
-        "A tree never reads the code as a number, only as somewhere to split. Grown on the same label-coded column it reaches MSE 0.280 at depth 2 — one-hot's number to three decimals — because two splits are enough to separate four categories. So the rule is conditional, not absolute: label-encode for trees and boosted ensembles, one-hot for linear and distance-based models. And if the categories genuinely are ordered — small, medium, large — the code is the correct representation and one-hot is the one throwing information away.",
+        "A tree never reads the code as a number, only as somewhere to split. Grown on the same label-coded column it reaches MSE 0.280 at depth 2 — one-hot's number to three decimals — because a depth-2 tree (three splits) is enough to separate four categories. So the rule is conditional, not absolute: label-encode for trees and boosted ensembles, one-hot for linear and distance-based models. And if the categories genuinely are ordered — small, medium, large — the code is the correct representation and one-hot is the one throwing information away.",
     ),
     steps = listOf(
         StepCard(1, "Map Categories to Integers", "One column in, one column out.", 0xFFF97316),
@@ -83,7 +83,9 @@ internal val labelEncodingContent = TopicContent(
                     ColumnTransformer([("cat", OrdinalEncoder(handle_unknown="use_encoded_value",
                                                               unknown_value=-1), cat_cols)],
                                       remainder="passthrough"),
-                    HistGradientBoostingRegressor(categorical_features=cat_cols),
+                    HistGradientBoostingRegressor(
+                        # after the ColumnTransformer the categorical columns come first, by position
+                        categorical_features=list(range(len(cat_cols)))),
                 )
             """.trimIndent(),
         ),

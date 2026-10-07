@@ -97,11 +97,15 @@ internal val fermatsLittleTheoremContent = TopicContent(
                 // 561 = 3 × 11 × 17 passes for every base coprime to it, no matter how many
                 // rounds you run. Korselt: 561 is squarefree, and each prime factor's p - 1
                 // divides 560 — 2 | 560, 10 | 560, 16 | 560.
-                fermatTest(561)   // true. It is composite.
+                fermatTest(561)   // almost always false: ~43% of bases share a factor with 561 and expose it.
+                                  // Only bases coprime to 561 pass, so test those to see the failure:
+                                  // (2 until 560).filter { gcd(it.toLong(), 561) == 1L }.all { powMod(it.toLong(), 560, 561) == 1L }  // true
 
                 // Miller-Rabin closes the hole by looking at square roots of 1 on the way up:
                 // modulo a prime the only square roots of 1 are ±1, so finding any other one
                 // is a certificate of compositeness that no Carmichael number can dodge.
+                // NOTE: x * x % n (and powMod's b * b % mod) overflow Long once n > ~3.04e9; use a
+                // 128-bit or Math.multiplyHigh-based mulMod for larger n, or keep n < 2^31.5.
                 fun millerRabin(n: Long, rounds: Int = 20): Boolean {
                     if (n < 2) return false
                     for (p in listOf(2L, 3L, 5L, 7L, 11L, 13L)) {

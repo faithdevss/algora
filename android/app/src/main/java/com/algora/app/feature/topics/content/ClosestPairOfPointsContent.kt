@@ -75,7 +75,9 @@ internal val closestPairOfPointsContent = TopicContent(
                     val dl = closest(px.subList(0, mid))
                     val dr = closest(px.subList(mid, px.size))
                     var d = minOf(dl, dr)
-                    // Only points within d of the split line can beat d.
+                    // Only points within d of the split line can beat d. Sorting the strip here
+                    // makes this version O(n log² n); to reach O(n log n), keep a y-sorted copy
+                    // and merge it on the way back up so the combine step stays linear.
                     val strip = px.filter { kotlin.math.abs(it.x - midX) < d }
                         .sortedBy { it.y }
                     for (i in strip.indices) {

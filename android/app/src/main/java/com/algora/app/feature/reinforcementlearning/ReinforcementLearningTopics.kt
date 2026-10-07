@@ -132,7 +132,7 @@ private val advancedTopics = listOf(
     topic("cql", "CQL", advanced, "Conservative Q-learning for offline stability.", isPremium = true),
     topic("decision_transformer", "Decision Transformer", advanced, "Cast RL as return-conditioned sequence modeling.", isPremium = true),
     topic("meta_rl", "Meta-RL (MAML)", advanced, "Learn to adapt quickly to new tasks.", isPremium = true),
-    topic("rlhf", "RLHF", advanced, "A reward model blind to one hidden cost — and the KL leash that decides how hard it gets exploited.", isPremium = true),
+    topic("rlhf", "RLHF", advanced, "Turning human preferences into a policy — and the KL leash that decides how hard the reward model gets exploited.", isPremium = true),
 )
 
 private val benchmarksTopics = listOf(

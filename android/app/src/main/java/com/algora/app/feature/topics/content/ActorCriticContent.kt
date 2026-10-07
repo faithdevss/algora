@@ -28,7 +28,7 @@ internal val actorCriticContent = TopicContent(
         FormulaEntry("Advantage", "A = r + γV(s′) − V(s)", "TD error as an advantage estimate."),
         FormulaEntry("Actor update", "θ += α·∇logπ(a|s)·A", "Advantage-weighted policy gradient."),
         FormulaEntry("Critic update", "minimize (r + γV(s′) − V(s))²", "TD regression."),
-        FormulaEntry("n-step advantage", "A = Σᵏ γⁱrₜ₊ᵢ + γᵏV(sₜ₊ₖ) − V(sₜ)", "Larger k: more variance, less bias."),
+        FormulaEntry("n-step advantage", "A = Σᵢ₌₀ᵏ⁻¹ γⁱ rₜ₊ᵢ₊₁ + γᵏV(sₜ₊ₖ) − V(sₜ)", "Larger k: more variance, less bias."),
         FormulaEntry("Combined loss", "L = −logπ·A + c₁(TD error)² − c₂H(π)", "Policy, value and entropy in one objective."),
         FormulaEntry("Why a baseline is free", "E[∇logπ(a|s)·b(s)] = 0", "Subtracting V(s) cuts variance without biasing the gradient."),
     ),
@@ -44,9 +44,11 @@ internal val actorCriticContent = TopicContent(
             title = "Actor-critic update (PyTorch sketch)",
             accentColor = 0xFF6366F1,
             code = """
-                advantage = (r + gamma * critic(s2) - critic(s)).detach()
+                # (1 - done) zeroes the bootstrap at terminal states
+                target = (r + gamma * critic(s2) * (1 - done)).detach()   # no gradient through V(s')
+                advantage = (target - critic(s)).detach()
                 actor_loss  = -(log_prob * advantage)
-                critic_loss = (r + gamma * critic(s2) - critic(s)).pow(2)
+                critic_loss = (target - critic(s)).pow(2)
                 (actor_loss + critic_loss).backward()
             """.trimIndent(),
         ),

@@ -85,7 +85,7 @@ internal val svmRbfContent = TopicContent(
         FormulaEntry("Mercer's condition", "K positive semi-definite", "What makes a function a valid kernel."),
     ),
     notationKey = listOf(
-        NotationEntry("γ", "kernel width — how far one point's influence reaches"),
+        NotationEntry("γ", "inverse kernel width (γ = 1/(2σ²)) — larger γ means a narrower kernel, so each point's influence reaches less far"),
         NotationEntry("C", "penalty for margin violation"),
         NotationEntry("αᵢ", "dual variable; non-zero exactly for support vectors"),
         NotationEntry("support vector", "a training point that actually shapes the boundary"),

@@ -38,6 +38,7 @@ internal val logLossContent = TopicContent(
         "Log loss reads the probability a model states, not the label it would produce past a threshold — which is what separates it from every metric in this category built on a confusion matrix. It is the negative log-likelihood of the true labels under the model's own stated probabilities: -1/n Σ [y·ln(p) + (1-y)·ln(1-p)]. On the lab's 1,000 predictions it averages 0.1750.",
         "That average hides how unevenly the penalty falls. The single worst prediction — the model said 0.109 for a case that was actually positive — contributes 2.214 to the sum, against a mean per-example contribution of 0.1750. One confidently wrong call costs about 13× an average one, because -ln(p) grows without bound as p → 0 while a merely mediocre call near p = 0.5 costs only about -ln(0.5) ≈ 0.69.",
         "Compare it to Brier score, its squared-error cousin: pushing the same model's scores toward 0 and 1 with a monotone transform (unchanged ranking, wrong probabilities) moves log loss from 0.1750 to 0.2876 — a 64% jump — while Brier only moves from 0.0437 to 0.0556, a 27% jump. Squaring the error, as Brier does, is gentler on confident mistakes than the logarithm is; log loss is the sharper instrument when a wrong, confident probability needs to be expensive.",
+        "The same formula is also a training loss — in deep learning it is called binary cross-entropy. For a single sigmoid output p = σ(z), differentiating −[y ln p + (1−y) ln(1−p)] with respect to the logit z collapses to ∂L/∂z = p − y: no vanishing σ′ factor, so a confidently wrong output gets the largest gradient rather than the smallest. That is why a sigmoid output is paired with this loss and not with squared error, and why frameworks fuse the two (BCEWithLogits) and work from the logit z directly — computing ln(σ(z)) in two steps loses precision once |z| is large.",
     ),
     steps = listOf(
         StepCard(1, "Take the Stated Probability", "Not a thresholded label — the raw score.", 0xFF0EA5E9),
@@ -51,6 +52,7 @@ internal val logLossContent = TopicContent(
         FormulaEntry("Log loss", "-1/n Σ [y ln p + (1-y) ln(1-p)]", "Measured 0.1750."),
         FormulaEntry("Worst case", "-ln(0.109) = 2.214", "Against a mean contribution of 0.1750."),
         FormulaEntry("Ratio", "2.214 / 0.1750 ≈ 12.7", "One confident miss costs roughly 13 average ones."),
+        FormulaEntry("Gradient w.r.t. the logit", "∂L/∂z = p − y", "As a training loss on a sigmoid output p = σ(z): the error itself, with no σ′ factor."),
         FormulaEntry("Brier score", "1/n Σ (p - y)²", "The squared-error cousin — gentler on confident errors."),
         FormulaEntry("Overconfident model", "log loss 0.1750→0.2876", "AUC is unchanged at 0.9692 under the same distortion."),
         FormulaEntry("Same distortion, Brier", "0.0437 → 0.0556", "A smaller relative jump than log loss's."),
@@ -61,7 +63,8 @@ internal val logLossContent = TopicContent(
         NotationEntry("clipping", "coercing p away from exactly 0 or 1 to keep ln finite"),
         NotationEntry("Brier score", "the squared-error alternative — see the code below"),
         NotationEntry("calibration", "whether stated probabilities match observed frequencies"),
-        NotationEntry("cross-entropy", "log loss's other name, from information theory"),
+        NotationEntry("cross-entropy", "log loss's other name, from information theory; binary cross-entropy (BCE) when used as a training loss"),
+        NotationEntry("logit z", "the pre-sigmoid score, p = σ(z)"),
     ),
     codeBlocks = listOf(
         CodeBlock(

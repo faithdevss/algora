@@ -150,11 +150,11 @@ private val recurrentTopics = listOf(
 // is now free too, because one topic id cannot be gated two ways.
 private val fineTuningTopics = listOf(
     topic("transfer_learning", "Transfer Learning", fineTuning, "Reuse a pretrained network's features and retrain only the head.", difficulty = Difficulty.INTERMEDIATE),
-    topic("fine_tuning_full", "Fine-Tuning (Full)", fineTuning, "Sixteen examples: a pretrained body with a new head reaches 95%, from scratch only 55%.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
-    topic("rlhf", "RLHF", fineTuning, "A reward model blind to one hidden cost — and the KL leash that decides how hard it gets exploited.", isPremium = true),
+    topic("fine_tuning_full", "Fine-Tuning (Full)", fineTuning, "With only 8 examples a frozen pretrained body beats full fine-tuning; from 32 examples full fine-tuning pulls away.", isPremium = true, difficulty = Difficulty.INTERMEDIATE),
+    topic("rlhf", "RLHF", fineTuning, "Turning human preferences into a policy — and the KL leash that decides how hard the reward model gets exploited.", isPremium = true),
     topic("dpo", "DPO (Direct Preference Optimization)", fineTuning, "Preferences straight into the policy — no reward model, no RL loop, and β setting how far it moves.", isPremium = true, difficulty = Difficulty.ADVANCED),
     topic("peft", "PEFT (Parameter-Efficient Fine-Tuning)", fineTuning, "Six ways to tune BERT-base: LoRA trains 0.27% of the weights, and the real win is the per-task file.", isPremium = true),
-    topic("lora_qlora", "LoRA & QLoRA", fineTuning, "The update is low-rank, not the model — rank 4 already keeps 93% of it.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("lora_qlora", "LoRA & QLoRA", fineTuning, "The update is low-rank, not the model — rank 4 already closes 91% of the gap.", isPremium = true, difficulty = Difficulty.ADVANCED),
     topic("quantization", "Quantization (4-bit / 8-bit)", fineTuning, "4,096 weights at 8, 4 and 3 bits — and the per-block scales that tame one outlier.", isPremium = true, difficulty = Difficulty.ADVANCED),
     topic("flash_attention", "Flash Attention", fineTuning, "The online softmax: three running numbers, the exact answer, and no N² score matrix.", isPremium = true, difficulty = Difficulty.ADVANCED),
 )
@@ -165,7 +165,7 @@ private val beyondTransformerTopics = listOf(
     topic("ssm", "State Space Models (SSMs)", beyondTransformers, "A linear recurrence that is also a convolution — train in parallel, decode in constant memory.", isPremium = true, difficulty = Difficulty.ADVANCED),
     topic("mamba", "Mamba Architecture", beyondTransformers, "One signal, seven fillers: a fixed decay forgets it, an input-dependent gate keeps it intact.", isPremium = true, difficulty = Difficulty.ADVANCED),
     topic("rwkv", "RWKV", beyondTransformers, "Attention without a query — a decaying weighted average that runs as an RNN with no KV cache.", isPremium = true, difficulty = Difficulty.ADVANCED),
-    topic("long_context", "Long Context Windows", beyondTransformers, "LLaMA-2-7B at 128K: a 68.7 GB cache, and attention is 84% of the prefill compute.", isPremium = true, difficulty = Difficulty.ADVANCED),
+    topic("long_context", "Long Context Windows", beyondTransformers, "LLaMA-2-7B at 128K: a 64 GiB cache, and attention is 84% of the prefill compute.", isPremium = true, difficulty = Difficulty.ADVANCED),
 )
 
 // D6. Ordered by what each metric scores rather than by name: one that needs no reference at all,

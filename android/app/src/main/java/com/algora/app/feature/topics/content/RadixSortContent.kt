@@ -58,14 +58,14 @@ internal val radixSortContent = TopicContent(
     ),
     codeBlocks = listOf(
         CodeBlock(
-            title = "LSD radix sort (base 10)",
+            title = "LSD radix sort (base 10, non-negative ints)",
             accentColor = 0xFF6366F1,
             code = """
                 fun radixSort(a: IntArray) {
                     val max = a.maxOrNull() ?: return
                     var exp = 1
                     var cur = a.copyOf()
-                    while (max / exp > 0) {
+                    while (true) {
                         val count = IntArray(10)
                         for (x in cur) count[(x / exp) % 10]++
                         for (i in 1 until 10) count[i] += count[i - 1]
@@ -75,6 +75,7 @@ internal val radixSortContent = TopicContent(
                             out[--count[d]] = cur[i]
                         }
                         cur = out
+                        if (exp > max / 10) break    // avoids Int overflow of exp
                         exp *= 10
                     }
                     cur.copyInto(a)

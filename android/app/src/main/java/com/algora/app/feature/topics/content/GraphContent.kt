@@ -103,7 +103,9 @@ internal val graphContent = TopicContent(
         "Weighted shortest-path problems need Dijkstra's, Bellman-Ford, or Floyd-Warshall instead of plain BFS.",
     ),
     crossLinks = listOf(
-        // DSA ↔ AI bridge: graph traversal underpins tree-search planning in RL.
-        CrossLink("mcts", "Monte Carlo Tree Search"),
+        CrossLink("graph_variants", "Graph Variants"),
+        CrossLink("bfs", "Breadth-First Search"),
+        CrossLink("dfs", "Depth-First Search"),
+        CrossLink("dijkstras_algorithm", "Dijkstra's Algorithm"),
     ),
 )

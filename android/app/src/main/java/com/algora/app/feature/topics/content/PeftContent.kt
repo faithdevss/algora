@@ -35,7 +35,7 @@ internal val peftContent = TopicContent(
     ),
     notationKey = listOf(
         NotationEntry("trainable share", "the fraction of parameters receiving gradients"),
-        NotationEntry("BitFit", "train only biases and LayerNorm parameters"),
+        NotationEntry("BitFit", "train only the bias terms"),
         NotationEntry("adapter", "a small down-project / non-linearity / up-project block inserted per layer"),
         NotationEntry("prefix tuning", "learned key/value vectors prepended to every layer's attention"),
         NotationEntry("IA³", "one learned multiplier per key, value and FFN channel"),
@@ -55,7 +55,9 @@ internal val peftContent = TopicContent(
                 )
                 model = get_peft_model(base_model, config)
                 model.print_trainable_parameters()
-                # trainable params: 294,912 || all params: 109,186,560 || trainable%: 0.2701
+                # trainable params: a little over 294,912 (the LoRA factors plus the classifier head, which PEFT
+                # also trains via modules_to_save) || all params: ~109.8M (BertForSequenceClassification
+                # includes the pooler) || trainable%: ~0.27
 
                 # That line is true and it is not the number that decides what fits.
                 # Print the one that does:

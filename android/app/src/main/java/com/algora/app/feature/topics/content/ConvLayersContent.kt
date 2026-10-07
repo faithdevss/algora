@@ -115,7 +115,7 @@ internal val convLayersContent = TopicContent(
 
                 # The parameter count did not depend on 224 at all -- feed it 512x512 and the same
                 # 1,792 weights apply. What does scale is the arithmetic:
-                #   224*224*64*3*9 = 1.85e8 multiply-accumulates for this one layer.
+                #   224*224*64*3*9 = 8.67e7 multiply-accumulates for this one layer.
                 # Parameters are a memory question; MACs are the latency question. Convolutional
                 # networks are the architecture where those two answers stop agreeing.
             """.trimIndent(),

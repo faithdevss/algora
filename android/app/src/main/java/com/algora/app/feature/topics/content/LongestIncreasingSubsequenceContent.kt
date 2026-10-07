@@ -31,7 +31,7 @@ internal val longestIncreasingSubsequenceContent = TopicContent(
         ),
     ),
     whatIsIt = listOf(
-        "The longest increasing subsequence (LIS) is the longest run of strictly increasing values you can pull from a sequence while keeping their original order.",
+        "The longest increasing subsequence (LIS) is the longest strictly increasing subsequence you can pull from a sequence while keeping the original order (the elements need not be adjacent).",
         "It has two classic solutions: an intuitive O(n²) DP, and a slicker O(n log n) method that keeps the smallest possible tail for each length using binary search.",
     ),
     steps = listOf(

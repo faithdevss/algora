@@ -51,7 +51,7 @@ internal val quantileRegressionContent = TopicContent(
         FormulaEntry("τ = 0.5", "reduces to Σ|rᵢ|", "Median regression — MAE, and robust."),
         FormulaEntry("Coverage check", "P(y ≤ xᵀβ̂τ) ≈ τ", "A property you can verify on held-out data."),
         FormulaEntry("Heteroscedasticity", "quantile lines not parallel", "The signature that spread depends on x."),
-        FormulaEntry("Prediction interval", "[β̂₀.₀₅, β̂₀.₉₅]", "A 90% interval with no distributional assumption."),
+        FormulaEntry("Prediction interval", "[xᵀβ̂₀.₀₅, xᵀβ̂₀.₉₅]", "A 90% interval with no distributional assumption."),
     ),
     notationKey = listOf(
         NotationEntry("τ", "the target quantile, between 0 and 1"),

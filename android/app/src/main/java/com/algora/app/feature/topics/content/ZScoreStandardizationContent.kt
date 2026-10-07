@@ -70,12 +70,12 @@ internal val zScoreStandardizationContent = TopicContent(
 
                 for scaler in (MinMaxScaler(), StandardScaler(), RobustScaler()):
                     fitted = scaler.fit(dirty)
-                    span = fitted.transform(clean).ptp()      # room the REAL points still occupy
+                    span = np.ptp(fitted.transform(clean)) # room the REAL points still occupy
                     print(f"{type(scaler).__name__:16} {span:.3f}")
 
-                # MinMaxScaler     0.004   <- the real data is now a single point
-                # StandardScaler   0.226
-                # RobustScaler     2.6     <- median and IQR did not move at all
+                # MinMaxScaler     0.018   <- the real data is now a single point
+                # StandardScaler   0.254
+                # RobustScaler     3.34    <- median and IQR did not move at all
                 #
                 # Run this on your own column before choosing. One bad row is not a rare event in
                 # data that came from a form, a sensor or a join.

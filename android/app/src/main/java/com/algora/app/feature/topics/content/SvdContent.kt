@@ -17,7 +17,7 @@ internal val svdContent = TopicContent(
     topicId = "svd",
     figure = Figure(
         caption = "Read as a map, every matrix — square or not, invertible or not, full rank or " +
-            "not — is these three steps and nothing else: rotate, stretch along the axes, rotate " +
+            "not — is these three steps and nothing else: rotate (or reflect), stretch along the axes, rotate (or reflect) " +
             "again. The factorization exists unconditionally, which is why so many methods turn " +
             "out to be it in disguise: PCA is the SVD of a centred data matrix, least squares " +
             "through the pseudo-inverse is the SVD with zero singular values dropped, LSA is the " +
@@ -35,7 +35,7 @@ internal val svdContent = TopicContent(
         ),
     ),
     whatIsIt = listOf(
-        "Every matrix — square or not, invertible or not, full rank or not — factors as X = UΣVᵀ. The right singular vectors V are an orthonormal basis for the input space, the left singular vectors U are one for the output space, and Σ is diagonal and non-negative. Read as a map, it says any linear transformation is a rotation, then an axis-aligned stretch, then another rotation. There is nothing else it can be.",
+        "Every matrix — square or not, invertible or not, full rank or not — factors as X = UΣVᵀ. The right singular vectors V are an orthonormal basis for the input space, the left singular vectors U are one for the output space, and Σ is diagonal and non-negative. Read as a map, it says any linear transformation is a rotation (or reflection), then an axis-aligned stretch, then another rotation (or reflection). There is nothing else it can be.",
         "That unconditional existence is why the SVD sits underneath so much else. PCA is the SVD of a centred data matrix. Least squares through the pseudo-inverse is the SVD with the zero singular values dropped. Latent semantic analysis is the SVD of a term-document matrix, and the matrix-completion recommenders of the 2000s are its truncated form fitted with missing entries. The condition number of a matrix is σ₁/σₙ. Learn the factorization once and a dozen apparently separate techniques become the same technique.",
         "The reason it is the tool for dimensionality reduction specifically is the Eckart–Young theorem: keep the k largest singular values and zero the rest, and you have the best rank-k approximation of the matrix in Frobenius norm — the best that exists, not merely the best anyone has found. The error you are left with is exactly the norm of the singular values you discarded, which turns \"how much can I compress this?\" into a number you can read off the spectrum before compressing anything.",
     ),
@@ -83,8 +83,8 @@ internal val svdContent = TopicContent(
                 X_k = (U[:, :k] * s[:k]) @ Vt[:k]  # the rank-3 truncation
 
                 # Eckart-Young says this error is exactly the norm of what we threw away.
-                print(np.linalg.norm(X - X_k))     # 25.35
-                print(np.sqrt((s[k:] ** 2).sum())) # 25.35 — identical
+                print(np.linalg.norm(X - X_k))     # ~54.80
+                print(np.sqrt((s[k:] ** 2).sum())) # ~54.80 — identical
 
                 # And no other rank-3 matrix does better. Sample some and check:
                 for _ in range(3):

@@ -30,7 +30,7 @@ internal val mistralMixtralContent = TopicContent(
         FormulaEntry("Memory penalty", "6.7× a dense 7B", "Every expert must be resident; routing is data-dependent."),
         FormulaEntry("Load-balancing loss", "E · Σᵢ fᵢ · Pᵢ", "1.0 at perfect balance; 1.13 measured on the lab's strip."),
         FormulaEntry("Observed imbalance", "busiest expert takes 2.0× the mean", "Which is exactly what the auxiliary loss exists to punish."),
-        FormulaEntry("Not 47B-quality", "quality tracks active parameters more than total", "The headline number is capacity, not effective size."),
+        FormulaEntry("Not 47B-quality", "quality lands well above the active size", "Mixtral (12.9B active) matches LLaMA-2 70B; memory is still paid on the total."),
     ),
     notationKey = listOf(
         NotationEntry("expert", "one replica of the block's feed-forward network"),
@@ -83,8 +83,8 @@ internal val mistralMixtralContent = TopicContent(
                 print(f"VRAM vs dense 7B: {total_b/dense_b:.1f}x")    # 6.7x
 
                 # The sentence to avoid: "a 47B model that runs like a 13B". Compute scales with
-                # ACTIVE parameters; memory scales with TOTAL. Quality lands between the two and
-                # closer to the active count than the headline.
+                # ACTIVE parameters; memory scales with TOTAL. Quality lands well above a dense model
+                # of the active size -- Mixtral matches LLaMA-2 70B -- but memory is paid on the total.
                 #
                 # Two more costs the FLOP number hides:
                 #   - batching: a batch of 32 tokens can touch all 8 experts, so the "only 2 run"

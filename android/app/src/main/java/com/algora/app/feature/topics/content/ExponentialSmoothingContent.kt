@@ -102,14 +102,14 @@ internal val exponentialSmoothingContent = TopicContent(
     whatIsIt = listOf(
         "A moving average treats the last w observations as equally informative and everything before them as worthless. Exponential smoothing fixes both halves of that: every past observation contributes, with a weight that decays geometrically as it recedes. One line does it — ℓₜ = αyₜ + (1−α)ℓₜ₋₁ — and expanding the recursion shows the weights are α, α(1−α), α(1−α)², and so on, summing to one.",
         "That is simple exponential smoothing, which has no notion of trend or season, so its forecast is a flat line. Holt adds a second recursion for the slope; Holt-Winters adds a third for the seasonal figures, each stored per position in the cycle and updated once per cycle. Three components, three recursions, three smoothing parameters — α for the level, β for the trend, γ for the season — and a forecast that is level plus h steps of trend plus the seasonal figure for the month you are forecasting.",
-        "The parameters are commonly described as controlling responsiveness, which invites setting them high. They control *how little smoothing is applied*, which is not the same thing: at α = 0.8 the level is 80% the newest observation, so noise passes straight through and the forecast inherits it. The simulation shows this as a measured gap — a setting can fit the observed history well and forecast the held-out year badly, and the readouts print both numbers side by side so the difference is visible rather than argued. In production these are fitted by minimising one-step error, not chosen by hand, and the additive/multiplicative choice (does the seasonal swing grow with the level?) matters as much as any of them.",
+        "The parameters control responsiveness, which invites setting them high — but responsiveness and smoothing are two sides of one trade: less smoothing means faster tracking of real changes, and noise passing straight through along with them. At α = 0.8 the level is 80% the newest observation, so noise passes straight through and the forecast inherits it. The simulation shows this as a measured gap — a setting can fit the observed history well and forecast the held-out year badly, and the readouts print both numbers side by side so the difference is visible rather than argued. In production these are fitted by minimising one-step error, not chosen by hand, and the additive/multiplicative choice (does the seasonal swing grow with the level?) matters as much as any of them.",
     ),
     steps = listOf(
         StepCard(1, "Initialise the Components", "Level and trend from the first cycles, seasonal figures from their deviations. A bad start is visible for a long time.", 0xFF10B981),
         StepCard(2, "Update the Level", "ℓₜ = α(yₜ − sₜ₋ₘ) + (1−α)(ℓₜ₋₁ + bₜ₋₁): the newest observation with the season removed.", 0xFF14B8A6),
         StepCard(3, "Update the Trend", "bₜ = β(ℓₜ − ℓₜ₋₁) + (1−β)bₜ₋₁: smoothing the level's own change.", 0xFF06B6D4),
         StepCard(4, "Update the Season", "sₜ = γ(yₜ − ℓₜ) + (1−γ)sₜ₋ₘ: each position in the cycle updated once per cycle.", 0xFF6366F1),
-        StepCard(5, "Forecast", "ŷₜ₊ₕ = ℓₜ + h·bₜ + sₜ₊ₕ₋ₘ. A linear extrapolation with the cycle laid back on top.", 0xFF8B5CF6),
+        StepCard(5, "Forecast", "ŷₜ₊ₕ = ℓₜ + h·bₜ + sₜ₊ₕ₋ₘ(k+1), k = ⌊(h−1)/m⌋. A linear extrapolation with the cycle laid back on top.", 0xFF8B5CF6),
         StepCard(6, "Fit the Parameters", "Minimise one-step-ahead squared error over α, β, γ. Hand-picking them is a last resort.", 0xFFF59E0B),
     ),
     formulas = listOf(
@@ -118,7 +118,7 @@ internal val exponentialSmoothingContent = TopicContent(
         FormulaEntry("Effective window", "≈ (2−α)/α", "α = 0.3 behaves roughly like a 5-6 period average."),
         FormulaEntry("Holt's trend", "bₜ = β(ℓₜ − ℓₜ₋₁) + (1−β)bₜ₋₁", "The slope, smoothed the same way the level is."),
         FormulaEntry("Seasonal (additive)", "sₜ = γ(yₜ − ℓₜ) + (1−γ)sₜ₋ₘ", "Use multiplicative when the swing grows with the level."),
-        FormulaEntry("Forecast", "ŷₜ₊ₕ = ℓₜ + h·bₜ + sₜ₊ₕ₋ₘ", "The only place h appears; nothing is re-estimated."),
+        FormulaEntry("Forecast", "ŷₜ₊ₕ = ℓₜ + h·bₜ + sₜ₊ₕ₋ₘ(k+1), k = ⌊(h−1)/m⌋", "The only place h appears; nothing is re-estimated. The index reuses the last full season for h > m."),
         FormulaEntry("Damped trend", "ŷₜ₊ₕ = ℓₜ + (φ + φ² + … + φʰ)bₜ", "φ < 1. Almost always better at long horizons."),
     ),
     notationKey = listOf(
@@ -145,7 +145,7 @@ internal val exponentialSmoothingContent = TopicContent(
                     seasonal="add",
                     seasonal_periods=12,
                     damped_trend=True,          # almost always helps beyond a few steps
-                ).fit()                          # optimises alpha, beta, gamma, phi by MLE
+                ).fit()                          # optimises alpha, beta, gamma, phi by minimising squared one-step error (SSE); ETSModel is the MLE version
 
                 forecast = model.forecast(12)
                 print(np.sqrt(((forecast - test) ** 2).mean()).round(3))
@@ -194,7 +194,7 @@ internal val exponentialSmoothingContent = TopicContent(
     takeaways = listOf(
         "Weights decay geometrically, so every past observation contributes something.",
         "Three components, three recursions: level, trend, season.",
-        "High α, β, γ mean *less* smoothing, not more responsiveness — noise passes straight through.",
+        "High α, β, γ mean less smoothing: more responsive to real changes, but noise passes straight through too.",
         "Fit the parameters by minimising one-step error; hand-tuning is a last resort.",
         "Damping the trend almost always improves long-horizon forecasts.",
     ),

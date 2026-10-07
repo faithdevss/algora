@@ -73,8 +73,9 @@ internal val alexNetContent = TopicContent(
                 from torchvision import transforms
 
                 train_tf = transforms.Compose([
-                    transforms.RandomResizedCrop(227),      # the paper's random 224 crops of a 256 image
-                    transforms.RandomHorizontalFlip(),      # ~2048x more distinct training inputs, free
+                    transforms.Resize(256),
+                    transforms.RandomCrop(224),             # the paper's random 224 crops of a 256 image
+                    transforms.RandomHorizontalFlip(),      # crops x flips: 32 x 32 x 2 = 2048x more inputs, free
                     transforms.ColorJitter(0.4, 0.4, 0.4),  # stands in for the paper's PCA colour jitter
                     transforms.ToTensor(),
                 ])
@@ -102,7 +103,7 @@ internal val alexNetContent = TopicContent(
         "62,378,344 parameters, 94% of them in three dense layers; ~95% of the compute is in the five convolutions.",
         "ReLU is the change that made the depth trainable, and the paper measures roughly a 6× speedup over tanh.",
         "Dropout at 0.5 on fc6 and fc7 was load-bearing, not cosmetic — without it the head memorised the training set.",
-        "The 11×11 stride-4 stem is the last time anyone used a kernel that large; VGG replaced it with stacked 3×3s.",
+        "VGG replaced the 11×11 stride-4 stem with stacked 3×3s, and large kernels were largely abandoned until recent large-kernel CNNs such as RepLKNet (31×31).",
     ),
     crossLinks = listOf(
         CrossLink("lenet5", "LeNet-5"),

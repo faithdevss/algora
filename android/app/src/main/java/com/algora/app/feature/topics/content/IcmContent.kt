@@ -24,7 +24,7 @@ internal val icmContent = TopicContent(
     formulas = listOf(
         FormulaEntry("Intrinsic reward", "r_i = ½‖φ̂(s′) − φ(s′)‖²", "Forward-prediction error."),
         FormulaEntry("Inverse model", "predict a from φ(s), φ(s′)", "Keeps features action-relevant."),
-        FormulaEntry("Noise robustness", "ignores uncontrollable noise", "Solves the noisy-TV distraction."),
+        FormulaEntry("Noise robustness", "ignores noise the agent cannot affect", "Robust to uncontrollable noise; noise the agent can control remains a known failure mode (Burda et al. 2018)."),
     ),
     notationKey = listOf(
         NotationEntry("φ(s)", "learned feature encoding of a state"),
@@ -52,7 +52,7 @@ internal val icmContent = TopicContent(
     takeaways = listOf(
         "ICM rewards forward-model prediction error in a learned feature space.",
         "An inverse model keeps features focused on action-controllable dynamics.",
-        "This design sidesteps the noisy-TV distraction that fools naive curiosity.",
+        "This design is robust to the noisy-TV distraction from noise the agent cannot influence; a noisy TV the agent controls can still fool it.",
         "It's a leading prediction-error form of intrinsic motivation.",
     ),
     crossLinks = listOf(

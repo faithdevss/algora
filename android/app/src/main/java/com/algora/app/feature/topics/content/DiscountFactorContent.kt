@@ -78,7 +78,7 @@ internal val discountFactorContent = TopicContent(
     ),
     simulation = SimulationType.RlGridWorld,
     applications = listOf(
-        ApplicationCard("game", 0xFF818CF8, "Atari", "DQN uses γ = 0.99 — roughly a hundred frames, enough to connect a paddle move to the point it scores."),
+        ApplicationCard("game", 0xFF818CF8, "Atari", "DQN uses γ = 0.99 — roughly a hundred agent steps (about 400 frames with frame-skip 4), enough to connect a paddle move to the point it scores."),
         ApplicationCard("finance", 0xFF60A5FA, "Economics", "γ is the same object as a discount rate on future cash flows; RL inherited both the maths and the name."),
         ApplicationCard("robot", 0xFF10B981, "Continuing Control", "A walking robot has no terminal state, so γ < 1 is what keeps its value function finite at all."),
     ),

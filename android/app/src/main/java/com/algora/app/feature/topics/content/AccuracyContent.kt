@@ -18,28 +18,28 @@ internal val accuracyContent = TopicContent(
     figure = Figure(
         caption = "The lab's model scores accuracy 0.947 at the default threshold — only 3.5 points " +
             "above 0.912, what predicting the majority class scores for free on this 8.8%-positive " +
-            "data. Pushed to t = 0.99, accuracy rises to 0.921 while recall collapses to 0.011: a " +
-            "higher score from a model that has stopped finding positives. On the identical matrix, " +
+            "data. Pushed to t = 0.99, accuracy falls back to the 0.912 baseline while recall collapses " +
+            "to 0: a model that has stopped finding positives scores exactly what answering \"negative\" does. On the identical matrix, " +
             "Cohen's kappa — the chance-corrected version of the same question — reads 0.546.",
         shape = FigureShape.Plot(
             bars = listOf(
                 FigureBar("Model, t=0.5", 0.947f, FigureTone.Primary),
                 FigureBar("Baseline (predict −)", 0.912f, FigureTone.Muted),
-                FigureBar("Model, t=0.99", 0.921f, FigureTone.Warn),
+                FigureBar("Model, t=0.99", 0.912f, FigureTone.Warn),
             ),
             yLabel = "accuracy",
         ),
     ),
     whatIsIt = listOf(
         "Accuracy is (TP + TN) / everything — the share of cases a model gets right. It is the metric everyone reaches for first, it is the right metric when the classes are balanced and both errors cost the same, and it is actively misleading everywhere else. The lab's model scores 0.947 at the default threshold, which sounds like a finished result.",
-        "Here is the same number without a model. Predicting \"negative\" for every case scores 0.912 on this data, because 912 of the 1,000 cases are negative. The trained model's 0.947 is worth 3.5 points over answering the same way every time — and the majority-class baseline, not 0.5, is what any accuracy figure has to be read against. Push the threshold to 0.99 and accuracy goes *up* to 0.921 while the model finds almost no positives at all.",
+        "Here is the same number without a model. Predicting \"negative\" for every case scores 0.912 on this data, because 912 of the 1,000 cases are negative. The trained model's 0.947 is worth 3.5 points over answering the same way every time — and the majority-class baseline, not 0.5, is what any accuracy figure has to be read against. Push the threshold to 0.99 and accuracy falls back to the 0.912 baseline while the model finds no positives at all.",
         "The deeper problem is range. Across the lab's threshold sweep accuracy moves between 0.406 and 0.960 while recall moves between 0.000 and 1.000, and over the useful part of that range accuracy is nearly flat — a metric that barely responds to the thing you are changing cannot be used to choose an operating point. On the same matrix where accuracy reads 0.947, Cohen's kappa reads 0.546, which is the chance-corrected version of the same question and a far better summary on imbalanced data.",
     ),
     steps = listOf(
         StepCard(1, "Count the Diagonal", "(TP + TN) / total — 0.947 at t = 0.5.", 0xFF0EA5E9),
         StepCard(2, "Compute the Baseline", "Predict the majority class: 0.912 here.", 0xFFEC4899),
         StepCard(3, "Subtract", "The model is worth 3.5 points over answering \"no\".", 0xFF8B5CF6),
-        StepCard(4, "Push the Threshold", "0.921 at t = 0.99, while recall collapses.", 0xFFF59E0B),
+        StepCard(4, "Push the Threshold", "0.912 at t = 0.99 — the baseline — while recall collapses to 0.", 0xFFF59E0B),
         StepCard(5, "Check the Range", "Nearly flat where the model is actually changing.", 0xFF3B82F6),
         StepCard(6, "Switch Metrics", "Kappa 0.546 on the matrix accuracy scores 0.947.", 0xFF10B981),
     ),
@@ -47,7 +47,7 @@ internal val accuracyContent = TopicContent(
         FormulaEntry("Accuracy", "(TP + TN) / N", "0.947 at t = 0.5 on the lab's data."),
         FormulaEntry("Majority baseline", "max(P, N) / N", "0.912 — what predicting one class always gives."),
         FormulaEntry("Balanced accuracy", "(recall + specificity) / 2", "Averages per class instead of per case."),
-        FormulaEntry("At t = 0.99", "accuracy 0.921 · recall 0.011", "Higher accuracy, useless model."),
+        FormulaEntry("At t = 0.99", "accuracy 0.912 · recall 0.000", "Baseline accuracy, useless model."),
         FormulaEntry("Range over thresholds", "0.406 – 0.960", "Against recall's 0.000 – 1.000."),
         FormulaEntry("Chance-corrected", "κ = 0.546", "The same matrix, honestly summarised."),
     ),
@@ -114,7 +114,7 @@ internal val accuracyContent = TopicContent(
         "(TP + TN) / N: the share of cases correct, and the right metric only on balanced data.",
         "The lab's model scores 0.947; predicting \"negative\" always scores 0.912.",
         "So the model is worth 3.5 points, and the baseline — not 0.5 — is what to read it against.",
-        "At t = 0.99 accuracy rises to 0.921 while recall falls to 0.011: higher score, worse model.",
+        "At t = 0.99 accuracy falls back to the 0.912 baseline while recall falls to 0: the same score as a model that never looks at the data.",
         "Over the useful threshold range it is nearly flat, so it cannot select an operating point.",
         "Balanced accuracy averages per class instead of per case and is immune to the base rate.",
         "On the identical matrix, Cohen's kappa reads 0.546 — the same question, chance-corrected.",

@@ -14,7 +14,7 @@ internal val fastRcnnContent = TopicContent(
     whatIsIt = listOf(
         "R-CNN runs the convolutional stack once per proposal, 2,000 times over the same image, on regions that overlap heavily. Fast R-CNN runs it once. The image passes through the convolutions a single time, and each proposal is *projected* onto that shared feature map — a box in image pixels becomes a box on the feature grid by dividing by the stride. All the expensive work is now shared.",
         "The piece that makes it possible is RoI pooling: take the projected region, divide it into a fixed 7×7 grid of bins whatever its size, and max-pool inside each bin. Any region becomes a 7×7 feature block that a dense head can read. That also collapses R-CNN's three training stages into one — class scores and box refinement come from two heads on one network trained with a single multi-task loss, so there is no SVM stage and no feature cache on disk.",
-        "The measured result is 47 seconds per image down to 2.3, and 0.32 if the proposals already exist; training is about 9× faster. But look at where the time went: selective search now takes roughly seven times longer than the network it feeds, and it is the only part of the pipeline that is not learned. That is the whole premise of Faster R-CNN. The simulation also prices RoI pooling's known defect — it quantises twice, snapping the box to the feature grid and then the grid into bins, and at stride 16 those roundings cost 1 pixel and 32 pixels respectively on a 145-pixel box. Tolerable for a class label; not tolerable for a mask, which is what Mask R-CNN's RoIAlign later fixes.",
+        "The measured result is 47 seconds per image down to 2.3, and 0.32 if the proposals already exist; training is about 9× faster. But look at where the time went: selective search now takes roughly seven times longer than the network it feeds, and it is the only part of the pipeline that is not learned. That is the whole premise of Faster R-CNN. The simulation also prices RoI pooling's known defect — it quantises twice, snapping the box to the feature grid and then the grid into bins, and at stride 16 those roundings cost 1 pixel for the box and up to one feature cell (16 pixels) per bin boundary on a 145-pixel box. Tolerable for a class label; not tolerable for a mask, which is what Mask R-CNN's RoIAlign later fixes.",
     ),
     steps = listOf(
         StepCard(1, "One Forward Pass", "The whole image through the conv stack, once.", 0xFF3B82F6),
@@ -29,7 +29,7 @@ internal val fastRcnnContent = TopicContent(
         FormulaEntry("RoI pooling", "bin size = RoI size / 7, max within each bin", "Both divisions are rounded — that is the misalignment."),
         FormulaEntry("Multi-task loss", "L = L_cls(p, u) + λ[u ≥ 1]·L_loc(tᵘ, v)", "The indicator means background boxes contribute no localisation loss."),
         FormulaEntry("Smooth L1", "0.5x² if |x| < 1, else |x| − 0.5", "Less sensitive to outliers than L2, no exploding gradients."),
-        FormulaEntry("Quantisation cost", "1 px snapping the RoI + 32 px snapping the bins", "At stride 16 on a 145-pixel box."),
+        FormulaEntry("Quantisation cost", "1 px snapping the RoI + up to 16 px per snapped bin edge", "At stride 16 on a 145-pixel box."),
         FormulaEntry("Measured speedup", "47 s → 2.3 s (0.32 s excluding proposals)", "Test time per image with VGG-16."),
     ),
     notationKey = listOf(
@@ -72,14 +72,17 @@ internal val fastRcnnContent = TopicContent(
                 snapped = int(exact)                    # 9
                 print((exact - snapped) * stride)       # 1.0 px lost snapping the RoI
 
-                bin_exact = snapped / bins              # 1.2857 cells per bin
-                bin_snapped = int(bin_exact)            # 1
-                print((bin_exact - bin_snapped) * bins * stride)   # 32.0 px never read
+                # Bins use floor(i*h/7) .. ceil((i+1)*h/7), so together they cover all 9 cells
+                # (nothing is skipped) but are uneven and overlapping.
+                import math
+                edges = [(math.floor(i * snapped / bins), math.ceil((i + 1) * snapped / bins))
+                         for i in range(bins)]
+                print(edges)   # [(0,2),(1,3),(2,4),(3,6),(5,7),(6,8),(7,9)]: widths 2 or 3, not 1.29
 
-                # Seven bins of one cell span seven cells, not nine, so two feature cells -- 32
-                # image pixels of the RoI's far edge -- fall outside the pooled block entirely.
-                # A class label survives that. A 28x28 mask aligned 32 pixels off does not, which is
-                # exactly the measurement Mask R-CNN's RoIAlign was introduced to zero out.
+                # Each bin boundary is snapped to a whole cell, so it can sit up to one cell
+                # (16 px) from where it belongs. A class label survives that. A 28x28 mask
+                # misaligned by that much does not, which is exactly the misalignment Mask
+                # R-CNN's RoIAlign was introduced to remove.
             """.trimIndent(),
         ),
     ),
@@ -95,7 +98,7 @@ internal val fastRcnnContent = TopicContent(
         "RoI pooling turns any region into a fixed 7×7 block, which is what lets a dense head follow it.",
         "Three separately trained stages become one network with one multi-task loss and no feature cache.",
         "47 s → 2.3 s per image, and ~9× faster training; the proposals then become 87% of the remaining time.",
-        "RoI pooling quantises twice — 1 px plus 32 px at stride 16 — which is fine for labels and fatal for masks.",
+        "RoI pooling quantises twice — 1 px plus up to 16 px per bin edge at stride 16 — which is fine for labels and fatal for masks.",
     ),
     crossLinks = listOf(
         CrossLink("rcnn", "R-CNN"),

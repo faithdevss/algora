@@ -33,7 +33,7 @@ internal val regexNlpContent = TopicContent(
         FormulaEntry("Chomsky bound", "regular ⊂ context-free", "Balanced brackets and nested clauses are provably not matchable by any regex."),
     ),
     notationKey = listOf(
-        NotationEntry("\\w vs \\p{L}", "\\w is [A-Za-z0-9_] by default; \\p{L} is any Unicode letter, which is what NLP wants"),
+        NotationEntry("\\w vs \\p{L}", "\\w is ASCII-only in some engines (and with re.ASCII) but Unicode-aware by default in Python 3 str patterns; \\p{L} is any Unicode letter, which is what NLP wants"),
         NotationEntry("greedy / lazy", "a+ takes as much as it can and gives back; a+? takes as little as possible"),
         NotationEntry("possessive / atomic", "a++ and (?>a+) take as much as they can and never give back — the ReDoS fix"),
         NotationEntry("lookahead", "(?=…) / (?!…) — a zero-width assertion, used to split without consuming"),
@@ -63,7 +63,7 @@ internal val regexNlpContent = TopicContent(
                 # ['Dr', "Smith's", 'e-mail', 'is', 'a.smith@x.co', 'the', 'U.S.', 'GDP',
                 #  'rose', '3.5%', 'on', '2024-01-05']
 
-                # Move the last branch to the front and you are back to 21: alternation returns the
+                # Move the last branch to the front and you get 16 tokens (including '.smith@x.co'): alternation returns the
                 # FIRST branch that matches at a position, not the longest.
             """.trimIndent(),
         ),

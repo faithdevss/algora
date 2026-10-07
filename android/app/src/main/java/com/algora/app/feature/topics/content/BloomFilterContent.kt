@@ -74,7 +74,7 @@ internal val bloomFilterContent = TopicContent(
     simulation = SimulationType.HashingVisualizer,
     applications = listOf(
         ApplicationCard("chip", 0xFF10B981, "Database Read Skipping", "LSM-tree stores (Cassandra, RocksDB) use Bloom filters to skip disk lookups for absent keys."),
-        ApplicationCard("globe", 0xFF3B82F6, "Caches & CDNs", "Web caches check a Bloom filter before an expensive origin fetch to avoid one-hit-wonders."),
+        ApplicationCard("globe", 0xFF3B82F6, "Caches & CDNs", "Caches record first requests in a Bloom filter and cache an object only on a repeat request, so one-hit-wonders don't pollute the cache."),
         ApplicationCard("lock", 0xFFF59E0B, "Safe Browsing", "Browsers test URLs against a Bloom filter of malicious sites before a full check."),
     ),
     takeaways = listOf(

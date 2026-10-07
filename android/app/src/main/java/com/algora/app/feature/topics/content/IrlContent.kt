@@ -19,12 +19,12 @@ internal val irlContent = TopicContent(
         StepCard(1, "Observe the Expert", "Collect demonstrations assumed to be (near-)optimal.", 0xFF818CF8),
         StepCard(2, "Hypothesize a Reward", "Parameterize a reward function, often over state features.", 0xFF60A5FA),
         StepCard(3, "Match Behavior", "Adjust the reward so its optimal policy reproduces the expert's feature statistics.", 0xFF10B981),
-        StepCard(4, "Resolve Ambiguity", "Max-entropy IRL picks the least-committal reward consistent with the demos.", 0xFFF59E0B),
+        StepCard(4, "Resolve Ambiguity", "Max-entropy IRL chooses the maximum-entropy distribution over trajectories (P(τ) ∝ exp R(τ)) that matches the demos' feature counts, which pins down a reward.", 0xFFF59E0B),
     ),
     formulas = listOf(
         FormulaEntry("Feature matching", "E_π[φ] = E_expert[φ]", "Match expected feature counts."),
         FormulaEntry("Ill-posed", "many rewards fit", "Multiple rewards explain the same behavior."),
-        FormulaEntry("MaxEnt IRL", "prefer max-entropy reward", "Resolves the ambiguity principled-ly."),
+        FormulaEntry("MaxEnt IRL", "max-entropy trajectory distribution", "P(τ) ∝ exp R(τ), matching expert feature counts; resolves the ambiguity in a principled way."),
     ),
     notationKey = listOf(
         NotationEntry("reward function", "the inferred objective R(s)"),

@@ -47,14 +47,14 @@ internal val robertaContent = TopicContent(
             code = """
                 # BERT: mask once, at pre-processing time, and reuse.
                 def build_static_dataset(corpus, duplicates=10):
-                    return [mask_tokens(seq.clone()) for _ in range(duplicates) for seq in corpus]
+                    return [mask_tokens(seq.clone(), tokenizer) for _ in range(duplicates) for seq in corpus]
                 # 40 epochs over this sees each mask pattern 4 times, and any token that was never
                 # selected in those 10 draws is never predicted at all.
 
                 # RoBERTa: mask in the collator, so every epoch is a new draw.
                 class DynamicMaskingCollator:
                     def __call__(self, batch):
-                        return mask_tokens(torch.stack(batch).clone())
+                        return mask_tokens(torch.stack(batch).clone(), tokenizer)
 
                 print(f"never predicted, 10 static masks:  {0.85 ** 10:.4f}")   # 0.1969
                 print(f"never predicted, 40 dynamic masks: {0.85 ** 40:.4f}")   # 0.0015

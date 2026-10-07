@@ -15,7 +15,7 @@ internal val quantizationContent = TopicContent(
         "Quantization replaces each weight with the nearest of a small set of levels and stores the index instead of the number. Four bits per weight instead of sixteen is a 4× reduction in the thing that decides whether a model loads at all: a 7B model is 13.2 GB in fp16, 6.7 GB in int8 and 3.5 GB in NF4 — the difference between a data-centre card and a laptop.",
         "The lab measures error on 4,096 normally distributed weights, which is what trained weights actually look like. int8 with a single absmax scale is nearly lossless (MSE 0.000068, 41.7 dB). The same scheme at 4 bits is not: 0.0194, some 285× worse, because sixteen levels spread uniformly over the range put most of them where almost no weights are.",
         "NF4 spends the same four bits differently. Its sixteen levels sit at the quantiles of a normal distribution, so they crowd where the weights are, and on the same tensor that is MSE 0.0115 against int4's 0.0194 — **41% less error for free**, since the levels are a fixed table rather than anything learned. That is the entire content of \"normal float\".",
-        "Then one weight goes to 20σ, and the scheme that looked fine falls over. A single absmax scale is set by the largest magnitude in the tensor, so one outlier stretches the whole grid and every *other* weight is quantized more coarsely: the error on the 4,095 innocent weights rises **30× for int8 and 32× for int4**. Blockwise scaling — one absmax per 64 weights — confines the damage to one block and drops the penalty to 1.8×, at a cost of 0.25 bits per weight. This is why LLM.int8() and every 4-bit kernel are blockwise, and it is an activation problem before it is a weight problem.",
+        "Then one weight goes to 20σ, and the scheme that looked fine falls over. A single absmax scale is set by the largest magnitude in the tensor, so one outlier stretches the whole grid and every *other* weight is quantized more coarsely: the error on the 4,095 innocent weights rises **30× for int8 and 32× for int4**. Blockwise scaling — one absmax per 64 weights — confines the damage to one block and drops the penalty to 1.8×, at a cost of 0.25 bits per weight. This is why LLM.int8() isolates its outlier dimensions (vector-wise scaling plus an fp16 outlier path) and 4-bit kernels (NF4, GPTQ groups) are blockwise, and it is an activation problem before it is a weight problem.",
     ),
     steps = listOf(
         StepCard(1, "Pick A Scale", "absmax over the tensor or the block. This single choice is where outliers do their damage.", 0xFFEF4444),
@@ -26,7 +26,7 @@ internal val quantizationContent = TopicContent(
         StepCard(6, "Keep Sensitive Parts Wide", "Embeddings, the LM head and outlier channels usually stay in higher precision.", 0xFF8B5CF6),
     ),
     formulas = listOf(
-        FormulaEntry("Absmax quantize", "q = round(w / s · L), s = max|w| / L", "One outlier sets s for everything sharing it."),
+        FormulaEntry("Absmax quantize", "q = round(w / s), s = max|w| / L", "One outlier sets s for everything sharing it."),
         FormulaEntry("int8 error", "MSE 0.000068 · 41.7 dB", "Effectively lossless on Gaussian weights."),
         FormulaEntry("NF4 vs int4", "0.0115 vs 0.0194", "41% less error at the same 4 bits, from level placement alone."),
         FormulaEntry("Outlier penalty", "30× (int8) · 32× (int4), per tensor", "Measured on the weights that are *not* the outlier."),
@@ -39,7 +39,7 @@ internal val quantizationContent = TopicContent(
         NotationEntry("blockwise", "a separate scale per fixed-size group of weights, typically 64"),
         NotationEntry("SNR", "signal-to-quantization-noise ratio in dB; every extra bit is worth about 6 dB"),
         NotationEntry("outlier", "a weight or activation far outside the distribution, which sets the shared scale"),
-        NotationEntry("double quantization", "quantizing the block scales themselves, for another ~0.4 bits per weight"),
+        NotationEntry("double quantization", "quantizing the block scales themselves, cutting their overhead from 0.5 to ≈0.127 bits per weight (fp32 scales, block 64) — QLoRA saves ≈0.37 bits per weight"),
     ),
     codeBlocks = listOf(
         CodeBlock(

@@ -52,7 +52,7 @@ internal val rotatingCalipersContent = TopicContent(
     whatIsIt = listOf(
         "Rotating calipers is a technique, not a single algorithm: imagine a pair of parallel lines gripping a convex polygon from opposite sides, then rotating them together through a full turn. The pairs of vertices they touch along the way are the antipodal pairs, and a surprising number of extremal questions are answered by looking at exactly those pairs and nothing else.",
         "The diameter — the greatest distance between any two points in a set — is the canonical example. Brute force compares all n²/2 pairs. But the two farthest points must both be hull vertices, and they must be antipodal, and there are only O(h) antipodal pairs on an h-vertex hull. So after building the hull you walk two pointers around it: advance the second pointer while the triangle area it forms keeps growing, then advance the first. Each pointer travels around the hull once, giving O(h) for the sweep. The hull construction is O(n log n) and dominates.",
-        "The reason the two-pointer walk works is that the support function is unimodal around a convex polygon: as one caliper's contact vertex advances, the opposite contact vertex advances monotonically too, never going backwards. That monotonicity is what turns a nested loop into a single pass, and it is the same argument that licenses the two-pointer technique on a sorted array. It also fails immediately on a non-convex polygon, which is why the hull is a hard prerequisite rather than an optimisation. Once the machinery exists it is reused unchanged for the minimum-area and minimum-perimeter enclosing rectangles — Toussaint's result that the optimal rectangle has a side flush with a hull edge — for the width of a point set, and for the closest pair of two disjoint convex polygons.",
+        "The reason the two-pointer walk works is that the support function is unimodal around a convex polygon: as one caliper's contact vertex advances, the opposite contact vertex advances monotonically too, never going backwards. That monotonicity is what turns a nested loop into a single pass, and it is the same argument that licenses the two-pointer technique on a sorted array. It also fails immediately on a non-convex polygon, which is why the hull is a hard prerequisite rather than an optimisation. Once the machinery exists it is reused unchanged for the minimum-area and minimum-perimeter enclosing rectangles — Freeman and Shapira's result that the optimal rectangle has a side flush with a hull edge, made linear-time by Toussaint's calipers — for the width of a point set, and for the closest pair of two disjoint convex polygons.",
     ),
     steps = listOf(
         StepCard(1, "Build the Hull First", "The farthest pair is always two hull vertices, and the whole method assumes convexity.", 0xFF06B6D4),
@@ -66,8 +66,8 @@ internal val rotatingCalipersContent = TopicContent(
         FormulaEntry("Total time", "O(n log n)", "Hull construction; the caliper sweep itself is O(h)."),
         FormulaEntry("Antipodal pairs", "O(h)", "Not O(h²) — which is the entire saving."),
         FormulaEntry("Brute force", "O(n²)", "All pairwise distances, the thing this replaces."),
-        FormulaEntry("Advance rule", "while area(pᵢ, pᵢ₊₁, q₊₁) ≥ area(pᵢ, pᵢ₊₁, q)", "Cross products only — no angles, no trigonometry."),
-        FormulaEntry("Min-area rectangle", "flush with a hull edge", "Toussaint: check h orientations, one per edge."),
+        FormulaEntry("Advance rule", "while area(pᵢ, pᵢ₊₁, q₊₁) > area(pᵢ, pᵢ₊₁, q)", "Cross products only — no angles, no trigonometry."),
+        FormulaEntry("Min-area rectangle", "flush with a hull edge", "Freeman & Shapira (1975): check h orientations, one per edge; Toussaint (1983) did it in O(n) with calipers."),
         FormulaEntry("Width", "min over edges of max vertex distance", "The same sweep, minimised instead of maximised."),
     ),
     notationKey = listOf(
@@ -128,7 +128,7 @@ internal val rotatingCalipersContent = TopicContent(
             title = "The same sweep, minimum-area enclosing rectangle",
             accentColor = 0xFF8B5CF6,
             code = """
-                // Toussaint's theorem: the minimum-area rectangle enclosing a convex polygon has
+                // Freeman & Shapira's theorem (1975; Toussaint's 1983 calipers make it linear): the minimum-area rectangle enclosing a convex polygon has
                 // one side collinear with a hull edge. So there are only h orientations to try,
                 // and each one needs the extreme vertex in four directions — which is exactly
                 // what a set of rotating calipers tracks.

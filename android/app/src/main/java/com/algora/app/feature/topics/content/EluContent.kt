@@ -13,13 +13,13 @@ internal val eluContent = TopicContent(
     topicId = "elu",
     whatIsIt = listOf(
         "ELU keeps the identity on the positive side and replaces the negative side with α(eᶻ − 1). Two things follow. It is smooth at every point including zero, where ReLU has a kink. And it saturates gently to −α rather than falling away without limit, so a large negative input produces a bounded response instead of being propagated.",
-        "The argument for it is the mean. Measured over standard normal input ELU averages 0.151 against ReLU's 0.394 — much closer to zero, because the negative branch contributes something rather than nothing. Activations centred near zero are precisely the property batch normalisation is added to enforce, and ELU gets part of the way there for free, which is what the 2015 paper claimed.",
+        "The argument for it is the mean. Measured over standard normal input ELU averages 0.160 against ReLU's 0.399 — much closer to zero, because the negative branch contributes something rather than nothing. Activations centred near zero are precisely the property batch normalisation is added to enforce, and ELU gets part of the way there for free, which is what the 2015 paper claimed.",
         "It is not saturation-free, and the simulation says how far from it: the fraction of units with a near-zero derivative climbs with pre-activation width the way sigmoid's does, though from a lower base and more slowly. ELU trades ReLU's hard zero for a soft floor, and a soft floor is still a floor. In practice the deciding factor is usually cost rather than accuracy — an exponential per negative unit against ReLU's single comparison, on a model with billions of activations — and the accuracy gain over ReLU-with-batch-norm is small. ELU is a good default when you are *not* using normalisation layers, which is a narrower situation now than it was when it was introduced.",
     ),
     steps = listOf(
         StepCard(1, "Keep the Positive Identity", "Same as ReLU above zero, so the gradient is exactly 1 there.", 0xFFF59E0B),
         StepCard(2, "Curve the Negative Side", "α(eᶻ − 1): smooth, negative, and bounded below.", 0xFFFBBF24),
-        StepCard(3, "Get a Mean Nearer Zero", "0.151 against ReLU's 0.394, measured on standard normal input.", 0xFFEC4899),
+        StepCard(3, "Get a Mean Nearer Zero", "0.160 against ReLU's 0.399, measured on standard normal input.", 0xFFEC4899),
         StepCard(4, "Accept the Soft Saturation", "The negative tail flattens at −α, so its derivative decays.", 0xFF8B5CF6),
         StepCard(5, "Pay for the Exponential", "One exp() per negative unit. Real at scale.", 0xFF6366F1),
         StepCard(6, "Compare Against BatchNorm", "Both target centred activations. If you already have one, the case weakens.", 0xFF10B981),
@@ -29,7 +29,7 @@ internal val eluContent = TopicContent(
         FormulaEntry("Derivative", "1 if z > 0, else α·eᶻ = f(z) + α", "Cheap: reuse the forward value."),
         FormulaEntry("Lower bound", "f(z) → −α as z → −∞", "Bounded, unlike Leaky ReLU."),
         FormulaEntry("Continuity", "f and f′ continuous at 0 when α = 1", "ReLU's derivative jumps; ELU's does not."),
-        FormulaEntry("Mean output", "≈ 0.151 for z ~ N(0,1)", "Against ReLU's 0.394."),
+        FormulaEntry("Mean output", "≈ 0.160 for z ~ N(0,1)", "Against ReLU's 0.399."),
         FormulaEntry("SELU", "λ·ELU(z), λ ≈ 1.0507, α ≈ 1.6733", "The self-normalising rescaling."),
     ),
     notationKey = listOf(
@@ -49,9 +49,9 @@ internal val eluContent = TopicContent(
 
                 z = torch.randn(200_000)
 
-                print(F.relu(z).mean().item())          # ~0.394
-                print(F.elu(z).mean().item())           # ~0.151
-                print(F.leaky_relu(z, 0.01).mean().item())  # ~0.390 -- barely moves
+                print(F.relu(z).mean().item())          # ~0.399
+                print(F.elu(z).mean().item())           # ~0.160
+                print(F.leaky_relu(z, 0.01).mean().item())  # ~0.395 -- barely moves
 
                 # Note the third line. Leaky ReLU does NOT fix the mean shift: a slope of 0.01
                 # contributes almost nothing on the negative side. ELU and Leaky ReLU are often
@@ -89,7 +89,7 @@ internal val eluContent = TopicContent(
     ),
     takeaways = listOf(
         "Smooth everywhere, with a negative branch that saturates at −α rather than running away.",
-        "Mean output 0.151 against ReLU's 0.394 — this, not dead units, is what it targets.",
+        "Mean output 0.160 against ReLU's 0.399 — this, not dead units, is what it targets.",
         "Leaky ReLU does not fix the mean shift; the two solve different problems.",
         "It still saturates, just more slowly than sigmoid — a soft floor is still a floor.",
         "Costs an exponential per negative unit; the case for it weakens once you have normalisation layers.",

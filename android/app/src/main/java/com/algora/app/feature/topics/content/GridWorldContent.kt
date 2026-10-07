@@ -40,7 +40,7 @@ internal val gridWorldContent = TopicContent(
                 actions = ["up", "down", "left", "right"]
                 def step(state, action):
                     nxt = move(state, action)               # may slip
-                    reward = 1.0 if nxt == GOAL else -0.01
+                    reward = 1.0 if nxt == GOAL else (-1.0 if nxt in PITS else -0.01)
                     done = nxt in (GOAL, *PITS)
                     return nxt, reward, done
             """.trimIndent(),

@@ -95,7 +95,7 @@ internal val seq2seqContent = TopicContent(
                         beams = sorted(candidates, key=lambda c: -c[1])[:k]
 
                     finished += [(t, s) for t, s, _ in beams]
-                    return max(finished, key=lambda c: c[1] / (len(c[0]) ** alpha if alpha else 1))
+                    return max(finished, key=lambda c: c[1] / (max(len(c[0]), 1) ** alpha if alpha else 1))
 
                 # alpha is not a free win. It lengthens outputs, which helps when the model stops
                 # too early and hurts when it does not -- so measure it on your own data rather
@@ -120,7 +120,7 @@ internal val seq2seqContent = TopicContent(
                             model_errors += 1         # a wider beam cannot help
                     return correct, search_errors, model_errors
 
-                # On the lab's model: (35, 1, 84) at k=1 and (36, 0, 84) at k=10. Nine tenths of
+                # On the lab's model: (35, 1, 84) at k=1 and (36, 0, 84) at k=10. All but one of
                 # the failures are the model's ranking, so the next hour belongs in the data, the
                 # architecture or the objective -- not in the decoder.
             """.trimIndent(),

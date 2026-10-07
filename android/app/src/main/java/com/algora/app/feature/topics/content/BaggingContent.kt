@@ -111,8 +111,9 @@ internal val baggingContent = TopicContent(
                 # The same wrapper on a stable model buys almost nothing, at 200x the cost.
                 bagged_linear = BaggingClassifier(
                     LogisticRegression(), n_estimators=200, oob_score=True).fit(X, y)
+                from sklearn.model_selection import cross_val_score
                 print(bagged_linear.oob_score_,
-                      LogisticRegression().fit(X, y).score(X, y))
+                      cross_val_score(LogisticRegression(), X, y, cv=5).mean())  # like for like
             """.trimIndent(),
         ),
         CodeBlock(

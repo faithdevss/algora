@@ -22,7 +22,7 @@ internal val c51Content = TopicContent(
         StepCard(4, "Cross-Entropy Loss", "Train the predicted distribution toward the projected target with KL/cross-entropy.", 0xFFF59E0B),
     ),
     formulas = listOf(
-        FormulaEntry("Distributional Bellman", "Z(s,a) ≝ r + γZ(s′,a′)", "Return distribution, not just its mean."),
+        FormulaEntry("Distributional Bellman", "Z(s,a) =ᴰ R + γZ(S′,A′)", "Equality in distribution (ᴰ) of the return, not just its mean."),
         FormulaEntry("Atoms", "zᵢ = Vmin + i·Δz", "51 evenly spaced support values."),
         FormulaEntry("Action choice", "argmaxₐ Σ zᵢ·pᵢ(s,a)", "Act on the distribution's mean."),
     ),

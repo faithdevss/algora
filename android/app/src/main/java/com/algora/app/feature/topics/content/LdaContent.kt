@@ -17,8 +17,8 @@ import com.algora.app.core.data.model.TopicContent
 internal val ldaContent = TopicContent(
     topicId = "lda",
     figure = Figure(
-        caption = "The page's code block runs a symmetric Σ, where w happens to land on the line " +
-            "between the means and the point is easy to miss. Make it asymmetric — Σ = [[1, 0.9], " +
+        caption = "The page's code block uses unequal variances, so w leaves the line between " +
+            "the means — with equal variances it would land on that line and the point is easy to miss. Σ = [[1, 0.9], " +
             "[0.9, 4]] with μ₁ − μ₀ = (2, 2) — and w = Σ⁻¹(μ₁ − μ₀) = (1.94, 0.06), which points " +
             "1.8° above the x₁ axis while the means are 45° apart: a 43.2° rotation. x₂ has four " +
             "times the variance and is 0.9-correlated with x₁, so almost none of the separation " +
@@ -101,12 +101,12 @@ internal val ldaContent = TopicContent(
                 # not — Sigma^-1 rotates the direction whenever features are correlated.
                 mu0, mu1 = np.array([0.0, 0.0]), np.array([2.0, 2.0])
                 Sigma = np.array([[1.0, 0.9],
-                                  [0.9, 1.0]])      # strongly correlated features
+                                  [0.9, 4.0]])      # correlated, and x2 has 4x the variance
 
                 naive = mu1 - mu0                    # [2, 2] — the direction between means
                 w = np.linalg.solve(Sigma, mu1 - mu0)
-                print(naive, w)                      # w is [1.05, 1.05] here, but for an
-                                                     # asymmetric Sigma it tilts substantially
+                print(naive, w)                      # w is about [1.94, 0.06]: with unequal
+                                                     # variances it tilts far from [2, 2]
 
                 # The correlation structure decides which direction actually separates the
                 # classes. Whitening first is what the inverse covariance is doing.

@@ -53,8 +53,9 @@ internal val qFunctionContent = TopicContent(
                     # it learns the greedy policy's values while behaving epsilon-greedily.
                     best_next = 0.0 if done else Q[s_next].max()
                     td_target = r + gamma * best_next
-                    Q[s, a] += alpha * (td_target - Q[s, a])
-                    return td_target - Q[s, a]                    # the TD error
+                    delta = td_target - Q[s, a]                   # the TD error, BEFORE the update
+                    Q[s, a] += alpha * delta
+                    return delta
 
                 def act(s, epsilon):
                     if np.random.rand() < epsilon:

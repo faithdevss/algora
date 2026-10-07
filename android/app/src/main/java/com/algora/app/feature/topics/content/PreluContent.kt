@@ -70,6 +70,7 @@ internal val preluContent = TopicContent(
             title = "Read the learned slopes — they are a diagnostic",
             accentColor = 0xFF10B981,
             code = """
+                import torch
                 import torch.nn as nn
 
                 for name, module in model.named_modules():

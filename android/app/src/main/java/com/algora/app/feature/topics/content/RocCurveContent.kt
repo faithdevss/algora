@@ -22,7 +22,7 @@ internal val rocCurveContent = TopicContent(
             "sits at (0.000, 0.398): no false alarms and 60% of the positives missed, which is the " +
             "corner a confusion matrix reports from without saying it is a corner. Dropping to " +
             "t = 0.2 buys 0.454 more recall for 0.093 false-positive rate; the last 0.148 of recall " +
-            "then costs 0.263 more, nearly four times the rate the previous stretch cost. The bend " +
+            "then costs 0.263 more, nearly three times the false-positive rate the previous stretch cost (0.263 vs 0.093). The bend " +
             "between those two segments is the diminishing return, and the dashed diagonal is what " +
             "a model with no signal draws.",
         shape = FigureShape.Plot(
@@ -52,7 +52,7 @@ internal val rocCurveContent = TopicContent(
     ),
     whatIsIt = listOf(
         "The ROC curve plots true positive rate (recall) against false positive rate at every threshold a score can produce, instead of the one a confusion matrix freezes. It is the same lab model from Confusion Matrix, read at every cut point at once rather than at 0.5.",
-        "On the lab's 1,000 cases, sweeping the threshold traces: t = 0.5 sits at (FPR 0.000, TPR 0.398) — no false alarms, but most positives missed. t = 0.2 is (FPR 0.093, TPR 0.852) — a large recall gain for a small cost. t = 0.1 is (FPR 0.356, TPR 1.000) — the last 15 points of recall cost nearly four times the false-alarm rate that bought the previous 45. The curve's bend is exactly this diminishing return, drawn instead of computed by hand.",
+        "On the lab's 1,000 cases, sweeping the threshold traces: t = 0.5 sits at (FPR 0.000, TPR 0.398) — no false alarms, but most positives missed. t = 0.2 is (FPR 0.093, TPR 0.852) — a large recall gain for a small cost. t = 0.1 is (FPR 0.356, TPR 1.000) — the last 15 points of recall cost nearly three times the false-alarm rate that bought the previous 45 (0.263 vs 0.093). The curve's bend is exactly this diminishing return, drawn instead of computed by hand.",
         "A diagonal from (0,0) to (1,1) is what a coin flip produces — no separation between classes at all. The lab's curve bows toward the top-left corner, and the area under it is 0.9692 against a random model's 0.5. What the curve buys over a single matrix is threshold-independence: it describes the model's ranking ability without committing to an operating point, which is also its limitation — it says nothing about which point a deployment should actually use.",
     ),
     steps = listOf(

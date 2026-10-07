@@ -13,14 +13,14 @@ internal val denseNetContent = TopicContent(
     topicId = "densenet",
     whatIsIt = listOf(
         "DenseNet takes ResNet's shortcut and changes the operator: concatenate instead of add. Inside a dense block, layer ℓ receives the feature maps of *every* earlier layer stacked along the channel axis, and passes its own output on to every later one. A six-layer block therefore has 21 direct connections rather than six. Nothing has to be recomputed, and features from early layers stay literally available — not summed into a mixture — all the way to the classifier.",
-        "Because every layer sees everything before it, each one only needs to contribute a little. That contribution is the growth rate k, typically 32: layer ℓ receives k₀ + k(ℓ − 1) channels and emits k new ones. The simulation walks a six-layer block from 64 input channels — 64, 96, 128, 160, 192, 224 arriving — and shows why the 1×1 bottleneck is not optional: it pins the 3×3's input at 4k = 128 channels regardless of how wide the concatenation has grown, which keeps per-layer cost nearly flat at roughly 45k–66k parameters instead of growing quadratically down the block.",
+        "Because every layer sees everything before it, each one only needs to contribute a little. That contribution is the growth rate k, typically 32: layer ℓ receives k₀ + k(ℓ − 1) channels and emits k new ones. The simulation walks a six-layer block from 64 input channels — 64, 96, 128, 160, 192, 224 arriving — and shows why the 1×1 bottleneck is not optional: it pins the 3×3's input at 4k = 128 channels regardless of how wide the concatenation has grown, so only the 1×1's cost scales with the concatenated width: per-layer cost still grows linearly (128 parameters per incoming channel against 288 without the bottleneck), which pays off in deeper blocks.",
         "The result is a genuinely parameter-efficient network: DenseNet-121 matches ResNet-50's ImageNet accuracy with about 8.0M parameters against 25.6M. The cost moved rather than disappearing. Every intermediate concatenation has to be kept live for the backward pass, so training memory — not FLOPs and not parameters — is the binding constraint, and naive implementations allocate a new tensor per concatenation. The standard fix is shared memory allocation with recomputation, which trades a little compute for a large memory saving.",
     ),
     steps = listOf(
         StepCard(1, "Concatenate, Don't Add", "Layer ℓ's input is [x₀, x₁, …, x_{ℓ−1}] along the channel axis.", 0xFF10B981),
         StepCard(2, "Count the Connections", "L(L+1)/2 in a block — 21 for six layers, not six.", 0xFF06B6D4),
         StepCard(3, "Set a Small Growth Rate", "k = 32 new channels per layer; everything else is reused.", 0xFF6366F1),
-        StepCard(4, "Bottleneck the 3×3", "A 1×1 pins its input at 4k channels however wide the block gets.", 0xFF8B5CF6),
+        StepCard(4, "Bottleneck the 3×3", "A 1×1 pins the 3×3's input at 4k channels however wide the block gets.", 0xFF8B5CF6),
         StepCard(5, "Transition Between Blocks", "1×1 halving the channels, then 2×2 average pool.", 0xFFF59E0B),
         StepCard(6, "Pay in Memory", "~8.0M parameters vs ResNet-50's 25.6M — but every concatenation stays live.", 0xFFEC4899),
     ),
@@ -62,7 +62,7 @@ internal val denseNetContent = TopicContent(
 
                 block = nn.Sequential(*[DenseLayer(64 + 32 * i) for i in range(6)])
                 print(block(torch.randn(1, 64, 56, 56)).shape)      # [1, 256, 56, 56]
-                print(sum(p.numel() for p in block.parameters()))   # ~332k, nearly flat per layer
+                print(sum(p.numel() for p in block.parameters()))   # ~332k; per-layer cost still grows linearly with the concatenated width
             """.trimIndent(),
         ),
         CodeBlock(
@@ -98,7 +98,7 @@ internal val denseNetContent = TopicContent(
         "Concatenation, not addition: layer ℓ reads every earlier layer's output directly rather than a sum.",
         "L(L+1)/2 connections in a block — 21 for six layers.",
         "Growth rate k is small (32) precisely because nothing has to be re-derived; features are reused, not rebuilt.",
-        "The 1×1 bottleneck pins the 3×3's input at 4k channels, which is what keeps per-layer cost flat as the block deepens.",
+        "The 1×1 bottleneck pins the 3×3's input at 4k channels, which cuts the per-layer growth rate (128 vs 288 parameters per incoming channel); per-layer cost still grows linearly with depth.",
         "DenseNet-121 matches ResNet-50 at ~8.0M parameters vs 25.6M, but pays in activation memory rather than FLOPs.",
     ),
     crossLinks = listOf(

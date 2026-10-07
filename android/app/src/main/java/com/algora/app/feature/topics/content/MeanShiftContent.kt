@@ -90,7 +90,7 @@ internal val meanShiftContent = TopicContent(
                     bw = estimate_bandwidth(X, quantile=q, n_samples=500)
                     labels = MeanShift(bandwidth=bw, bin_seeding=True).fit_predict(X)
                     print(q, round(bw, 3), len(set(labels)), "clusters")
-                # The cluster count is monotone in the bandwidth and moves a lot. "No k
+                # The cluster count generally decreases as the bandwidth grows, and moves a lot. "No k
                 # required" is true, and it is not the same as "no choice required".
             """.trimIndent(),
         ),

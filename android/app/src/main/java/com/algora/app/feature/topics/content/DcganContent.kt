@@ -14,7 +14,7 @@ internal val dcganContent = TopicContent(
     whatIsIt = listOf(
         "DCGAN is the paper that made GANs trainable, and its contribution was not a new loss — the objective is Goodfellow's, unchanged. It was a list of architectural rules: replace pooling with strided convolutions, use batch normalization in both networks, drop the fully connected hidden layers, use ReLU in the generator with tanh at the output, and LeakyReLU throughout the discriminator. Most of that list is empirical, arrived at by \"extensive model exploration\" and honestly labelled as such. One item on it is not empirical at all, and it is the one worth the arithmetic.",
         "A transposed convolution builds a larger output by writing each input value into a kernel-sized window. How many times a given output position gets written depends only on the kernel and the stride, and it is countable before any image exists. With kernel 4 and stride 2 — DCGAN's choice — every interior output position is written exactly twice: the coverage is uniform. With kernel 3 and stride 2 the counts alternate 1, 2, 1, 2 forever. With kernel 5 and stride 2 they alternate 2, 3. With kernel 4 and stride 3 they run 1, 1, 2. The pattern is exact: coverage is uniform precisely when the stride divides the kernel. That periodic unevenness, compounded across four upsampling layers, is the checkerboard artefact, and it is a property of two integers rather than of the data or the training.",
-        "The parameter table is worth reading before choosing what to change, because it is lopsided in a way the architecture diagram hides. The generator is 12,656,515 parameters taking a 100-dimensional z to 64×64×3. The dense projection at the front — the one thing DCGAN's own rules tell you to be suspicious of — is 1,639,424 of them, 13%. The single transposed convolution from 1024 to 512 channels at 8×8 is 8,389,120, which is 66% of the entire generator. Two thirds of the model sits in one layer at the second-lowest resolution, and the final layer that actually produces the pixels is 6,147 parameters, under 0.05%. Capacity in a generator lives where the channels are, not where the pixels are.",
+        "The parameter table is worth reading before choosing what to change, because it is lopsided in a way the architecture diagram hides. The generator is 12,672,771 parameters taking a 100-dimensional z to 64×64×3. The dense projection at the front — the one thing DCGAN's own rules tell you to be suspicious of — is 1,654,784 of them, 13%. The single transposed convolution from 1024 to 512 channels at 8×8 (with its BatchNorm) is 8,389,632, which is 66% of the entire generator. Two thirds of the model sits in one layer at the second-lowest resolution, and the final layer that actually produces the pixels is 6,147 parameters, under 0.05%. Capacity in a generator lives where the channels are, not where the pixels are.",
     ),
     steps = listOf(
         StepCard(1, "Project z Into a Small Grid", "100 numbers to 4×4×1024 — the only dense layer.", 0xFF3B82F6),
@@ -30,7 +30,7 @@ internal val dcganContent = TopicContent(
         FormulaEntry("k=4, s=2", "2, 2, 2, 2, …", "DCGAN's choice. Uniform."),
         FormulaEntry("k=3, s=2", "1, 2, 1, 2, …", "Checkerboard, before any training."),
         FormulaEntry("k=4, s=3", "1, 1, 2, 1, 1, 2, …", "Period 3 — same failure, longer stripe."),
-        FormulaEntry("Generator", "12,656,515 parameters", "66% of it in the 1024 → 512 layer alone."),
+        FormulaEntry("Generator", "12,672,771 parameters", "66% of it in the 1024 → 512 layer alone."),
     ),
     notationKey = listOf(
         NotationEntry("transposed convolution", "each input written into a k-sized output window; not an inverse convolution"),
@@ -82,14 +82,14 @@ internal val dcganContent = TopicContent(
                     )
 
                 generator = nn.Sequential(
-                    nn.Linear(100, 4 * 4 * 1024),      #  1,639,424   13.0%
+                    nn.Linear(100, 4 * 4 * 1024),      #  1,654,784   13.1%
                     nn.Unflatten(1, (1024, 4, 4)),
-                    block(1024, 512),                  #  8,389,120   66.3%   <- two thirds, one layer
-                    block(512, 256),                   #  2,097,408   16.6%
-                    block(256, 128),                   #    524,416    4.1%
+                    block(1024, 512),                  #  8,389,632   66.2%   <- two thirds, one layer
+                    block(512, 256),                   #  2,097,664   16.6%
+                    block(256, 128),                   #    524,544    4.1%
                     nn.ConvTranspose2d(128, 3, 4, 2, 1),  #   6,147    0.05%  <- makes the pixels
                     nn.Tanh(),
-                )                                      # 12,656,515 total
+                )                                      # 12,672,771 total
 
                 # Capacity is where the channels are. Widening the last layer to "get sharper
                 # images" adds almost nothing; the 8x8 block is where the model actually is.
@@ -108,7 +108,7 @@ internal val dcganContent = TopicContent(
         "Coverage is uniform exactly when the stride divides the kernel; k=4, s=2 gives 2 writes everywhere.",
         "k=3, s=2 alternates 1, 2 and k=4, s=3 runs 1, 1, 2 — checkerboard artefacts, decided at layer-definition time.",
         "No amount of training removes it, because it is a property of two integers rather than of the weights.",
-        "The generator is 12,656,515 parameters from a 100-dimensional z to 64×64×3.",
+        "The generator is 12,672,771 parameters from a 100-dimensional z to 64×64×3.",
         "66% of that sits in the single 1024 → 512 layer at 8×8 resolution.",
         "The final layer, the one that emits the pixels, is 6,147 parameters — under 0.05%.",
     ),

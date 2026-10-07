@@ -73,7 +73,7 @@ internal val umapContent = TopicContent(
         FormulaEntry("Directed weight", "wᵢ|ⱼ = exp(−max(0, d(xᵢ,xⱼ) − ρᵢ)/σᵢ)", "σᵢ solved so Σⱼ wᵢ|ⱼ = log₂k."),
         FormulaEntry("Symmetrisation", "wᵢⱼ = wᵢ|ⱼ + wⱼ|ᵢ − wᵢ|ⱼwⱼ|ᵢ", "Probabilistic t-conorm — a union, not a mean."),
         FormulaEntry("Layout kernel", "Ψ(y) = (1 + a‖y‖^{2b})⁻¹", "a and b fitted to the min_dist curve; a ≈ 1.577, b ≈ 0.895 at min_dist = 0.1."),
-        FormulaEntry("Objective", "Σ wᵢⱼ log(wᵢⱼ/vᵢⱼ) + (1−wᵢⱼ) log((1−wᵢⱼ)/(1−vᵢⱼ))", "Cross-entropy — the repulsive second term is what t-SNE's KL lacks."),
+        FormulaEntry("Objective", "Σ wᵢⱼ log(wᵢⱼ/vᵢⱼ) + (1−wᵢⱼ) log((1−wᵢⱼ)/(1−vᵢⱼ))", "Cross-entropy with an explicit per-edge repulsive second term; t-SNE's repulsion comes implicitly from normalising Q."),
         FormulaEntry("Cost", "≈ O(n^1.14) empirically", "Approximate k-NN plus negative sampling; t-SNE's exact form is O(n²)."),
     ),
     notationKey = listOf(

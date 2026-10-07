@@ -92,9 +92,9 @@ internal val rSquaredContent = TopicContent(
                 import numpy as np
 
                 r2_by_step = []
+                noise = np.random.randn(len(y), 8)          # draw ONCE: each step must nest the last
                 for extra_columns in range(9):
-                    noise = np.random.randn(len(y), extra_columns)
-                    x_with_noise = np.column_stack([x, noise])
+                    x_with_noise = np.column_stack([x, noise[:, :extra_columns]])
                     fit = fit_ols(x_with_noise, y)
                     r2_by_step.append(r2_score(y, fit.predict(x_with_noise)))
 

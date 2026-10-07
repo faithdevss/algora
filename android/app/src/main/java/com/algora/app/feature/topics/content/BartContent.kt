@@ -12,7 +12,7 @@ import com.algora.app.core.data.model.TopicContent
 internal val bartContent = TopicContent(
     topicId = "bart",
     whatIsIt = listOf(
-        "BART is the obvious architecture nobody had shipped: a complete encoder-decoder transformer, pretrained by corrupting text arbitrarily and asking it to reconstruct the original. BERT's encoder can fill blanks but cannot generate; GPT's decoder can generate but only sees leftward context. BART has both stacks, so a single pretrained model fine-tunes for classification *and* generation without any architectural surgery — and pays about 10% more parameters than BERT-large (400M vs 340M) for the extra decoder.",
+        "BART is the obvious architecture nobody had shipped: a complete encoder-decoder transformer, pretrained by corrupting text arbitrarily and asking it to reconstruct the original. BERT's encoder can fill blanks but cannot generate; GPT's decoder can generate but only sees leftward context. BART has both stacks, so a single pretrained model fine-tunes for classification *and* generation without any architectural surgery — and pays about 18% more parameters than BERT-large (≈400M vs 340M) for the extra decoder (about 10% more than an equivalently sized BERT).",
         "The corruption is where the design work is, and the five noise functions are not variations on one idea. Token masking replaces individual tokens with [MASK] — BERT's objective. Token deletion removes them with no placeholder, so the *position* of what is missing becomes part of the prediction. Text infilling replaces a whole span with one [MASK], which can stand for zero, one or many tokens, so the model must predict how much is missing as well as what; it is the strongest single objective in the paper's ablation. Sentence permutation and document rotation lose no tokens at all — they destroy order and hide where the document begins, moving the problem up to document level.",
         "Because the decoder is autoregressive and the encoder is bidirectional, fine-tuning is uniform: classification feeds the input to both stacks and reads the decoder's final state, generation feeds the source to the encoder and writes the target with the decoder, and translation adds a small randomly-initialised encoder in front to map a foreign vocabulary into BART's. It set the state of the art on CNN/DailyMail summarisation and matched RoBERTa on GLUE at comparable training cost — the argument for the shape in one line. The decoder-only scaling wave that followed made BART less central, but the encoder-decoder shape remains the right default when input and output are different objects (summarise, translate, rewrite) rather than a continuation of the same stream.",
     ),
@@ -30,7 +30,7 @@ internal val bartContent = TopicContent(
         FormulaEntry("Token deletion", "tokens removed, no placeholder", "The position of the gap becomes part of the prediction."),
         FormulaEntry("Text infilling", "span → one [MASK], length hidden", "The strongest single objective in the ablation."),
         FormulaEntry("Permutation / rotation", "no tokens lost, order destroyed", "Document-level structure as the training signal."),
-        FormulaEntry("Parameter cost", "400M vs BERT-large's 340M", "≈10% for a decoder that makes generation free."),
+        FormulaEntry("Parameter cost", "400M vs BERT-large's 340M", "≈18% for a decoder that makes generation free (≈10% over an equivalently sized BERT)."),
     ),
     notationKey = listOf(
         NotationEntry("denoising autoencoder", "a model trained to reconstruct clean input from a corrupted version"),
@@ -111,7 +111,7 @@ internal val bartContent = TopicContent(
         "A full encoder-decoder pretrained by reconstructing corrupted text — classification and generation from one checkpoint.",
         "Five noise functions, split by what they destroy: tokens, length, or order.",
         "Text infilling is the strongest because one mask can stand for zero, one or many tokens.",
-        "The extra decoder costs ~10% over BERT-large (400M vs 340M) and makes generation free.",
+        "The extra decoder costs ~18% over BERT-large (400M vs 340M) and makes generation free.",
         "Encoder-decoder is still the right default when the output is a different object from the input.",
     ),
     crossLinks = listOf(

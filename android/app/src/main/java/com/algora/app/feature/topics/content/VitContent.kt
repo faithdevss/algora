@@ -87,7 +87,7 @@ internal val vitContent = TopicContent(
     simulation = SimulationType.FeatureMapPlayer,
     applications = listOf(
         ApplicationCard("target", 0xFF10B981, "Large-Scale Classification", "The dominant backbone once pre-training data is measured in hundreds of millions of images."),
-        ApplicationCard("network", 0xFF06B6D4, "Multimodal Models", "CLIP, Flamingo and most vision-language models use a ViT image tower because it already emits tokens."),
+        ApplicationCard("network", 0xFF06B6D4, "Multimodal Models", "CLIP, LLaVA, BLIP-2 and many vision-language models use a ViT image tower because it already emits tokens (Flamingo used a ResNet-style NFNet instead)."),
         ApplicationCard("search", 0xFF8B5CF6, "Segmentation and Detection", "Segment Anything and DINOv2 are ViT-based; patch tokens map naturally onto dense prediction."),
         ApplicationCard("flask", 0xFFF59E0B, "Self-Supervised Learning", "Masked autoencoding works cleanly on patches — mask 75% of them and reconstruct."),
     ),

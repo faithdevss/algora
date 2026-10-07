@@ -57,10 +57,12 @@ internal val bpeContent = TopicContent(
                         val best = pairs.maxByOrNull { it.value }?.key ?: return learned
                         learned += best
 
-                        // Apply the merge everywhere it appears.
-                        val target = "${'$'}{best.first} ${'$'}{best.second}"
-                        val replacement = best.first + best.second
-                        vocab = vocab.mapKeys { (word, _) -> word.replace(target, replacement) }
+                        // Apply the merge everywhere it appears, as whole symbols only. Plain
+                        // substring replace would also match "a b" inside "ca bd" -> "cabd".
+                        val target = Regex("(?<!\\S)" + Regex.escape(best.first) + " " +
+                            Regex.escape(best.second) + "(?!\\S)")
+                        val replacement = Regex.escapeReplacement(best.first + best.second)
+                        vocab = vocab.mapKeys { (word, _) -> target.replace(word, replacement) }
                     }
                     return learned
                 }

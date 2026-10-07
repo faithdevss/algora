@@ -64,7 +64,7 @@ internal val momentumContent = TopicContent(
     ),
     whatIsIt = listOf(
         "Plain gradient descent takes the current gradient and nothing else: v_t = g_t. Momentum keeps a running velocity instead, v_t = β·v_{t-1} + g_t, and steps by that velocity rather than the instantaneous gradient. A consistent downhill direction compounds across steps instead of being paid one small increment at a time — the effective step length on a steady gradient is roughly 1/(1−β) times the raw one, so β=0.9 acts like a step about 10× larger than its learning rate alone would suggest.",
-        "On the same ill-conditioned bowl gradient_descent_variants runs — 20× steeper on w1 than w2 — a β sweep at one fixed learning rate (0.012) shows where that compounding pays off and where it doesn't. β=0.5 barely helps: final loss 0.1623 after 60 steps, not far off plain SGD. β=0.9 is the clear winner at 0.0070 — more than an order of magnitude lower. β=0.99 overshoots: 0.2416, worse than β=0.5.",
+        "On an ill-conditioned bowl — 50× steeper on w1 than w2 — a β sweep at one fixed learning rate (0.012) shows where that compounding pays off and where it doesn't. β=0.5 barely helps: final loss 0.1623 after 60 steps, not far off plain SGD. β=0.9 is the clear winner at 0.0070 — more than an order of magnitude lower. β=0.99 overshoots: 0.2416, worse than β=0.5.",
         "The overshoot is visible in the trajectory, not just the final number. β=0.9's first swing back past the minimum on the steep axis reaches 0.737 of the starting distance; β=0.99's reaches 0.996 — essentially the full starting distance, ringing back and forth with almost no damping in 60 steps. More velocity is not more optimizer; past some β the compounding outruns the problem's own curvature.",
     ),
     steps = listOf(
@@ -96,7 +96,7 @@ internal val momentumContent = TopicContent(
             title = "The β sweep, computed for real",
             accentColor = 0xFF0EA5E9,
             code = """
-                curvature = [20.0, 0.4]  # 20x steeper on w1 than w2
+                curvature = [20.0, 0.4]  # 50x steeper on w1 than w2
 
                 def loss(w): return 0.5 * sum(c * x * x for c, x in zip(curvature, w))
                 def grad(w): return [c * x for c, x in zip(curvature, w)]
@@ -118,17 +118,20 @@ internal val momentumContent = TopicContent(
             """.trimIndent(),
         ),
         CodeBlock(
-            title = "Why β=0.9 needs a smaller rate than plain SGD",
+            title = "Why β=0.99 rings even though it is stable",
             accentColor = 0xFFEC4899,
             code = """
                 # Plain SGD on this bowl is capped near lr = 0.1 (2 / curvature[0] = 2 / 20).
-                # Momentum's effective step multiplies the raw rate by roughly 1 / (1 - beta):
-                effective_multiplier = 1 / (1 - 0.9)          # 10x
-                safe_lr = 0.09 / effective_multiplier          # roughly the 0.012 used above
+                # Heavy-ball momentum on a quadratic is stable for lr * curvature < 2 * (1 + beta),
+                # so a larger beta does NOT shrink the stable rate: at beta = 0.9 the limit is
+                # 0.19, at beta = 0.99 it is 0.199.
                 #
-                # That's the whole tuning rule: momentum doesn't remove the need for a rate search,
-                # it just changes what the safe rate is -- underestimate the multiplier and beta=0.99
-                # (multiplier 100x) is exactly the overshoot measured above.
+                # What a large beta costs is damping. The oscillation amplitude decays roughly
+                # like sqrt(beta) per step:
+                for beta in (0.5, 0.9, 0.99):
+                    print(beta, round(beta ** 0.5, 4))      # 0.7071  0.9487  0.995
+                # At beta = 0.99 that is 0.995 per step, so the swings around the minimum are still
+                # ringing after 60 steps: stable, but underdamped -- the overshoot measured above.
             """.trimIndent(),
         ),
     ),
@@ -145,7 +148,7 @@ internal val momentumContent = TopicContent(
         "On the sweep, β=0.9 wins clearly: final loss 0.0070 against β=0.5's 0.1623 and β=0.0's 0.2874.",
         "β=0.99 overshoots and rings: final loss 0.2416, worse than β=0.5 despite the larger momentum.",
         "β=0.99's first swing back past the minimum reaches 0.996 of the starting distance; β=0.9's reaches only 0.737.",
-        "Higher β needs a smaller learning rate — its own multiplier, not a free additional accelerant.",
+        "Higher β does not shrink the stable learning rate, but it weakens damping: at β=0.99 the swings (√β ≈ 0.995 per step) are still ringing after 60 steps.",
         "Momentum is the base every other optimizer in this category builds on: RMSprop and Adam both keep a moving average too.",
     ),
     crossLinks = listOf(

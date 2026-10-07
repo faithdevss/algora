@@ -23,7 +23,7 @@ internal val opticsContent = TopicContent(
             "cluster and never rise above 0.030, the thirteen after the peak are the loose one and " +
             "sit between 0.062 and 0.112, and the 0.410 spike between them is the gap. Both " +
             "densities are on the same axis, which is the thing one eps cannot express. The dashed " +
-            "line is a flat cut at 0.05, and that cut *is* DBSCAN(0.05) exactly: the tight cluster " +
+            "line is a flat cut at 0.05, and that cut reproduces DBSCAN(0.05) up to border-point assignment: the tight cluster " +
             "survives whole and all fourteen loose points are above the line, so they become noise. " +
             "Nothing below 0.112 keeps the loose cluster intact, and that is nearly four times the " +
             "tight cluster's deepest internal distance. The final bar is 0 because the last stray " +
@@ -72,7 +72,7 @@ internal val opticsContent = TopicContent(
     whatIsIt = listOf(
         "DBSCAN needs one eps, and one eps cannot serve clusters of different densities. Set it for the tight cluster and the loose one dissolves into noise; set it for the loose one and the tight cluster merges with everything around it. OPTICS removes the choice rather than automating it.",
         "It produces an ordering instead of labels. Points are processed so that density-reachable ones end up adjacent, and each point records a reachability distance — how far it was from the already-processed set when it was reached. Plot those distances in processing order and you get a profile that reads like terrain: valleys are clusters, and the peaks between them are the gaps. A shallow valley is a loose cluster and a deep one is tight, and both appear in the same plot, which is precisely what a single eps cannot express.",
-        "The relationship to DBSCAN is exact rather than approximate: cutting the reachability profile at a fixed height reproduces DBSCAN's labelling for that eps, so OPTICS is the entire family of DBSCAN results computed in one pass. The eps parameter still exists, but only as an upper bound for efficiency — set it generously and it barely affects the answer. What OPTICS does not do is hand you clusters. Something still has to decide where to cut, and if you want that decided automatically the ξ-method or HDBSCAN's stability criterion are the answers.",
+        "The relationship to DBSCAN is exact for core points: cutting the reachability profile at a fixed height reproduces DBSCAN's labelling for that eps (border-point assignment can differ), so OPTICS is the entire family of DBSCAN results computed in one pass. The eps parameter still exists, but only as an upper bound for efficiency — set it generously and it barely affects the answer. What OPTICS does not do is hand you clusters. Something still has to decide where to cut, and if you want that decided automatically the ξ-method or HDBSCAN's stability criterion are the answers.",
     ),
     steps = listOf(
         StepCard(1, "Compute Core Distances", "The radius enclosing minPts neighbours. Small means dense.", 0xFF3B82F6),
@@ -85,7 +85,7 @@ internal val opticsContent = TopicContent(
     formulas = listOf(
         FormulaEntry("Core distance", "distance to the minPts-th nearest neighbour", "Undefined if fewer than minPts within eps."),
         FormulaEntry("Reachability", "max(core-dist(p), d(p,q))", "Never smaller than p's own core distance."),
-        FormulaEntry("Flat cut", "reachability ≤ ε′ ⟹ DBSCAN(ε′)", "Exactly, not approximately."),
+        FormulaEntry("Flat cut", "reachability ≤ ε′ ⟹ DBSCAN(ε′)", "Matches DBSCAN(ε′) up to border-point assignment; valid for ε′ ≤ the eps used to build the ordering."),
         FormulaEntry("Complexity", "O(n log n) with an index, O(n²) without", "Same as DBSCAN."),
         FormulaEntry("eps", "an upper bound only", "Set it generously; it is not the density parameter."),
         FormulaEntry("minPts", "the real parameter", "Controls what counts as dense enough."),
@@ -114,7 +114,7 @@ internal val opticsContent = TopicContent(
                 reach = model.reachability_[order]
                 plt.bar(range(len(reach)), reach)     # valleys are clusters
 
-                # And the exact DBSCAN equivalence — no refitting, just a cut:
+                # And the DBSCAN equivalence (up to border points, for eps <= model.max_eps) — no refitting, just a cut:
                 for eps in (0.3, 0.5, 0.8):
                     labels = cluster_optics_dbscan(
                         reachability=model.reachability_,
@@ -123,7 +123,7 @@ internal val opticsContent = TopicContent(
                         eps=eps,
                     )
                     print(eps, len(set(labels) - {-1}), (labels == -1).sum())
-                # Identical to running DBSCAN(eps) directly, from one OPTICS pass.
+                # Matches running DBSCAN(eps) directly (core points identical; some border points can differ), from one OPTICS pass.
             """.trimIndent(),
         ),
         CodeBlock(
@@ -135,7 +135,7 @@ internal val opticsContent = TopicContent(
                 rng = np.random.default_rng(0)
 
                 tight = rng.normal([0, 0], 0.15, size=(120, 2))
-                loose = rng.normal([4, 4], 0.90, size=(120, 2))
+                loose = rng.normal([1.5, 1.5], 0.90, size=(120, 2))
                 X = np.vstack([tight, loose])
 
                 for eps in (0.3, 0.6, 1.2):
@@ -143,9 +143,11 @@ internal val opticsContent = TopicContent(
                     n_clusters = len(set(labels) - {-1})
                     noise = (labels == -1).sum()
                     print(f"eps={eps}: {n_clusters} clusters, {noise} noise")
-                # Small eps: the loose blob is almost entirely noise.
-                # Large eps: the two blobs bridge into one.
-                # There is no value that gets both right, because there is no single density.
+                # eps=0.3: 4 clusters, 83 noise -- the loose blob shatters into fragments and noise.
+                # eps=0.6: 1 cluster,  12 noise -- the blobs already bridge into one.
+                # eps=1.2: 1 cluster,   3 noise
+                # No value separates the two blobs AND keeps the loose one whole: there is no
+                # single density.
             """.trimIndent(),
         ),
     ),
@@ -158,7 +160,7 @@ internal val opticsContent = TopicContent(
     takeaways = listOf(
         "OPTICS orders points and records reachability rather than assigning labels.",
         "Valleys in the profile are clusters, and their depth is the cluster's density.",
-        "A flat cut reproduces DBSCAN's answer exactly, so OPTICS is every eps at once.",
+        "A flat cut reproduces DBSCAN's answer up to border points, so OPTICS is every eps at once.",
         "It does not choose clusters for you — ξ-extraction or HDBSCAN's stability criterion does that.",
     ),
     crossLinks = listOf(

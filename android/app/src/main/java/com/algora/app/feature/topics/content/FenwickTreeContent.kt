@@ -76,7 +76,7 @@ internal val fenwickTreeContent = TopicContent(
     simulation = SimulationType.TreeVisualizer,
     applications = listOf(
         ApplicationCard("chart", 0xFF10B981, "Cumulative Frequencies", "Running counts and rank queries over a changing multiset are the BIT's classic use."),
-        ApplicationCard("trend", 0xFF3B82F6, "Counting Inversions", "Merge-sort-style inversion counting is a few lines with a Fenwick tree."),
+        ApplicationCard("trend", 0xFF3B82F6, "Counting Inversions", "An alternative to merge sort: scan the array and query how many larger values were already inserted, O(n log n) in a few lines."),
         ApplicationCard("chip", 0xFFF59E0B, "Order Statistics", "A BIT over value counts answers 'k-th smallest' with binary lifting."),
     ),
     takeaways = listOf(

@@ -55,7 +55,7 @@ internal val hingeLossContent = TopicContent(
     ),
     whatIsIt = listOf(
         "Hinge loss is max(0, 1 − margin), where margin is y·f(x) — positive when a point is on the correct side of the decision boundary, negative when it's on the wrong side. Past margin 1, the loss is exactly zero, not merely small. That flat zero region is the entire design: it is what makes a support vector machine's solution depend only on the points near the boundary, ignoring everything already safely classified.",
-        "On the lab's 1,000 margins, hinge loss is nonzero for only 110 of them — the support vectors. The other 890 sit past the margin and contribute nothing at all to the loss or its gradient: hingeGradient is exactly 0.0 for any margin ≥ 1. Logistic loss, evaluated on the same 1,000 margins, is nonzero for all 1,000 — it has no flat region and never fully lets a point go.",
+        "On the lab's 1,000 margins, hinge loss is nonzero for only 110 of them — the points inside the margin, which are support vectors (as are any points exactly on it). The other 890 sit past the margin and contribute nothing at all to the loss or its gradient: hingeGradient is exactly 0.0 for any margin ≥ 1. Logistic loss, evaluated on the same 1,000 margins, is nonzero for all 1,000 — it has no flat region and never fully lets a point go.",
         "That difference shows up in the gradient, not just the loss value. At margin 5, hinge's gradient is exactly 0 while logistic's is still 6.69×10⁻³; at margin 10, hinge is still exactly 0 but logistic's gradient is 4.54×10⁻⁵ — vanishingly small, but never zero. Hinge loss stops asking a confidently-correct point to move further; logistic loss keeps asking, forever, just more quietly."
     ),
     steps = listOf(
@@ -76,7 +76,7 @@ internal val hingeLossContent = TopicContent(
     ),
     notationKey = listOf(
         NotationEntry("margin", "y·f(x); positive means correctly classified"),
-        NotationEntry("support vector", "a point with nonzero hinge loss — inside or past the margin"),
+        NotationEntry("support vector", "a point on or inside the margin (y·f(x) ≤ 1), including misclassified points"),
         NotationEntry("active set", "the examples still contributing to the loss's gradient"),
         NotationEntry("flat region", "margin ≥ 1, where hinge loss is exactly zero"),
         NotationEntry("squared hinge", "max(0, 1−margin)², a smoother variant used by some SVM solvers"),
@@ -132,7 +132,7 @@ internal val hingeLossContent = TopicContent(
     ),
     takeaways = listOf(
         "Hinge loss is max(0, 1 − margin) — exactly zero once a point is safely past the boundary.",
-        "On the lab's 1,000 margins, only 110 have nonzero hinge loss — the support vectors.",
+        "On the lab's 1,000 margins, only 110 have nonzero hinge loss — the points inside the margin, all support vectors.",
         "The other 890 contribute exactly zero to both the loss and its gradient.",
         "Logistic loss, on the same margins, is nonzero for all 1,000 — no flat region exists.",
         "At margin 10, hinge's gradient is exactly 0 while logistic's is still 4.54×10⁻⁵.",

@@ -57,7 +57,7 @@ internal val mlpContent = TopicContent(
         NotationEntry("feedforward", "information flows one way; no cycles"),
         NotationEntry("fully connected", "every unit in a layer sees every unit in the previous one"),
         NotationEntry("representation", "the hidden layer's output — the coordinates the next layer sees"),
-        NotationEntry("local minimum", "a point where the gradient is zero and the loss is not"),
+        NotationEntry("local minimum", "a point whose loss is lower than everywhere nearby, but not the lowest possible"),
     ),
     codeBlocks = listOf(
         CodeBlock(

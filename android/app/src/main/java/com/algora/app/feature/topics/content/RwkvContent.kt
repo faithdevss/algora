@@ -15,7 +15,7 @@ internal val rwkvContent = TopicContent(
         "RWKV replaces attention with a weighted average that has no query in it. A token's weight is exp(k) — how much it asked to be remembered — times exp(−w·distance), a decay the model learns once per channel, plus a bonus u on the current token so the present is not drowned by the past. Both sums are carried in a fixed-size state, so training looks like a parallel operator and inference looks like an RNN.",
         "Because there is no query, both sums can be accumulated incrementally and rescaled by a running maximum — exactly the trick Flash Attention uses, arrived at independently for the same reason. Written the textbook way the operator overflows a float64 once a key reaches 720; the stabilised form agrees with it to 4e-16 everywhere it is defined. The decay also has to be applied *before* the new token is folded in rather than after; getting that order wrong makes the two forms disagree by 5e-2 rather than 1e-16, which is small enough to look like rounding and is not.",
         "What it gives up is retrieval at distance, and the lab prices it. Plant a needle with a strong key and ask how much of the read-out it accounts for. Softmax attention can aim its query at that key and still holds **99% of the weight 100 tokens back**. RWKV's weight was decided when the needle was written, so it falls with distance whatever the reader wants: 69% at 5 tokens, 1.1% at 50, **0.008% at 100**. This is not a tuning problem. A weight that cannot depend on the token doing the reading cannot be aimed.",
-        "What it buys is the other side of that trade. RWKV's state is (a, b, p) per channel — 24 KB, fixed — while a transformer's KV cache at 1M tokens is 96 GB, four million times larger. Constant memory per token, no quadratic prefill, and a decode step whose cost does not grow with the conversation. Which side of that trade is right is a question about the workload, not about the architecture.",
+        "What it buys is the other side of that trade. RWKV's state is (a, b, p) per channel — 24 KB per layer at width 2048, fixed — while a transformer layer of the same width keeps a KV cache of about 8.6 GB at 1M tokens, roughly 350,000 times larger. Constant memory per token, no quadratic prefill, and a decode step whose cost does not grow with the conversation. Which side of that trade is right is a question about the workload, not about the architecture.",
     ),
     steps = listOf(
         StepCard(1, "Score Without A Query", "A token's weight is its own key plus a learned decay. Nothing about the reader enters.", 0xFF06B6D4),
@@ -30,7 +30,7 @@ internal val rwkvContent = TopicContent(
         FormulaEntry("Stable form", "carry (a, b, p); rescale by exp(p_old − p_new)", "Agrees to 4e-16; the naive form NaNs at k = 720."),
         FormulaEntry("Needle share, RWKV", "69% at d=5 · 1.1% at d=50 · 0.008% at d=100", "Set at write time, unreachable at read time."),
         FormulaEntry("Needle share, attention", "99.9% · 99.4% · 98.8%", "A matched query holds the needle at any distance."),
-        FormulaEntry("State", "3 floats per channel — 24 KB, constant", "Against 96 GB of KV cache at 1M tokens."),
+        FormulaEntry("State", "3 floats per channel — 24 KB, constant", "Against ≈8.6 GB of KV cache per layer at 1M tokens (same width 2048)."),
         FormulaEntry("Decode cost", "O(1) per token", "No prefill quadratic, no cache growth."),
     ),
     notationKey = listOf(
@@ -88,8 +88,8 @@ internal val rwkvContent = TopicContent(
 
                 # The other side of the same trade:
                 rwkv_state = 3 * 2048 * 4                          # 24 KB, any length
-                kv_1m      = 2 * 1_048_576 * 24 * 16 * 64 * 2      # 96 GB at 1M tokens
-                print(kv_1m / rwkv_state)                          # 4,194,304x
+                kv_1m      = 2 * 1_048_576 * 2048 * 2               # ~8.6 GB per layer at width 2048, 1M tokens
+                print(kv_1m / rwkv_state)                          # ~349,525x (both sides per layer, same width)
             """.trimIndent(),
         ),
     ),
@@ -103,7 +103,7 @@ internal val rwkvContent = TopicContent(
     takeaways = listOf(
         "RWKV weights a token by its own key and a learned decay — there is no query, so the weight cannot be aimed at read time.",
         "That costs retrieval at distance: a needle holds 0.008% of the read-out at 100 tokens against attention's 98.8%.",
-        "It buys a 24 KB constant state against 96 GB of KV cache at 1M tokens, and a decode cost that never grows.",
+        "It buys a 24 KB constant state per layer against ≈8.6 GB of KV cache per layer at 1M tokens, and a decode cost that never grows.",
         "The running-maximum rescale is the same trick Flash Attention uses; without it the operator NaNs at a key of 720.",
         "Apply the decay before folding in the new token, not after — the wrong order is a 5e-2 error that reads as rounding.",
     ),

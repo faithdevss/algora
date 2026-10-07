@@ -23,11 +23,11 @@ internal val gailContent = TopicContent(
     ),
     formulas = listOf(
         FormulaEntry("Adversarial objective", "min_π max_D E_π[log D] + E_E[log(1−D)]", "GAN over state-action pairs."),
-        FormulaEntry("Surrogate reward", "r = −log(D(s,a))", "Higher when the agent looks expert-like."),
+        FormulaEntry("Surrogate reward", "r = −log(D(s,a))", "Higher when D says \"agent\" with low probability, i.e. when the agent looks expert-like."),
         FormulaEntry("No explicit reward", "matches occupancy directly", "Skips IRL's reward recovery."),
     ),
     notationKey = listOf(
-        NotationEntry("D", "discriminator (expert vs agent)"),
+        NotationEntry("D", "discriminator: D(s,a) = probability the pair came from the agent (1 = agent, 0 = expert)"),
         NotationEntry("occupancy", "state-action visitation distribution"),
         NotationEntry("surrogate reward", "discriminator-derived signal for RL"),
     ),
@@ -36,9 +36,10 @@ internal val gailContent = TopicContent(
             title = "GAIL discriminator reward",
             accentColor = 0xFF6366F1,
             code = """
-                # Discriminator: 1 = expert, 0 = agent.
-                d_loss = bce(D(expert_sa), ones) + bce(D(agent_sa), zeros)
-                # Agent reward encourages fooling D:
+                # Discriminator (original GAIL convention): D(s,a) = P(pair came from the AGENT),
+                # so 1 = agent, 0 = expert.
+                d_loss = bce(D(agent_sa), ones) + bce(D(expert_sa), zeros)
+                # D is small when the agent looks expert-like, so -log D is large there:
                 reward = -torch.log(D(agent_sa) + 1e-8)
                 policy.update(agent_sa, reward)     # via PPO/TRPO
             """.trimIndent(),

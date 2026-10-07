@@ -72,7 +72,7 @@ internal val biologicalNeuronContent = TopicContent(
         FormulaEntry("Fire condition", "V ≥ V_th ⟹ spike, V ← V_reset", "−55 mV threshold, −75 mV reset."),
         FormulaEntry("Steady state", "V_∞ = V_rest + R·I", "Below threshold, this is where it settles and stays."),
         FormulaEntry("Rheobase", "I_rheo = (V_th − V_rest)/R", "15 units here. Below it, no spike is possible at any duration."),
-        FormulaEntry("Firing rate", "f(I) = 1 / (t_ref + τ·ln[(RI)/(RI − (V_th−V_rest))])", "The f–I curve in closed form; the lab measures it instead."),
+        FormulaEntry("Firing rate", "f(I) = 1 / (t_ref + τ·ln[(RI − (V_reset−V_rest)) / (RI − (V_th−V_rest))])", "The f–I curve in closed form; the lab measures it instead."),
         FormulaEntry("Artificial unit", "y = φ(Σᵢ wᵢxᵢ + b)", "The abstraction: weights for synapses, φ for the f–I curve."),
         FormulaEntry("Hebbian learning", "Δwᵢⱼ ∝ xᵢ · xⱼ", "\"Fire together, wire together\" — local, unlike backpropagation."),
     ),

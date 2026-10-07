@@ -93,7 +93,7 @@ internal val siameseNetworksContent = TopicContent(
     ),
     simulation = SimulationType.PointCloudPlayer,
     applications = listOf(
-        ApplicationCard("users", 0xFF3B82F6, "Face Verification", "The original Siamese use case — is this the same person, not which person from a fixed list."),
+        ApplicationCard("users", 0xFF3B82F6, "Face & Signature Verification", "Signature verification was the original Siamese use case (Bromley, LeCun et al., 1993); face verification (Chopra, Hadsell & LeCun, 2005) is the best-known — is this the same person, not which person from a fixed list."),
         ApplicationCard("book", 0xFF10B981, "One-Shot / Few-Shot Learning", "New categories added after deployment with a single example, no retraining."),
         ApplicationCard("search", 0xFFF59E0B, "Signature & Duplicate Detection", "Any \"are these two things the same\" task where the class list is open-ended."),
         ApplicationCard("help", 0xFFEC4899, "Not Free", "It still needs pairs during training — the labeling cost moves, it does not vanish."),

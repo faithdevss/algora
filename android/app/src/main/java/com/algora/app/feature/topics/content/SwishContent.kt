@@ -53,7 +53,7 @@ internal val swishContent = TopicContent(
                 y.sum().backward()
                 print(z.grad.max().item())                     # 1.0998 -- above 1
 
-                # Every activation earlier in this category caps its derivative at 1. Swish does
+                # Sigmoid, tanh, ReLU, Leaky ReLU and ELU cap their derivative at 1 (SELU's λ scaling is the exception). Swish does
                 # not, and the same is true of GELU. It is a small effect and it is not nothing:
                 # a function that can pass more than it receives behaves differently in a deep
                 # stack than one that can only attenuate.

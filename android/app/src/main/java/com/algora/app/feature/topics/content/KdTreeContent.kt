@@ -43,7 +43,7 @@ internal val kdTreeContent = TopicContent(
         StepCard(4, "Region Trees Differ", "Quad/octrees split space into fixed equal cells rather than by data medians.", 0xFFEC4899),
     ),
     formulas = listOf(
-        FormulaEntry("Build", "O(n log n)", "Median splits over n points."),
+        FormulaEntry("Build", "O(n log² n)", "Median splits over n points; this build re-sorts at every level. O(n log n) needs linear-time median selection or pre-sorting by each axis."),
         FormulaEntry("Query (low dim)", "O(log n) average", "Pruning skips most subtrees when k is small."),
         FormulaEntry("Curse of dimensionality", "→ O(n) high dim", "Pruning fails as k grows large."),
     ),

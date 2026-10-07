@@ -19,18 +19,18 @@ internal val maskRcnnContent = TopicContent(
         caption = "The defect a class label survived and a mask did not, measured along one axis " +
             "of a 145-pixel box at stride 16. In feature-map units the box is 145/16 = 9.0625 " +
             "wide, and RoI pooling floors that to 9 — one rounding, 1 pixel of the image gone " +
-            "before anything is read. Then it divides those 9 units into 7 bins and floors again, " +
-            "to 1 unit per bin, so only the first 7 units are ever sampled: units 7 and 8, which " +
-            "are 32 image pixels of the object's far edge, are never read at all. Both roundings " +
-            "happen in feature units, so each one costs a multiple of the stride. RoIAlign takes " +
+            "before anything is read. Then it divides those 9 units into 7 bins and snaps every bin boundary to a " +
+            "whole cell (floor for the start, ceil for the end), so the bins come out 2 or 3 cells " +
+            "wide and overlap, and each boundary can sit up to one cell — 16 image pixels — from " +
+            "where it belongs. Both roundings happen in feature units, so each one costs a " +
+            "multiple of the stride. RoIAlign takes " +
             "the same box, divides 9.0625 by 7 to get bins of 1.2946, samples at the exact " +
             "centres 0.65, 1.94, 3.24, 4.53, 5.83, 7.12 and 8.42 with bilinear interpolation, and " +
             "never calls floor() — worth about 3 mask AP, and roughly double that at AP75.",
         shape = FigureShape.Strip(
             cells = listOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9"),
             bands = listOf(
-                FigureBand(0, 6, "the 7 bins RoI pooling reads"),
-                FigureBand(7, 8, "32 px never read", FigureTone.Warn),
+                FigureBand(0, 8, "7 bins, edges snapped to whole cells (up to 16 px off)", FigureTone.Warn),
                 FigureBand(9, 9, "9.06", FigureTone.Accent),
             ),
         ),
@@ -38,13 +38,13 @@ internal val maskRcnnContent = TopicContent(
     whatIsIt = listOf(
         "Mask R-CNN is Faster R-CNN plus a third head: alongside the class score and the box, a small fully convolutional branch predicts a 28×28 binary mask for each region of interest. The addition is almost trivially simple, which is the paper's point — instance segmentation did not need a new paradigm, it needed one more branch and one arithmetic fix. It beat every entrant of the 2016 COCO segmentation challenge and runs at about 5 frames per second.",
         "The masks are per-class and binary, with no softmax across classes. The classification head decides *what* the object is; the mask head only decides *which pixels* belong to it, predicting one independent mask per class and using the one the classifier chose. Decoupling those two questions is worth several points of mask AP over the usual per-pixel multi-class softmax, because the mask branch stops competing with itself across classes it was never asked to distinguish.",
-        "The mask branch also exposed a defect that classification had tolerated for two years. RoI pooling quantises twice — snapping the box onto the feature grid, then dividing that grid into bins — and both roundings happen in feature-map units, so each costs a multiple of the stride in image pixels. On a 145-pixel box at stride 16 the simulation measures 1 pixel lost snapping the RoI and 32 pixels of its far edge never read at all. A class label survives that. A pixel-accurate mask does not. RoIAlign removes both roundings by sampling each bin at exact floating-point locations with bilinear interpolation and never calling floor(), and the paper reports roughly a 3-point mask-AP gain from that change alone — about twice as much at the strict IoU 0.75 threshold, where a few pixels of misalignment is exactly what decides a match.",
+        "The mask branch also exposed a defect that classification had tolerated for two years. RoI pooling quantises twice — snapping the box onto the feature grid, then dividing that grid into bins — and both roundings happen in feature-map units, so each costs a multiple of the stride in image pixels. On a 145-pixel box at stride 16 the simulation measures 1 pixel lost snapping the RoI and bin boundaries that are snapped by up to one cell (16 pixels) each, with uneven, overlapping bins. A class label survives that. A pixel-accurate mask does not. RoIAlign removes both roundings by sampling each bin at exact floating-point locations with bilinear interpolation and never calling floor(), and the paper reports roughly a 3-point mask-AP gain from that change alone — about twice as much at the strict IoU 0.75 threshold, where a few pixels of misalignment is exactly what decides a match.",
     ),
     steps = listOf(
         StepCard(1, "Start From Faster R-CNN", "RPN, proposals, class head, box head — all unchanged.", 0xFF3B82F6),
         StepCard(2, "Add a Mask Branch", "A small FCN per RoI producing K masks of 28×28.", 0xFF06B6D4),
         StepCard(3, "Decouple Class From Mask", "Per-class binary masks, sigmoid not softmax. The class head picks one.", 0xFF6366F1),
-        StepCard(4, "Find the Misalignment", "RoI pooling's two roundings cost 1 px + 32 px at stride 16.", 0xFF8B5CF6),
+        StepCard(4, "Find the Misalignment", "RoI pooling's roundings cost 1 px (RoI snap) + up to 16 px per bin edge at stride 16.", 0xFF8B5CF6),
         StepCard(5, "Replace It With RoIAlign", "Bilinear sampling at exact locations. No floor(), no snapping.", 0xFFF59E0B),
         StepCard(6, "Train All Three Heads", "L = L_cls + L_box + L_mask, one loss, one optimiser.", 0xFFEC4899),
     ),
@@ -52,7 +52,7 @@ internal val maskRcnnContent = TopicContent(
         FormulaEntry("Total loss", "L = L_cls + L_box + L_mask", "Per sampled RoI, all three heads together."),
         FormulaEntry("Mask loss", "average per-pixel binary cross-entropy, on the true class's mask only", "The other K−1 masks contribute nothing."),
         FormulaEntry("Mask output", "K × 28 × 28 per RoI", "One binary mask per class, no competition between them."),
-        FormulaEntry("RoI pooling quantisation", "1 px (RoI snap) + 32 px (bin snap)", "Measured on a 145-pixel box at stride 16."),
+        FormulaEntry("RoI pooling quantisation", "1 px (RoI snap) + up to 16 px (bin-edge snap)", "Measured on a 145-pixel box at stride 16."),
         FormulaEntry("RoIAlign", "bilinear sample at exact bin centres", "Zero quantisation; the fix is arithmetic, not architecture."),
         FormulaEntry("Reported gain", "≈+3 mask AP, roughly double that at AP75", "Strict thresholds are where misalignment shows."),
     ),
@@ -73,11 +73,11 @@ internal val maskRcnnContent = TopicContent(
 
                 exact_cells = box / stride              # 9.0625
                 snapped = int(exact_cells)              # 9      <- rounding one
-                bin_exact = snapped / bins              # 1.2857
-                bin_snapped = int(bin_exact)            # 1      <- rounding two
+                bin_exact = snapped / bins              # 1.2857 cells per bin
+                # rounding two: bin boundaries are snapped to whole cells (floor/ceil)
 
                 print((exact_cells - snapped) * stride)                  # 1.0  px
-                print((bin_exact - bin_snapped) * bins * stride)         # 32.0 px
+                print(stride)   # each snapped bin edge can be off by up to one cell = 16 px
 
                 # RoIAlign replaces both with sampling at exact positions:
                 import torch
@@ -124,7 +124,7 @@ internal val maskRcnnContent = TopicContent(
     takeaways = listOf(
         "Faster R-CNN plus one small FCN head predicting a 28×28 binary mask per RoI — that is the whole architecture.",
         "Masks are per-class and independent, so the mask branch never competes with itself across classes.",
-        "RoI pooling's two roundings cost 1 px and 32 px at stride 16 — invisible to a label, fatal to a mask.",
+        "RoI pooling's roundings cost 1 px and up to 16 px per bin edge at stride 16 — invisible to a label, fatal to a mask.",
         "RoIAlign samples at exact positions with bilinear interpolation; the paper reports ~+3 mask AP, and about double that at AP75.",
         "The same head, with a one-hot map per joint, does human pose estimation with no other change.",
     ),

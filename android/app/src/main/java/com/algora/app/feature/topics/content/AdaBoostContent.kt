@@ -124,7 +124,7 @@ internal val adaBoostContent = TopicContent(
                     alpha = 0.5 * np.log((1 - 0.2) / 0.2)   # a steady 20%-error learner
                     w *= np.exp(alpha)                      # missed every round
                     print(round_, round(w, 4))
-                # After 7 rounds this single point's unnormalized weight is ~15x its start.
+                # After 7 rounds this single point's unnormalized weight is ~128x its start (2^7: e^alpha = 2 each round).
                 # If its label was simply wrong, the ensemble has spent 7 rounds chasing it.
 
                 # Gradient boosting with a Huber or logistic loss grows linearly instead of

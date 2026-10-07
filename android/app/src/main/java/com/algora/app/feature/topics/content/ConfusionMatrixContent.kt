@@ -79,7 +79,7 @@ internal val confusionMatrixContent = TopicContent(
                     print(f"t={threshold}: TP {tp} FP {fp} FN {fn} TN {tn}")
 
                 # t=0.5:  TP 35 FP  0  FN 53 TN 912
-                # t=0.34: TP 57 FP 20 FN 31 TN 892
+                # t=0.34: TP 57 FP  2 FN 31 TN 910
                 # t=0.2:  TP 75 FP 85 FN 13 TN 827
                 #
                 # A report quoting one matrix without its threshold is quoting one row of this table

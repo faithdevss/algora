@@ -72,7 +72,7 @@ internal val sieveOfEratosthenesContent = TopicContent(
         FormulaEntry("Space", "O(n) bits", "A bitset to 10⁹ is 125 MB; a boolean array is a gigabyte."),
         FormulaEntry("Start marking at", "p²", "Smaller multiples were already struck by smaller primes."),
         FormulaEntry("Outer bound", "p·p ≤ n", "To 30, only 2, 3 and 5 ever mark anything."),
-        FormulaEntry("Prime counting", "π(n) ≈ n / ln n", "About 10 primes below 30; the actual count is 10."),
+        FormulaEntry("Prime counting", "π(n) ≈ n / ln n", "n/ln n gives ≈ 8.8 for n = 30; the actual count is 10 (the estimate undercounts)."),
         FormulaEntry("Linear sieve", "O(n)", "Marks each composite once via its smallest prime factor, and returns it."),
     ),
     notationKey = listOf(

@@ -14,7 +14,7 @@ internal val bayesianNetworksContent = TopicContent(
     whatIsIt = listOf(
         "A Bayesian network is a directed acyclic graph over random variables, where each node carries P(node | its parents). Naive Bayes assumes every feature independent given the class; a Bayesian network instead states exactly which dependencies exist and lets the rest be independent.",
         "The graph's real content is its missing edges. With n binary variables a full joint table needs 2ⁿ − 1 numbers; the network needs only Σ 2^(parents of i), which for a sparse graph is dramatically smaller. Every absent arrow is a conditional-independence claim — a substantive assertion about the world that is written down, inspectable and testable, rather than buried in an implicit assumption.",
-        "Reading independence off the graph is subtler than it looks, and the collider is where intuition fails. Along a chain or a common cause, conditioning on the middle node *blocks* the path: once you know it was cloudy, the sprinkler tells you nothing further about rain. But at a collider — two arrows meeting at one node — conditioning *creates* dependence. Sprinkler and rain are independent until you observe that the grass is wet; then learning the sprinkler was off makes rain much more likely. That is explaining away, and it is why d-separation has to account for arrow direction rather than mere connectivity. Exact inference by variable elimination is efficient on sparse graphs and NP-hard in general, which is precisely where MCMC and variational methods take over.",
+        "Reading independence off the graph is subtler than it looks, and the collider is where intuition fails. Along a chain or a common cause, conditioning on the middle node *blocks* the path: once you know it was cloudy, the sprinkler tells you nothing further about rain. But at a collider — two arrows meeting at one node — conditioning *creates* dependence. Sprinkler and rain are only linked through cloudiness (they are independent given Cloudy) until you observe that the grass is wet, which adds a second, collider-created dependence; then learning the sprinkler was off makes rain much more likely. That is explaining away, and it is why d-separation has to account for arrow direction rather than mere connectivity. Exact inference by variable elimination is efficient on sparse graphs and NP-hard in general, which is precisely where MCMC and variational methods take over.",
     ),
     steps = listOf(
         StepCard(1, "Name the Variables", "Each becomes a node. Getting the variable set right is most of the modelling work.", 0xFF14B8A6),
@@ -86,7 +86,7 @@ internal val bayesianNetworksContent = TopicContent(
 
                 print(round(base, 3), round(wet, 3), round(wet_and_sprinkler, 3))
                 # Learning about the sprinkler changed our belief about rain — two variables
-                # that are independent until their shared consequence is observed. No naive
+                # that are independent given Cloudy until their shared consequence is observed. No naive
                 # Bayes model can represent this.
             """.trimIndent(),
         ),

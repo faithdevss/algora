@@ -113,12 +113,13 @@ internal val encoderDecoderContent = TopicContent(
                     "How recoverable is source[position] from the context vector alone?"
                     x = contexts(model, sources)                 # encoder frozen: no grad above
                     y = torch.tensor([s[0, position].argmax() for s in sources])
+                    n = int(0.8 * len(y))                        # fit on 80%, score on HELD-OUT 20%
                     readout = nn.Linear(hidden, vocab)
                     optimizer = torch.optim.Adam(readout.parameters(), lr=0.05)
                     for _ in range(steps):
-                        loss = nn.functional.cross_entropy(readout(x), y)
+                        loss = nn.functional.cross_entropy(readout(x[:n]), y[:n])
                         optimizer.zero_grad(); loss.backward(); optimizer.step()
-                    return (readout(x).argmax(1) == y).float().mean().item()
+                    return (readout(x[n:]).argmax(1) == y[n:]).float().mean().item()
 
                 # Run it per position and read the shape, not the average. A profile that slopes
                 # up toward the end of the source is recency -- the vector is holding the tail.

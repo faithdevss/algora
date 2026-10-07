@@ -53,7 +53,7 @@ internal val mdpContent = TopicContent(
         StepCard(4, "Value Functions", "V(s) and Q(s,a) estimate expected return, satisfying the Bellman equations.", 0xFFF59E0B),
     ),
     formulas = listOf(
-        FormulaEntry("Return", "Gₜ = Σ γᵏ rₜ₊ₖ", "Discounted sum of future rewards."),
+        FormulaEntry("Return", "Gₜ = Σₖ₌₀^∞ γᵏ rₜ₊ₖ₊₁", "Discounted sum of future rewards."),
         FormulaEntry("Bellman (V)", "V(s) = Σ π(a|s)Σ P(s′|s,a)[r + γV(s′)]", "Recursive value definition."),
         FormulaEntry("Discount γ", "0 ≤ γ < 1", "How much future rewards are worth now."),
     ),

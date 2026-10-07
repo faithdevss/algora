@@ -28,7 +28,7 @@ internal val fineTuningFullContent = TopicContent(
     formulas = listOf(
         FormulaEntry("Objective", "min over all θ of L_down(θ), from θ = θ_pretrained", "Nothing constrains θ to stay near where it started."),
         FormulaEntry("Regime crossover", "32 examples", "Below it the frozen body wins; above it, full fine-tuning."),
-        FormulaEntry("Frozen ceiling", "0.0121 at any dataset size", "A linear read-out of fixed features cannot do better."),
+        FormulaEntry("Frozen ceiling", "plateaus at ≈0.0121", "A linear read-out of fixed features cannot do better; more data does not lower it."),
         FormulaEntry("Forgetting", "0.0002 → 0.0595 upstream", "253× worse, with no downstream symptom."),
         FormulaEntry("Optimizer state", "16 bytes per trainable parameter", "fp16 weight + fp16 grad + fp32 master + 2 fp32 moments."),
         FormulaEntry("7B training state", "104.3 GB full vs 13.3 GB at 20M trainable", "The gap PEFT exists to close."),
@@ -68,6 +68,7 @@ internal val fineTuningFullContent = TopicContent(
                     {"params": model.bert.encoder.layer[8:].parameters(), "lr": 3e-5},
                     {"params": model.bert.encoder.layer[:8].parameters(), "lr": 1e-5},
                     {"params": model.bert.embeddings.parameters(), "lr": 5e-6},
+                    {"params": model.bert.pooler.parameters(), "lr": 1e-4},   # otherwise never updated
                 ]
                 opt = torch.optim.AdamW(groups, weight_decay=0.01)
                 sched = get_linear_schedule_with_warmup(opt, num_warmup_steps=100,

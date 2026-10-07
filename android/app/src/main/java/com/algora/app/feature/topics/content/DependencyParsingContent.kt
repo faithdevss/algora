@@ -119,13 +119,15 @@ internal val dependencyParsingContent = TopicContent(
 
                 for t in doc:
                     print(t.text, t.dep_, "<-", t.head.text)
-                # small amod <- dog ; dog nsubj <- chased ; cat obj <- chased ...
+                # small amod <- dog ; dog nsubj <- chased ; cat dobj <- chased ...
 
                 # Relation extraction is now a lookup rather than a tree walk:
                 verb = [t for t in doc if t.dep_ == "ROOT"][0]
                 subj = [c for c in verb.children if c.dep_ == "nsubj"]
-                obj  = [c for c in verb.children if c.dep_ == "obj"]
-                print(subj, verb, obj)      # (dog, chased, cat)
+                # spaCy's English pipelines use the ClearNLP label "dobj"; Universal
+                # Dependencies models (and the figure above) call the same relation "obj".
+                obj  = [c for c in verb.children if c.dep_ in ("dobj", "obj")]
+                print(subj, verb, obj)      # [dog] chased [cat]
 
                 def crossings(heads):       # heads is 1-indexed, 0 = ROOT
                     arcs = [(min(h, i + 1), max(h, i + 1)) for i, h in enumerate(heads) if h]

@@ -82,20 +82,23 @@ internal val isotonicRegressionContent = TopicContent(
                     inner while loop is amortized constant.\"\"\"
                     y = list(y)
                     w = [1.0] * len(y) if w is None else list(w)
-                    values, weights = [], []
+                    values, weights, counts = [], [], []
 
                     for value, weight in zip(y, w):
+                        count = 1                          # points in this block
                         # Merge backwards while the previous block sits ABOVE this one.
                         while values and values[-1] > value:
-                            v, wt = values.pop(), weights.pop()
+                            v, wt, c = values.pop(), weights.pop(), counts.pop()
                             value = (value * weight + v * wt) / (weight + wt)
                             weight += wt
+                            count += c
                         values.append(value)
                         weights.append(weight)
+                        counts.append(count)
 
                     out = []
-                    for v, wt in zip(values, weights):
-                        out.extend([v] * int(wt))
+                    for v, c in zip(values, counts):       # expand by point COUNT, not weight
+                        out.extend([v] * c)
                     return out
 
                 print(pava([1, 3, 2, 4]))     # [1, 2.5, 2.5, 4] — the 3 and 2 pooled
@@ -120,8 +123,8 @@ internal val isotonicRegressionContent = TopicContent(
                 for name, model in [("raw", raw), ("isotonic", iso), ("platt", platt)]:
                     p = model.predict_proba(X_test)[:, 1]
                     print(name, round(brier_score_loss(y_test, p), 4))
-                # Note the ranking is unchanged by calibration — AUC is identical. Only the
-                # numbers attached to the ranking move.
+                # AUC is usually close but not identical: isotonic is a step function, so it
+                # collapses distinct scores into ties. Mostly the probabilities move.
             """.trimIndent(),
         ),
     ),

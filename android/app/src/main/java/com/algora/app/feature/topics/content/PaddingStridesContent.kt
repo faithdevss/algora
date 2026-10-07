@@ -113,10 +113,11 @@ internal val paddingStridesContent = TopicContent(
                 print(padded(x).shape)                # [1, 3, 224, 224]
 
                 # The floor silently drops a partial window, and the error surfaces later:
-                print(nn.Conv2d(3, 3, 3, stride=2)(torch.randn(1, 3, 7, 7)).shape)   # [1, 3, 3, 3]
-                # (7 - 3)//2 + 1 = 3, not 4. Column 6 is never the start of a window at all,
-                # so an odd input size quietly loses its last row and column at every stride-2 layer
-                # -- which is why segmentation decoders that assume exact halving break on odd inputs.
+                print(nn.Conv2d(3, 3, 3, stride=2)(torch.randn(1, 3, 8, 8)).shape)   # [1, 3, 3, 3]
+                # (8 - 3)//2 + 1 = 3, not 3.5. Windows start at columns 0, 2, 4 and cover 0-6, so
+                # column 7 is never read: floor drops pixels whenever (n + 2p - k) % s != 0.
+                # (n = 7 is fine: windows 0, 2, 4 cover 0-6.) The odd-size trap for decoders is
+                # different: 7 -> 4 -> upsample gives 8, not 7, so skip-connection shapes mismatch.
             """.trimIndent(),
         ),
     ),
@@ -132,7 +133,7 @@ internal val paddingStridesContent = TopicContent(
         "Unpadded convolution reads corner pixels once and centre pixels k² times — padding is what makes the border count.",
         "Shrinkage compounds: ten unpadded 3×3 layers take 224 down to 204, which is why deep stacks pad every layer.",
         "Stride divides rather than subtracts, and a stride-2 convolution is the learned replacement for pooling.",
-        "The floor drops the last partial window, so odd input sizes lose a row and column at every strided layer.",
+        "The floor drops the last partial window whenever (n + 2p − k) is not divisible by s, and odd sizes do not halve exactly (⌈n/2⌉), which breaks encoder–decoder shape matching.",
     ),
     crossLinks = listOf(
         CrossLink("conv_layers", "Convolution Layers"),

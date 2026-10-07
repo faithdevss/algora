@@ -103,23 +103,23 @@ internal val spectralClusteringContent = TopicContent(
                 from scipy.linalg import eigh
                 from sklearn.cluster import KMeans
 
-                def spectral(X, k, sigma=0.1):
+                def laplacian(X, sigma=0.1):
                     d2 = ((X[:, None, :] - X[None]) ** 2).sum(axis=2)
                     W = np.exp(-d2 / (2 * sigma ** 2))
                     np.fill_diagonal(W, 0)
+                    return np.diag(W.sum(axis=1)) - W        # unnormalized Laplacian
 
-                    d = W.sum(axis=1)
-                    L = np.diag(d) - W                       # unnormalized Laplacian
-                    vals, vecs = eigh(L)
+                def spectral(X, k, sigma=0.1):
+                    vals, vecs = eigh(laplacian(X, sigma))
 
-                    # vals[0] is always ~0 with a constant eigenvector — it carries no
-                    # information. The clusters live in the NEXT k eigenvectors.
-                    embedding = vecs[:, 1:k + 1]
+                    # The FIRST k eigenvectors span the cluster indicators (the constant one
+                    # belonging to vals[0] ~ 0 is one of them): the standard recipe.
+                    embedding = vecs[:, :k]
                     return KMeans(n_clusters=k, n_init=10).fit_predict(embedding)
 
                 # The number of eigenvalues at (near) zero equals the number of connected
                 # components, which is a genuinely useful diagnostic for choosing k:
-                vals = eigh(L, eigvals_only=True)
+                vals = eigh(laplacian(X), eigvals_only=True)
                 print(np.round(vals[:6], 5))    # look for the gap
             """.trimIndent(),
         ),

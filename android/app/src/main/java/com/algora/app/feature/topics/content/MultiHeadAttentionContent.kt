@@ -46,7 +46,7 @@ internal val multiHeadAttentionContent = TopicContent(
         StepCard(3, "Concatenate", "h contexts of d/h back into one d-vector.", 0xFF10B981),
         StepCard(4, "Project Out", "One more d×d matrix, and the block is done.", 0xFF8B5CF6),
         StepCard(5, "Count the Cost", "4d² regardless of h — the split is free.", 0xFFF59E0B),
-        StepCard(6, "Choose h", "Reads against expressiveness per read; ~64 dims each in practice.", 0xFFEC4899),
+        StepCard(6, "Choose h", "Reads against expressiveness per read; 64–128 dims each in practice.", 0xFFEC4899),
     ),
     formulas = listOf(
         FormulaEntry("Per head", "headᵢ = Attention(QWqᵢ, KWkᵢ, VWvᵢ)", "Each projection is d × d/h."),
@@ -59,7 +59,7 @@ internal val multiHeadAttentionContent = TopicContent(
     notationKey = listOf(
         NotationEntry("h", "number of heads"),
         NotationEntry("d", "model dimension; each head works in d/h of it"),
-        NotationEntry("d/h", "head dimension — 64 in most published transformers, whatever d is"),
+        NotationEntry("d/h", "head dimension — 64 in BERT/GPT-2, 128 in GPT-3 175B and LLaMA"),
         NotationEntry("rank", "how many independent patterns one head's score matrix can express"),
         NotationEntry("Wo", "the output projection applied after concatenation"),
         NotationEntry("simultaneous read", "attending to two positions at full weight rather than blending them"),
@@ -108,18 +108,18 @@ internal val multiHeadAttentionContent = TopicContent(
                     return flat @ flat.T          # pairwise cosine between head patterns
 
                 # Near-1 off-diagonal entries mean heads have collapsed onto the same pattern --
-                # a well-documented outcome, and the finding behind "sixteen heads are better
-                # than one?" (Michel et al., 2019), where most heads could be pruned at inference
+                # a well-documented outcome, and the finding behind "Are Sixteen Heads Really
+                # Better than One?" (Michel et al., 2019), where most heads could be pruned at inference
                 # with little loss. Measure before you assume the heads are specialising.
             """.trimIndent(),
         ),
     ),
     simulation = SimulationType.TokenStripPlayer,
     applications = listOf(
-        ApplicationCard("share", 0xFF6366F1, "Every Transformer", "The default attention block since 2017, at 64 dimensions per head."),
+        ApplicationCard("share", 0xFF6366F1, "Every Transformer", "The default attention block since 2017, at 64–128 dimensions per head."),
         ApplicationCard("flask", 0xFF8B5CF6, "Interpretability", "Induction heads, name-mover heads: found by reading individual heads."),
         ApplicationCard("finance", 0xFF10B981, "Head Pruning", "Many heads can be removed at inference — measure which first."),
-        ApplicationCard("help", 0xFFF59E0B, "Choosing h", "Keep d/h near 64; more heads at a fixed d makes each one thinner."),
+        ApplicationCard("help", 0xFFF59E0B, "Choosing h", "Keep d/h in the 64–128 range; more heads at a fixed d makes each one thinner."),
     ),
     takeaways = listOf(
         "Heads partition the model dimension; the block is 4d² parameters at every head count — 16,384 at d = 64.",
@@ -128,7 +128,7 @@ internal val multiHeadAttentionContent = TopicContent(
         "What the split really buys is simultaneous reads: one head must blend two positions (error 0.697), two heads read both exactly.",
         "On a task with a single alignment, four heads score 0.842 against one head's 0.867 — heads are not free accuracy.",
         "The four heads still specialised: attention mass on the copied position ranged 0.47 to 0.92 across them.",
-        "Published models hold d/h ≈ 64 from BERT-base to GPT-3, which is what these two measurements jointly recommend.",
+        "Published models hold d/h at 64–128 (64 in BERT-base, 128 in GPT-3 175B), which is what these two measurements jointly recommend.",
     ),
     crossLinks = listOf(
         CrossLink("self_cross_attention", "Self- vs Cross-Attention"),

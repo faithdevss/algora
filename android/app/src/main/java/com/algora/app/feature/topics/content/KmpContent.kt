@@ -42,7 +42,7 @@ internal val kmpContent = TopicContent(
         StepCard(1, "Build the LPS Table", "For each prefix of the pattern, record the length of the longest proper prefix that is also a suffix.", 0xFF8B5CF6),
         StepCard(2, "Scan the Text Once", "Walk the text with pointer i and the pattern with pointer j; matching characters advance both.", 0xFF3B82F6),
         StepCard(3, "On Mismatch, Fall Back in the Pattern", "Set j = lps[j−1] instead of resetting to 0 — the shared prefix is already matched, so re-checking it is wasted work.", 0xFFF59E0B),
-        StepCard(4, "Report a Hit", "When j reaches m, record a match at i − m and fall back to lps[m−1] to keep finding overlapping occurrences.", 0xFF10B981),
+        StepCard(4, "Report a Hit", "When j reaches m, record a match at i − m + 1 (0-indexed, i = index of the last matched character) and fall back to lps[m−1] to keep finding overlapping occurrences.", 0xFF10B981),
     ),
     formulas = listOf(
         FormulaEntry("LPS definition", "lps[k] = max{ l < k+1 : P[0..l−1] = P[k−l+1..k] }", "Longest proper prefix that is also a suffix of P[0..k]."),

@@ -71,6 +71,7 @@ internal val floydWarshallContent = TopicContent(
             title = "Floyd-Warshall",
             accentColor = 0xFF6366F1,
             code = """
+                // const val INF = Int.MAX_VALUE; the INF guards below prevent overflow.
                 // d[i][j] initialized to edge weights, INF if none, 0 on the diagonal.
                 fun floydWarshall(d: Array<IntArray>) {
                     val n = d.size

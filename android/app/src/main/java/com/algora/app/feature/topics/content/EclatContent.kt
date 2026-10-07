@@ -30,13 +30,14 @@ internal val eclatContent = TopicContent(
         FormulaEntry("Extension", "t(X ∪ Y) = t(X) ∩ t(Y)", "The single operation the whole search is made of."),
         FormulaEntry("Diffset", "d(Xy) = t(X) \\ t(Xy)", "What dEclat stores instead."),
         FormulaEntry("Support from a diffset", "supp(Xy) = supp(X) − |d(Xy)|", "Recovered without ever materialising the tid-list."),
-        FormulaEntry("Memory", "O(|D| · d) worst case", "Every item's list, and a common item's list is nearly the database."),
+        FormulaEntry("Memory", "O(|D| · |I|) worst case", "Every item's list, and a common item's list is nearly the database."),
     ),
     notationKey = listOf(
         NotationEntry("t(X)", "tid-list — the set of transaction ids containing X"),
         NotationEntry("vertical layout", "item → transactions, the transpose of the usual table"),
         NotationEntry("diffset", "the tid-list difference between a prefix and its extension"),
         NotationEntry("dEclat", "the diffset variant, for dense data"),
+        NotationEntry("|I|", "number of distinct items"),
         NotationEntry("depth-first", "extend one prefix fully before starting the next"),
         NotationEntry("prefix", "the itemset currently being extended"),
     ),
@@ -84,19 +85,23 @@ internal val eclatContent = TopicContent(
                     items = [k for k, v in tid_lists.items() if len(v) >= minsup_count]
                     found = {}
 
-                    def extend(prefix, prefix_support, diffs, rest):
-                        for idx, (item, d_item) in enumerate(rest):
-                            # d(Xy) = d(y) - d(X): the transactions X has and Xy does not.
-                            d = d_item - diffs
-                            support = prefix_support - len(d)
-                            if support >= minsup_count:
-                                new_prefix = prefix | {item}
-                                found[frozenset(new_prefix)] = support
-                                extend(new_prefix, support, d, rest[idx + 1:])
+                    def extend(prefix, members):
+                        # members: (item, support, diffset), every diffset taken relative
+                        # to `prefix` -- siblings must share the same parent to subtract.
+                        for idx, (item, support, d_item) in enumerate(members):
+                            new_prefix = prefix | {item}
+                            found[frozenset(new_prefix)] = support
+                            children = []
+                            for other, _, d_other in members[idx + 1:]:
+                                d = d_other - d_item          # d(PXY) = d(PY) - d(PX)
+                                s = support - len(d)          # sup(PXY) = sup(PX) - |d(PXY)|
+                                if s >= minsup_count:
+                                    children.append((other, s, d))
+                            extend(new_prefix, children)
 
-                    n = len(transactions)
-                    roots = [(k, set(range(n)) - tid_lists[k]) for k in items]
-                    extend(set(), n, set(), roots)
+                    everyone = set(range(len(transactions)))
+                    roots = [(k, len(tid_lists[k]), everyone - tid_lists[k]) for k in items]
+                    extend(set(), roots)
                     return found
 
                 # On dense data a tid-list is nearly the whole database and a diffset is nearly

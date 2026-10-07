@@ -48,14 +48,14 @@ internal val naiveBayesContent = TopicContent(
     simulation = SimulationType.PointCloudPlayer,
     applications = listOf(
         ApplicationCard("search", 0xFF818CF8, "Spam Filtering", "The classic use — scoring emails as spam/ham from word frequencies."),
-        ApplicationCard("book", 0xFF60A5FA, "Text Classification", "Topic labeling and sentiment analysis where bag-of-words features are near-independent."),
+        ApplicationCard("book", 0xFF60A5FA, "Text Classification", "Topic labeling and sentiment analysis where bag-of-words features are numerous; the independence assumption is plainly false for text, but NB works well despite strongly dependent features."),
         ApplicationCard("chart", 0xFF10B981, "Fast Baselines", "Trains in one pass, giving a strong, cheap baseline on high-dimensional data."),
     ),
     takeaways = listOf(
         "Naive Bayes multiplies a class prior by independent feature likelihoods via Bayes' rule.",
         "The independence assumption is unrealistic but keeps it fast and data-efficient.",
         "Laplace smoothing avoids zero probabilities for unseen feature values.",
-        "It's a top choice for text where features are numerous and roughly independent.",
+        "It's a top choice for text where features are numerous — it works well despite strongly dependent features.",
     ),
     crossLinks = listOf(
         CrossLink("bow_tfidf", "Bag-of-Words / TF-IDF"),

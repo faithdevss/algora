@@ -123,7 +123,7 @@ internal val cosineSimilarityContent = TopicContent(
                 # the linear kernel below IS cosine similarity, at one multiply-add per dimension.
                 X = TfidfVectorizer().fit_transform(corpus)
                 print(np.allclose(np.linalg.norm(X.toarray(), axis=1), 1.0))   # True
-                print(cosine_similarity(X[0], X[1]) == (X[0] @ X[1].T).toarray())  # True
+                print(np.allclose(cosine_similarity(X[0], X[1]), (X[0] @ X[1].T).toarray()))  # True
 
                 # The same identity is why FAISS, pgvector and every hosted vector store index
                 # normalised embeddings with an inner-product metric rather than a cosine one --

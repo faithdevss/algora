@@ -50,7 +50,7 @@ internal val extraTreesContent = TopicContent(
         FormulaEntry("Ensemble variance", "ρσ² + (1−ρ)σ²/B", "Extra Trees attacks ρ, not B."),
         FormulaEntry("Forest split", "argmax over all thresholds of the sampled features", "Exhaustive within the subset."),
         FormulaEntry("Extra Trees split", "argmax over K random thresholds", "One random cut per sampled feature."),
-        FormulaEntry("Cost per node", "O(K) vs O(p·n log n)", "No sorting — this is where the speed is."),
+        FormulaEntry("Cost per node", "O(K·n) vs O(K·n log n)", "Both look at K candidate features; Extra Trees skips the sort — this is where the speed is."),
         FormulaEntry("Bias / variance", "slightly higher bias, lower variance", "The direction of the trade."),
         FormulaEntry("Default bootstrap", "False in scikit-learn", "So no OOB score unless enabled."),
     ),

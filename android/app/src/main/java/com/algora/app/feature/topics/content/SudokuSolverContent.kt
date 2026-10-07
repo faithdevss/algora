@@ -48,7 +48,7 @@ internal val sudokuSolverContent = TopicContent(
         StepCard(4, "Backtrack", "If no digit works downstream, erase the cell and try the next candidate.", 0xFFEC4899),
     ),
     formulas = listOf(
-        FormulaEntry("Worst case", "exponential", "The constraint graph is NP-complete in the general n²×n² case."),
+        FormulaEntry("Worst case", "exponential", "Solving generalized n²×n² Sudoku is NP-complete."),
         FormulaEntry("In practice", "fast", "Constraints prune so aggressively that 9×9 puzzles solve near-instantly."),
         FormulaEntry("Validity check", "O(1) per cell", "Track used digits per row, column, and box as bitmasks."),
     ),
@@ -62,6 +62,16 @@ internal val sudokuSolverContent = TopicContent(
             title = "Sudoku backtracking core",
             accentColor = 0xFF6366F1,
             code = """
+                // isValid scans the row, column and 3x3 box of (r, c) for d: O(9). Keeping used
+                // digits per row/column/box as bitmasks makes the same check O(1).
+                fun isValid(board: Array<CharArray>, r: Int, c: Int, d: Char): Boolean {
+                    for (i in 0 until 9) {
+                        if (board[r][i] == d || board[i][c] == d) return false
+                        if (board[3 * (r / 3) + i / 3][3 * (c / 3) + i % 3] == d) return false
+                    }
+                    return true
+                }
+
                 fun solve(board: Array<CharArray>): Boolean {
                     for (r in 0 until 9) for (c in 0 until 9) {
                         if (board[r][c] != '.') continue

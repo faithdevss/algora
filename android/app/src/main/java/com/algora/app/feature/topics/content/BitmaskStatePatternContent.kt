@@ -45,7 +45,7 @@ internal val bitmaskStatePatternContent = TopicContent(
     formulas = listOf(
         FormulaEntry("Assignment DP", "O(2^n · n)", "2^n masks, n candidate next items each."),
         FormulaEntry("TSP", "O(2^n · n²)", "dp[mask][last] over all masks, ends and next cities."),
-        FormulaEntry("Subset enumeration", "sub = (sub - 1) & mask", "Iterates every submask of mask in O(3^n) total."),
+        FormulaEntry("Subset enumeration", "sub = (sub - 1) & mask", "Iterates the submasks of one mask in O(2^popcount(mask)); summed over all masks that is O(3^n) total."),
     ),
     notationKey = listOf(
         NotationEntry("mask", "integer whose set bits are the chosen items"),

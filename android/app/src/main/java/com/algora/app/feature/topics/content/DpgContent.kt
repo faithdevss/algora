@@ -52,7 +52,7 @@ internal val dpgContent = TopicContent(
         "DPG learns a deterministic policy, ideal for continuous action spaces.",
         "Its gradient flows through the critic's Q with respect to the action.",
         "It skips the expensive integral over actions that stochastic PG needs.",
-        "DDPG, TD3, and (soft) SAC all descend from this deterministic-gradient idea.",
+        "DDPG and TD3 descend from the deterministic-gradient idea; SAC borrows its backprop-through-Q mechanism for a stochastic, reparameterized policy.",
     ),
     crossLinks = listOf(
         CrossLink("ddpg", "DDPG"),

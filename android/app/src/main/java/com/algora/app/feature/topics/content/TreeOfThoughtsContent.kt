@@ -73,12 +73,20 @@ internal val treeOfThoughtsContent = TopicContent(
                     verdict = next(b.text for b in response.content if b.type == "text")
                     return {"sure": 2.0, "likely": 1.0}.get(verdict.strip().lower(), 0.0)
 
+                def apply(state: str, move: str) -> str:
+                    "Turn 'a op b = r' into the NEW state: remove a and b, add r."
+                    a, _, b, _, r = move.split()
+                    nums = state.split()
+                    nums.remove(a); nums.remove(b); nums.append(r)
+                    return " ".join(nums)
+
                 frontier = ["4 9 10 13"]
                 for _ in range(3):                      # depth is fixed by the puzzle
-                    candidates = [s for state in frontier for s in propose(state)]
+                    candidates = [apply(state, move) for state in frontier
+                                  for move in propose(state)]
                     frontier = sorted(candidates, key=evaluate, reverse=True)[:8]
                 # Both propose() and evaluate() are requests. Cost is
-                # (states expanded) x (1 generator call + b evaluator calls) -- budget it.
+                # (states expanded) x (1 generator call + k evaluator calls) -- budget it.
             """.trimIndent(),
         ),
         CodeBlock(

@@ -13,7 +13,7 @@ internal val longContextContent = TopicContent(
     topicId = "long_context",
     whatIsIt = listOf(
         "A context window has three prices and the advertised number mentions none of them. The lab computes all three over LLaMA-2-7B's configuration — 32 layers, 32 heads, head dimension 128 — so every figure is checkable against a real model rather than a shape.",
-        "**Price one is the KV cache**, which is linear in the length and paid at every decode step. At 4k tokens it is 2.0 GB, already a sixth of the weights. At 1M it is **512 GB — 38× the model itself**. This is the price grouped-query attention exists to cut, and it is the cheapest win in the stack: share one K/V head across a group of query heads and the cache divides by the group size, taking 1M tokens from 512 GB to 128 GB at GQA-8 and to 16 GB at multi-query.",
+        "**Price one is the KV cache**, which is linear in the length and paid at every decode step. At 4k tokens it is 2.0 GiB, already a sixth of the weights. At 1M it is **512 GiB — ≈40× the model itself**. This is the price grouped-query attention exists to cut, and it is the cheapest win in the stack: share one K/V head across a group of query heads and the cache divides by the group size, taking 1M tokens from 512 GiB to 128 GiB at GQA-8 and to 16 GiB at multi-query.",
         "**Price two is prefill arithmetic**, and this is where the quadratic warning finally bites. At 4k tokens attention is only 14% of the FLOPs — the feed-forward blocks dominate, which is why quadratic attention was ignorable for years. The crossover is at **24,704 tokens, essentially exactly 6·d for this model**, and by 1M attention is 98% of the bill. The often-repeated \"attention is quadratic\" is true and was irrelevant at the lengths anyone used; what changed is the length, not the algorithm.",
         "**Price three decides architecture.** Stuffing 1M tokens into the window costs **21,072× the prefill** of retrieving five 400-token passages and reading only those. Long context and retrieval are not competitors on capability — they are the same capability at four orders of magnitude difference in price, and the reason to stuff the window is that retrieval missed, not that stuffing is better. Finally, the window a model advertises is not the window its heads use: under ALiBi's standard slope schedule the position bias alone drives the steepest head's weight below 1% of the nearest token's at **9 tokens**, and the shallowest at 1,178. Effective context is measured, not declared.",
     ),
@@ -26,8 +26,8 @@ internal val longContextContent = TopicContent(
         StepCard(6, "Test In The Middle", "Retrieval accuracy at the ends is not retrieval accuracy at the midpoint.", 0xFF8B5CF6),
     ),
     formulas = listOf(
-        FormulaEntry("KV cache", "2·L·layers·kv_heads·d_head·2 bytes", "2.0 GB at 4k · 512 GB at 1M."),
-        FormulaEntry("GQA saving", "512 → 128 → 16 GB", "Multi-head, GQA-8, multi-query at 1M tokens."),
+        FormulaEntry("KV cache", "2·L·layers·kv_heads·d_head·2 bytes", "2.0 GiB at 4k · 512 GiB at 1M."),
+        FormulaEntry("GQA saving", "512 → 128 → 16 GiB", "Multi-head, GQA-8, multi-query at 1M tokens."),
         FormulaEntry("Attention FLOPs", "4·L²·d per layer", "Against 8·L·d² of projections plus 6·L·d·d_ffn of FFN."),
         FormulaEntry("Crossover", "24,704 tokens ≈ 6·d", "Where attention first exceeds everything else combined."),
         FormulaEntry("Stuffing overhead", "21,072× at 1M tokens", "Versus prefilling five retrieved 400-token passages."),
@@ -57,10 +57,10 @@ internal val longContextContent = TopicContent(
                 def everything_else_flops(L):
                     return (8 * L * D * D + 6 * L * D * D_FFN) * LAYERS
 
-                print(kv_cache_bytes(4_096) / 1e9)          # 2.0 GB
-                print(kv_cache_bytes(1_048_576) / 1e9)      # 512 GB
-                print(kv_cache_bytes(1_048_576, 8) / 1e9)   # 128 GB with GQA-8
-                print(kv_cache_bytes(1_048_576, 1) / 1e9)   # 16 GB with MQA
+                print(kv_cache_bytes(4_096) / 2**30)          # 2.0 GiB
+                print(kv_cache_bytes(1_048_576) / 2**30)      # 512 GiB
+                print(kv_cache_bytes(1_048_576, 8) / 2**30)   # 128 GiB with GQA-8
+                print(kv_cache_bytes(1_048_576, 1) / 2**30)   # 16 GiB with MQA
 
                 # Attention overtakes the FFN at 4L^2*d = 24.1*L*d^2, i.e. L = 6d:
                 #   d = 4096  ->  24,704 tokens
@@ -99,8 +99,8 @@ internal val longContextContent = TopicContent(
         ApplicationCard("help", 0xFFF59E0B, "Benchmark Honestly", "Needle tests at the ends do not measure the middle."),
     ),
     takeaways = listOf(
-        "The KV cache at 1M tokens is 512 GB — 38× the 7B model's own weights — and it is paid at every decode step.",
-        "Grouped-query attention divides that by the group size: 512 GB → 128 GB at GQA-8, → 16 GB at multi-query.",
+        "The KV cache at 1M tokens is 512 GiB — ≈40× the 7B model's own weights — and it is paid at every decode step.",
+        "Grouped-query attention divides that by the group size: 512 GiB → 128 GiB at GQA-8, → 16 GiB at multi-query.",
         "Attention is only 14% of prefill FLOPs at 4k tokens; it overtakes everything else at 24,704 tokens, essentially 6·d.",
         "Stuffing 1M tokens costs 21,072× the prefill of retrieving five passages — the same answer at four orders of magnitude.",
         "Advertised context is not effective context: ALiBi's own slopes cap heads between 9 and 1,178 tokens.",

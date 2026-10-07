@@ -31,7 +31,7 @@ internal val prophetContent = TopicContent(
         FormulaEntry("Sparse prior", "δⱼ ~ Laplace(0, τ)", "τ is changepoint_prior_scale. Small τ means a stiffer trend."),
         FormulaEntry("Fourier seasonality", "s(t) = Σₙ₌₁ᴺ [aₙcos(2πnt/P) + bₙsin(2πnt/P)]", "N is the Fourier order; 2N parameters."),
         FormulaEntry("Saturating growth", "g(t) = C(t) / (1 + exp(−k(t−m)))", "Logistic mode, when a capacity is known."),
-        FormulaEntry("Fitting", "MAP or full Bayesian, via Stan", "MAP by default — the uncertainty intervals come from the posterior."),
+        FormulaEntry("Fitting", "MAP or full Bayesian, via Stan", "MAP by default; intervals come from simulated future trend changes plus observation noise. Full posterior intervals need mcmc_samples > 0."),
     ),
     notationKey = listOf(
         NotationEntry("g(t)", "trend: piecewise linear, or logistic with a capacity"),
@@ -49,7 +49,7 @@ internal val prophetContent = TopicContent(
                 import pandas as pd
                 from prophet import Prophet
 
-                df = pd.DataFrame({"ds": dates, "y": values})    # the only two columns it wants
+                df = pd.DataFrame({"ds": dates, "y": values, "promo_spend": spend})   # ds, y, plus one column per regressor
 
                 m = Prophet(
                     yearly_seasonality=10,          # Fourier order, not a boolean

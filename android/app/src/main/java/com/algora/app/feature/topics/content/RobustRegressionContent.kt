@@ -71,8 +71,8 @@ internal val robustRegressionContent = TopicContent(
                     return int(np.ceil(np.log(1 - confidence) /
                                        np.log(1 - inlier_fraction ** sample_size)))
 
-                print(trials_needed(0.8))   # 3   — light contamination is cheap
-                print(trials_needed(0.5))   # 16
+                print(trials_needed(0.8))   # 5   — light contamination is cheap
+                print(trials_needed(0.5))   # 17
                 print(trials_needed(0.3))   # 49  — still entirely tractable
 
                 from sklearn.linear_model import RANSACRegressor, LinearRegression

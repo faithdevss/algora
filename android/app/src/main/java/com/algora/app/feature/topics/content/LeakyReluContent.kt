@@ -51,7 +51,7 @@ internal val leakyReluContent = TopicContent(
         FormulaEntry("Derivative", "1 if z > 0, else α", "Never exactly zero, which is the whole design."),
         FormulaEntry("Equivalent form", "max(αz, z) for 0 < α < 1", "One expression, no branch."),
         FormulaEntry("Randomised variant (RReLU)", "α ~ U(l, u) during training", "Sampled per unit; the mean is used at inference."),
-        FormulaEntry("Mean output", "≈ 0.390 for z ~ N(0,1)", "Barely below ReLU's 0.394 — it is not a zero-centring fix."),
+        FormulaEntry("Mean output", "≈ 0.395 for z ~ N(0,1)", "Barely below ReLU's 0.399 — it is not a zero-centring fix."),
         FormulaEntry("Sparsity", "0% exact zeros", "Against ReLU's ~50%."),
     ),
     notationKey = listOf(

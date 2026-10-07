@@ -39,7 +39,7 @@ internal val stateActionRewardContent = TopicContent(
     whatIsIt = listOf(
         "Three signals define an RL problem. The state describes the situation, the action is what the agent may do about it, and the reward is a single number saying how good the last transition was. Everything else in RL is machinery for turning a stream of these into a policy.",
         "A state must be sufficient: given sₜ, the past adds nothing about the future. That is the Markov property, and it is a design requirement, not a fact about the world. A single frame of Pong is not a state — it has no velocity — but four stacked frames is. Getting this wrong is the most common reason an agent plateaus for reasons that look like an algorithm bug.",
-        "Reward design is where RL projects fail quietly. The reward is the entire specification of what you want; the agent will optimize exactly what you wrote, including the parts you did not mean. Reward for reducing distance to a goal, and an agent will happily circle the goal forever; reward a boat race for hitting checkpoints, and it will farm one respawning checkpoint instead of finishing. State the outcome, not the route you imagine to it.",
+        "Reward design is where RL projects fail quietly. The reward is the entire specification of what you want; the agent will optimize exactly what you wrote, including the parts you did not mean. Reward each step that moves closer to a goal, and an agent will happily oscillate toward and away from it forever; reward a boat race for hitting checkpoints, and it will farm one respawning checkpoint instead of finishing. State the outcome, not the route you imagine to it.",
     ),
     steps = listOf(
         StepCard(1, "Define the State", "Include everything needed to predict the future. Test it: could a human act well seeing only this?", 0xFF818CF8),
@@ -86,12 +86,15 @@ internal val stateActionRewardContent = TopicContent(
             title = "Reward shaping that does not create an exploit",
             accentColor = 0xFF10B981,
             code = """
-                # Naive shaping: rewards *being near* the goal, so circling it pays forever.
+                # Naive shaping: pays every step that moves closer but charges nothing for stepping
+                # back, so oscillating toward and away from the goal pays forever (the classic
+                # Randløv & Alstrøm bicycle exploit).
                 def bad_reward(s, s_next, goal):
-                    return -distance(s_next, goal)
+                    return max(0.0, distance(s, goal) - distance(s_next, goal))
 
-                # Potential-based shaping (Ng et al., 1999). Because the bonus telescopes to
-                # zero over any cycle, the optimal policy is provably unchanged — you speed up
+                # Potential-based shaping (Ng et al., 1999). Because the bonus telescopes (to
+                # -phi(s0) plus a vanishing tail when discounted; exactly zero around a cycle
+                # when gamma = 1), it cannot change which policy is optimal — you speed up
                 # learning without buying a new exploit.
                 def shaped_reward(s, a, s_next, goal, gamma=0.99):
                     base = 1.0 if s_next == goal else -0.01          # the real objective
