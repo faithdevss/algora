@@ -167,6 +167,8 @@ struct CategoryProgressBar: View {
 struct SearchField: View {
     @Binding var query: String
     let placeholder: String
+    /// The problem bank's redesign draws it as a taller pill; every other caller keeps the card shape.
+    var pill = false
     @Environment(\.palette) private var palette
 
     var body: some View {
@@ -182,9 +184,24 @@ struct SearchField: View {
                 }
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 11)
-        .card()
+        .padding(.horizontal, pill ? 18 : 14)
+        .padding(.vertical, pill ? 14 : 11)
+        .modifier(SearchFieldShape(pill: pill))
+    }
+}
+
+private struct SearchFieldShape: ViewModifier {
+    let pill: Bool
+    @Environment(\.palette) private var palette
+
+    func body(content: Content) -> some View {
+        if pill {
+            content
+                .background(palette.surface, in: Capsule())
+                .overlay(Capsule().stroke(palette.outline, lineWidth: 1))
+        } else {
+            content.card()
+        }
     }
 }
 

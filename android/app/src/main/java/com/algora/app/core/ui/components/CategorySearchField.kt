@@ -28,15 +28,17 @@ fun CategorySearchField(
     onQueryChange: (String) -> Unit,
     placeholder: String,
     modifier: Modifier = Modifier,
+    // The problem bank's redesign draws it as a taller pill; every other caller keeps the mock's 14dp.
+    pill: Boolean = false,
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = if (pill) RoundedCornerShape(50) else RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
+            modifier = Modifier.padding(horizontal = if (pill) 18.dp else 14.dp, vertical = if (pill) 14.dp else 11.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(

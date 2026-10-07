@@ -24,6 +24,9 @@ struct ProblemFilters {
     }
 }
 
+/// Layout: a progress summary card (solved count, overall bar, per-difficulty tallies), a pill search
+/// field, one row of pill chips — All/Easy/Medium/Hard pick a single difficulty, Unsolved toggles on
+/// top — and a card per pattern with a two-letter tile and its own progress bar, opening in place.
 struct ProblemListScreen: View {
     @Environment(AppStore.self) private var store
     @Environment(Router.self) private var router
@@ -34,47 +37,42 @@ struct ProblemListScreen: View {
     var body: some View {
         let content = ContentStore.shared
         let solved = store.solvedProblemIds
+        let all = content.problems
         let solvedCount = solved.filter { content.problem($0) != nil }.count
         let groups = content.patterns.compactMap { pattern -> (ProblemPattern, [PracticeProblem])? in
             let hits = filters.apply(content.problems(forPattern: pattern.id), pattern: pattern, solved: solved)
             return hits.isEmpty ? nil : (pattern, hits)
         }
-        let shown = groups.reduce(0) { $0 + $1.1.count }
 
         VStack(spacing: 0) {
             ScreenHeader(title: "Problem Solving")
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    Text(filters.isActive ? "\(shown) of \(content.problems.count) shown · \(solvedCount) solved" : "\(solvedCount) of \(content.problems.count) solved")
-                        .font(.bodyMedium).foregroundStyle(palette.muted)
-                        .padding(.leading, 4).padding(.bottom, 10)
-                    SearchField(query: $filters.query, placeholder: "Search problems…")
-                    filterChips.padding(.top, 10).padding(.bottom, 2)
+                    SummaryCard(
+                        solved: solvedCount,
+                        total: all.count,
+                        tallies: [Difficulty.BEGINNER, .INTERMEDIATE, .ADVANCED].map { level in
+                            let inLevel = all.filter { $0.difficulty == level }
+                            return (level, inLevel.filter { solved.contains($0.id) }.count, inLevel.count)
+                        }
+                    )
+                    SearchField(query: $filters.query, placeholder: "Search \(all.count) problems", pill: true)
+                        .padding(.top, 14)
+                    filterChips.padding(.top, 12).padding(.bottom, 6)
                     if groups.isEmpty {
                         Text("No problems match these filters.").font(.bodyMedium).foregroundStyle(palette.muted).padding(.top, 24)
                     }
                     ForEach(groups, id: \.0.id) { pattern, problems in
                         // A narrowed bank shows its hits directly.
                         let open = filters.isActive || expanded.contains(pattern.id)
-                        let accent = Color(argb: pattern.accentColor)
-                        AccordionHeader(title: pattern.name, count: problems.count, accent: accent, isExpanded: open,
-                                        subtitle: "\(problems.filter { solved.contains($0.id) }.count) solved") {
+                        PatternCard(pattern: pattern, problems: problems, solved: solved, isOpen: open) {
                             if expanded.contains(pattern.id) { expanded.remove(pattern.id) } else { expanded.insert(pattern.id) }
-                        }
-                        .padding(.top, 8).padding(.bottom, 2)
-                        if open {
-                            Text(pattern.blurb).font(.bodyMedium).foregroundStyle(palette.muted)
-                                .padding(.leading, 22).padding(.top, 6).padding(.bottom, 2)
-                            ForEach(problems) { problem in
-                                ProblemRow(problem: problem, accent: accent, solved: solved.contains(problem.id)) {
-                                    router.push(.problem(problem.id))
-                                }
-                            }
-                        }
+                        } onProblem: { router.push(.problem($0)) }
+                        .padding(.top, 12)
                     }
                 }
                 .padding(.horizontal, screenGutter)
-                .padding(.top, 8)
+                .padding(.top, 12)
                 .padding(.bottom, screenBottomInset)
             }
             .scrollDismissesKeyboard(.immediately)
@@ -82,20 +80,88 @@ struct ProblemListScreen: View {
     }
 
     private var filterChips: some View {
-        HStack(spacing: 8) {
-            ForEach([(Difficulty.BEGINNER, "Easy", SimColors.green), (.INTERMEDIATE, "Medium", SimColors.amber), (.ADVANCED, "Hard", SimColors.red)], id: \.1) { difficulty, label, color in
-                FilterChip(label: label, color: color, selected: filters.difficulties.contains(difficulty)) {
-                    if filters.difficulties.contains(difficulty) { filters.difficulties.remove(difficulty) } else { filters.difficulties.insert(difficulty) }
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                PillChip(label: "All", selected: filters.difficulties.isEmpty) { filters.difficulties = [] }
+                ForEach([Difficulty.BEGINNER, .INTERMEDIATE, .ADVANCED], id: \.self) { level in
+                    let on = filters.difficulties == [level]
+                    PillChip(label: difficultyStyle(level).0, selected: on) { filters.difficulties = on ? [] : [level] }
                 }
+                PillChip(label: "Unsolved", selected: filters.unsolvedOnly) { filters.unsolvedOnly.toggle() }
             }
-            FilterChip(label: "Unsolved", color: palette.primary, selected: filters.unsolvedOnly) { filters.unsolvedOnly.toggle() }
         }
     }
 }
 
-struct FilterChip: View {
-    let label: String
+private func difficultyStyle(_ difficulty: Difficulty) -> (String, Color) {
+    switch difficulty {
+    case .BEGINNER: ("Easy", SimColors.green)
+    case .INTERMEDIATE: ("Medium", SimColors.amber)
+    case .ADVANCED: ("Hard", SimColors.red)
+    }
+}
+
+/// Two letters for a pattern's tile: the initials of its first two words, or the first two letters of
+/// a one-word name — "Sliding Window" → SW, "Greedy" → GR.
+func patternCode(_ name: String) -> String {
+    let words = name.split(whereSeparator: { $0 == " " || $0 == "-" || $0 == "&" }).filter { $0.first?.isLetter == true }
+    let code = words.count >= 2 ? "\(words[0].first!)\(words[1].first!)" : String(words.first?.prefix(2) ?? "")
+    return code.uppercased()
+}
+
+private struct ProgressTrack: View {
+    let fraction: Double
     let color: Color
+    let height: CGFloat
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(palette.outline)
+                if fraction > 0 {
+                    Capsule().fill(color).frame(width: geo.size.width * min(max(fraction, 0), 1))
+                }
+            }
+        }
+        .frame(height: height)
+    }
+}
+
+private struct SummaryCard: View {
+    let solved: Int
+    let total: Int
+    let tallies: [(Difficulty, Int, Int)]
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .lastTextBaseline, spacing: 8) {
+                Text("\(solved)").font(AppFont.grotesk(34, .bold)).foregroundStyle(palette.onSurface)
+                Text("of \(total) solved").font(.bodyLarge).foregroundStyle(palette.muted)
+                Spacer()
+                Text("\(total == 0 ? 0 : solved * 100 / total)%").font(AppFont.mono(13)).foregroundStyle(palette.primary)
+            }
+            ProgressTrack(fraction: total == 0 ? 0 : Double(solved) / Double(total), color: palette.primary, height: 6)
+                .padding(.vertical, 14)
+            HStack(spacing: 18) {
+                ForEach(tallies, id: \.0) { level, done, count in
+                    HStack(spacing: 6) {
+                        Circle().fill(difficultyStyle(level).1).frame(width: 7, height: 7)
+                        Text(difficultyStyle(level).0).font(AppFont.sans(13)).foregroundStyle(palette.muted)
+                        Text("\(done)/\(count)").font(AppFont.mono(13)).foregroundStyle(palette.onSurface)
+                    }
+                }
+            }
+        }
+        .padding(18)
+        .background(palette.surface, in: RoundedRectangle(cornerRadius: 20))
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(palette.outline, lineWidth: 1))
+    }
+}
+
+private struct PillChip: View {
+    let label: String
     let selected: Bool
     let action: () -> Void
     @Environment(\.palette) private var palette
@@ -103,14 +169,68 @@ struct FilterChip: View {
     var body: some View {
         Button(action: action) {
             Text(label)
-                .font(AppFont.sans(12, selected ? .bold : .regular))
-                .foregroundStyle(selected ? color : palette.muted)
-                .padding(.horizontal, 11)
-                .padding(.vertical, 7)
-                .background(selected ? color.opacity(0.16) : palette.surface, in: RoundedRectangle(cornerRadius: 10))
-                .overlay(RoundedRectangle(cornerRadius: 10).stroke(selected ? color : palette.outline, lineWidth: 1))
+                .font(AppFont.sans(14, .semibold))
+                .foregroundStyle(selected ? palette.background : palette.muted)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(selected ? palette.primary : palette.surface, in: Capsule())
+                .overlay(Capsule().stroke(selected ? Color.clear : palette.outline, lineWidth: 1))
         }
         .buttonStyle(.plain)
+    }
+}
+
+private struct PatternCard: View {
+    let pattern: ProblemPattern
+    let problems: [PracticeProblem]
+    let solved: Set<String>
+    let isOpen: Bool
+    let onToggle: () -> Void
+    let onProblem: (String) -> Void
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        let accent = Color(argb: pattern.accentColor)
+        let done = problems.filter { solved.contains($0.id) }.count
+        VStack(alignment: .leading, spacing: 0) {
+            Button(action: onToggle) {
+                HStack(spacing: 14) {
+                    Text(patternCode(pattern.name))
+                        .font(AppFont.mono(14, .medium))
+                        .foregroundStyle(accent)
+                        .frame(width: 40, height: 40)
+                        .background(accent.opacity(0.18), in: RoundedRectangle(cornerRadius: 11))
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 8) {
+                            Text(pattern.name).font(AppFont.grotesk(17, .bold)).foregroundStyle(palette.onSurface).lineLimit(1)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            Text("\(done)/\(problems.count)").font(AppFont.mono(13)).foregroundStyle(palette.muted)
+                        }
+                        ProgressTrack(fraction: problems.isEmpty ? 0 : Double(done) / Double(problems.count), color: accent, height: 4)
+                    }
+                    Image(systemName: isOpen ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(palette.muted)
+                }
+                .padding(16)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(pattern.name), \(done) of \(problems.count) solved")
+            if isOpen {
+                Rectangle().fill(palette.outline).frame(height: 1)
+                Text(pattern.blurb).font(.bodyMedium).foregroundStyle(palette.muted)
+                    .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 4)
+                ForEach(problems) { problem in
+                    ProblemRow(problem: problem, accent: accent, solved: solved.contains(problem.id)) {
+                        onProblem(problem.id)
+                    }
+                }
+                Spacer().frame(height: 8)
+            }
+        }
+        .background(palette.surface, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(palette.outline, lineWidth: 1))
     }
 }
 
@@ -123,24 +243,24 @@ private struct ProblemRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
+            HStack(spacing: 12) {
                 if solved {
                     Image(systemName: "checkmark.circle.fill").font(.system(size: 17)).foregroundStyle(accent)
+                } else {
+                    Circle().stroke(palette.outline, lineWidth: 1.5).frame(width: 15, height: 15).frame(width: 18, height: 18)
                 }
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(problem.title).font(.bodyLarge).multilineTextAlignment(.leading)
+                    Text(problem.title).font(.bodyLarge).foregroundStyle(palette.onSurface).multilineTextAlignment(.leading)
                     DifficultyBadge(difficulty: problem.difficulty)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(palette.muted)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(palette.surface, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(solved ? accent.opacity(0.45) : palette.outline, lineWidth: 1))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .padding(.vertical, 4)
     }
 }
 

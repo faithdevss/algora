@@ -33,7 +33,7 @@ struct RootView: View {
                 .tabItem { Label("Progress", systemImage: iconSymbol("chart")) }
                 .tag(AppTab.progress)
         }
-        .tint(palette.primary)
+        .tint(palette.dark ? Color.white : palette.primary)
         .animation(.easeInOut(duration: 0.32), value: palette)
         .environment(\.palette, palette)
         .environment(router)
@@ -55,9 +55,10 @@ struct RootView: View {
                 router.open(["simulations": .simulations, "practice": .practice, "progress": .progress][tab] ?? .learning)
             }
             if let id = args.string(forKey: "openTopic") { router.push(.topic(id)) }
+            if let id = args.string(forKey: "openQuiz") { router.push(.quizRun(id, learn: true)) }
             if let id = args.string(forKey: "openSim") { router.push(.simulation(id)) }
             if let id = args.string(forKey: "openSimSection") { router.push(.simulationSection(id)) }
-            if let page = args.string(forKey: "openPractice") { router.push(page == "quizzes" ? .quizzes : .browser(.interviewPrep)) }
+            if let page = args.string(forKey: "openPractice") { router.push(page == "quizzes" ? .quizzes : page == "problems" ? .problems : .browser(.interviewPrep)) }
             if args.string(forKey: "openMode") == "ai" { session.mode = .ai }
             if let theme = args.string(forKey: "openTheme") { store.themeMode = ThemeMode(rawValue: theme) ?? .system }
         }

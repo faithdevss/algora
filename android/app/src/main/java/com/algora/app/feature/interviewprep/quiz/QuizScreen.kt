@@ -14,20 +14,22 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -47,11 +49,13 @@ import androidx.compose.runtime.toMutableStateList
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.algora.app.core.analytics.quizCompleted
@@ -70,6 +74,7 @@ import com.algora.app.core.data.settings.questionKey
 import com.algora.app.core.data.settings.settingsDataStore
 import com.algora.app.core.playreview.AppReviewPrompt
 import com.algora.app.core.ui.components.ScreenHeader
+import com.algora.app.core.ui.theme.IBMPlexMono
 import com.algora.app.core.ui.theme.SimColors
 import com.algora.app.core.ui.theme.SpaceGrotesk
 import com.algora.app.feature.topics.FigureCard
@@ -307,7 +312,17 @@ private fun QuizRunner(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        QuizHeader(title = quiz.title, remaining = remaining.takeUnless { learning }, onBack = onBack)
+        QuizHeader(
+            title = quiz.title,
+            subtitle = "Question ${index + 1} of ${quiz.questions.size}",
+            remaining = remaining.takeUnless { learning },
+            onBack = onBack,
+        )
+        SegmentedProgress(
+            current = index,
+            total = quiz.questions.size,
+            modifier = Modifier.padding(horizontal = 16.dp).padding(top = 4.dp, bottom = 4.dp),
+        )
 
         Column(
             modifier = Modifier
@@ -316,18 +331,7 @@ private fun QuizRunner(
                 .verticalScroll(scroll)
                 .padding(horizontal = 16.dp),
         ) {
-            Text(
-                "Question ${index + 1} of ${quiz.questions.size}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 12.dp, bottom = 6.dp),
-            )
-            LinearProgressIndicator(
-                progress = { (index + 1) / quiz.questions.size.toFloat() },
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            Row(modifier = Modifier.padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(modifier = Modifier.padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TagChip(question.patternTag, MaterialTheme.colorScheme.primary)
                 DifficultyChip(question.difficulty)
             }
@@ -342,8 +346,12 @@ private fun QuizRunner(
 
             Text(
                 question.prompt,
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(top = 14.dp, bottom = 4.dp),
+                fontFamily = SpaceGrotesk,
+                fontWeight = FontWeight.Bold,
+                fontSize = 22.sp,
+                lineHeight = 29.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(top = 16.dp, bottom = 6.dp),
             )
 
             if (question.story == null) {
@@ -351,12 +359,13 @@ private fun QuizRunner(
             }
 
             Column(
-                modifier = Modifier.padding(top = 8.dp),
+                modifier = Modifier.padding(top = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 val isChecked = learning && checked[index]
                 question.options.forEachIndexed { i, option ->
                     OptionCard(
+                        letter = ('A' + i).toString(),
                         text = option,
                         selected = answers[index] == i,
                         // Once checked, the right option shows green and a wrong pick shows red.
@@ -366,7 +375,14 @@ private fun QuizRunner(
                             answers[index] == i -> false
                             else -> null
                         },
-                        onClick = { if (!isChecked) answers[index] = i },
+                        // Learn mode reveals on the tap itself — the first pick is the one that counts, so
+                        // it locks the question along with showing the answer.
+                        onClick = {
+                            if (!isChecked) {
+                                answers[index] = i
+                                if (learning) checked[index] = true
+                            }
+                        },
                     )
                 }
             }
@@ -388,38 +404,89 @@ private fun QuizRunner(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             if (index > 0) {
-                OutlinedButton(onClick = { index-- }, modifier = Modifier.weight(1f)) { Text("Previous") }
+                OutlinedButton(
+                    onClick = { index-- },
+                    shape = RoundedCornerShape(50),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                    modifier = Modifier.weight(1f).height(54.dp),
+                ) { ActionLabel("Previous") }
             }
-            if (learning && !checked[index]) {
-                Button(
-                    onClick = { checked[index] = true },
-                    enabled = answers[index] != null,
-                    colors = ButtonDefaults.buttonColors(contentColor = Color.White),
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text("Check")
-                }
-            } else {
-                Button(
-                    onClick = { if (index < quiz.questions.lastIndex) index++ else finished = true },
-                    colors = ButtonDefaults.buttonColors(contentColor = Color.White),
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(if (index < quiz.questions.lastIndex) "Next" else "Finish")
-                }
+            Button(
+                onClick = { if (index < quiz.questions.lastIndex) index++ else finished = true },
+                shape = RoundedCornerShape(50),
+                colors = pillColors(),
+                modifier = Modifier.weight(1f).height(54.dp),
+            ) {
+                ActionLabel(if (index < quiz.questions.lastIndex) "Next" else "Finish")
             }
         }
     }
 }
 
-// remaining = null is learn mode: no clock to show, so the pill names the mode instead.
+// remaining = null is learn mode: no clock to show, so the pill names the mode instead. A close
+// glyph rather than a back arrow: leaving abandons the run, it does not step back a page.
 @Composable
-private fun QuizHeader(title: String, remaining: Int?, onBack: () -> Unit) {
-    ScreenHeader(
-        title = title,
-        onBack = onBack,
-        trailing = { if (remaining != null) TimerPill(remaining) else LearnPill() },
-    )
+private fun QuizHeader(title: String, subtitle: String, remaining: Int?, onBack: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(start = 4.dp, end = 16.dp, top = 8.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier.size(48.dp).clip(CircleShape).clickable(onClick = onBack),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Filled.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onSurface)
+        }
+        Column(modifier = Modifier.weight(1f).padding(start = 4.dp)) {
+            Text(
+                title,
+                fontFamily = SpaceGrotesk,
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                subtitle,
+                fontFamily = IBMPlexMono,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (remaining != null) TimerPill(remaining) else LearnPill()
+    }
+}
+
+// One segment per question, filled up to and including the current one.
+@Composable
+private fun SegmentedProgress(current: Int, total: Int, modifier: Modifier = Modifier) {
+    Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        repeat(total) { i ->
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(if (i <= current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline),
+            )
+        }
+    }
+}
+
+@Composable
+private fun pillColors() = ButtonDefaults.buttonColors(
+    contentColor = Color.White,
+    disabledContainerColor = MaterialTheme.colorScheme.surface,
+    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+)
+
+@Composable
+private fun ActionLabel(text: String) {
+    Text(text, fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold, fontSize = 16.sp)
 }
 
 @Composable
@@ -427,8 +494,8 @@ private fun LearnPill() {
     val color = CorrectGreen
     Row(
         modifier = Modifier
-            .background(color.copy(alpha = 0.12f), RoundedCornerShape(10.dp))
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .background(color.copy(alpha = 0.14f), RoundedCornerShape(50))
+            .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(Icons.Filled.School, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
@@ -443,8 +510,8 @@ private fun TimerPill(remaining: Int) {
     val color = if (urgent) WrongRed else MaterialTheme.colorScheme.primary
     Row(
         modifier = Modifier
-            .background(color.copy(alpha = 0.12f), RoundedCornerShape(10.dp))
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .background(color.copy(alpha = 0.14f), RoundedCornerShape(50))
+            .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(Icons.Filled.Timer, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
@@ -460,8 +527,9 @@ private fun TimerPill(remaining: Int) {
 }
 
 // result: null while unanswered or in interview mode; true / false once learn mode has checked it.
+// The letter tile takes the option's state colour, so a pick is legible before reading the text.
 @Composable
-private fun OptionCard(text: String, selected: Boolean, onClick: () -> Unit, result: Boolean? = null) {
+private fun OptionCard(letter: String, text: String, selected: Boolean, onClick: () -> Unit, result: Boolean? = null) {
     val accent = when (result) {
         true -> CorrectGreen
         false -> WrongRed
@@ -469,30 +537,52 @@ private fun OptionCard(text: String, selected: Boolean, onClick: () -> Unit, res
     }
     val emphasised = selected || result != null
     Surface(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
         color = if (emphasised) accent.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface,
         border = BorderStroke(if (emphasised) 2.dp else 1.dp, if (emphasised) accent else MaterialTheme.colorScheme.outline),
     ) {
-        Text(
-            text,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(horizontal = 15.dp, vertical = 14.dp),
-        )
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(30.dp)
+                    .background(
+                        if (emphasised) accent else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                        RoundedCornerShape(9.dp),
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    letter,
+                    fontFamily = SpaceGrotesk,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = if (emphasised) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(modifier = Modifier.size(14.dp))
+            Text(text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        }
     }
 }
 
 @Composable
-private fun TagChip(text: String, color: Color) {
-    Text(
-        text,
-        color = color,
-        fontSize = 11.sp,
-        fontWeight = FontWeight.Bold,
+private fun TagChip(text: String, color: Color, dot: Boolean = false) {
+    Row(
         modifier = Modifier
-            .background(color.copy(alpha = 0.12f), RoundedCornerShape(6.dp))
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-    )
+            .background(color.copy(alpha = 0.14f), RoundedCornerShape(8.dp))
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (dot) {
+            Box(modifier = Modifier.size(6.dp).background(color, CircleShape))
+            Spacer(modifier = Modifier.size(6.dp))
+        }
+        Text(text, color = color, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+    }
 }
 
 @Composable
@@ -502,7 +592,7 @@ private fun DifficultyChip(difficulty: Difficulty) {
         Difficulty.INTERMEDIATE -> "Medium" to SimColors.Amber
         Difficulty.ADVANCED -> "Hard" to SimColors.Red
     }
-    TagChip(label, color)
+    TagChip(label, color, dot = true)
 }
 
 @Composable
@@ -807,9 +897,9 @@ private fun QuizModeChooser(
                 tint = CorrectGreen,
                 title = "Learn mode",
                 body = if (trackBest) {
-                    "No timer. Check each answer and read why straight away. Not added to your best score."
+                    "No timer. Pick an answer to see if it is right and why, straight away. Not added to your best score."
                 } else {
-                    "No timer. Check each answer and read why straight away."
+                    "No timer. Pick an answer to see if it is right and why, straight away."
                 },
                 onClick = { onPick(QuizMode.Learn) },
             )

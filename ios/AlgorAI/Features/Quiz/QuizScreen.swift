@@ -161,43 +161,49 @@ private struct QuizRunner: View {
         let question = quiz.questions[index]
         let isChecked = learning && checked[index]
         return VStack(spacing: 0) {
-            ScreenHeader(title: quiz.title) {
+            QuizHeader(title: quiz.title, subtitle: "Question \(index + 1) of \(quiz.questions.count)") {
                 if learning { LearnPill() } else { TimerPill(remaining: remaining) }
             }
+            SegmentedProgress(current: index, total: quiz.questions.count)
+                .padding(.horizontal, 16).padding(.vertical, 4)
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        Text("Question \(index + 1) of \(quiz.questions.count)")
-                            .font(.bodyMedium).foregroundStyle(palette.muted)
-                            .padding(.top, 12).padding(.bottom, 6)
-                            .id("top")
-                        ProgressView(value: Double(index + 1), total: Double(quiz.questions.count))
-                            .tint(palette.primary)
                         HStack(spacing: 8) {
                             TagChip(text: question.patternTag, color: palette.primary)
-                            DifficultyBadge(difficulty: question.difficulty)
+                            DifficultyTag(difficulty: question.difficulty)
                         }
-                        .padding(.top, 14)
+                        .padding(.top, 18)
+                        .id("top")
                         if let story = question.story {
                             StoryCard(story: story).padding(.top, 14)
                             if let figure = question.figure { FigureCard(figure: figure).padding(.top, 8) }
                         }
-                        Text(question.prompt).font(.titleMedium).padding(.top, 14).padding(.bottom, 4)
+                        Text(question.prompt)
+                            .font(AppFont.grotesk(22, .bold))
+                            .lineSpacing(4)
+                            .foregroundStyle(palette.onSurface)
+                            .padding(.top, 16).padding(.bottom, 6)
                         if question.story == nil, let figure = question.figure {
                             FigureCard(figure: figure).padding(.top, 8)
                         }
                         VStack(spacing: 10) {
                             ForEach(Array(question.options.enumerated()), id: \.offset) { i, option in
                                 OptionCard(
+                                    letter: String(Character(UnicodeScalar(UInt8(65 + i)))),
                                     text: option,
                                     selected: answers[index] == i,
                                     result: !isChecked ? nil : i == question.correctIndex ? true : answers[index] == i ? false : nil
                                 ) {
-                                    if !isChecked { answers[index] = i }
+                                    // Learn mode reveals on the tap itself; the first pick locks the question.
+                                    if !isChecked {
+                                        answers[index] = i
+                                        if learning { checked[index] = true }
+                                    }
                                 }
                             }
                         }
-                        .padding(.top, 8)
+                        .padding(.top, 10)
                         if isChecked {
                             LearnFeedback(question: question, correct: answers[index] == question.correctIndex)
                                 .padding(.top, 14).padding(.bottom, 8)
@@ -214,14 +220,10 @@ private struct QuizRunner: View {
             }
             HStack(spacing: 10) {
                 if index > 0 {
-                    SecondaryButton(title: "Previous") { index -= 1 }
+                    PillButton(title: "Previous", filled: false) { index -= 1 }
                 }
-                if learning && !checked[index] {
-                    PrimaryButton(title: "Check", enabled: answers[index] != nil) { checked[index] = true }
-                } else {
-                    PrimaryButton(title: index < quiz.questions.count - 1 ? "Next" : "Finish") {
-                        if index < quiz.questions.count - 1 { index += 1 } else { finish() }
-                    }
+                PillButton(title: index < quiz.questions.count - 1 ? "Next" : "Finish") {
+                    if index < quiz.questions.count - 1 { index += 1 } else { finish() }
                 }
             }
             .padding(16)
@@ -247,9 +249,9 @@ private struct TimerPill: View {
             Text(formatTime(remaining)).font(AppFont.grotesk(14, .bold)).monospacedDigit()
         }
         .foregroundStyle(color)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(color.opacity(0.14), in: Capsule())
     }
 }
 
@@ -260,28 +262,117 @@ private struct LearnPill: View {
             Text("Learn").font(AppFont.grotesk(14, .bold))
         }
         .foregroundStyle(correctGreen)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(correctGreen.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(correctGreen.opacity(0.14), in: Capsule())
     }
 }
 
 struct TagChip: View {
     let text: String
     let color: Color
+    var dot = false
 
     var body: some View {
-        Text(text)
-            .font(AppFont.sans(11, .bold))
-            .foregroundStyle(color)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+        HStack(spacing: 6) {
+            if dot { Circle().fill(color).frame(width: 6, height: 6) }
+            Text(text).font(AppFont.sans(13, .semibold))
+        }
+        .foregroundStyle(color)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(color.opacity(0.14), in: RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+private struct DifficultyTag: View {
+    let difficulty: Difficulty
+
+    var body: some View {
+        switch difficulty {
+        case .BEGINNER: TagChip(text: "Easy", color: SimColors.green, dot: true)
+        case .INTERMEDIATE: TagChip(text: "Medium", color: SimColors.amber, dot: true)
+        case .ADVANCED: TagChip(text: "Hard", color: SimColors.red, dot: true)
+        }
+    }
+}
+
+/// A close glyph rather than a back chevron: leaving abandons the run, it does not step back a page.
+private struct QuizHeader<Trailing: View>: View {
+    let title: String
+    let subtitle: String
+    @ViewBuilder var trailing: () -> Trailing
+    @Environment(\.palette) private var palette
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Button { dismiss() } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(palette.onSurface)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Circle())
+            }
+            .accessibilityLabel("Close")
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(AppFont.grotesk(18, .bold)).foregroundStyle(palette.onSurface).lineLimit(1)
+                Text(subtitle).font(AppFont.mono(12)).foregroundStyle(palette.muted)
+            }
+            .padding(.leading, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            trailing()
+        }
+        .padding(.leading, 8)
+        .padding(.trailing, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
+        .background(palette.background)
+    }
+}
+
+/// One segment per question, filled up to and including the current one.
+private struct SegmentedProgress: View {
+    let current: Int
+    let total: Int
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(0..<total, id: \.self) { i in
+                Capsule().fill(i <= current ? palette.primary : palette.outline).frame(height: 4)
+            }
+        }
+    }
+}
+
+private struct PillButton: View {
+    let title: String
+    var filled = true
+    var enabled = true
+    let action: () -> Void
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(AppFont.grotesk(16, .bold))
+                .foregroundStyle(filled ? (enabled ? Color.white : palette.muted.opacity(0.6)) : palette.onSurface)
+                .frame(maxWidth: .infinity)
+                .frame(height: 54)
+                .background(filled ? (enabled ? palette.primary : palette.surface) : Color.clear, in: Capsule())
+                .overlay(Capsule().stroke(filled ? Color.clear : palette.outline, lineWidth: 1))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
     }
 }
 
 /// result: nil while unanswered or in interview mode; true/false once learn mode has checked it.
+/// The letter tile takes the option's state colour, so a pick is legible before reading the text.
 private struct OptionCard: View {
+    let letter: String
     let text: String
     let selected: Bool
     let result: Bool?
@@ -292,15 +383,23 @@ private struct OptionCard: View {
         let accent = result == true ? correctGreen : result == false ? wrongRed : palette.primary
         let emphasised = selected || result != nil
         Button(action: action) {
-            Text(text)
-                .font(.bodyLarge)
-                .foregroundStyle(palette.onSurface)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 15)
-                .padding(.vertical, 14)
-                .background(emphasised ? accent.opacity(0.08) : palette.surface, in: RoundedRectangle(cornerRadius: 14))
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(emphasised ? accent : palette.outline, lineWidth: emphasised ? 2 : 1))
+            HStack(spacing: 14) {
+                Text(letter)
+                    .font(AppFont.grotesk(14, .bold))
+                    .foregroundStyle(emphasised ? Color.white : palette.muted)
+                    .frame(width: 30, height: 30)
+                    .background(emphasised ? accent : palette.onSurface.opacity(0.08), in: RoundedRectangle(cornerRadius: 9))
+                Text(text)
+                    .font(.bodyLarge)
+                    .foregroundStyle(palette.onSurface)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 13)
+            .background(emphasised ? accent.opacity(0.08) : palette.surface, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(emphasised ? accent : palette.outline, lineWidth: emphasised ? 2 : 1))
+            .contentShape(RoundedRectangle(cornerRadius: 16))
         }
         .buttonStyle(.plain)
     }
@@ -497,7 +596,7 @@ private struct QuizModeChooser: View {
                             onPick(.interview)
                         }
                         ModeCard(icon: "graduationcap.fill", tint: correctGreen, title: "Learn mode",
-                                 text: "No timer. Check each answer and read why straight away." + (trackBest ? " Not added to your best score." : "")) {
+                                 text: "No timer. Pick an answer to see if it is right and why, straight away." + (trackBest ? " Not added to your best score." : "")) {
                             onPick(.learn)
                         }
                     }
