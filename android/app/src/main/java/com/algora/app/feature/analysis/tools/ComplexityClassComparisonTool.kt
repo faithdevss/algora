@@ -56,7 +56,7 @@ fun ComplexityClassComparisonTool() {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
+                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
                 .padding(6.dp),
         ) {
             MiniLineChart(curves = visible, maxN = nInt, logScale = true)

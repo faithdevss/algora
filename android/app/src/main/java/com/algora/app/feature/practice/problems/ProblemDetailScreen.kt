@@ -277,8 +277,8 @@ fun ProblemDetailScreen(
                     onClick = { scope.launch { repository.setProblemSolved(problem.id, !solved) } },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (solved) MaterialTheme.colorScheme.surfaceVariant else accent,
-                        contentColor = if (solved) MaterialTheme.colorScheme.onSurfaceVariant else Color.White,
+                        containerColor = if (solved) MaterialTheme.colorScheme.onSurfaceVariant else accent,
+                        contentColor = Color.White,
                     ),
                 ) {
                     Text(if (solved) "Solved — tap to undo" else "Mark as solved")
@@ -338,7 +338,7 @@ private fun PrereqRow(prereq: ProblemPrereq, onClick: () -> Unit) {
             .padding(bottom = 8.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        color = MaterialTheme.colorScheme.background,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
     ) {
         Row(

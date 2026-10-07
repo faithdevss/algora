@@ -87,7 +87,7 @@ fun CostProfilerTool() {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
+                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
                 .padding(6.dp),
         ) {
             MiniBarChart(bars = points.map { Bar(it.first.toString(), it.second.toDouble(), algo.accent) })

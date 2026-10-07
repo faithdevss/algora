@@ -394,6 +394,7 @@ private fun QuizRunner(
                 Button(
                     onClick = { checked[index] = true },
                     enabled = answers[index] != null,
+                    colors = ButtonDefaults.buttonColors(contentColor = Color.White),
                     modifier = Modifier.weight(1f),
                 ) {
                     Text("Check")
@@ -401,6 +402,7 @@ private fun QuizRunner(
             } else {
                 Button(
                     onClick = { if (index < quiz.questions.lastIndex) index++ else finished = true },
+                    colors = ButtonDefaults.buttonColors(contentColor = Color.White),
                     modifier = Modifier.weight(1f),
                 ) {
                     Text(if (index < quiz.questions.lastIndex) "Next" else "Finish")
@@ -529,7 +531,7 @@ private fun QuizResults(
                 Surface(
                     modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
                     shape = RoundedCornerShape(20.dp),
-                    color = if (pct >= 60) CorrectGreen.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    color = if (pct >= 60) CorrectGreen.copy(alpha = 0.12f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.08f),
                     border = BorderStroke(1.dp, if (pct >= 60) CorrectGreen.copy(alpha = 0.3f) else MaterialTheme.colorScheme.outline),
                 ) {
                     Column(modifier = Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -594,7 +596,7 @@ private fun QuizResults(
                     if (wrongIndices.isNotEmpty()) {
                         Button(
                             onClick = { onRetryWrong(wrongIndices) },
-                            colors = ButtonDefaults.buttonColors(containerColor = SimColors.Green),
+                            colors = ButtonDefaults.buttonColors(containerColor = SimColors.Green, contentColor = Color.White),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text("Retry ${wrongIndices.size} missed ${if (wrongIndices.size == 1) "question" else "questions"}")

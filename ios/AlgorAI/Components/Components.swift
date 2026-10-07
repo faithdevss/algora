@@ -31,9 +31,9 @@ struct ScreenHeader<Trailing: View>: View {
                     .frame(minWidth: 44, minHeight: 44)
             }
             .padding(.leading, 8)
-            .padding(.trailing, 10)
-            .padding(.top, 4)
-            .padding(.bottom, 8)
+            .padding(.trailing, 14)
+            .padding(.top, 8)
+            .padding(.bottom, 12)
             .background(palette.background)
             Rectangle().fill(palette.outline).frame(height: 1)
         }
