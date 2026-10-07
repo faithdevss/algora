@@ -1,0 +1,2099 @@
+
+######## EfficientNet
+[tagline] "Depth, width and resolution scaled together by one exponent."
+[topicId] "efficientnet"
+[whatIsIt[0]] "There are exactly three ways to make a convolutional network bigger: more layers (depth), more channels per layer (width), or larger input images (resolution). Every architecture before EfficientNet scaled one of them by hand — ResNet-50 to ResNet-152 is depth, WideResNet is width — and each axis saturates on its own. Accuracy flattens while the FLOPs keep climbing, because a deeper network on small images runs out of detail to see and a wider one on few layers runs out of abstraction to build."
+[whatIsIt[1]] "Compound scaling ties all three to a single exponent: depth = 1.2^φ, width = 1.1^φ, resolution = 1.15^φ. The constants come from a small grid search under the constraint α·β²·γ² ≈ 2 — the squares are there because compute scales linearly with depth but quadratically with both width and resolution — which makes each unit of φ exactly a doubling of FLOPs. At φ = 6 that is depth ×2.99, width ×1.77 and resolution ×2.31, and the simulation plots all three growing together, with resolution rising fastest per unit of compute. That is why the family's input grows from 224² to 600² while its layer count barely triples."
+[whatIsIt[2]] "The measured payoff is large: EfficientNet-B7 reached 84.3% ImageNet top-1 with about 66M parameters, against GPipe's 557M at the same accuracy — 8.4× smaller and 6.1× faster to run. Two caveats keep this honest. The B0 backbone was itself found by neural architecture search over MobileNetV2-style inverted-residual blocks with squeeze-and-excitation, so compound scaling is what was applied to an already good small model rather than a substitute for having one. And FLOPs are not latency: the depthwise-heavy blocks that make B0 cheap on paper are memory-bandwidth-bound on GPUs, which is exactly what EfficientNetV2 went back and fixed by using ordinary convolutions in the early stages."
+[steps[0]] {"number": 1, "title": "Name the Three Axes", "body": "Depth, width, resolution — the only knobs a convnet has."}
+[steps[1]] {"number": 2, "title": "Watch Each One Saturate", "body": "Scaling any single axis flattens in accuracy long before it flattens in cost."}
+[steps[2]] {"number": 3, "title": "Tie Them to One Exponent", "body": "d = α^φ, w = β^φ, r = γ^φ, with α·β²·γ² ≈ 2."}
+[steps[3]] {"number": 4, "title": "Search the Constants Once", "body": "1.2, 1.1, 1.15 — found on B0 by a small grid search, then reused."}
+[steps[4]] {"number": 5, "title": "Turn One Dial", "body": "φ = 0…6 gives B0…B6, each step doubling the FLOPs."}
+[steps[5]] {"number": 6, "title": "Start From a Good Backbone", "body": "B0 came from architecture search; scaling amplifies it, it does not replace it."}
+[formulas[0]] {"label": "Compound scaling", "formula": "d = α^φ, w = β^φ, r = γ^φ", "note": "One exponent drives all three axes."}
+[formulas[1]] {"label": "The constraint", "formula": "α·β²·γ² ≈ 2", "note": "1.2 · 1.1² · 1.15² = 1.920 — each unit of φ doubles the FLOPs."}
+[formulas[2]] {"label": "Why the squares", "formula": "cost ∝ d · w² · r²", "note": "Linear in depth, quadratic in width and in each spatial axis."}
+[formulas[3]] {"label": "At φ = 6", "formula": "d ×2.99 · w ×1.77 · r ×2.31", "note": "Resolution grows fastest per unit of compute."}
+[formulas[4]] {"label": "Total FLOPs", "formula": "≈2^φ × baseline", "note": "The scaling law the constants were chosen to produce."}
+[formulas[5]] {"label": "B7 vs GPipe", "formula": "66M vs 557M parameters at 84.3% top-1", "note": "8.4× smaller, 6.1× faster."}
+[notationKey[0]] {"symbol": "φ (phi)", "meaning": "the single compound coefficient; B0 through B7 are φ = 0 through 7"}
+[notationKey[1]] {"symbol": "MBConv", "meaning": "the inverted-residual block from MobileNetV2, with squeeze-and-excitation added"}
+[notationKey[2]] {"symbol": "NAS", "meaning": "the neural architecture search that produced the B0 baseline"}
+[notationKey[3]] {"symbol": "squeeze-and-excitation", "meaning": "per-channel gating learned from a global pooled summary"}
+[notationKey[4]] {"symbol": "FLOPs vs latency", "meaning": "the gap this family made famous; V2 was the correction"}
+[notationKey[5]] {"symbol": "EfficientNetV2", "meaning": "fused-MBConv in early stages plus progressive resizing, for real-hardware speed"}
+[codeBlocks[0]] 
+  title: The scaling rule, and the constraint behind the constants
+  variants: []
+alpha, beta, gamma = 1.2, 1.1, 1.15
+print(alpha * beta**2 * gamma**2)          # 1.9203 -- the "approximately 2"
+
+for phi in range(7):
+    d, w, r = alpha**phi, beta**phi, gamma**phi
+    print(phi, round(d, 2), round(w, 2), round(r, 2), round(d * w*w * r*r, 1))
+# 0 1.00 1.00 1.00   1.0
+# 3 1.73 1.33 1.52   7.1        (2^3 = 8)
+# 6 2.99 1.77 2.31  50.1        (2^6 = 64)
+# The gap is the "approximately": 1.9203^6 = 50, not 64. The constants were rounded
+# to two decimals for reporting, and the family's actual per-step FLOP growth is
+# a little under a doubling.
+
+# The squares are the whole reason the constraint is not alpha*beta*gamma:
+# doubling the channel count multiplies work by 4 (both the input and output of
+# every conv widen), and doubling the resolution multiplies it by 4 as well.
+[codeBlocks[1]] 
+  title: Using the family, and the resolution nobody remembers to change
+  variants: []
+import timm, torch
+
+for name, size in [('efficientnet_b0', 224), ('efficientnet_b3', 300),
+                   ('efficientnet_b7', 600)]:
+    m = timm.create_model(name, pretrained=False)
+    n = sum(p.numel() for p in m.parameters())
+    print(name, f"{n/1e6:.1f}M params", f"input {size}")
+# efficientnet_b0  5.3M params  input 224
+# efficientnet_b3 12.2M params  input 300
+# efficientnet_b7 66.3M params  input 600
+
+# The input size is part of the model, not a preprocessing detail: feeding B7 a 224px
+# image throws away most of what the scaling bought, and is the single most common
+# way this family gets benchmarked badly.
+[applications[0]] {"iconName": "target", "title": "Accuracy per FLOP", "body": "The reference point for \"best model under a compute budget\" for several years after 2019."}
+[applications[1]] {"iconName": "chip", "title": "Model Family Design", "body": "One architecture with a documented scaling rule, rather than a redesign per device class."}
+[applications[2]] {"iconName": "flask", "title": "Transfer Learning", "body": "B0–B4 are common fine-tuning backbones where a ResNet-50 would be needlessly large."}
+[applications[3]] {"iconName": "trend", "title": "Scaling Laws", "body": "An early, concrete instance of the idea that scaling axes should be grown in a fixed ratio — the same argument later made for language models."}
+[takeaways[0]] "Depth, width and resolution are the only three axes, and each saturates when scaled alone."
+[takeaways[1]] "Compound scaling drives all three from one exponent: 1.2^φ, 1.1^φ, 1.15^φ."
+[takeaways[2]] "α·β²·γ² ≈ 2 makes each unit of φ a doubling of FLOPs; the squares reflect width and resolution both costing quadratically."
+[takeaways[3]] "B7 hit 84.3% ImageNet top-1 with 66M parameters against GPipe's 557M — 8.4× smaller at equal accuracy."
+[takeaways[4]] "FLOPs are not latency: the depthwise-heavy B0 is bandwidth-bound on GPUs, which is what EfficientNetV2 corrected."
+[crossLinks[0]] {"topicId": "mobilenet", "label": "MobileNet"}
+[crossLinks[1]] {"topicId": "resnet", "label": "ResNet"}
+[crossLinks[2]] {"topicId": "vit", "label": "Vision Transformers"}
+[crossLinks[3]] {"topicId": "transfer_learning", "label": "Transfer Learning"}
+
+######## Vision Transformers (ViT)
+[tagline] "An image as 196 tokens, and no convolution anywhere."
+[topicId] "vit"
+[whatIsIt[0]] "A Vision Transformer does not convolve at all. It cuts a 224×224 image into 16×16 patches — a 14×14 grid, 196 of them — flattens each patch to a 768-vector with one shared linear layer, prepends a learned class token, adds position embeddings, and hands the resulting 197-token sequence to a standard transformer encoder. The paper's title is the whole claim: an image is worth 16×16 words."
+[whatIsIt[1]] "The image-specific machinery is almost nothing. Patch embedding is a single linear map from 16·16·3 = 768 raw values to 768 dimensions — 590,592 parameters — and position embeddings add 151,296 more, learned rather than sinusoidal because there was no advantage to hand-designing them. Everything after that is the same encoder used for text. What changes is the inductive bias: a convolution hard-codes locality and translation equivariance, while self-attention hard-codes nothing and compares all 197² = 38,809 token pairs in every layer, so it can relate opposite corners of the image in layer one."
+[whatIsIt[2]] "That freedom is a liability at small scale and an advantage at large scale, which is the paper's actual finding. Trained on ImageNet-1k alone, ViT loses to a comparable ResNet; pre-trained on JFT-300M it wins clearly. The bias a convnet is given for free, a transformer has to learn from data — so the crossover is a question of how much data you have. The field's follow-up went both ways: Swin put locality and hierarchy back in via shifted attention windows, DeiT showed distillation and augmentation could close much of the data gap, and ConvNeXt rebuilt a pure convnet with the transformer's training recipe and matched it — which suggests the recipe was doing more of the work than the attention."
+[steps[0]] {"number": 1, "title": "Cut Into Patches", "body": "224 ÷ 16 = 14, so 196 non-overlapping 16×16 patches."}
+[steps[1]] {"number": 2, "title": "Embed Each Patch", "body": "One shared linear map, 768 → 768. 590,592 parameters in total."}
+[steps[2]] {"number": 3, "title": "Prepend a Class Token", "body": "A learned vector whose final state is the image representation. 197 tokens."}
+[steps[3]] {"number": 4, "title": "Add Position Embeddings", "body": "Attention is permutation-invariant; without these, patch order is lost."}
+[steps[4]] {"number": 5, "title": "Run a Standard Encoder", "body": "12 layers of multi-head self-attention and MLP — nothing vision-specific."}
+[steps[5]] {"number": 6, "title": "Pre-train Large, Then Fine-Tune", "body": "Below JFT scale a ResNet wins; above it, ViT does."}
+[formulas[0]] {"label": "Token count", "formula": "N = (H/P)(W/P) + 1", "note": "(224/16)² + 1 = 197, the +1 being the class token."}
+[formulas[1]] {"label": "Patch embedding", "formula": "z₀ = [x_class; x¹ₚE; …; x^N_ₚE] + E_pos", "note": "E is 768×768 here: 590,592 parameters."}
+[formulas[2]] {"label": "Self-attention", "formula": "softmax(QKᵀ/√d)V", "note": "Every token attends to all 197, including itself."}
+[formulas[3]] {"label": "Attention cost", "formula": "O(N²·d) per layer", "note": "38,809 pairs at P = 16; halving the patch size quadruples it."}
+[formulas[4]] {"label": "Position embeddings", "formula": "N × d learned parameters", "note": "197 × 768 = 151,296; interpolated when the input resolution changes."}
+[formulas[5]] {"label": "Patch embedding ≡ convolution", "formula": "Conv2d(3, 768, kernel=16, stride=16)", "note": "Exactly equivalent, and how every implementation does it."}
+[notationKey[0]] {"symbol": "patch", "meaning": "a 16×16 square of pixels, treated as one token"}
+[notationKey[1]] {"symbol": "class token", "meaning": "a learned extra token whose output vector is fed to the classifier head"}
+[notationKey[2]] {"symbol": "ViT-B/16", "meaning": "Base size, 16×16 patches: 12 layers, 768 dims, ≈86M parameters"}
+[notationKey[3]] {"symbol": "inductive bias", "meaning": "assumptions built into the architecture — locality here, or the lack of it"}
+[notationKey[4]] {"symbol": "JFT-300M", "meaning": "the 300-million-image internal dataset where ViT overtakes convnets"}
+[notationKey[5]] {"symbol": "Swin / DeiT / ConvNeXt", "meaning": "the three responses: put locality back, fix the data need, or rebuild the convnet"}
+[codeBlocks[0]] 
+  title: Patchify, embed, and count what is actually image-specific
+  variants: []
+import torch, torch.nn as nn
+
+patch = nn.Conv2d(3, 768, kernel_size=16, stride=16)   # == the linear map on patches
+x = torch.randn(1, 3, 224, 224)
+tokens = patch(x).flatten(2).transpose(1, 2)           # [1, 196, 768]
+
+cls = nn.Parameter(torch.zeros(1, 1, 768))
+pos = nn.Parameter(torch.zeros(1, 197, 768))
+z0 = torch.cat([cls.expand(1, -1, -1), tokens], dim=1) + pos
+print(z0.shape)                                        # [1, 197, 768]
+
+print(sum(p.numel() for p in patch.parameters()))      # 590592 = 768 * (768 + 1)
+print(pos.numel())                                     # 151296 = 197 * 768
+# Everything after this line is the text transformer, unchanged.
+[codeBlocks[1]] 
+  title: What dropping the convolution costs
+  variants: []
+# A 3x3 convolution's output at one position depends on 9 inputs. A ViT layer's
+# output at one token depends on all 197.
+print(197 ** 2)                     # 38809 pairs per head, per layer
+
+# Attention cost is quadratic in token count, and token count is quadratic in
+# 1/patch_size, so the patch size is the single most expensive hyperparameter here:
+for p in (32, 16, 8):
+    n = (224 // p) ** 2 + 1
+    print(p, n, n * n)
+# 32   50    2500
+# 16  197   38809
+#  8  785  616225        -- 16x the attention cost of P=16
+
+# This is also why high-resolution vision transformers use windowed attention (Swin)
+# or a convolutional stem: full attention over a 1024px image at P=16 is 4097 tokens
+# and ~16.8M pairs per layer.
+[applications[0]] {"iconName": "target", "title": "Large-Scale Classification", "body": "The dominant backbone once pre-training data is measured in hundreds of millions of images."}
+[applications[1]] {"iconName": "network", "title": "Multimodal Models", "body": "CLIP, Flamingo and most vision-language models use a ViT image tower because it already emits tokens."}
+[applications[2]] {"iconName": "search", "title": "Segmentation and Detection", "body": "Segment Anything and DINOv2 are ViT-based; patch tokens map naturally onto dense prediction."}
+[applications[3]] {"iconName": "flask", "title": "Self-Supervised Learning", "body": "Masked autoencoding works cleanly on patches — mask 75% of them and reconstruct."}
+[takeaways[0]] "196 patches plus a class token: an image becomes a 197-token sequence and a standard text encoder does the rest."
+[takeaways[1]] "The only image-specific parts are a 590,592-parameter patch embedding and 151,296 position parameters."
+[takeaways[2]] "Self-attention compares all 38,809 token pairs per layer, so global context exists from layer one — and cost is quadratic in token count."
+[takeaways[3]] "ViT loses to ResNets on ImageNet-1k and wins after JFT-300M pre-training: the convolution's bias is worth a lot of data."
+[takeaways[4]] "ConvNeXt matched ViT with a pure convnet and the transformer's training recipe, which says the recipe was doing much of the work."
+[crossLinks[0]] {"topicId": "transformers", "label": "Transformers"}
+[crossLinks[1]] {"topicId": "attention", "label": "Attention"}
+[crossLinks[2]] {"topicId": "resnet", "label": "ResNet"}
+[crossLinks[3]] {"topicId": "efficientnet", "label": "EfficientNet"}
+
+######## Transfer Learning
+[tagline] "Reuse a pretrained network's features and retrain only the head."
+[topicId] "transfer_learning"
+[whatIsIt[0]] "Transfer learning reuses a network already trained on a large dataset and adapts it to a new task, instead of training from random initialization."
+[whatIsIt[1]] "It works because early layers learn generic structure — edges, textures, syntax — that is not specific to the original labels. Replacing only the final head and training that on a few thousand examples routinely beats a from-scratch model trained on the same small dataset."
+[steps[0]] {"number": 1, "title": "Pick a Pretrained Backbone", "body": "Choose a model whose pretraining domain resembles yours: ImageNet for vision, a language model for text."}
+[steps[1]] {"number": 2, "title": "Replace the Head", "body": "Swap the final classifier for one shaped to your label set, randomly initialized."}
+[steps[2]] {"number": 3, "title": "Freeze and Train the Head", "body": "With the backbone frozen only the new layer learns — fast, and safe on tiny datasets."}
+[steps[3]] {"number": 4, "title": "Unfreeze and Fine-Tune", "body": "Release the upper layers and continue at a much smaller learning rate."}
+[steps[4]] {"number": 5, "title": "Use Discriminative Rates", "body": "Deeper layers hold the most general features, so give them the smallest learning rates."}
+[formulas[0]] {"label": "Frozen features", "formula": "θ_backbone fixed, only θ_head updated", "note": "Feature extraction — the cheapest mode."}
+[formulas[1]] {"label": "Fine-tuning rate", "formula": "η_finetune ≈ η_scratch / 10 … /100", "note": "Large steps destroy the pretrained weights."}
+[formulas[2]] {"label": "Layer-wise decay", "formula": "η_layer = η_top · ξ^(depth from top),  ξ ≈ 0.8", "note": "Earlier layers move less."}
+[formulas[3]] {"label": "LoRA update", "formula": "W' = W + BA,  rank(BA) = r ≪ d", "note": "Adapts a frozen weight matrix with a tiny trainable pair."}
+[notationKey[0]] {"symbol": "backbone", "meaning": "pretrained feature extractor being reused"}
+[notationKey[1]] {"symbol": "head", "meaning": "task-specific final layer, trained from scratch"}
+[notationKey[2]] {"symbol": "freeze", "meaning": "mark parameters non-trainable so gradients skip them"}
+[notationKey[3]] {"symbol": "catastrophic forgetting", "meaning": "losing pretrained knowledge by fine-tuning too aggressively"}
+[codeBlocks[0]] 
+  title: Two-stage transfer: freeze, then fine-tune
+  variants: []
+class TransferModel(private val backbone: Network, private val head: Network) {
+
+    // Stage 1 — backbone frozen, only the new head learns.
+    fun trainHead(data: Dataset, epochs: Int = 5, lr: Double = 1e-3) {
+        backbone.trainable = false
+        for (batch in data.epochs(epochs)) {
+            val features = backbone.forward(batch.x, training = false)
+            val loss = head.trainStep(features, batch.y, lr)
+            data.log(loss)
+        }
+    }
+
+    // Stage 2 — unfreeze the top layers, tiny learning rate.
+    fun fineTune(data: Dataset, epochs: Int = 3, lr: Double = 1e-5, unfreezeTop: Int = 2) {
+        backbone.trainable = true
+        backbone.layers.dropLast(unfreezeTop).forEach { it.trainable = false }
+        for (batch in data.epochs(epochs)) {
+            val features = backbone.forward(batch.x, training = true)
+            val loss = head.trainStep(features, batch.y, lr)
+            backbone.backward(head.inputGradient, lr)   // same small rate
+            data.log(loss)
+        }
+    }
+}
+[applications[0]] {"iconName": "image", "title": "Domain-Specific Vision", "body": "Medical and industrial-defect classifiers are built on ImageNet backbones with a few thousand labels."}
+[applications[1]] {"iconName": "robot", "title": "LLM Adaptation", "body": "Instruction tuning and LoRA adapt a general model to a narrow domain for a fraction of pretraining cost."}
+[applications[2]] {"iconName": "globe", "title": "On-Device Models", "body": "A shared frozen backbone with small per-task heads keeps several features inside one app's size budget."}
+[takeaways[0]] "Early layers are generic, late layers are task-specific — that gradient is what makes transfer work."
+[takeaways[1]] "Freeze first, fine-tune second; the reverse order wrecks pretrained weights with a random head's gradients."
+[takeaways[2]] "Fine-tune at a much lower learning rate than you would use from scratch."
+[takeaways[3]] "The further the target domain is from the pretraining domain, the more layers you need to unfreeze."
+[crossLinks[0]] {"topicId": "cnn", "label": "CNNs"}
+[crossLinks[1]] {"topicId": "transformers", "label": "Transformers"}
+[crossLinks[2]] {"topicId": "neural_network_basics", "label": "Neural Network Basics"}
+
+######## R-CNN
+[tagline] "2,000 region proposals, one CNN pass each, and 47 seconds per image."
+[topicId] "rcnn"
+[whatIsIt[0]] "Classification asks what is in an image. Detection asks what, where, and how many — and the number of answers is not known in advance, so it cannot be a fixed-size output layer. R-CNN's move in 2014 was to turn the problem back into classification: propose about 2,000 candidate regions with selective search, warp each to 227×227, run the CNN on it, and classify. \"Regions with CNN features\" is the whole name and the whole idea."
+[whatIsIt[1]] "It worked spectacularly and cost accordingly. On VOC 2012 it reached 53.3% mAP against the previous best of 35.1% from deformable part models — a jump of eighteen points in a field used to arguing over one. It also runs the convolutional stack 2,000 times per image with no computation shared between heavily overlapping regions, which is 47 seconds per image with VGG-16, and it is three models trained in three separate stages: the CNN fine-tuned for classification, a linear SVM per class trained on cached features, and a bounding-box regressor trained after that."
+[whatIsIt[2]] "Two pieces of machinery introduced here outlive the architecture completely, and the simulation runs both for real. Non-maximum suppression: overlapping proposals of the same object all score highly, so keep the best box and delete anything overlapping it by more than an IoU threshold. And average precision, which is why NMS is part of the score rather than tidying — a second detection of an object already found counts as a false positive. On the lab's six boxes, AP@0.5 is 0.833 with the duplicate left in and 1.000 after suppression, from identical features."
+[steps[0]] {"number": 1, "title": "Propose Regions", "body": "Selective search merges superpixels into ~2,000 candidates. Not learned."}
+[steps[1]] {"number": 2, "title": "Warp Each to a Fixed Size", "body": "227×227, because the CNN behind it takes nothing else."}
+[steps[2]] {"number": 3, "title": "Run the CNN 2,000 Times", "body": "One forward pass per region. This is the 47 seconds."}
+[steps[3]] {"number": 4, "title": "Classify With Per-Class SVMs", "body": "Trained separately, on features cached to disk."}
+[steps[4]] {"number": 5, "title": "Refine the Box", "body": "A per-class linear regressor on the same features."}
+[steps[5]] {"number": 6, "title": "Suppress and Score", "body": "NMS at IoU 0.5, then average precision over what survives."}
+[formulas[0]] {"label": "Intersection over union", "formula": "IoU = |A ∩ B| / |A ∪ B|", "note": "The matching rule for every detection metric."}
+[formulas[1]] {"label": "Non-maximum suppression", "formula": "keep argmax score; drop all IoU > τ; repeat", "note": "τ = 0.5 conventionally."}
+[formulas[2]] {"label": "Precision / recall", "formula": "P = TP/(TP+FP), R = TP/(TP+FN)", "note": "A duplicate detection is a false positive, not a duplicate."}
+[formulas[3]] {"label": "Average precision", "formula": "AP = Σ (rₙ − rₙ₋₁)·p_interp(rₙ)", "note": "Area under the precision envelope — the VOC2010+/COCO rule."}
+[formulas[4]] {"label": "Box regression target", "formula": "tₓ = (Gₓ − Pₓ)/P_w, t_w = log(G_w/P_w)", "note": "Offsets are learned relative to the proposal, not in absolute pixels."}
+[formulas[5]] {"label": "Measured on the lab's boxes", "formula": "AP 0.833 → 1.000 after NMS", "note": "Same detector, same features, different post-processing."}
+[notationKey[0]] {"symbol": "selective search", "meaning": "the hand-written proposal algorithm; ~2 s per image, CPU"}
+[notationKey[1]] {"symbol": "region proposal", "meaning": "a class-agnostic box that might contain something"}
+[notationKey[2]] {"symbol": "mAP", "meaning": "mean average precision — AP averaged over classes"}
+[notationKey[3]] {"symbol": "IoU threshold", "meaning": "how much overlap counts as the same object; 0.5 in VOC, 0.5:0.95 averaged in COCO"}
+[notationKey[4]] {"symbol": "hard negative mining", "meaning": "retraining on the background boxes the model gets wrong"}
+[notationKey[5]] {"symbol": "warp", "meaning": "resizing a proposal to the CNN's fixed input, aspect ratio and all"}
+[codeBlocks[0]] 
+  title: IoU and NMS, which every detector since still uses unchanged
+  variants: []
+import numpy as np
+
+def iou(a, b):
+    x1, y1 = max(a[0], b[0]), max(a[1], b[1])
+    x2, y2 = min(a[2], b[2]), min(a[3], b[3])
+    inter = max(0, x2 - x1) * max(0, y2 - y1)
+    area = lambda z: (z[2] - z[0]) * (z[3] - z[1])
+    return inter / (area(a) + area(b) - inter)
+
+def nms(boxes, scores, thr=0.5):
+    order, keep = np.argsort(scores)[::-1], []
+    while len(order):
+        i = order[0]; keep.append(i)
+        order = [j for j in order[1:] if iou(boxes[i], boxes[j]) <= thr]
+    return keep
+
+boxes  = [(18,44,88,148), (24,36,96,156), (112,58,178,142)]
+scores = [0.94, 0.88, 0.81]
+print(iou(boxes[0], boxes[1]))     # 0.80 -- same object, twice
+print(nms(boxes, scores))          # [0, 2]
+[codeBlocks[1]] 
+  title: Why the duplicate costs you, in average precision
+  variants: []
+# Detections in descending score, each matched to an UNCLAIMED ground-truth box
+# with IoU >= 0.5. The second box on object 1 is a false positive.
+#
+#  score  match          TP  FP  recall  precision
+#  0.94   object 1        1   0    0.50     1.000
+#  0.88   object 1 taken  1   1    0.50     0.500   <- the duplicate
+#  0.81   object 2        2   1    1.00     0.667
+#  0.55   background      2   2    1.00     0.500
+#
+# AP = area under the precision envelope = 0.5*1.000 + 0.5*0.667 = 0.833
+# Run NMS first and the 0.88 box never reaches the metric:  AP = 1.000
+#
+# Note also that VOC2007's 11-point rule scores the same detections 0.848 rather
+# than 0.833. An mAP is only comparable within one protocol -- always check whether
+# a paper means VOC07, VOC10+ or COCO's average over IoU 0.5:0.95.
+[applications[0]] {"iconName": "history", "title": "The Detection Baseline", "body": "Every modern detector is a response to some part of this pipeline; reading it is how the rest make sense."}
+[applications[1]] {"iconName": "target", "title": "Transfer Learning in Practice", "body": "Its features came from an ImageNet classifier fine-tuned for detection — the paper that made pretraining standard practice."}
+[applications[2]] {"iconName": "search", "title": "Region-Based Reasoning", "body": "Two-stage \"propose then verify\" still appears in 3-D detection, video and document layout analysis."}
+[applications[3]] {"iconName": "chart", "title": "Evaluation Protocol", "body": "IoU, NMS and mAP as defined here are still the metrics every detection paper reports."}
+[takeaways[0]] "Detection is not classification because the number of outputs varies — R-CNN's fix is to propose regions and classify each one."
+[takeaways[1]] "It jumped VOC 2012 mAP from 35.1% to 53.3%, and cost 47 seconds per image with VGG-16."
+[takeaways[2]] "2,000 forward passes with no shared computation, and three models trained in three separate stages."
+[takeaways[3]] "NMS is part of the metric, not cleanup: a duplicate detection is scored as a false positive."
+[takeaways[4]] "On the lab's boxes AP@0.5 goes 0.833 → 1.000 with NMS alone — and VOC2007's older 11-point rule reports 0.848 for the same detections."
+[crossLinks[0]] {"topicId": "fast_rcnn", "label": "Fast R-CNN"}
+[crossLinks[1]] {"topicId": "cnn", "label": "CNNs"}
+[crossLinks[2]] {"topicId": "transfer_learning", "label": "Transfer Learning"}
+[crossLinks[3]] {"topicId": "model_evaluation", "label": "Model Evaluation"}
+
+######## Fast R-CNN
+[tagline] "Share the feature map, pool the regions out of it, train it as one model."
+[topicId] "fast_rcnn"
+[whatIsIt[0]] "R-CNN runs the convolutional stack once per proposal, 2,000 times over the same image, on regions that overlap heavily. Fast R-CNN runs it once. The image passes through the convolutions a single time, and each proposal is *projected* onto that shared feature map — a box in image pixels becomes a box on the feature grid by dividing by the stride. All the expensive work is now shared."
+[whatIsIt[1]] "The piece that makes it possible is RoI pooling: take the projected region, divide it into a fixed 7×7 grid of bins whatever its size, and max-pool inside each bin. Any region becomes a 7×7 feature block that a dense head can read. That also collapses R-CNN's three training stages into one — class scores and box refinement come from two heads on one network trained with a single multi-task loss, so there is no SVM stage and no feature cache on disk."
+[whatIsIt[2]] "The measured result is 47 seconds per image down to 2.3, and 0.32 if the proposals already exist; training is about 9× faster. But look at where the time went: selective search now takes roughly seven times longer than the network it feeds, and it is the only part of the pipeline that is not learned. That is the whole premise of Faster R-CNN. The simulation also prices RoI pooling's known defect — it quantises twice, snapping the box to the feature grid and then the grid into bins, and at stride 16 those roundings cost 1 pixel and 32 pixels respectively on a 145-pixel box. Tolerable for a class label; not tolerable for a mask, which is what Mask R-CNN's RoIAlign later fixes."
+[steps[0]] {"number": 1, "title": "One Forward Pass", "body": "The whole image through the conv stack, once."}
+[steps[1]] {"number": 2, "title": "Project the Proposals", "body": "Divide box coordinates by the stride to land on the feature map."}
+[steps[2]] {"number": 3, "title": "RoI Pool to 7×7", "body": "Any region size in, a fixed block out. No parameters."}
+[steps[3]] {"number": 4, "title": "Two Heads, One Loss", "body": "Softmax over K+1 classes and per-class box offsets, trained jointly."}
+[steps[4]] {"number": 5, "title": "Backprop Through the Pooling", "body": "Gradients route to the argmax cell, so the shared map is trained too."}
+[steps[5]] {"number": 6, "title": "Notice the New Bottleneck", "body": "The proposals are now 87% of the runtime."}
+[formulas[0]] {"label": "RoI projection", "formula": "feature box = image box / stride", "note": "Stride 16 for VGG-16's conv5."}
+[formulas[1]] {"label": "RoI pooling", "formula": "bin size = RoI size / 7, max within each bin", "note": "Both divisions are rounded — that is the misalignment."}
+[formulas[2]] {"label": "Multi-task loss", "formula": "L = L_cls(p, u) + λ[u ≥ 1]·L_loc(tᵘ, v)", "note": "The indicator means background boxes contribute no localisation loss."}
+[formulas[3]] {"label": "Smooth L1", "formula": "0.5x² if |x| < 1, else |x| − 0.5", "note": "Less sensitive to outliers than L2, no exploding gradients."}
+[formulas[4]] {"label": "Quantisation cost", "formula": "1 px snapping the RoI + 32 px snapping the bins", "note": "At stride 16 on a 145-pixel box."}
+[formulas[5]] {"label": "Measured speedup", "formula": "47 s → 2.3 s (0.32 s excluding proposals)", "note": "Test time per image with VGG-16."}
+[notationKey[0]] {"symbol": "RoI", "meaning": "region of interest — one proposal, expressed on the feature map"}
+[notationKey[1]] {"symbol": "RoI pooling", "meaning": "fixed-size max pooling over a variable-size region"}
+[notationKey[2]] {"symbol": "stride", "meaning": "how many image pixels one feature-map cell covers; 16 for VGG-16 conv5"}
+[notationKey[3]] {"symbol": "multi-task loss", "meaning": "classification and localisation summed and optimised together"}
+[notationKey[4]] {"symbol": "smooth L1", "meaning": "the robust regression loss used for box offsets"}
+[notationKey[5]] {"symbol": "truncated SVD", "meaning": "the paper's trick for compressing the fc layers at test time"}
+[codeBlocks[0]] 
+  title: The shared map, and RoI pooling on top of it
+  variants: []
+import torch, torchvision
+from torchvision.ops import roi_pool
+
+backbone = torchvision.models.vgg16().features[:-1]     # stride 16
+image = torch.randn(1, 3, 600, 800)
+feats = backbone(image)                                  # ONE forward pass
+print(feats.shape)                                       # [1, 512, 37, 50]
+
+# Proposals in image coordinates, with a batch index in front.
+rois = torch.tensor([[0, 20., 40., 300., 500.], [0, 310., 60., 620., 420.]])
+pooled = roi_pool(feats, rois, output_size=(7, 7), spatial_scale=1/16)
+print(pooled.shape)                                      # [2, 512, 7, 7]
+
+# Two thousand proposals would give [2000, 512, 7, 7] from the same single pass --
+# the convolutions are computed once and read many times.
+[codeBlocks[1]] 
+  title: The two roundings, counted in image pixels
+  variants: []
+stride, bins, box = 16, 7, 145.0
+
+exact = box / stride                    # 9.0625 feature cells
+snapped = int(exact)                    # 9
+print((exact - snapped) * stride)       # 1.0 px lost snapping the RoI
+
+bin_exact = snapped / bins              # 1.2857 cells per bin
+bin_snapped = int(bin_exact)            # 1
+print((bin_exact - bin_snapped) * bins * stride)   # 32.0 px never read
+
+# Seven bins of one cell span seven cells, not nine, so two feature cells -- 32
+# image pixels of the RoI's far edge -- fall outside the pooled block entirely.
+# A class label survives that. A 28x28 mask aligned 32 pixels off does not, which is
+# exactly the measurement Mask R-CNN's RoIAlign was introduced to zero out.
+[applications[0]] {"iconName": "chip", "title": "Shared Computation", "body": "The general lesson: compute features once over the whole input and index into them, rather than recomputing per region."}
+[applications[1]] {"iconName": "target", "title": "End-to-End Training", "body": "Collapsing three stages into one loss is what let the backbone learn features suited to detection rather than to classification."}
+[applications[2]] {"iconName": "search", "title": "RoI Operators Everywhere", "body": "RoI pooling and RoIAlign appear in video models, 3-D detection and document understanding."}
+[applications[3]] {"iconName": "bulb", "title": "Profiling Before Optimising", "body": "The speedup relocated the bottleneck to the one un-learned component — which set the next paper's agenda."}
+[takeaways[0]] "One forward pass over the image, with every proposal reading from the same feature map."
+[takeaways[1]] "RoI pooling turns any region into a fixed 7×7 block, which is what lets a dense head follow it."
+[takeaways[2]] "Three separately trained stages become one network with one multi-task loss and no feature cache."
+[takeaways[3]] "47 s → 2.3 s per image, and ~9× faster training; the proposals then become 87% of the remaining time."
+[takeaways[4]] "RoI pooling quantises twice — 1 px plus 32 px at stride 16 — which is fine for labels and fatal for masks."
+[crossLinks[0]] {"topicId": "rcnn", "label": "R-CNN"}
+[crossLinks[1]] {"topicId": "faster_rcnn", "label": "Faster R-CNN"}
+[crossLinks[2]] {"topicId": "mask_rcnn", "label": "Mask R-CNN"}
+[crossLinks[3]] {"topicId": "pooling_layers", "label": "Pooling Layers"}
+
+######## Faster R-CNN
+[tagline] "Anchors and a proposal network: the last hand-written stage becomes learned."
+[topicId] "faster_rcnn"
+[whatIsIt[0]] "Fast R-CNN left a CPU algorithm in the middle of a GPU pipeline, and it took roughly seven times longer than the network it fed. Faster R-CNN's move is to make the proposals a network too: a Region Proposal Network slides a small convolution over the *same* feature map the detector already computed, so proposals cost about 10 milliseconds instead of two seconds. Everything in the detector is now learned, and everything shares one backbone."
+[whatIsIt[1]] "Anchors are the idea that made that possible. Rather than regressing boxes out of nothing, the RPN places a fixed set of reference boxes — three scales × three aspect ratios — at every feature-map position, scores each for objectness, and regresses an offset from the ones that fit. On a 40×60 feature map that is 21,600 anchors, which is the network's entire hypothesis space laid out in advance. NMS reduces the survivors to 2,000 proposals at training time and 300 at test time."
+[whatIsIt[2]] "The result is the canonical two-stage detector: propose, then classify and refine, at 73.2% mAP on VOC 2007 and about 0.2 seconds per image with VGG-16 — 5 frames per second, and 17 with a smaller backbone. The remaining cost is structural: every proposal still gets its own pass through the head, so work scales with the number of regions. That is exactly what the one-stage detectors set out to remove, and the anchor idea introduced here is what they took with them."
+[steps[0]] {"number": 1, "title": "Share the Backbone", "body": "The RPN reads the same feature map the detector uses."}
+[steps[1]] {"number": 2, "title": "Lay Down Anchors", "body": "9 per position — 3 scales × 3 aspect ratios — 21,600 on a 40×60 map."}
+[steps[2]] {"number": 3, "title": "Score Objectness", "body": "A 1×1 conv per anchor: object or background, class-agnostic."}
+[steps[3]] {"number": 4, "title": "Regress an Offset", "body": "Four numbers per anchor, relative to the anchor rather than absolute."}
+[steps[4]] {"number": 5, "title": "Suppress to 300", "body": "NMS on objectness: 21,600 → 2,000 in training, 300 at test."}
+[steps[5]] {"number": 6, "title": "Hand Them to the Head", "body": "The same Fast R-CNN classifier and box regressor as before."}
+[formulas[0]] {"label": "Anchor count", "formula": "W · H · k", "note": "40 × 60 × 9 = 21,600 on a stride-16 map."}
+[formulas[1]] {"label": "Box parameterisation", "formula": "tₓ = (x − xₐ)/wₐ, t_w = log(w/wₐ)", "note": "Offsets are relative to the anchor, which makes the targets scale-free."}
+[formulas[2]] {"label": "Anchor assignment", "formula": "positive if IoU > 0.7 or best for a GT box; negative if IoU < 0.3", "note": "The \"best for a GT box\" clause is what stops an unusual object from having no positive at all."}
+[formulas[3]] {"label": "RPN loss", "formula": "L = L_cls/N_cls + λ·Σp*·L_reg/N_reg", "note": "The p* factor means only positive anchors contribute a regression term."}
+[formulas[4]] {"label": "Proposal cost", "formula": "≈10 ms vs selective search's ≈2,000 ms", "note": "The measurement the paper exists for."}
+[formulas[5]] {"label": "End to end", "formula": "≈0.2 s per image, 73.2% mAP VOC07", "note": "5 fps with VGG-16."}
+[notationKey[0]] {"symbol": "RPN", "meaning": "region proposal network — a small conv head predicting objectness and offsets"}
+[notationKey[1]] {"symbol": "anchor", "meaning": "a reference box of fixed size and shape at a feature-map position"}
+[notationKey[2]] {"symbol": "objectness", "meaning": "a class-agnostic \"is anything here\" score"}
+[notationKey[3]] {"symbol": "4-step alternating training", "meaning": "the paper's original recipe for sharing features; later replaced by joint training"}
+[notationKey[4]] {"symbol": "FPN", "meaning": "feature pyramid network — the later upgrade that gives each scale its own map"}
+[notationKey[5]] {"symbol": "two-stage", "meaning": "propose then classify; the family this completes"}
+[codeBlocks[0]] 
+  title: Anchors, and how many boxes a detector really scores
+  variants: []
+import numpy as np
+
+scales, ratios, stride = [128, 256, 512], [0.5, 1.0, 2.0], 16
+fh, fw = 40, 60                          # a 640x960 image at stride 16
+
+def anchors_at(cx, cy):
+    out = []
+    for s in scales:
+        for r in ratios:
+            w, h = s * np.sqrt(1 / r), s * np.sqrt(r)
+            out.append((cx - w/2, cy - h/2, cx + w/2, cy + h/2))
+    return out
+
+print(len(anchors_at(0, 0)))             # 9 per position
+print(fh * fw * 9)                       # 21600 anchors per image
+
+# Every one gets an objectness score and four offsets. NMS on those scores leaves
+# 2000 proposals for training and 300 at test time -- so the expensive head runs
+# 300 times, not 21,600.
+[codeBlocks[1]] 
+  title: Using it, and reading where the time goes
+  variants: []
+import torch, torchvision
+
+model = torchvision.models.detection.fasterrcnn_resnet50_fpn(weights=None)
+model.eval()
+out = model(torch.randn(1, 3, 600, 800))[0]
+print(out['boxes'].shape, out['labels'].shape, out['scores'].shape)
+
+# The knobs that matter at inference, and what each one trades:
+model.rpn._pre_nms_top_n = dict(training=2000, testing=1000)   # candidates kept
+model.rpn._post_nms_top_n = dict(training=2000, testing=300)   # proposals to head
+model.roi_heads.score_thresh = 0.05      # raise it for fewer, surer detections
+model.roi_heads.nms_thresh = 0.5         # lower it and crowded scenes lose objects
+
+# nms_thresh is the one people tune last and should tune first: at 0.3 two genuinely
+# overlapping objects are merged into one detection, and no amount of training fixes
+# a box that post-processing deleted.
+[applications[0]] {"iconName": "target", "title": "General-Purpose Detection", "body": "With an FPN backbone this is still a strong baseline and the default in most detection toolkits."}
+[applications[1]] {"iconName": "flask", "title": "Medical and Scientific Imaging", "body": "Two-stage accuracy matters more than frame rate when a missed finding is the cost."}
+[applications[2]] {"iconName": "browser", "title": "Document Layout Analysis", "body": "Detecting tables, figures and columns on a page is detection with unusual aspect ratios — anchors are configured, not redesigned."}
+[applications[3]] {"iconName": "search", "title": "Instance Segmentation", "body": "Mask R-CNN is this architecture with one more head; the whole pipeline carries over."}
+[takeaways[0]] "The RPN replaces selective search with a conv head on the shared feature map: ~2,000 ms → ~10 ms."
+[takeaways[1]] "Anchors turn detection into scoring a fixed hypothesis set — 9 per position, 21,600 on a 40×60 map."
+[takeaways[2]] "Boxes are regressed as offsets from an anchor, which makes the targets scale-free and easy to learn."
+[takeaways[3]] "73.2% VOC07 mAP at about 0.2 s per image, and every stage of the pipeline is now learned."
+[takeaways[4]] "The remaining cost is per-region work in the head, which is exactly what YOLO and SSD removed."
+[crossLinks[0]] {"topicId": "fast_rcnn", "label": "Fast R-CNN"}
+[crossLinks[1]] {"topicId": "yolo", "label": "YOLO"}
+[crossLinks[2]] {"topicId": "mask_rcnn", "label": "Mask R-CNN"}
+[crossLinks[3]] {"topicId": "resnet", "label": "ResNet"}
+
+######## YOLO (V1–V8)
+[tagline] "One grid, one forward pass, 98 boxes — and what the grid costs."
+[topicId] "yolo"
+[whatIsIt[0]] "YOLO removes the proposal stage entirely. One CNN pass produces every box for the whole image at once: the image is divided into a 7×7 grid, and the cell containing an object's centre is responsible for predicting it. Each cell emits two boxes with confidences plus one set of 20 class probabilities, so the entire output is a single 7×7×30 tensor — 1,470 numbers, and 98 boxes total against R-CNN's 2,000 proposals."
+[whatIsIt[1]] "Framing detection as one regression problem is what buys the speed: 45 frames per second against Faster R-CNN's 7, and 155 for the smaller Fast YOLO. The accuracy cost was real — 63.4% mAP on VOC 2007 against 73.2% — but it makes *fewer* background false positives than Fast R-CNN, because each prediction is made with the whole image in view rather than from a cropped region. Reasoning globally about the scene is a genuine advantage of the design, not a side effect."
+[whatIsIt[2]] "Version 1's weaknesses come straight from its grid, and every later version is an answer to them. One class vector per cell means a cell holding two different objects can only report one; two boxes per cell means small clustered objects — a flock of birds — cannot all be found; and coordinates regressed from scratch made localisation the largest error term. v2 added anchors, batch norm and a higher input resolution; v3 predicted at three scales with an FPN-style neck and replaced the class softmax with per-class sigmoids so an object can carry multiple labels; v4 and v5 were training-recipe and engineering work; v8 went anchor-free with a decoupled head. The family's constant is the shape of the answer: one pass, one tensor, boxes everywhere at once."
+[steps[0]] {"number": 1, "title": "Divide the Image", "body": "A 7×7 grid over the whole image, fixed in advance."}
+[steps[1]] {"number": 2, "title": "Assign by Centre", "body": "The cell containing an object's centre is responsible for it."}
+[steps[2]] {"number": 3, "title": "Predict Per Cell", "body": "2 boxes × (x, y, w, h, confidence) + 20 class probabilities."}
+[steps[3]] {"number": 4, "title": "Read One Tensor", "body": "7×7×30 = 1,470 numbers, produced by a single forward pass."}
+[steps[4]] {"number": 5, "title": "Score and Suppress", "body": "Class score = confidence × class probability, then NMS over 98 boxes."}
+[steps[5]] {"number": 6, "title": "Know the Grid's Limits", "body": "One class per cell, two boxes per cell — the constraints v2–v8 lift."}
+[formulas[0]] {"label": "Output tensor", "formula": "S × S × (B·5 + C)", "note": "7 × 7 × (2·5 + 20) = 1,470 for v1."}
+[formulas[1]] {"label": "Boxes predicted", "formula": "S²·B = 98", "note": "Against R-CNN's 2,000 proposals per image."}
+[formulas[2]] {"label": "Confidence", "formula": "Pr(object) × IoU(pred, truth)", "note": "One number that means both \"is something here\" and \"how well am I boxing it\"."}
+[formulas[3]] {"label": "Class-specific score", "formula": "Pr(classᵢ | object) × confidence", "note": "The value NMS and the metric actually rank."}
+[formulas[4]] {"label": "Loss weighting", "formula": "λ_coord = 5, λ_noobj = 0.5", "note": "Most cells are empty, so their confidence term is down-weighted by hand."}
+[formulas[5]] {"label": "Square-root trick", "formula": "regress √w, √h", "note": "So a fixed error matters more on a small box than a large one."}
+[notationKey[0]] {"symbol": "one-stage detector", "meaning": "no proposal step: boxes come straight out of the network"}
+[notationKey[1]] {"symbol": "grid cell", "meaning": "the S×S unit responsible for objects whose centre falls in it"}
+[notationKey[2]] {"symbol": "responsible box", "meaning": "the one of B predictors with the best IoU on that object during training"}
+[notationKey[3]] {"symbol": "anchor-free", "meaning": "v8's return to direct box regression, without reference boxes"}
+[notationKey[4]] {"symbol": "decoupled head", "meaning": "separate branches for classification and localisation"}
+[notationKey[5]] {"symbol": "mosaic augmentation", "meaning": "v4's four-images-in-one training trick, now standard across the family"}
+[codeBlocks[0]] 
+  title: The output tensor, decoded
+  variants: []
+import torch
+
+S, B, C = 7, 2, 20
+out = torch.randn(1, S, S, B * 5 + C)      # 7 x 7 x 30 = 1470 numbers
+print(out.numel())                          # 1470
+print(S * S * B)                            # 98 boxes for the whole image
+
+boxes = out[..., :B * 5].reshape(1, S, S, B, 5)   # x, y, w, h, confidence
+classes = out[..., B * 5:]                        # ONE class vector per cell
+
+# x and y are offsets within the cell, in [0, 1]; w and h are fractions of the whole
+# image. So a box can be larger than the cell that owns it -- the cell decides
+# responsibility, not extent.
+#
+# `classes` having no B dimension is v1's single sharpest limitation: both boxes in a
+# cell must agree on the class.
+[codeBlocks[1]] 
+  title: What changed across the versions, in one place
+  variants: []
+# v1 (2016)  7x7 grid, 2 boxes/cell, one class vector per cell.  45 fps, 63.4 mAP
+# v2 (2017)  anchors, batch norm, 416x416 input, k-means anchor shapes. 67 fps, 76.8
+# v3 (2018)  3 scales with an FPN neck, per-class sigmoids instead of softmax,
+#            Darknet-53 backbone -- the version that fixed small objects
+# v4 (2020)  CSPDarknet, mosaic augmentation, CIoU loss; a recipe paper
+# v5 (2020)  PyTorch reimplementation, auto-anchors, export tooling
+# v8 (2023)  anchor-free, decoupled head, task-aligned label assignment
+#
+# The per-class sigmoid in v3 is the one worth understanding: softmax assumes the
+# classes are mutually exclusive, and "person" and "woman" are not. Multi-label
+# detection needs independent sigmoids, and the change costs nothing.
+
+from ultralytics import YOLO
+model = YOLO("yolov8n.pt")
+for r in model("street.jpg"):
+    print(r.boxes.xyxy, r.boxes.conf, r.boxes.cls)
+[applications[0]] {"iconName": "game", "title": "Real-Time Video", "body": "Sports analysis, traffic monitoring and refereeing systems, where the frame rate is the requirement."}
+[applications[1]] {"iconName": "chip", "title": "Edge Devices", "body": "The small variants run on phones and single-board computers, which is most of the family's deployed use."}
+[applications[2]] {"iconName": "robot", "title": "Robotics", "body": "A control loop needs detections at its own frequency; a 7 fps detector cannot close it."}
+[applications[3]] {"iconName": "search", "title": "Retail and Inventory", "body": "Counting objects on shelves, where speed over many cameras beats a point of mAP."}
+[takeaways[0]] "One forward pass produces the whole answer: a 7×7×30 tensor, 98 boxes, no proposal stage."
+[takeaways[1]] "45 fps against Faster R-CNN's 7, at 63.4% vs 73.2% VOC07 mAP — the trade is explicit."
+[takeaways[2]] "Seeing the whole image at once means fewer background false positives than region-based detectors."
+[takeaways[3]] "v1's limits are the grid's: one class vector per cell, two boxes per cell, poor on small clustered objects."
+[takeaways[4]] "Every later version attacks that — anchors and higher resolution (v2), multi-scale prediction and per-class sigmoids (v3), recipes (v4/v5), anchor-free heads (v8)."
+[crossLinks[0]] {"topicId": "faster_rcnn", "label": "Faster R-CNN"}
+[crossLinks[1]] {"topicId": "ssd", "label": "SSD"}
+[crossLinks[2]] {"topicId": "retinanet", "label": "RetinaNet"}
+[crossLinks[3]] {"topicId": "cnn", "label": "CNNs"}
+
+######## SSD (Single Shot Detector)
+[tagline] "8,732 default boxes across six scales, counted level by level."
+[topicId] "ssd"
+[whatIsIt[0]] "SSD agrees with YOLO that a detector should be one forward pass and disagrees about scale. One grid over one feature map carries a single notion of object size; SSD attaches detection heads to six feature maps of decreasing resolution, so a 38×38 map at stride 8 handles small objects and a 1×1 map handles ones that fill the frame. Prediction happens at every scale rather than at one, using the pyramid the backbone already produces."
+[whatIsIt[1]] "Each head places default boxes — anchors, by another name — at every location: 4 or 6 shapes per position, each predicting a class distribution and a four-number offset. Counted level by level that is 5,776 + 2,166 + 600 + 150 + 36 + 4 = 8,732 boxes for SSD300, and the simulation sums them from the level table rather than quoting the total. Nearly two thirds come from the finest map alone, which is exactly where small objects live and where a coarse detector fails."
+[whatIsIt[2]] "Scoring 8,732 boxes against an image holding two objects creates a brutal imbalance, and SSD handles it with hard negative mining: sort the background boxes by loss, keep only the worst at a 3:1 ratio to the positives, discard the rest. It works — SSD300 reached 74.3% mAP at 59 fps on VOC 2007, beating both YOLO v1's 63.4% at 45 fps and Faster R-CNN's 73.2% at 7 — and it is a heuristic bolted onto the loss, discarding most of the training signal to keep the ratio manageable. Replacing that heuristic with a loss function is RetinaNet's entire contribution a year later."
+[steps[0]] {"number": 1, "title": "Take the Whole Pyramid", "body": "Six feature maps at strides 8 to 300, not one."}
+[steps[1]] {"number": 2, "title": "Attach a Head Per Level", "body": "A small conv predicting classes and offsets, per location."}
+[steps[2]] {"number": 3, "title": "Place Default Boxes", "body": "4 or 6 aspect ratios per location, scaled to the level."}
+[steps[3]] {"number": 4, "title": "Count Them", "body": "5,776 + 2,166 + 600 + 150 + 36 + 4 = 8,732 for SSD300."}
+[steps[4]] {"number": 5, "title": "Match and Mine", "body": "Match by IoU > 0.5, then keep the hardest negatives at 3:1."}
+[steps[5]] {"number": 6, "title": "Suppress and Report", "body": "NMS per class, and you are done in one pass."}
+[formulas[0]] {"label": "Total default boxes", "formula": "Σ_levels W·H·k", "note": "8,732 for SSD300; 24,564 for SSD512."}
+[formulas[1]] {"label": "Scale per level", "formula": "s_k = s_min + (s_max − s_min)(k − 1)/(m − 1)", "note": "Linearly spaced from 0.2 to 0.9 of the image."}
+[formulas[2]] {"label": "Box shapes", "formula": "w = s_k√aᵣ, h = s_k/√aᵣ", "note": "aᵣ ∈ {1, 2, 3, ½, ⅓}, plus one extra square box per level."}
+[formulas[3]] {"label": "Matching", "formula": "IoU > 0.5 with any ground-truth box", "note": "Multiple defaults may match one object, unlike YOLO's single responsible cell."}
+[formulas[4]] {"label": "Hard negative mining", "formula": "keep worst negatives at 3:1 to positives", "note": "A heuristic that RetinaNet's focal loss replaces."}
+[formulas[5]] {"label": "Measured", "formula": "74.3% mAP at 59 fps (SSD300, VOC07)", "note": "Against YOLO 63.4 @ 45 and Faster R-CNN 73.2 @ 7."}
+[notationKey[0]] {"symbol": "default box", "meaning": "SSD's name for an anchor: a fixed reference shape at a location"}
+[notationKey[1]] {"symbol": "multi-scale prediction", "meaning": "detection heads on several feature maps at once"}
+[notationKey[2]] {"symbol": "SSD300 / SSD512", "meaning": "the two input resolutions; the larger is more accurate and slower"}
+[notationKey[3]] {"symbol": "hard negative mining", "meaning": "training only on the background boxes the model finds hardest"}
+[notationKey[4]] {"symbol": "atrous / dilated conv", "meaning": "used in SSD's backbone modification to keep resolution up"}
+[notationKey[5]] {"symbol": "data augmentation", "meaning": "the paper's aggressive random cropping, worth several points of mAP on small objects"}
+[codeBlocks[0]] 
+  title: Counting the boxes, level by level
+  variants: []
+levels = [(38, 4), (19, 6), (10, 6), (5, 6), (3, 4), (1, 4)]   # (grid, boxes per cell)
+
+counts = [g * g * k for g, k in levels]
+print(counts)          # [5776, 2166, 600, 150, 36, 4]
+print(sum(counts))     # 8732
+
+print(counts[0] / sum(counts))   # 0.66 -- two thirds from the finest map
+
+# This is the whole design in one line of arithmetic. YOLO v1 predicted 98 boxes from
+# one 7x7 map; SSD predicts 8,732 across six, and most of the extra capacity is spent
+# exactly where a single coarse grid is weakest.
+[codeBlocks[1]] 
+  title: Hard negative mining, and why it is a stopgap
+  variants: []
+import torch
+
+def mine(conf_loss, positives, ratio=3):
+    # conf_loss: per-box classification loss. positives: bool mask of matched boxes.
+    neg_loss = conf_loss.clone()
+    neg_loss[positives] = 0
+    k = int(ratio * positives.sum())
+    hardest = neg_loss.topk(k).indices
+    keep = positives.clone()
+    keep[hardest] = True
+    return keep                     # everything else contributes nothing at all
+
+# With ~8,700 negatives and ~10 positives, this trains on 30 background boxes and
+# throws away 8,700. It stabilises training and it is lossy and arbitrary: the ratio
+# is a hyperparameter, the cut is hard, and an easy negative that later becomes hard
+# was never seen. Focal loss keeps every box and weights it by how wrong it is,
+# which is the same intent expressed as a continuous function.
+[applications[0]] {"iconName": "chip", "title": "Mobile Detection", "body": "SSD-MobileNet is the standard on-device detector, and the reference model in most mobile ML toolkits."}
+[applications[1]] {"iconName": "game", "title": "Real-Time Video", "body": "Fast enough for live streams while staying close to two-stage accuracy."}
+[applications[2]] {"iconName": "search", "title": "Small-Object Detection", "body": "The fine-resolution head is what makes distant or small objects findable at all in a one-stage design."}
+[applications[3]] {"iconName": "browser", "title": "Multi-Scale Design", "body": "Predicting at several resolutions became universal — FPN generalised it to a top-down pathway with lateral connections."}
+[takeaways[0]] "One pass like YOLO, but with detection heads on six feature maps instead of one."
+[takeaways[1]] "8,732 default boxes for SSD300, summed from the level table — two thirds from the finest map alone."
+[takeaways[2]] "Default boxes are anchors: fixed shapes per location, each predicting a class distribution and an offset."
+[takeaways[3]] "74.3% mAP at 59 fps on VOC07, beating both YOLO v1's accuracy and Faster R-CNN's speed."
+[takeaways[4]] "Hard negative mining at 3:1 keeps the imbalance manageable by discarding most negatives — the heuristic RetinaNet replaces with focal loss."
+[crossLinks[0]] {"topicId": "yolo", "label": "YOLO"}
+[crossLinks[1]] {"topicId": "retinanet", "label": "RetinaNet"}
+[crossLinks[2]] {"topicId": "faster_rcnn", "label": "Faster R-CNN"}
+[crossLinks[3]] {"topicId": "mobilenet", "label": "MobileNet"}
+
+######## RetinaNet (Focal Loss)
+[tagline] "One factor in the loss, and one-stage detection caught up."
+[topicId] "retinanet"
+[whatIsIt[0]] "By 2017 the pattern was accepted as a law: two-stage detectors are accurate, one-stage detectors are fast, and you choose. RetinaNet's paper argues the gap was never architectural — it was the loss. A one-stage detector scores every anchor on the whole pyramid, roughly 100,000 per image, and essentially all of them are background. A two-stage detector never faces that, because its proposal step has already thrown away the easy negatives before the classifier sees them."
+[whatIsIt[1]] "Cross-entropy has no answer to that imbalance, and the simulation prices it. Take 100,000 background anchors the model already gets right at 0.9 confidence and 10 hard foreground anchors at 0.1: the background contributes 10,536 of loss against the foreground's 23 — 99.8% of the gradient comes from examples that are already correct. The model's best move is to predict background everywhere, and that is exactly what an untreated one-stage detector does."
+[whatIsIt[2]] "Focal loss multiplies each example's loss by (1 − p_t)^γ. At γ = 2 an anchor the model is 90% sure about is scaled by 0.01 while one it is 10% sure about keeps 0.81 of its loss. On the same 100,010 anchors the split becomes 105 against 19, and the background-to-foreground ratio falls from 458:1 to 5.6:1 — an 81× rebalance from one factor in the loss. Nothing is discarded, unlike SSD's hard negative mining; the easy examples are down-weighted smoothly and still contribute. With that plus a ResNet-FPN backbone and two small subnets, a one-stage detector reached 39.1 AP on COCO, above every published Faster R-CNN variant at the time."
+[steps[0]] {"number": 1, "title": "Count the Anchors", "body": "Five pyramid levels × 9 anchors ≈ 120,000 per image."}
+[steps[1]] {"number": 2, "title": "Notice What They Are", "body": "Two are on objects. The rest is background the model finds easy."}
+[steps[2]] {"number": 3, "title": "Price Cross-Entropy", "body": "99.8% of the loss comes from anchors already classified correctly."}
+[steps[3]] {"number": 4, "title": "Add the Focal Term", "body": "×(1 − p_t)^γ: 0.01 for an easy example, 0.81 for a hard one."}
+[steps[4]] {"number": 5, "title": "Re-price It", "body": "Background:foreground drops 458:1 → 5.6:1, an 81× rebalance."}
+[steps[5]] {"number": 6, "title": "Initialise the Bias", "body": "Start with π = 0.01 prior, or the first epoch diverges."}
+[formulas[0]] {"label": "Cross-entropy", "formula": "CE(p_t) = −log(p_t)", "note": "0.105 for a correct-at-0.9 example, and there are 100,000 of them."}
+[formulas[1]] {"label": "Focal loss", "formula": "FL(p_t) = −α(1 − p_t)^γ log(p_t)", "note": "γ = 2, α = 0.25 in the paper."}
+[formulas[2]] {"label": "Focal weight", "formula": "(1 − p_t)^γ", "note": "0.01 at p = 0.9, 0.81 at p = 0.1 with γ = 2."}
+[formulas[3]] {"label": "Measured split (CE)", "formula": "10,536 background vs 23 foreground", "note": "99.8% of the gradient from already-correct examples."}
+[formulas[4]] {"label": "Measured split (FL)", "formula": "105 vs 19 — ratio 458:1 → 5.6:1", "note": "An 81× rebalance from one factor."}
+[formulas[5]] {"label": "Prior initialisation", "formula": "b = −log((1 − π)/π), π = 0.01", "note": "Without it the initial loss from 100k negatives destabilises training."}
+[notationKey[0]] {"symbol": "p_t", "meaning": "the probability assigned to the *correct* class — p for positives, 1 − p for negatives"}
+[notationKey[1]] {"symbol": "γ (gamma)", "meaning": "the focusing parameter; 0 recovers cross-entropy, 2 is the paper's choice"}
+[notationKey[2]] {"symbol": "α (alpha)", "meaning": "the ordinary class-weighting term, kept alongside the focal term"}
+[notationKey[3]] {"symbol": "FPN", "meaning": "feature pyramid network — top-down pathway with lateral connections, P3–P7 here"}
+[notationKey[4]] {"symbol": "class imbalance", "meaning": "the foreground-background ratio a one-stage detector faces at every anchor"}
+[notationKey[5]] {"symbol": "subnet", "meaning": "the small shared conv head applied identically to every pyramid level"}
+[codeBlocks[0]] 
+  title: The imbalance, and what one factor does to it
+  variants: []
+import numpy as np
+
+def split(n_bg, p_bg, n_fg, p_fg, gamma=0.0):
+    w = lambda p: (1 - p) ** gamma
+    bg = n_bg * w(p_bg) * -np.log(p_bg)
+    fg = n_fg * w(p_fg) * -np.log(p_fg)
+    return bg, fg, bg / fg
+
+print(split(100_000, 0.9, 10, 0.1))            # (10536, 23.0, 457.6)  cross-entropy
+print(split(100_000, 0.9, 10, 0.1, gamma=2))   # (105.4, 18.7, 5.65)   focal
+
+print(457.6 / 5.65)                            # 81x rebalance
+
+# Note what did NOT happen: no example was dropped, no ratio was imposed, no
+# threshold was chosen. The 100,000 easy negatives still contribute -- 105 units of
+# loss between them, which is roughly the right amount of attention for examples the
+# model already has right.
+[codeBlocks[1]] 
+  title: Implementing it, and the initialisation nobody mentions
+  variants: []
+import torch, torch.nn.functional as F
+
+def focal_loss(logits, targets, alpha=0.25, gamma=2.0):
+    p = torch.sigmoid(logits)
+    ce = F.binary_cross_entropy_with_logits(logits, targets, reduction='none')
+    p_t = p * targets + (1 - p) * (1 - targets)
+    loss = ce * ((1 - p_t) ** gamma)
+    a_t = alpha * targets + (1 - alpha) * (1 - targets)
+    return (a_t * loss).sum() / targets.sum().clamp(min=1)   # normalise by POSITIVES
+
+# Two details that decide whether this trains at all:
+#  - normalise by the number of positive anchors, not by the total. Dividing by
+#    100,000 makes the gradient vanish.
+#  - initialise the classification head's final bias to -log((1 - 0.01)/0.01) so the
+#    model starts out predicting "background" with 99% confidence. Without it the
+#    first iteration's loss over 100k negatives is large enough to diverge.
+prior = 0.01
+bias = -torch.log(torch.tensor((1 - prior) / prior))
+[applications[0]] {"iconName": "target", "title": "Dense Detection", "body": "The default one-stage loss; FCOS, YOLO v3+ and most modern detectors use focal loss or a descendant."}
+[applications[1]] {"iconName": "flask", "title": "Rare-Event Classification", "body": "Fraud, defects and disease screening face the same imbalance — the loss transfers directly out of detection."}
+[applications[2]] {"iconName": "search", "title": "Segmentation", "body": "Focal loss is standard for pixel-level tasks where the object occupies a small fraction of the image."}
+[applications[3]] {"iconName": "bulb", "title": "Loss Design", "body": "The general lesson: an imbalance heuristic in the training loop is often a missing term in the loss."}
+[takeaways[0]] "The one-stage accuracy gap was a class-imbalance problem, not an architectural one."
+[takeaways[1]] "A one-stage detector scores ~100k anchors per image and nearly all of them are easy background."
+[takeaways[2]] "Under cross-entropy 99.8% of the loss comes from already-correct examples — measured, not asserted."
+[takeaways[3]] "(1 − p_t)^γ down-weights the easy ones smoothly: the background:foreground ratio falls 458:1 → 5.6:1."
+[takeaways[4]] "Nothing is discarded, unlike hard negative mining — and the classification bias must be initialised to a 0.01 prior or training diverges."
+[crossLinks[0]] {"topicId": "ssd", "label": "SSD"}
+[crossLinks[1]] {"topicId": "yolo", "label": "YOLO"}
+[crossLinks[2]] {"topicId": "resnet", "label": "ResNet"}
+[crossLinks[3]] {"topicId": "model_evaluation", "label": "Model Evaluation"}
+
+######## U-Net (Medical Segmentation)
+[tagline] "Contract, expand, and concatenate what pooling threw away."
+[topicId] "unet"
+[whatIsIt[0]] "Segmentation needs a label for every pixel, so a classifier's ending — pool everything away, flatten, dense layer — is exactly wrong: it discards the spatial information the task is asking for. U-Net keeps the contracting encoder that builds semantics and mirrors it with an expanding decoder that upsamples back toward image resolution, giving the architecture the U shape it is named for."
+[whatIsIt[1]] "Upsampling alone cannot invent back the boundary detail that pooling threw away, and that is what the skip connections are for. Each decoder stage concatenates the encoder feature map of the same resolution: coarse \"what is this\" from below, fine \"exactly where is the edge\" from the side. Concatenation rather than addition matters — the decoder sees both maps in full and learns how to combine them, rather than being handed a sum."
+[whatIsIt[2]] "The original uses unpadded convolutions throughout, so every stage shrinks and the encoder map is always larger than the decoder map it joins. The paper crops it — by 4, 16, 40 and 88 pixels per side going up, as the simulation walks through — and the consequence shows in the shapes: 572×572 in, 388×388 out. The network deliberately predicts a smaller region than it reads, and a large image is covered by overlapping tiles so every predicted pixel has full context. It was trained on about 30 annotated images, with heavy elastic deformation standing in for the data that did not exist and a loss weighted to put extra cost on the thin background gaps *between* touching cells — a segmentation network explicitly taught to draw the separations it would otherwise merge. It won the ISBI cell-tracking challenge by a wide margin and is still the default architecture for medical segmentation."
+[steps[0]] {"number": 1, "title": "Contract", "body": "Two unpadded 3×3 convolutions, then pool. Resolution down, channels doubled."}
+[steps[1]] {"number": 2, "title": "Bottleneck", "body": "28×28×1024 from a 572×572 input — the most semantic, least located point."}
+[steps[2]] {"number": 3, "title": "Expand", "body": "Up-convolution halves the channels and doubles the resolution."}
+[steps[3]] {"number": 4, "title": "Concatenate the Skip", "body": "Crop the encoder map to fit and stack it on — 4, 16, 40, 88 px per side."}
+[steps[4]] {"number": 5, "title": "Refine", "body": "Two more convolutions per level, mixing the coarse and fine signals."}
+[steps[5]] {"number": 6, "title": "Predict a Smaller Region", "body": "572 in, 388 out, and tile a large image with overlap."}
+[formulas[0]] {"label": "Encoder stage", "formula": "n → n − 4, then ÷2", "note": "Two unpadded 3×3 convolutions, then a 2×2 pool."}
+[formulas[1]] {"label": "Decoder stage", "formula": "n → 2n, concat skip, then − 4", "note": "Up-convolution, concatenation, two more convolutions."}
+[formulas[2]] {"label": "Skip crop", "formula": "(encoder size − decoder size)/2 per side", "note": "4, 16, 40 and 88 pixels going up from the bottleneck."}
+[formulas[3]] {"label": "Input vs output", "formula": "572 → 388", "note": "The border the network refuses to predict, because it lacks context for it."}
+[formulas[4]] {"label": "Weighted loss", "formula": "w(x) = w_c(x) + w₀·exp(−(d₁+d₂)²/2σ²)", "note": "Extra weight on pixels close to two different cells — the separating gaps."}
+[formulas[5]] {"label": "Dice loss (later standard)", "formula": "1 − 2|P∩G| / (|P|+|G|)", "note": "Overlap-based, and far more stable than cross-entropy on tiny foregrounds."}
+[notationKey[0]] {"symbol": "contracting path", "meaning": "the encoder: convolutions and pooling, resolution down"}
+[notationKey[1]] {"symbol": "expanding path", "meaning": "the decoder: up-convolutions, resolution back up"}
+[notationKey[2]] {"symbol": "skip connection", "meaning": "the encoder map concatenated into the decoder at matching resolution"}
+[notationKey[3]] {"symbol": "up-convolution", "meaning": "transposed convolution — learned upsampling, not interpolation"}
+[notationKey[4]] {"symbol": "overlap-tile strategy", "meaning": "covering a large image with overlapping input tiles, since the output is smaller"}
+[notationKey[5]] {"symbol": "elastic deformation", "meaning": "the augmentation that made 30 training images sufficient"}
+[codeBlocks[0]] 
+  title: The shape arithmetic, which is the architecture
+  variants: []
+size, skips = 572, []
+for level in range(4):
+    size -= 4                 # two unpadded 3x3 convolutions
+    skips.append(size)
+    size //= 2                # 2x2 max pool
+    print(f"encode {level+1}: {size*2} -> pooled {size}")
+size -= 4
+print("bottleneck", size)     # 28
+
+for level in reversed(range(4)):
+    size *= 2                 # up-convolution
+    crop = (skips[level] - size) // 2
+    print(f"up {level+1}: {size}, skip {skips[level]} cropped {crop} px per side")
+    size -= 4
+print("output", size)         # 388
+
+# encode: 568/280/136/64, bottleneck 28, crops 4 / 16 / 40 / 88, output 388.
+# Padded implementations (padding=1 everywhere) keep 572 -> 572 and need no crop at
+# all -- which is what almost everyone does now, at the cost of slightly worse
+# predictions along the border the original refused to make.
+[codeBlocks[1]] 
+  title: A padded U-Net block, and why concatenate rather than add
+  variants: []
+import torch, torch.nn as nn
+
+def block(c_in, c_out):
+    return nn.Sequential(
+        nn.Conv2d(c_in, c_out, 3, padding=1), nn.BatchNorm2d(c_out), nn.ReLU(),
+        nn.Conv2d(c_out, c_out, 3, padding=1), nn.BatchNorm2d(c_out), nn.ReLU(),
+    )
+
+class Up(nn.Module):
+    def __init__(self, c_in, c_out):
+        super().__init__()
+        self.up = nn.ConvTranspose2d(c_in, c_out, 2, stride=2)
+        self.conv = block(c_out * 2, c_out)      # *2: the skip is CONCATENATED
+
+    def forward(self, x, skip):
+        return self.conv(torch.cat([self.up(x), skip], dim=1))
+
+# Addition (ResNet's operator) forces the two signals into one channel budget and
+# commits to a fixed mixture. Concatenation keeps both and lets the following
+# convolution learn the mixture per channel -- which is why the block after the
+# concat has twice the input channels, and why U-Net's decoder is not cheap.
+[applications[0]] {"iconName": "flask", "title": "Medical Imaging", "body": "Organ, tumour and cell segmentation in CT, MRI and microscopy — still the default architecture a decade on."}
+[applications[1]] {"iconName": "globe", "title": "Satellite and Aerial Imagery", "body": "Roads, buildings and land cover: dense labels over very large images, tiled exactly as the paper describes."}
+[applications[2]] {"iconName": "target", "title": "Diffusion Models", "body": "Stable Diffusion's denoiser is a U-Net — the same encoder-decoder-with-skips, predicting noise instead of labels."}
+[applications[3]] {"iconName": "chart", "title": "Industrial Inspection", "body": "Defect maps on manufactured surfaces, where the training set is small and augmentation carries the load."}
+[takeaways[0]] "Encoder-decoder with skip connections: semantics from the deep path, boundaries from the shallow one."
+[takeaways[1]] "Skips are concatenated, not added, so the decoder learns how to mix coarse and fine rather than being handed a sum."
+[takeaways[2]] "Unpadded convolutions mean the encoder map is bigger than the decoder map — cropped by 4, 16, 40 and 88 px per side."
+[takeaways[3]] "572 in, 388 out: the network refuses to predict a border it has no context for, and large images are tiled with overlap."
+[takeaways[4]] "Trained on ~30 images using elastic deformation and a loss weighted toward the gaps between touching cells."
+[crossLinks[0]] {"topicId": "segmentation_types", "label": "Semantic vs Instance Segmentation"}
+[crossLinks[1]] {"topicId": "mask_rcnn", "label": "Mask R-CNN"}
+[crossLinks[2]] {"topicId": "conv_layers", "label": "Convolution Layers"}
+[crossLinks[3]] {"topicId": "diffusion_models", "label": "Diffusion Models"}
+
+######## Mask R-CNN (Instance Seg.)
+[tagline] "One more head, and the quantisation bug the masks exposed."
+[topicId] "mask_rcnn"
+[whatIsIt[0]] "Mask R-CNN is Faster R-CNN plus a third head: alongside the class score and the box, a small fully convolutional branch predicts a 28×28 binary mask for each region of interest. The addition is almost trivially simple, which is the paper's point — instance segmentation did not need a new paradigm, it needed one more branch and one arithmetic fix. It beat every entrant of the 2016 COCO segmentation challenge and runs at about 5 frames per second."
+[whatIsIt[1]] "The masks are per-class and binary, with no softmax across classes. The classification head decides *what* the object is; the mask head only decides *which pixels* belong to it, predicting one independent mask per class and using the one the classifier chose. Decoupling those two questions is worth several points of mask AP over the usual per-pixel multi-class softmax, because the mask branch stops competing with itself across classes it was never asked to distinguish."
+[whatIsIt[2]] "The mask branch also exposed a defect that classification had tolerated for two years. RoI pooling quantises twice — snapping the box onto the feature grid, then dividing that grid into bins — and both roundings happen in feature-map units, so each costs a multiple of the stride in image pixels. On a 145-pixel box at stride 16 the simulation measures 1 pixel lost snapping the RoI and 32 pixels of its far edge never read at all. A class label survives that. A pixel-accurate mask does not. RoIAlign removes both roundings by sampling each bin at exact floating-point locations with bilinear interpolation and never calling floor(), and the paper reports roughly a 3-point mask-AP gain from that change alone — about twice as much at the strict IoU 0.75 threshold, where a few pixels of misalignment is exactly what decides a match."
+[steps[0]] {"number": 1, "title": "Start From Faster R-CNN", "body": "RPN, proposals, class head, box head — all unchanged."}
+[steps[1]] {"number": 2, "title": "Add a Mask Branch", "body": "A small FCN per RoI producing K masks of 28×28."}
+[steps[2]] {"number": 3, "title": "Decouple Class From Mask", "body": "Per-class binary masks, sigmoid not softmax. The class head picks one."}
+[steps[3]] {"number": 4, "title": "Find the Misalignment", "body": "RoI pooling's two roundings cost 1 px + 32 px at stride 16."}
+[steps[4]] {"number": 5, "title": "Replace It With RoIAlign", "body": "Bilinear sampling at exact locations. No floor(), no snapping."}
+[steps[5]] {"number": 6, "title": "Train All Three Heads", "body": "L = L_cls + L_box + L_mask, one loss, one optimiser."}
+[formulas[0]] {"label": "Total loss", "formula": "L = L_cls + L_box + L_mask", "note": "Per sampled RoI, all three heads together."}
+[formulas[1]] {"label": "Mask loss", "formula": "average per-pixel binary cross-entropy, on the true class's mask only", "note": "The other K−1 masks contribute nothing."}
+[formulas[2]] {"label": "Mask output", "formula": "K × 28 × 28 per RoI", "note": "One binary mask per class, no competition between them."}
+[formulas[3]] {"label": "RoI pooling quantisation", "formula": "1 px (RoI snap) + 32 px (bin snap)", "note": "Measured on a 145-pixel box at stride 16."}
+[formulas[4]] {"label": "RoIAlign", "formula": "bilinear sample at exact bin centres", "note": "Zero quantisation; the fix is arithmetic, not architecture."}
+[formulas[5]] {"label": "Reported gain", "formula": "≈+3 mask AP, roughly double that at AP75", "note": "Strict thresholds are where misalignment shows."}
+[notationKey[0]] {"symbol": "instance segmentation", "meaning": "a mask per object, not per class — what this architecture produces"}
+[notationKey[1]] {"symbol": "RoIAlign", "meaning": "RoI pooling without the two roundings, using bilinear interpolation"}
+[notationKey[2]] {"symbol": "mask AP", "meaning": "average precision with IoU computed over masks rather than boxes"}
+[notationKey[3]] {"symbol": "AP75", "meaning": "AP at the strict 0.75 IoU threshold, where alignment matters most"}
+[notationKey[4]] {"symbol": "FCN head", "meaning": "the small fully convolutional network producing the mask"}
+[notationKey[5]] {"symbol": "keypoint head", "meaning": "the same trick with a one-hot mask per joint — human pose estimation for free"}
+[codeBlocks[0]] 
+  title: The two roundings, and what removing them is worth
+  variants: []
+stride, bins, box = 16, 7, 145.0
+
+exact_cells = box / stride              # 9.0625
+snapped = int(exact_cells)              # 9      <- rounding one
+bin_exact = snapped / bins              # 1.2857
+bin_snapped = int(bin_exact)            # 1      <- rounding two
+
+print((exact_cells - snapped) * stride)                  # 1.0  px
+print((bin_exact - bin_snapped) * bins * stride)         # 32.0 px
+
+# RoIAlign replaces both with sampling at exact positions:
+import torch
+from torchvision.ops import roi_align, roi_pool
+feats = torch.randn(1, 256, 50, 50)
+rois = torch.tensor([[0, 30.4, 20.7, 175.4, 165.7]])     # note the fractions
+print(roi_pool(feats, rois, (7, 7), 1/16).shape)         # snapped to the grid
+print(roi_align(feats, rois, (7, 7), 1/16, sampling_ratio=2).shape)  # not snapped
+[codeBlocks[1]] 
+  title: Per-class binary masks, and why not a softmax
+  variants: []
+import torch, torch.nn as nn, torch.nn.functional as F
+
+mask_head = nn.Sequential(
+    *[l for _ in range(4) for l in (nn.Conv2d(256, 256, 3, padding=1), nn.ReLU())],
+    nn.ConvTranspose2d(256, 256, 2, stride=2), nn.ReLU(),
+    nn.Conv2d(256, 80, 1),               # K = 80 COCO classes, ONE mask each
+)
+logits = mask_head(torch.randn(4, 256, 14, 14))
+print(logits.shape)                      # [4, 80, 28, 28]
+
+# Training uses only the mask of the ground-truth class, with a per-pixel sigmoid:
+labels = torch.tensor([3, 17, 3, 62])
+chosen = logits[torch.arange(4), labels]                 # [4, 28, 28]
+loss = F.binary_cross_entropy_with_logits(chosen, torch.zeros_like(chosen))
+
+# A per-pixel softmax across the 80 classes would make the masks compete: raising
+# the "dog" mask at a pixel would lower "cat" there, even though the class decision
+# has already been made elsewhere. Decoupling the two questions is worth several
+# points of mask AP for no extra compute.
+[applications[0]] {"iconName": "flask", "title": "Cell and Tissue Analysis", "body": "Counting and measuring individual cells needs instances, not a class map — touching cells must stay separate."}
+[applications[1]] {"iconName": "robot", "title": "Robotic Grasping", "body": "A robot picks one object, so it needs that object's pixels rather than the class region."}
+[applications[2]] {"iconName": "browser", "title": "Photo Editing", "body": "Selecting and cutting out a specific person or item is instance segmentation in an interactive loop."}
+[applications[3]] {"iconName": "users", "title": "Human Pose Estimation", "body": "Swap the mask for a one-hot map per joint and the same architecture predicts keypoints."}
+[takeaways[0]] "Faster R-CNN plus one small FCN head predicting a 28×28 binary mask per RoI — that is the whole architecture."
+[takeaways[1]] "Masks are per-class and independent, so the mask branch never competes with itself across classes."
+[takeaways[2]] "RoI pooling's two roundings cost 1 px and 32 px at stride 16 — invisible to a label, fatal to a mask."
+[takeaways[3]] "RoIAlign samples at exact positions with bilinear interpolation; the paper reports ~+3 mask AP, and about double that at AP75."
+[takeaways[4]] "The same head, with a one-hot map per joint, does human pose estimation with no other change."
+[crossLinks[0]] {"topicId": "faster_rcnn", "label": "Faster R-CNN"}
+[crossLinks[1]] {"topicId": "segmentation_types", "label": "Semantic vs Instance Segmentation"}
+[crossLinks[2]] {"topicId": "unet", "label": "U-Net"}
+[crossLinks[3]] {"topicId": "fast_rcnn", "label": "Fast R-CNN"}
+
+######## Semantic vs Instance Segmentation
+[tagline] "Two touching sheep: one region, or two objects."
+[topicId] "segmentation_types"
+[whatIsIt[0]] "Four tasks sit on the same photograph and answer different questions. Classification: what is in this image. Detection: where, as boxes. Semantic segmentation: a class label for every pixel. Instance segmentation: a class label for every pixel *and* which object each pixel belongs to. The words are used loosely in conversation and mean precisely different things in a spec, a dataset and a metric."
+[whatIsIt[1]] "The distinction is not academic, and it shows up the moment two objects of the same class touch. In the simulation two sheep standing shoulder to shoulder are, semantically, one connected region of 54 pixels — there is no label that could separate them, because a semantic output has one channel per class and none per object. The instance map on the same picture reports three objects. If your application counts things, picks one thing up, or tracks a thing across frames, a semantic map cannot answer it no matter how accurate it is."
+[whatIsIt[2]] "So they are evaluated differently too, and the metrics are not comparable. Semantic segmentation reports mean IoU per class — the lab's prediction, which drops the sheep's bottom row, scores 0.917 and is a perfectly good result. Instance segmentation uses detection's average precision computed over masks, where merging two sheep into one costs a false negative outright rather than a few pixels of IoU. Panoptic segmentation is the task that demands both at once: every pixel labelled, every countable object separated, no overlaps allowed, scored by panoptic quality. Architecturally the split is just as clean — semantic segmentation is a dense per-pixel classifier (FCN, U-Net, DeepLab), instance segmentation is detection with a mask head (Mask R-CNN), and the modern query-based models (Mask2Former, SAM) are attempts to serve all of it from one design."
+[steps[0]] {"number": 1, "title": "Classify", "body": "One label for the whole image. No location at all."}
+[steps[1]] {"number": 2, "title": "Detect", "body": "A box and a class per object. Location, coarsely."}
+[steps[2]] {"number": 3, "title": "Segment Semantically", "body": "A class per pixel — but touching objects of one class merge."}
+[steps[3]] {"number": 4, "title": "Segment by Instance", "body": "A mask per object. Two sheep are two answers."}
+[steps[4]] {"number": 5, "title": "Pick the Metric to Match", "body": "mIoU for classes, mask AP for objects, PQ for both."}
+[steps[5]] {"number": 6, "title": "Note Stuff vs Things", "body": "Sky and road cannot be counted; sheep and cars can."}
+[formulas[0]] {"label": "Per-class IoU", "formula": "|P ∩ G| / |P ∪ G| for one class", "note": "Computed over pixels, not boxes."}
+[formulas[1]] {"label": "Mean IoU", "formula": "average of per-class IoU over classes present", "note": "0.917 for the lab's prediction."}
+[formulas[2]] {"label": "Pixel accuracy", "formula": "correct pixels / total pixels", "note": "Misleading when one class dominates — a 95% background image scores 95% by predicting nothing."}
+[formulas[3]] {"label": "Mask AP", "formula": "detection AP with IoU computed over masks", "note": "Merging two objects costs a whole false negative."}
+[formulas[4]] {"label": "Dice / F1", "formula": "2|P ∩ G| / (|P| + |G|)", "note": "The medical-imaging convention; monotonically related to IoU but not equal to it."}
+[formulas[5]] {"label": "Panoptic quality", "formula": "PQ = (Σ IoU over matched segments) / (TP + ½FP + ½FN)", "note": "Segmentation quality × recognition quality, in one number."}
+[notationKey[0]] {"symbol": "semantic segmentation", "meaning": "class per pixel; countable objects of one class are not separated"}
+[notationKey[1]] {"symbol": "instance segmentation", "meaning": "one mask per object; background \"stuff\" is usually ignored"}
+[notationKey[2]] {"symbol": "panoptic segmentation", "meaning": "both, with no overlapping labels allowed"}
+[notationKey[3]] {"symbol": "stuff vs things", "meaning": "amorphous regions (sky, grass) vs countable objects (sheep, cars)"}
+[notationKey[4]] {"symbol": "mIoU", "meaning": "the semantic metric: per-class IoU averaged over classes"}
+[notationKey[5]] {"symbol": "PQ", "meaning": "panoptic quality — the metric that penalises merged instances and mislabelled stuff together"}
+[codeBlocks[0]] 
+  title: The same picture under both label spaces
+  variants: []
+import numpy as np
+from scipy.ndimage import label
+
+semantic = np.zeros((12, 12), int)
+semantic[3:9, 1:10] = 1        # two sheep, touching
+semantic[1:5, 10:12] = 2       # a tree
+
+instance = np.zeros((12, 12), int)
+instance[3:9, 1:5] = 1
+instance[3:9, 5:10] = 2
+instance[1:5, 10:12] = 3
+
+print(len(np.unique(semantic)) - 1)          # 2 classes
+print(label(semantic == 1)[1])               # 1 connected sheep region
+print(len(np.unique(instance)) - 1)          # 3 objects
+
+# No post-processing recovers the second sheep from `semantic`: connected components
+# sees one blob because there is one blob. The information was never in the output
+# space -- which is why "just run connected components on the semantic map" fails on
+# exactly the images where it matters.
+[codeBlocks[1]] 
+  title: Metrics that do not compare, and one that hides the problem
+  variants: []
+import numpy as np
+
+def iou(p, g, c):
+    return ((p == c) & (g == c)).sum() / (((p == c) | (g == c)).sum() or 1)
+
+truth = semantic.copy()
+pred = semantic.copy(); pred[8, 1:10] = 0     # drop the sheep's bottom row
+
+print(np.mean([iou(pred, truth, c) for c in (1, 2)]))   # 0.917 -- a good result
+print((pred == truth).mean())                            # 0.938 pixel accuracy
+
+# Pixel accuracy is the trap: predict "background" for everything in this image and
+# it still scores 0.68, because background is most of the pixels. mIoU is the
+# semantic default for that reason.
+#
+# And note what neither number can see: a prediction that merges the two sheep into
+# one region scores 1.000 mIoU. Under mask AP it loses an object outright. Choose the
+# metric from the question, not from the architecture.
+[applications[0]] {"iconName": "robot", "title": "Autonomous Driving", "body": "Drivable surface is semantic; each pedestrian and vehicle must be an instance, because they are tracked and predicted individually."}
+[applications[1]] {"iconName": "flask", "title": "Cell Counting", "body": "Counting is instance segmentation by definition — a semantic mask of touching cells reports one cell."}
+[applications[2]] {"iconName": "globe", "title": "Land Cover Mapping", "body": "Forest and water are stuff, not things: semantic segmentation is the correct task and instances would be meaningless."}
+[applications[3]] {"iconName": "browser", "title": "Photo Editing", "body": "\"Select this person\" is instance; \"replace the sky\" is semantic. The UI verb tells you which model to run."}
+[takeaways[0]] "Semantic segmentation labels pixels by class; instance segmentation also says which object each pixel belongs to."
+[takeaways[1]] "Two touching objects of one class are one semantic region and two instances — measured here as 2 regions vs 3 objects."
+[takeaways[2]] "No post-processing recovers instances from a semantic map: the distinction was never in the output space."
+[takeaways[3]] "Metrics do not transfer — mIoU (0.917 for the lab's prediction) rewards pixels, mask AP punishes merged objects."
+[takeaways[4]] "Panoptic segmentation demands both with no overlaps, and separates \"stuff\" that cannot be counted from \"things\" that can."
+[crossLinks[0]] {"topicId": "unet", "label": "U-Net"}
+[crossLinks[1]] {"topicId": "mask_rcnn", "label": "Mask R-CNN"}
+[crossLinks[2]] {"topicId": "cnn", "label": "CNNs"}
+[crossLinks[3]] {"topicId": "model_evaluation", "label": "Model Evaluation"}
+
+######## RNNs
+[tagline] "Recurrent networks that carry state across a sequence."
+[topicId] "rnn"
+[whatIsIt[0]] "Recurrent neural networks (RNNs) process sequences one step at a time, carrying a hidden state that summarizes everything seen so far."
+[whatIsIt[1]] "That loop gives them memory — the same weights are reused at every timestep — making them a natural fit for text, speech, and time series."
+[steps[0]] {"number": 1, "title": "Hidden State", "body": "A vector h carries context from previous steps into the current one."}
+[steps[1]] {"number": 2, "title": "Recurrent Update", "body": "At each step, combine the new input with the previous hidden state to produce the next."}
+[steps[2]] {"number": 3, "title": "Shared Weights", "body": "The same parameters apply at every timestep, so the network handles any sequence length."}
+[steps[3]] {"number": 4, "title": "Backprop Through Time", "body": "Unroll the loop and backpropagate across all steps to train."}
+[formulas[0]] {"label": "Recurrence", "formula": "hₜ = tanh(Wₓxₜ + Wₕhₜ₋₁ + b)", "note": "Next state from input and previous state."}
+[formulas[1]] {"label": "Output", "formula": "yₜ = Wᵧhₜ", "note": "Prediction from the current hidden state."}
+[formulas[2]] {"label": "Weakness", "formula": "vanishing gradients", "note": "Long-range dependencies fade over many steps."}
+[notationKey[0]] {"symbol": "hₜ", "meaning": "hidden state at timestep t"}
+[notationKey[1]] {"symbol": "BPTT", "meaning": "backpropagation through time"}
+[notationKey[2]] {"symbol": "timestep", "meaning": "one position in the sequence"}
+[codeBlocks[0]] 
+  title: An RNN layer (PyTorch)
+  variants: []
+import torch.nn as nn
+
+rnn = nn.RNN(input_size=64, hidden_size=128, batch_first=True)
+output, h_n = rnn(x)   # output: per-step states; h_n: final state
+[applications[0]] {"iconName": "book", "title": "Sequence Modeling", "body": "Language modeling, handwriting, and speech before Transformers took over."}
+[applications[1]] {"iconName": "chart", "title": "Time Series", "body": "Forecasting sensor, financial, and demand data where order matters."}
+[applications[2]] {"iconName": "music", "title": "Audio Generation", "body": "Step-by-step generation of music and speech waveforms."}
+[takeaways[0]] "RNNs carry a hidden state through a sequence, reusing weights at every step."
+[takeaways[1]] "They're trained by backpropagation through time over the unrolled loop."
+[takeaways[2]] "Vanishing gradients cripple their long-range memory — the motivation for LSTMs."
+[takeaways[3]] "Transformers have largely replaced them, but the recurrent idea remains foundational."
+[crossLinks[0]] {"topicId": "lstm_gru", "label": "LSTMs / GRUs"}
+[crossLinks[1]] {"topicId": "attention", "label": "Attention"}
+
+######## BPTT (Backprop Through Time)
+[tagline] "Unroll, walk back, and find out what the window really bounds."
+[topicId] "bptt"
+[whatIsIt[0]] "Backpropagation through time is ordinary backpropagation applied to a network that was written as a loop. Unroll a recurrent layer over T timesteps and what you have is a T-layer feedforward network in which every layer shares one weight matrix. The forward pass is the loop you wrote; the backward pass walks from the loss at the end of the sequence to the first step, multiplying by that same matrix on the way, and the gradient for the shared weights is the *sum* of what every step contributed. Nothing about it is special except the sharing, and the sharing is where all the trouble lives."
+[whatIsIt[1]] "The trouble is measurable rather than folkloric. In the lab's task — one informative token, nine steps of noise, a decision at the end — the gradient arriving at the last step has norm 0.480 at initialization and the one arriving at the first step has norm 0.0085, 56× smaller after nine multiplications. The first step's contribution to the recurrent matrix is not merely small, it is exactly zero, because h₀ is the zero vector and that step's outer product has a zero factor in it. The cue reaches the input matrix and the recurrent matrix never sees it at all."
+[whatIsIt[2]] "So the standard remedy is truncation: keep the forward pass whole, stop the gradient after k steps, and store k activations instead of T. That is how every recurrent model on long sequences is actually trained, and it is usually described as a cheap approximation. Measured on this task it is something stranger. A truncated gradient is 99% cosine-aligned with the full one at k = 3, and can even be *larger* than it. It is also, at that width, useless: across three initializations the k = 3 model learns the rule once and fails twice. The alignment and the learning have almost nothing to do with each other."
+[steps[0]] {"number": 1, "title": "Unroll", "body": "T timesteps become T layers sharing one weight matrix."}
+[steps[1]] {"number": 2, "title": "Walk Back", "body": "One multiplication by Wᵀ per step, from the loss to the start."}
+[steps[2]] {"number": 3, "title": "Sum the Contributions", "body": "∂L/∂W is a sum over steps — not one term, T of them."}
+[steps[3]] {"number": 4, "title": "Watch It Decay", "body": "0.480 at the output, 0.0085 nine steps earlier: 56×."}
+[steps[4]] {"number": 5, "title": "Truncate", "body": "Cut the walk at k steps: k activations stored instead of T."}
+[steps[5]] {"number": 6, "title": "Check What Was Cut", "body": "Gradient similarity says almost nothing about what gets learned."}
+[formulas[0]] {"label": "Unrolled state", "formula": "hₜ = tanh(W·hₜ₋₁ + U·xₜ + b)", "note": "One cell, T applications, one set of weights."}
+[formulas[1]] {"label": "Shared-weight gradient", "formula": "∂L/∂W = Σₜ (∂L/∂hₜ)(∂hₜ/∂W)", "note": "The sum every recurrent gradient is."}
+[formulas[2]] {"label": "The chain that decays", "formula": "∂hₜ/∂hₖ = Πⱼ diag(1−h²)·Wᵀ", "note": "t−k factors; a product, so it vanishes or explodes."}
+[formulas[3]] {"label": "Measured decay", "formula": "0.480 → 0.0085 over 9 steps", "note": "‖∂L/∂h‖ at initialization, averaged over the training set."}
+[formulas[4]] {"label": "Truncation", "formula": "stop after k steps", "note": "Stores k·H activations instead of T·H: 36 instead of 120 here."}
+[formulas[5]] {"label": "Alignment ≠ learnability", "formula": "cos = 0.990 at k = 3", "note": "And that window solves the task on 1 of 3 seeds."}
+[notationKey[0]] {"symbol": "T", "meaning": "sequence length — 10 in the lab"}
+[notationKey[1]] {"symbol": "k", "meaning": "truncation window: how many steps back the gradient is allowed to travel"}
+[notationKey[2]] {"symbol": "W", "meaning": "the recurrent matrix, shared by every timestep"}
+[notationKey[3]] {"symbol": "h₀", "meaning": "the initial state, zero — which is why step 1 contributes nothing to ∂L/∂W"}
+[notationKey[4]] {"symbol": "cos", "meaning": "cosine similarity between the truncated gradient and the full one"}
+[notationKey[5]] {"symbol": "cue", "meaning": "the one informative token, at step 1, nine steps before the decision"}
+[codeBlocks[0]] 
+  title: Truncated BPTT is one detach()
+  variants: []
+import torch
+import torch.nn as nn
+
+cell = nn.RNNCell(input_size=8, hidden_size=32)
+head = nn.Linear(32, 2)
+optimizer = torch.optim.Adam(list(cell.parameters()) + list(head.parameters()), lr=1e-2)
+
+K = 20  # truncation window, in timesteps
+
+def train_chunked(sequence, label):
+    "Forward the whole sequence; backprop within windows of K."
+    h = torch.zeros(sequence.size(1), 32)
+    for start in range(0, sequence.size(0), K):
+        chunk = sequence[start:start + K]
+        for x in chunk:
+            h = cell(x, h)
+        if start + K >= sequence.size(0):
+            loss = nn.functional.cross_entropy(head(h), label)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        # The one line that makes it truncated: the next window starts from a
+        # state with no history attached, so the graph never grows past K.
+        h = h.detach()
+
+# Without the detach, the graph keeps every step alive and memory grows with T.
+# With it, memory is flat -- and any dependency longer than K is outside the
+# gradient. That is a modelling decision, not a performance tweak.
+[codeBlocks[1]] 
+  title: Measure the decay instead of assuming it
+  variants: []
+import torch
+import torch.nn as nn
+
+T, H = 10, 12
+cell = nn.RNNCell(5, H)
+head = nn.Linear(H, 2)
+
+x = torch.nn.functional.one_hot(torch.randint(0, 5, (T,)), 5).float()
+states = []
+h = torch.zeros(1, H)
+for t in range(T):
+    h = cell(x[t:t + 1], h)
+    h.retain_grad()          # keep dL/dh_t for every step, not just the last
+    states.append(h)
+
+nn.functional.cross_entropy(head(states[-1]), torch.tensor([1])).backward()
+
+norms = [s.grad.norm().item() for s in states]
+print([f"{n:.4f}" for n in norms])
+print(f"decay over {T - 1} steps: {norms[-1] / norms[0]:.0f}x")
+# A monotone climb toward the output. If your own model prints something flat,
+# the recurrent matrix has a spectral radius near 1 -- worth knowing either way,
+# and two lines to find out.
+[applications[0]] {"iconName": "history", "title": "Long Sequences", "body": "Audio, sensor streams and character-level text are trained in windows, not whole."}
+[applications[1]] {"iconName": "finance", "title": "Memory Budget", "body": "The window is the activation memory: k·H values per training step."}
+[applications[2]] {"iconName": "flask", "title": "Debugging Training", "body": "Per-step gradient norms tell you whether depth or the data is the problem."}
+[applications[3]] {"iconName": "help", "title": "Choosing k", "body": "Set it from the dependency you care about, not from what fits in memory."}
+[takeaways[0]] "BPTT is backprop on an unrolled loop: T layers, one shared weight matrix, and ∂L/∂W is a sum over all T steps."
+[takeaways[1]] "Measured at initialization, ‖∂L/∂h‖ falls 0.480 → 0.0085 across nine steps — 56×, from repeated multiplication alone."
+[takeaways[2]] "Step 1 contributes exactly zero to the recurrent matrix, because h₀ is zero. The cue reaches only the input weights."
+[takeaways[3]] "Truncation to k steps is what makes long sequences trainable at all: 36 stored activations here instead of 120."
+[takeaways[4]] "A truncated gradient is 99% aligned with the full one at k = 3 — and can exceed its magnitude, since dropped terms were partly cancelling."
+[takeaways[5]] "That alignment predicts nothing: k = 3 learns the rule on one seed in three, while k = 9 — which never reaches the cue — learns it on all three."
+[takeaways[6]] "The window bounds credit assignment, not memory. The shared matrix is trained inside the window and still carries the state outside it."
+[crossLinks[0]] {"topicId": "rnn", "label": "RNNs"}
+[crossLinks[1]] {"topicId": "backpropagation", "label": "Backpropagation"}
+[crossLinks[2]] {"topicId": "vanishing_gradient", "label": "The Vanishing Gradient Problem"}
+[crossLinks[3]] {"topicId": "lstm_gru", "label": "LSTMs / GRUs"}
+[crossLinks[4]] {"topicId": "exploding_gradient", "label": "The Exploding Gradient Problem"}
+
+######## LSTMs / GRUs
+[tagline] "Gated recurrent cells that remember long-range dependencies."
+[topicId] "lstm_gru"
+[whatIsIt[0]] "LSTMs and GRUs are gated RNNs designed to remember information over long sequences, solving the vanishing-gradient problem that cripples plain RNNs."
+[whatIsIt[1]] "Learnable gates decide what to keep, forget, and output, letting a nearly-unchanged cell state carry information across many timesteps."
+[steps[0]] {"number": 1, "title": "Cell State Highway", "body": "An LSTM maintains a cell state that flows through with only minor gated edits."}
+[steps[1]] {"number": 2, "title": "Forget Gate", "body": "Decide what fraction of the old memory to discard."}
+[steps[2]] {"number": 3, "title": "Input Gate", "body": "Decide what new information to write into the cell state."}
+[steps[3]] {"number": 4, "title": "Output Gate", "body": "Decide what part of the cell state to expose as the hidden output."}
+[formulas[0]] {"label": "Forget gate", "formula": "fₜ = σ(W_f·[hₜ₋₁, xₜ])", "note": "How much memory to keep."}
+[formulas[1]] {"label": "Cell update", "formula": "cₜ = fₜ⊙cₜ₋₁ + iₜ⊙c̃ₜ", "note": "Forget old, add new — the memory highway."}
+[formulas[2]] {"label": "GRU", "formula": "merges gates & states", "note": "Fewer parameters, often comparable accuracy."}
+[notationKey[0]] {"symbol": "cₜ", "meaning": "cell state — the long-term memory"}
+[notationKey[1]] {"symbol": "gate", "meaning": "sigmoid-controlled information valve"}
+[notationKey[2]] {"symbol": "⊙", "meaning": "element-wise multiplication"}
+[codeBlocks[0]] 
+  title: LSTM and GRU (PyTorch)
+  variants: []
+import torch.nn as nn
+
+lstm = nn.LSTM(input_size=64, hidden_size=128, batch_first=True)
+gru  = nn.GRU(input_size=64,  hidden_size=128, batch_first=True)
+
+out, (h_n, c_n) = lstm(x)   # GRU returns just h_n
+[applications[0]] {"iconName": "book", "title": "Language & Translation", "body": "Powered machine translation and text generation before Transformers."}
+[applications[1]] {"iconName": "chart", "title": "Long Time Series", "body": "Modeling dependencies spanning many steps in forecasting and monitoring."}
+[applications[2]] {"iconName": "music", "title": "Speech Recognition", "body": "Gated recurrence captured long acoustic context in early end-to-end ASR."}
+[takeaways[0]] "Gates let LSTMs/GRUs preserve information across long sequences."
+[takeaways[1]] "The cell-state highway is what escapes vanishing gradients."
+[takeaways[2]] "GRUs simplify the LSTM with fewer gates and parameters, often matching it."
+[takeaways[3]] "Transformers now dominate, but gated RNNs remain strong for streaming, low-latency tasks."
+[crossLinks[0]] {"topicId": "rnn", "label": "RNNs"}
+[crossLinks[1]] {"topicId": "transformers", "label": "Transformers"}
+
+######## Bidirectional RNNs
+[tagline] "A second pass right to left, and the ceiling it lifts — counted before it is trained."
+[topicId] "bidirectional_rnn"
+[whatIsIt[0]] "A bidirectional RNN runs two separate recurrent layers over the same sequence — one left to right, one right to left — and labels each position from both states concatenated. It is not a smarter cell and it is not a deeper stack. It is the observation that a left-to-right state at position i contains the words up to i and nothing else, and that for a great many labelling problems the information that settles position i is to the right of it."
+[whatIsIt[1]] "That claim can be counted rather than argued. The lab's corpus is twelve sentences built around garden-path minimal pairs — \"the horse raced past the barn\" against \"the horse raced past the barn fell\", where \"raced\" is the main verb in one and a reduced relative in the other. Twelve of its 59 tagged positions sit where two sentences share a prefix and disagree on the tag; zero are ambiguous once the whole sentence is visible. Those twelve fix a ceiling of 53/59 = 0.8983 for *any* left-to-right tagger, and the ceiling is enumerated from the corpus before a model exists."
+[whatIsIt[2]] "Trained, the forward tagger scores 0.8983 — the ceiling, to four decimals — and produces a 0.500/0.500 split at every disputed position, because identical prefixes give it identical states and it has learned the only thing available: how often each tag follows. The bidirectional tagger scores 1.000. What that costs is exact and worth stating: 1,799 parameters against 903, two passes instead of one, and no output at all until the sequence ends. This is precisely why BERT is bidirectional and a text-generating decoder cannot be."
+[steps[0]] {"number": 1, "title": "Find the Ambiguity", "body": "Positions whose tag needs a word further right."}
+[steps[1]] {"number": 2, "title": "Count It", "body": "12 of 59 tokens here — enumerated, no model involved."}
+[steps[2]] {"number": 3, "title": "Derive the Ceiling", "body": "53/59 = 0.8983 for any left-to-right tagger."}
+[steps[3]] {"number": 4, "title": "Run the Backward Pass", "body": "A second layer over the reversed sequence."}
+[steps[4]] {"number": 5, "title": "Concatenate", "body": "[h→ ; h←] per position, then one shared output layer."}
+[steps[5]] {"number": 6, "title": "Pay for It", "body": "2× parameters, 2 passes, and no streaming — ever."}
+[formulas[0]] {"label": "Forward state", "formula": "h→ᵢ = f(h→ᵢ₋₁, xᵢ)", "note": "Words 1..i."}
+[formulas[1]] {"label": "Backward state", "formula": "h←ᵢ = f(h←ᵢ₊₁, xᵢ)", "note": "Words i..n — a separate layer with its own weights."}
+[formulas[2]] {"label": "Tagging read-out", "formula": "yᵢ = softmax(W[h→ᵢ ; h←ᵢ] + b)", "note": "One output layer over a vector of twice the width."}
+[formulas[3]] {"label": "Left-to-right ceiling", "formula": "0.8983 = 53/59", "note": "Unambiguous positions, plus the majority tag in each ambiguous group."}
+[formulas[4]] {"label": "Measured, forward", "formula": "0.8983 overall · 0.500 ambiguous", "note": "Exactly the ceiling. The optimizer was never the problem."}
+[formulas[5]] {"label": "Measured, bidirectional", "formula": "1.000 overall · 1.000 ambiguous", "note": "At 1,799 parameters against 903."}
+[notationKey[0]] {"symbol": "h→", "meaning": "the forward layer's state — everything up to and including this position"}
+[notationKey[1]] {"symbol": "h←", "meaning": "the backward layer's state — this position and everything after it"}
+[notationKey[2]] {"symbol": "[a ; b]", "meaning": "concatenation, so the output layer sees 2H numbers per position"}
+[notationKey[3]] {"symbol": "ambiguous position", "meaning": "one where two corpus sentences share a prefix and disagree on the tag"}
+[notationKey[4]] {"symbol": "ceiling", "meaning": "the best score the architecture can reach, computed from the corpus alone"}
+[notationKey[5]] {"symbol": "garden path", "meaning": "a sentence whose natural reading is revised by a later word"}
+[codeBlocks[0]] 
+  title: One flag, and where it stops being allowed
+  variants: []
+import torch.nn as nn
+
+tagger = nn.LSTM(
+    input_size=100, hidden_size=128,
+    bidirectional=True,      # the whole change
+    batch_first=True,
+)
+head = nn.Linear(128 * 2, num_tags)   # 2x: the two states are concatenated
+
+# What the flag actually did:
+#   - a second LSTM with its own weights, run over the reversed sequence
+#   - the output width doubled, so the head doubled with it
+#   - the layer now needs the ENTIRE sequence before any position is final
+#
+# That last point is not a performance note. A bidirectional tagger cannot label
+# a word as it is typed, transcribed or streamed in -- there is no partial answer
+# to give. If the product needs output before the sentence ends, this flag is off
+# the table no matter what it does to the score.
+[codeBlocks[1]] 
+  title: Compute the ceiling before you train anything
+  variants: []
+from collections import defaultdict
+
+def left_context_ceiling(corpus):
+    "Best possible accuracy for any model that reads left to right."
+    groups = defaultdict(list)
+    for words, tags in corpus:
+        for i, tag in enumerate(tags):
+            groups[tuple(words[:i + 1])].append(tag)   # the prefix IS the state
+
+    best = sum(max(tags.count(t) for t in set(tags)) for tags in groups.values())
+    return best / sum(len(tags) for _, tags in corpus)
+
+# Run this before reaching for a bigger model. If the ceiling is 0.90 and your
+# unidirectional tagger scores 0.89, the missing point is not in the optimizer,
+# the embeddings or the layer count -- it is in the direction. No amount of
+# capacity buys a distinction the input to the classifier does not contain.
+[applications[0]] {"iconName": "browser", "title": "Tagging & Parsing", "body": "POS, NER and chunking, where the whole sentence is already in hand."}
+[applications[1]] {"iconName": "crown", "title": "Encoders", "body": "BERT's masked objective exists to make a bidirectional encoder trainable."}
+[applications[2]] {"iconName": "music", "title": "Offline Speech", "body": "Transcribing a recorded file — both directions available, so use both."}
+[applications[3]] {"iconName": "help", "title": "Where It Cannot Go", "body": "Live captioning, autocomplete, generation: no right context exists yet."}
+[takeaways[0]] "Two layers over the same sequence in opposite directions, tagged from both states concatenated."
+[takeaways[1]] "The corpus decides the gap: 12 of 59 positions are ambiguous from the left, 0 from both sides."
+[takeaways[2]] "That yields an enumerated ceiling of 0.8983 for any left-to-right tagger — computed before training."
+[takeaways[3]] "The trained forward tagger hits 0.8983 exactly and sits at 0.500/0.500 on every disputed position."
+[takeaways[4]] "The bidirectional tagger reaches 1.000, at 1,799 parameters against 903 and two passes instead of one."
+[takeaways[5]] "The real cost is latency, not compute: no position is final until the sequence ends, so streaming is impossible."
+[takeaways[6]] "It is a labelling tool. Anything that generates left to right — a decoder, an autocomplete — cannot use it."
+[crossLinks[0]] {"topicId": "rnn", "label": "RNNs"}
+[crossLinks[1]] {"topicId": "lstm_gru", "label": "LSTMs / GRUs"}
+[crossLinks[2]] {"topicId": "pos_tagging", "label": "Part-of-Speech Tagging"}
+[crossLinks[3]] {"topicId": "elmo", "label": "ELMo"}
+[crossLinks[4]] {"topicId": "encoder_decoder", "label": "Encoder-Decoder Architecture"}
+
+######## Encoder-Decoder Architecture
+[tagline] "Two networks, one vector between them, and what that vector drops."
+[topicId] "encoder_decoder"
+[whatIsIt[0]] "An encoder-decoder is two recurrent networks joined by a single vector. The encoder reads the input and its final hidden state — the context vector — becomes the decoder's initial state; the decoder then generates until it emits an end symbol. The arrangement is what let sequence models produce sequences of a different length from their input, which is the whole of machine translation, summarisation and speech transcription. Everything the decoder will ever know about the source has to be in that one vector."
+[whatIsIt[1]] "The lab measures what that costs by asking for the least it possibly could: copy the source. No transformation, no alignment, no vocabulary mismatch — so every failure is the vector losing the input rather than the model failing to compute something. With 12 hidden units and 571 parameters, exact-match accuracy is 100% at one symbol, 48% at two, and zero from four on. A six-symbol source over a six-symbol alphabet is 15.5 bits; the context vector has 12 tanh-squashed numbers to hold them in, and the accuracy curve is what that mismatch looks like from the outside."
+[whatIsIt[2]] "Which part of the source survives is measurable too. Freeze the encoder, fit a linear read-out from the context vector to the symbol at one position, and score it on held-out sources: position 6 is recoverable 85% of the time and position 1 — the one the decoder needs first — 34%. The vector remembers what it read last. Feed the same encoder the same sources backwards and the profile flips to 98% at position 1, taking exact match from 0.292 to 0.542 with no extra parameters. That is Sutskever et al.'s 2014 reversal trick, and its mechanism is visible rather than asserted. It also does not fix the bottleneck — it moves it, which is why attention replaced the whole arrangement."
+[steps[0]] {"number": 1, "title": "Encode", "body": "Read the source; keep the final state."}
+[steps[1]] {"number": 2, "title": "Hand Over", "body": "That state is the decoder's h₀ — the only channel between them."}
+[steps[2]] {"number": 3, "title": "Decode", "body": "Emit a symbol, feed it back, repeat until EOS."}
+[steps[3]] {"number": 4, "title": "Watch Length Bite", "body": "100% at one symbol, 48% at two, 0% at four."}
+[steps[4]] {"number": 5, "title": "Probe the Vector", "body": "A linear read-out says position 6 survives, position 1 does not."}
+[steps[5]] {"number": 6, "title": "Reverse the Source", "body": "Free, and it nearly doubles exact match — by reordering, not enlarging."}
+[formulas[0]] {"label": "Context vector", "formula": "c = h_enc(T)", "note": "The encoder's final state, fixed width whatever T is."}
+[formulas[1]] {"label": "Decoder init", "formula": "h_dec(0) = c", "note": "The entire interface between the two networks."}
+[formulas[2]] {"label": "Decoder step", "formula": "yₜ = softmax(W·h_dec(t) + b)", "note": "Conditioned on c and on everything emitted so far."}
+[formulas[3]] {"label": "Source capacity", "formula": "L·log₂|V| = 15.5 bits at L = 6", "note": "Against 12 real numbers in the context vector."}
+[formulas[4]] {"label": "Measured, forward-fed", "formula": "0.292 exact · probe p1 0.34 / p6 0.85", "note": "The vector holds the end of the source."}
+[formulas[5]] {"label": "Measured, reverse-fed", "formula": "0.542 exact · probe p1 0.98 / p6 0.33", "note": "Same parameters, reading order reversed."}
+[notationKey[0]] {"symbol": "c", "meaning": "the context vector — the encoder's last state, the decoder's first"}
+[notationKey[1]] {"symbol": "T", "meaning": "source length; the context vector's width does not depend on it"}
+[notationKey[2]] {"symbol": "EOS", "meaning": "the end symbol the decoder emits to stop; without it there is no stopping rule"}
+[notationKey[3]] {"symbol": "probe", "meaning": "a linear classifier fitted from c to one source position, encoder frozen"}
+[notationKey[4]] {"symbol": "exact match", "meaning": "the whole output correct — no partial credit, which is the honest metric here"}
+[notationKey[5]] {"symbol": "reversal", "meaning": "feeding the encoder the source backwards, so the first symbol is read last"}
+[codeBlocks[0]] 
+  title: The whole architecture, and the one line that is the bottleneck
+  variants: []
+import torch
+import torch.nn as nn
+
+class EncoderDecoder(nn.Module):
+    def __init__(self, vocab, hidden):
+        super().__init__()
+        self.encoder = nn.GRU(vocab, hidden, batch_first=True)
+        self.decoder = nn.GRU(vocab, hidden, batch_first=True)
+        self.out = nn.Linear(hidden, vocab)
+
+    def forward(self, source, target_in):
+        _, context = self.encoder(source)      # <- everything, in one vector
+        states, _ = self.decoder(target_in, context)
+        return self.out(states)
+
+# Sutskever et al. (2014) reversed the source and gained several BLEU. It costs
+# one call and changes no parameter count:
+#     source = torch.flip(source, dims=[1])
+# It works by shortening the distance between the source tokens the decoder needs
+# first and the handover -- so it helps most when the alignment is roughly
+# monotonic, and does nothing when it is not.
+[codeBlocks[1]] 
+  title: Probe the context vector instead of guessing what it kept
+  variants: []
+import torch
+import torch.nn as nn
+
+@torch.no_grad()
+def contexts(model, sources):
+    return torch.cat([model.encoder(s)[1].squeeze(0) for s in sources])
+
+def probe(model, sources, position, hidden, vocab, steps=400):
+    "How recoverable is source[position] from the context vector alone?"
+    x = contexts(model, sources)                 # encoder frozen: no grad above
+    y = torch.tensor([s[0, position].argmax() for s in sources])
+    readout = nn.Linear(hidden, vocab)
+    optimizer = torch.optim.Adam(readout.parameters(), lr=0.05)
+    for _ in range(steps):
+        loss = nn.functional.cross_entropy(readout(x), y)
+        optimizer.zero_grad(); loss.backward(); optimizer.step()
+    return (readout(x).argmax(1) == y).float().mean().item()
+
+# Run it per position and read the shape, not the average. A profile that slopes
+# up toward the end of the source is recency -- the vector is holding the tail.
+# That is the diagnosis reversal treats, and the one attention removes outright.
+[applications[0]] {"iconName": "globe", "title": "Machine Translation", "body": "The architecture NMT was built on, and the one attention was added to."}
+[applications[1]] {"iconName": "music", "title": "Speech Recognition", "body": "Audio frames in, characters out — different lengths, different rates."}
+[applications[2]] {"iconName": "book", "title": "Summarisation", "body": "Long source, short target: exactly where a fixed vector hurts most."}
+[applications[3]] {"iconName": "chip", "title": "What Came Next", "body": "Attention, then the transformer — both are answers to this one vector."}
+[takeaways[0]] "Two networks joined by one vector: the encoder's final state is the decoder's initial state."
+[takeaways[1]] "It is what let sequence models emit outputs of a different length from their input."
+[takeaways[2]] "On the weakest possible task — copying — exact match runs 100% at one symbol, 48% at two, 0% by four."
+[takeaways[3]] "Stated as capacity: a 6-symbol source is 15.5 bits and the context vector is 12 squashed numbers."
+[takeaways[4]] "A linear probe of the frozen encoder shows the vector holds the *end* of the source: p6 0.85, p1 0.34."
+[takeaways[5]] "Reversing the source flips that to p1 0.98 and takes exact match 0.292 → 0.542, for no extra parameters."
+[takeaways[6]] "Reversal moves the bottleneck rather than removing it — length 6 stays near zero either way. Attention removes it."
+[crossLinks[0]] {"topicId": "seq2seq", "label": "Seq2Seq Models"}
+[crossLinks[1]] {"topicId": "attention", "label": "Attention"}
+[crossLinks[2]] {"topicId": "lstm_gru", "label": "LSTMs / GRUs"}
+[crossLinks[3]] {"topicId": "transformers", "label": "Transformers"}
+[crossLinks[4]] {"topicId": "autoencoders", "label": "Autoencoders"}
+
+######## Seq2Seq Models
+[tagline] "Greedy, beam and the two kinds of error only one of them fixes."
+[topicId] "seq2seq"
+[whatIsIt[0]] "A seq2seq model does not emit a sequence. It scores them — assigning a probability to every string the decoder could produce — and something else has to search that space for one to return. Greedy decoding takes the most probable next symbol at each step and never reconsiders; beam search keeps the k best partial sequences by summed log-probability and lets a hypothesis that looked second-best early come first at the end. Greedy is beam search with k = 1, and the gap between them is a search problem, not a modelling one."
+[whatIsIt[1]] "Beam search does what it promises here and almost nothing else. Widening it from 1 to 10 raises mean log-probability from −2.284 to −1.994 and changes 45 of 120 outputs — and moves exact match from 0.292 to 0.300, a single sequence. That is not a disappointment to shrug at; it is diagnosable. Score the gold sequence under the same model and every wrong output sorts into one of two kinds: the model preferred gold and the search lost it (a search error), or the model preferred its own wrong answer (a model error). At width 1 the split is 1 search error against 84 model errors, and at width 10 the search errors are gone. Eighty-four of 120 outputs are beyond any beam width, because the thing being searched is wrong."
+[whatIsIt[2]] "The same diagnosis says where to spend instead. Feeding the encoder the source backwards — no extra parameters, no extra decoding cost — converts 31 model errors into correct outputs, thirty times what widening the beam bought. Two other well-known knobs are reported here as they measured rather than as they are usually described: length normalization changes 10 of 120 outputs, lengthens them, and moves accuracy by 0.000, because on this task the source fixes the output length; and teacher forcing, which is how the model was trained, scores 49.5% next-symbol accuracy against 32.4% when the model reads its own output — the exposure-bias gap, on one trained model, in one number."
+[steps[0]] {"number": 1, "title": "Score, Don't Emit", "body": "The model gives a distribution; decoding chooses."}
+[steps[1]] {"number": 2, "title": "Greedy", "body": "Argmax, feed back, never reconsider. Beam with k = 1."}
+[steps[2]] {"number": 3, "title": "Beam", "body": "Keep k partials by summed log-probability; prune the rest."}
+[steps[3]] {"number": 4, "title": "Split the Errors", "body": "Score gold: did the search lose it, or does the model prefer wrong?"}
+[steps[4]] {"number": 5, "title": "Spend Where It Pays", "body": "84 model errors; no width fixes those. Fix the model."}
+[steps[5]] {"number": 6, "title": "Know the Training Gap", "body": "Teacher-forced 49.5% vs free-running 32.4%."}
+[formulas[0]] {"label": "Sequence score", "formula": "log P(y|x) = Σₜ log P(yₜ | y<ₜ, x)", "note": "What beam search sorts on."}
+[formulas[1]] {"label": "Beam step", "formula": "keep top-k of |V|·k extensions", "note": "Cost is k× a greedy decode, in time and memory."}
+[formulas[2]] {"label": "Length normalization", "formula": "score / |y|", "note": "Or /((5+|y|)/6)^α in the published NMT form."}
+[formulas[3]] {"label": "Search error", "formula": "log P(gold) > log P(returned)", "note": "The model knew; the search missed. Widen the beam."}
+[formulas[4]] {"label": "Model error", "formula": "log P(returned) ≥ log P(gold)", "note": "84 of 120 here. No width helps."}
+[formulas[5]] {"label": "Exposure bias", "formula": "0.495 → 0.324", "note": "Next-symbol accuracy with the gold prefix, then with its own."}
+[notationKey[0]] {"symbol": "k", "meaning": "beam width — the number of partial hypotheses kept per step"}
+[notationKey[1]] {"symbol": "y<ₜ", "meaning": "everything decoded before step t; the decoder conditions on its own output"}
+[notationKey[2]] {"symbol": "exact match", "meaning": "the entire output sequence correct — no partial credit"}
+[notationKey[3]] {"symbol": "search error", "meaning": "a wrong output the model itself ranks below the right one"}
+[notationKey[4]] {"symbol": "model error", "meaning": "a wrong output the model ranks above the right one"}
+[notationKey[5]] {"symbol": "teacher forcing", "meaning": "training the decoder on gold prefixes rather than its own predictions"}
+[codeBlocks[0]] 
+  title: Beam search, with the length rule made explicit
+  variants: []
+import torch
+
+@torch.no_grad()
+def beam_search(model, context, k=5, max_len=50, alpha=0.0):
+    "alpha=0 sorts by total log-prob; alpha=1 sorts by log-prob per token."
+    beams = [([], 0.0, context)]           # tokens, score, decoder state
+    finished = []
+
+    for _ in range(max_len):
+        candidates = []
+        for tokens, score, state in beams:
+            logits, next_state = model.step(state, tokens[-1] if tokens else SOS)
+            for token, logp in enumerate(torch.log_softmax(logits, -1)):
+                if token == EOS:
+                    finished.append((tokens, score + logp.item()))
+                else:
+                    candidates.append((tokens + [token], score + logp.item(), next_state))
+        if not candidates:
+            break
+        beams = sorted(candidates, key=lambda c: -c[1])[:k]
+
+    finished += [(t, s) for t, s, _ in beams]
+    return max(finished, key=lambda c: c[1] / (len(c[0]) ** alpha if alpha else 1))
+
+# alpha is not a free win. It lengthens outputs, which helps when the model stops
+# too early and hurts when it does not -- so measure it on your own data rather
+# than copying a value out of a paper written about a different task.
+[codeBlocks[1]] 
+  title: The diagnostic worth more than the beam width
+  variants: []
+@torch.no_grad()
+def error_split(model, dataset, k=5):
+    "Sort every failure into 'the search lost it' and 'the model prefers wrong'."
+    correct = search_errors = model_errors = 0
+    for source, gold in dataset:
+        predicted, score = beam_search(model, model.encode(source), k=k)
+        if predicted == gold:
+            correct += 1
+        elif model.score(source, gold) > score:
+            search_errors += 1        # widen the beam
+        else:
+            model_errors += 1         # a wider beam cannot help
+    return correct, search_errors, model_errors
+
+# On the lab's model: (35, 1, 84) at k=1 and (36, 0, 84) at k=10. Nine tenths of
+# the failures are the model's ranking, so the next hour belongs in the data, the
+# architecture or the objective -- not in the decoder.
+[applications[0]] {"iconName": "globe", "title": "Translation", "body": "Where beam search was tuned, and where length normalization earns its keep."}
+[applications[1]] {"iconName": "music", "title": "Speech & OCR", "body": "Decoding with a beam is standard; the error split tells you if it is helping."}
+[applications[2]] {"iconName": "flask", "title": "Model Debugging", "body": "Score the gold output — one line that says whether to widen or retrain."}
+[applications[3]] {"iconName": "finance", "title": "Inference Cost", "body": "A width-k beam is k forward passes per step, for a measurable return."}
+[takeaways[0]] "The model scores sequences; decoding searches them. Greedy is beam search with width 1."
+[takeaways[1]] "Widening the beam 1 → 10 raised mean log-probability −2.284 → −1.994 and changed 45 of 120 outputs."
+[takeaways[2]] "It moved exact match by one sequence, 0.292 → 0.300 — more probable is not more correct."
+[takeaways[3]] "Scoring the gold sequence splits the failures: 1 search error against 84 model errors at width 1, and 0 against 84 at width 10."
+[takeaways[4]] "Reversing the encoder's input — free — converted 31 model errors, thirty times what beam width bought."
+[takeaways[5]] "Length normalization changed 10 of 120 outputs, lengthened them, and moved accuracy 0.000: the source fixes the length here."
+[takeaways[6]] "Teacher forcing scores 49.5% next-symbol accuracy against 32.4% free-running — the exposure-bias gap on one model."
+[crossLinks[0]] {"topicId": "encoder_decoder", "label": "Encoder-Decoder Architecture"}
+[crossLinks[1]] {"topicId": "attention", "label": "Attention"}
+[crossLinks[2]] {"topicId": "rnn_lstm", "label": "RNN / LSTM"}
+[crossLinks[3]] {"topicId": "llms", "label": "LLMs"}
+[crossLinks[4]] {"topicId": "bart", "label": "BART"}
+
+######## Attention
+[tagline] "Let the model weigh every token against every other."
+[topicId] "attention"
+[whatIsIt[0]] "Attention lets a model focus on the most relevant parts of the input when producing each output, weighting every input element by how much it matters right now."
+[whatIsIt[1]] "It began as a fix for the seq2seq bottleneck — instead of cramming a whole sentence into one vector, the decoder looks back at all encoder states — and became the core of the Transformer."
+[steps[0]] {"number": 1, "title": "Query, Keys, Values", "body": "The current position forms a query; every input offers a key and a value."}
+[steps[1]] {"number": 2, "title": "Score Relevance", "body": "Compare the query to each key (dot product) to score how relevant that input is."}
+[steps[2]] {"number": 3, "title": "Softmax Weights", "body": "Normalize the scores into attention weights that sum to one."}
+[steps[3]] {"number": 4, "title": "Weighted Sum", "body": "Blend the values by those weights — the output focuses on what mattered most."}
+[formulas[0]] {"label": "Attention", "formula": "softmax(QKᵀ/√dₖ)·V", "note": "Values mixed by query-key relevance."}
+[formulas[1]] {"label": "Weights", "formula": "αᵢ = softmax(scoreᵢ)", "note": "Non-negative, sum to one."}
+[formulas[2]] {"label": "Self vs cross", "formula": "same vs different sequences", "note": "Self-attention: input attends to itself."}
+[notationKey[0]] {"symbol": "Q, K, V", "meaning": "query, key, value vectors"}
+[notationKey[1]] {"symbol": "αᵢ", "meaning": "attention weight on input i"}
+[notationKey[2]] {"symbol": "√dₖ", "meaning": "scaling to stabilize gradients"}
+[codeBlocks[0]] 
+  title: Scaled dot-product attention (PyTorch)
+  variants: []
+import torch.nn.functional as F
+
+def attention(Q, K, V):
+    d_k = Q.size(-1)
+    scores = Q @ K.transpose(-2, -1) / d_k ** 0.5
+    return F.softmax(scores, dim=-1) @ V
+[applications[0]] {"iconName": "book", "title": "Transformers & LLMs", "body": "Self-attention is the engine of every modern language model."}
+[applications[1]] {"iconName": "globe", "title": "Translation Alignment", "body": "Attention weights show which source words align to each translated word."}
+[applications[2]] {"iconName": "image", "title": "Vision & Captioning", "body": "Models attend to image regions when generating a caption or answer."}
+[takeaways[0]] "Attention computes a relevance-weighted blend of inputs for each output."
+[takeaways[1]] "It solved the seq2seq bottleneck by letting the decoder see all encoder states."
+[takeaways[2]] "Query-key-value scoring plus softmax is its universal recipe."
+[takeaways[3]] "Self-attention generalizes it into the Transformer's core operation."
+[crossLinks[0]] {"topicId": "transformers", "label": "Transformers"}
+[crossLinks[1]] {"topicId": "rnn_lstm", "label": "RNN / LSTM"}
+
+######## Self- vs Cross-Attention
+[tagline] "One operation, two wirings — and the experiment that ends the RNN bottleneck story."
+[topicId] "self_cross_attention"
+[whatIsIt[0]] "Self-attention and cross-attention are the same operation. Score every query against every key, softmax the scores, return that weighted mixture of the values — softmax(QKᵀ/√d)·V, identically in both cases. What differs is only where the three come from. In self-attention Q, K and V are all projections of one sequence, so every position is refining its own representation using the rest of the sequence. In cross-attention the queries come from the sequence being generated and the keys and values from a different one, so the decoder is reading the encoder."
+[whatIsIt[1]] "That distinction is what turns an encoder-decoder from a bottleneck into an architecture. The encoder-decoder topic measures a fixed context vector failing: on a copy task it scores 0.292 exact match, collapsing to zero by length four, and a linear probe shows the vector holds only what the encoder read last. This lab retrains the same model, on the same 120 pairs, for the same 100 epochs, with cross-attention in place of that single handover — and it scores 0.867, with the per-length curve flat until the very end. The decoder no longer has to receive the source; it can go and look."
+[whatIsIt[2]] "The obvious objection is parameters, and it is answered by measurement rather than argument. Widening the fixed-vector model until its parameter count matches the attention model's — 1,069 against 1,087 — moves it from 0.292 to 0.300, and the collapse with length is exactly where it was. Capacity was never the missing ingredient; the missing ingredient was a path from each decoder step to every source position. What that path costs is quadratic: self-attention over n tokens computes n² scores, and the whole matrix has to exist."
+[steps[0]] {"number": 1, "title": "Project", "body": "Q, K, V from whichever sequences the wiring says."}
+[steps[1]] {"number": 2, "title": "Score", "body": "q·k / √d for every pair — n² of them, or target × source."}
+[steps[2]] {"number": 3, "title": "Softmax", "body": "Turn scores into weights that sum to one, per query."}
+[steps[3]] {"number": 4, "title": "Mix", "body": "Return Σ αᵢ vᵢ — a read, addressed by content."}
+[steps[4]] {"number": 5, "title": "Wire It Two Ways", "body": "Same sequence, or decoder queries against encoder keys."}
+[steps[5]] {"number": 6, "title": "Check the Claim", "body": "0.292 → 0.867 on the same task, at matched parameters."}
+[formulas[0]] {"label": "The operation", "formula": "Attention(Q,K,V) = softmax(QKᵀ/√d)·V", "note": "Identical for self and cross."}
+[formulas[1]] {"label": "Self-attention", "formula": "Q = XWq, K = XWk, V = XWv", "note": "One sequence X, three projections."}
+[formulas[2]] {"label": "Cross-attention", "formula": "Q = YWq, K = XWk, V = XWv", "note": "Y is the target, X the source; lengths may differ."}
+[formulas[3]] {"label": "Why √d", "formula": "scores scale as √d", "note": "Without it the softmax saturates and gradients vanish."}
+[formulas[4]] {"label": "Measured, fixed vector", "formula": "0.292 exact match", "note": "571 parameters; 0.300 when widened to 1,069."}
+[formulas[5]] {"label": "Measured, cross-attention", "formula": "0.867 exact match", "note": "1,087 parameters, same data, same budget."}
+[notationKey[0]] {"symbol": "Q, K, V", "meaning": "queries, keys and values — three linear projections"}
+[notationKey[1]] {"symbol": "d", "meaning": "the dimension keys and queries are scored in; √d is the scaling factor"}
+[notationKey[2]] {"symbol": "α", "meaning": "the softmaxed weights — one distribution per query"}
+[notationKey[3]] {"symbol": "self", "meaning": "Q, K and V from the same sequence"}
+[notationKey[4]] {"symbol": "cross", "meaning": "Q from the target sequence, K and V from the source"}
+[notationKey[5]] {"symbol": "alignment", "meaning": "which source position each output step attends to"}
+[codeBlocks[0]] 
+  title: One function, both wirings
+  variants: []
+import torch
+import torch.nn.functional as F
+
+def attention(query, key, value, mask=None):
+    d = query.size(-1)
+    scores = query @ key.transpose(-2, -1) / d ** 0.5
+    if mask is not None:
+        scores = scores.masked_fill(mask == 0, float("-inf"))
+    return F.softmax(scores, dim=-1) @ value
+
+# Self-attention: one sequence, three projections of it.
+attention(Wq(x), Wk(x), Wv(x))
+
+# Cross-attention: the decoder asks, the encoder answers. Note the shapes --
+# nothing requires the two sequences to be the same length, which is the whole
+# reason this works for translation.
+attention(Wq(y), Wk(x), Wv(x))
+
+# Causal self-attention: the same call with a triangular mask.
+causal = torch.tril(torch.ones(n, n))
+attention(Wq(x), Wk(x), Wv(x), mask=causal)
+[codeBlocks[1]] 
+  title: Read the alignment out — it is a free diagnostic
+  variants: []
+import torch
+
+@torch.no_grad()
+def cross_attention_weights(model, source, target):
+    "Return the target x source matrix the decoder actually used."
+    memory = model.encode(source)
+    weights = []
+    hooks = [
+        layer.cross_attn.register_forward_hook(
+            lambda _m, _i, out: weights.append(out[1])   # (batch, heads, tgt, src)
+        )
+        for layer in model.decoder.layers
+    ]
+    model.decode(target, memory)
+    for h in hooks:
+        h.remove()
+    return torch.stack(weights).mean(dim=(0, 1))          # over layers and heads
+
+# A diagonal-ish matrix means the model found the alignment. A matrix with all its
+# mass in one column usually means it is ignoring the source and running as a
+# language model -- which shows up as fluent output that is not a translation.
+[applications[0]] {"iconName": "globe", "title": "Translation", "body": "Cross-attention is where the source is read, one output step at a time."}
+[applications[1]] {"iconName": "chip", "title": "Encoder Stacks", "body": "Self-attention is the whole of BERT's contextualisation."}
+[applications[2]] {"iconName": "flask", "title": "Debugging", "body": "The alignment matrix says whether the source is being used at all."}
+[applications[3]] {"iconName": "finance", "title": "Cost", "body": "n² scores per layer — the reason long contexts are expensive."}
+[takeaways[0]] "Self- and cross-attention are one operation, softmax(QKᵀ/√d)·V, differing only in where Q, K and V come from."
+[takeaways[1]] "Cross-attention lets the two sequences have different lengths, which is what an encoder-decoder needs."
+[takeaways[2]] "On the same copy task, same data and same budget: a fixed context vector scores 0.292, cross-attention 0.867."
+[takeaways[3]] "Widening the fixed-vector model to a matched 1,069 parameters moves it to 0.300 — the gap is not capacity."
+[takeaways[4]] "The learned alignment puts 0.942 of its mass on the position each step should read, without ever being told."
+[takeaways[5]] "The cost is quadratic: n tokens means n² scores, and the whole matrix has to be materialised."
+[takeaways[6]] "The attention gradients here are checked against finite differences — the first check failed on a loss-scale mismatch, not a derivation error."
+[crossLinks[0]] {"topicId": "attention", "label": "Attention"}
+[crossLinks[1]] {"topicId": "encoder_decoder", "label": "Encoder-Decoder Architecture"}
+[crossLinks[2]] {"topicId": "multi_head_attention", "label": "Multi-Head Attention"}
+[crossLinks[3]] {"topicId": "transformers", "label": "Transformers"}
+[crossLinks[4]] {"topicId": "seq2seq", "label": "Seq2Seq Models"}
+
+######## Multi-Head Attention
+[tagline] "Free in parameters, and what it actually buys is simultaneous reads."
+[topicId] "multi_head_attention"
+[whatIsIt[0]] "Multi-head attention splits the model dimension into h slices, runs the same scaled dot-product attention inside each one, and concatenates the results. The first thing to be precise about is the cost, because it is nothing: Q, K, V and the output projection are four d×d matrices at every head count. At d = 64 that is 16,384 parameters whether h is 1 or 16. Heads are a partition of a fixed budget, not an addition to it."
+[whatIsIt[1]] "The usual explanation — that a single head cannot represent as many patterns — is a rank argument, and at realistic widths it is the wrong way round. A head's score matrix is QKᵀ with an inner dimension of d/h, so its rank is capped at d/h; a *single* head has the full d and can represent anything a short sequence needs. The rank ceiling only bites when heads get thin: fitting four summed alignment patterns needs rank 12, and at h = 8 each head has 8 dimensions and 13.4% error, at h = 16 it has 4 and 37.1%. Too many heads is a real failure mode."
+[whatIsIt[2]] "What the split actually buys is simultaneous reads. One head emits one distribution per query, so attending to two positions at once means splitting the mass between them and receiving a blend of both values. Measured over 200 random value pairs, the best a single head can do at reading two positions into two halves of its output is α = 0.50 and 0.697 relative error; two heads do it exactly. That is the mechanism — and it also predicts the honest result on the copy task in the lab, where the task has exactly one alignment to learn and four heads score 0.842 against one head's 0.867. Heads help when there is more than one thing to attend to."
+[steps[0]] {"number": 1, "title": "Split", "body": "d dimensions into h slices of d/h — same matrices, partitioned."}
+[steps[1]] {"number": 2, "title": "Attend Per Head", "body": "Each slice scores and mixes independently."}
+[steps[2]] {"number": 3, "title": "Concatenate", "body": "h contexts of d/h back into one d-vector."}
+[steps[3]] {"number": 4, "title": "Project Out", "body": "One more d×d matrix, and the block is done."}
+[steps[4]] {"number": 5, "title": "Count the Cost", "body": "4d² regardless of h — the split is free."}
+[steps[5]] {"number": 6, "title": "Choose h", "body": "Reads against expressiveness per read; ~64 dims each in practice."}
+[formulas[0]] {"label": "Per head", "formula": "headᵢ = Attention(QWqᵢ, KWkᵢ, VWvᵢ)", "note": "Each projection is d × d/h."}
+[formulas[1]] {"label": "Combined", "formula": "MHA = concat(head₁…head_h)·Wo", "note": "The concatenation is back to d."}
+[formulas[2]] {"label": "Parameter count", "formula": "4d² (+ biases)", "note": "16,384 at d = 64, at every head count."}
+[formulas[3]] {"label": "Rank ceiling", "formula": "rank(QKᵀ) ≤ d/h", "note": "8 dimensions at h = 8 → 13.4% error on a rank-12 target."}
+[formulas[4]] {"label": "Simultaneous read", "formula": "one head: α = 0.50, error 0.697", "note": "Two heads: exact."}
+[formulas[5]] {"label": "Measured on one alignment", "formula": "1 head 0.867 · 4 heads 0.842", "note": "Nothing for the extra heads to do."}
+[notationKey[0]] {"symbol": "h", "meaning": "number of heads"}
+[notationKey[1]] {"symbol": "d", "meaning": "model dimension; each head works in d/h of it"}
+[notationKey[2]] {"symbol": "d/h", "meaning": "head dimension — 64 in most published transformers, whatever d is"}
+[notationKey[3]] {"symbol": "rank", "meaning": "how many independent patterns one head's score matrix can express"}
+[notationKey[4]] {"symbol": "Wo", "meaning": "the output projection applied after concatenation"}
+[notationKey[5]] {"symbol": "simultaneous read", "meaning": "attending to two positions at full weight rather than blending them"}
+[codeBlocks[0]] 
+  title: The split is a reshape, which is why it is free
+  variants: []
+import torch
+import torch.nn as nn
+
+class MultiHeadAttention(nn.Module):
+    def __init__(self, d_model, heads):
+        super().__init__()
+        assert d_model % heads == 0
+        self.h, self.dk = heads, d_model // heads
+        # Four matrices. Their sizes do not depend on `heads`.
+        self.q, self.k, self.v, self.o = (nn.Linear(d_model, d_model) for _ in range(4))
+
+    def forward(self, x):
+        b, n, d = x.shape
+        def split(t):                       # (b, n, d) -> (b, h, n, dk)
+            return t.view(b, n, self.h, self.dk).transpose(1, 2)
+        q, k, v = split(self.q(x)), split(self.k(x)), split(self.v(x))
+        scores = q @ k.transpose(-2, -1) / self.dk ** 0.5
+        context = scores.softmax(-1) @ v
+        return self.o(context.transpose(1, 2).reshape(b, n, d))
+
+# sum(p.numel() for p in MultiHeadAttention(64, 1).parameters())   -> 16640
+# sum(p.numel() for p in MultiHeadAttention(64, 16).parameters())  -> 16640
+# Identical. The heads are a view of the same weights, not more of them.
+[codeBlocks[1]] 
+  title: Check whether your heads are doing different jobs
+  variants: []
+import torch
+
+@torch.no_grad()
+def head_similarity(weights):
+    "weights: (heads, queries, keys) attention from one layer, averaged over a batch."
+    flat = weights.flatten(1)
+    flat = flat / flat.norm(dim=1, keepdim=True)
+    return flat @ flat.T          # pairwise cosine between head patterns
+
+# Near-1 off-diagonal entries mean heads have collapsed onto the same pattern --
+# a well-documented outcome, and the finding behind "sixteen heads are better
+# than one?" (Michel et al., 2019), where most heads could be pruned at inference
+# with little loss. Measure before you assume the heads are specialising.
+[applications[0]] {"iconName": "share", "title": "Every Transformer", "body": "The default attention block since 2017, at 64 dimensions per head."}
+[applications[1]] {"iconName": "flask", "title": "Interpretability", "body": "Induction heads, name-mover heads: found by reading individual heads."}
+[applications[2]] {"iconName": "finance", "title": "Head Pruning", "body": "Many heads can be removed at inference — measure which first."}
+[applications[3]] {"iconName": "help", "title": "Choosing h", "body": "Keep d/h near 64; more heads at a fixed d makes each one thinner."}
+[takeaways[0]] "Heads partition the model dimension; the block is 4d² parameters at every head count — 16,384 at d = 64."
+[takeaways[1]] "The rank story is backwards at realistic widths: one full-width head can express what a short sequence needs."
+[takeaways[2]] "Rank does bite when heads are thin — 13.4% error at 8 dimensions per head on a rank-12 target, 37.1% at 4."
+[takeaways[3]] "What the split really buys is simultaneous reads: one head must blend two positions (error 0.697), two heads read both exactly."
+[takeaways[4]] "On a task with a single alignment, four heads score 0.842 against one head's 0.867 — heads are not free accuracy."
+[takeaways[5]] "The four heads still specialised: attention mass on the copied position ranged 0.47 to 0.92 across them."
+[takeaways[6]] "Published models hold d/h ≈ 64 from BERT-base to GPT-3, which is what these two measurements jointly recommend."
+[crossLinks[0]] {"topicId": "self_cross_attention", "label": "Self- vs Cross-Attention"}
+[crossLinks[1]] {"topicId": "attention", "label": "Attention"}
+[crossLinks[2]] {"topicId": "transformers", "label": "Transformers"}
+[crossLinks[3]] {"topicId": "feed_forward", "label": "Feed-Forward Networks"}
+[crossLinks[4]] {"topicId": "bert", "label": "BERT"}
+
+######## Transformers
+[tagline] "Self-attention architecture behind modern LLMs."
+[topicId] "transformers"
+[whatIsIt[0]] "The Transformer is a sequence architecture built entirely on self-attention, letting every token directly attend to every other token — no recurrence, no convolution."
+[whatIsIt[1]] "Because attention processes a whole sequence in parallel, Transformers train far faster than RNNs and scale to the enormous models behind modern LLMs."
+[steps[0]] {"number": 1, "title": "Embed + Position", "body": "Turn tokens into vectors and add positional encodings, since attention itself is order-agnostic."}
+[steps[1]] {"number": 2, "title": "Self-Attention", "body": "Each token computes queries, keys, and values to weigh how much every other token matters."}
+[steps[2]] {"number": 3, "title": "Multi-Head", "body": "Several attention heads capture different relationships in parallel."}
+[steps[3]] {"number": 4, "title": "Feed-Forward + Residual", "body": "Position-wise MLPs, residual connections, and layer norm refine and stack the representation."}
+[formulas[0]] {"label": "Attention", "formula": "softmax(QKᵀ/√dₖ)·V", "note": "Weighted mix of values by query-key similarity."}
+[formulas[1]] {"label": "Multi-head", "formula": "concat(head₁…headₕ)·W_O", "note": "Parallel attention subspaces."}
+[formulas[2]] {"label": "Complexity", "formula": "O(n²·d)", "note": "Quadratic in sequence length n."}
+[notationKey[0]] {"symbol": "Q, K, V", "meaning": "query, key, value projections"}
+[notationKey[1]] {"symbol": "self-attention", "meaning": "tokens attending to the same sequence"}
+[notationKey[2]] {"symbol": "positional encoding", "meaning": "injects token order into embeddings"}
+[codeBlocks[0]] 
+  title: Scaled dot-product attention (PyTorch)
+  variants: []
+import torch, torch.nn.functional as F
+
+def attention(Q, K, V):
+    d_k = Q.size(-1)
+    scores = Q @ K.transpose(-2, -1) / d_k ** 0.5
+    weights = F.softmax(scores, dim=-1)
+    return weights @ V
+[applications[0]] {"iconName": "book", "title": "Large Language Models", "body": "GPT, BERT, and every modern LLM are Transformer stacks."}
+[applications[1]] {"iconName": "image", "title": "Vision & Multimodal", "body": "Vision Transformers and CLIP apply attention to images and image-text pairs."}
+[applications[2]] {"iconName": "flask", "title": "Science", "body": "AlphaFold and protein/genomics models use attention over biological sequences."}
+[takeaways[0]] "Transformers replace recurrence with self-attention, processing sequences in parallel."
+[takeaways[1]] "Attention lets any token directly influence any other, capturing long-range dependencies."
+[takeaways[2]] "Multi-head attention and positional encodings are the architecture's signature pieces."
+[takeaways[3]] "Attention is O(n²) in sequence length — the main bottleneck efficiency research targets."
+[crossLinks[0]] {"topicId": "attention", "label": "Attention"}
+[crossLinks[1]] {"topicId": "llms", "label": "LLMs"}
+
+######## BERT (Bidirectional Encoder)
+[tagline] "Fill in the blanks — 2× the context per prediction, 6.4× fewer of them."
+[topicId] "bert"
+[whatIsIt[0]] "BERT is a transformer encoder trained by filling in blanks. Fifteen percent of the positions in each sequence are selected, corrupted, and predicted from everything around them — no causal mask anywhere, so every position sees every other one. That is only possible because BERT is never asked to continue text, only to reconstruct it, and it is the reason BERT cannot generate: there is no next-token objective anywhere in the model."
+[whatIsIt[1]] "The trade that objective makes is countable, and both sides of it are worth having in mind. On the lab's corpus a causal objective turns all 64 tokens into training targets; masking at 15% turns 10 of them into targets — the same forward pass for 6.4× less signal. In exchange each prediction gets twice the context: averaged over the corpus, a causal prediction sees 2.72 tokens and a masked one 5.44, because it can read to the right as well as the left. Fewer, richer predictions, which is why BERT-style models need more passes over their data than their parameter count suggests."
+[whatIsIt[2]] "The 80/10/10 rule is the part most summaries skip, and it exists to patch a mismatch that is easy to state as a number: [MASK] appears on 12% of input positions during pre-training and on 0% of them afterwards. A model allowed to key off that token would learn a feature that vanishes the moment it is used. So of the selected positions, 80% become [MASK], 10% become a random token and 10% are left exactly as they were — and all of them are still scored, which means the model can never fully trust an unmasked token either. Summed from its own config, BERT-base is 109,482,240 parameters: 23,837,184 of embeddings, twelve layers of 7,087,872 each, and a 590,592-parameter pooler."
+[steps[0]] {"number": 1, "title": "Select 15%", "body": "Choose the positions to predict, at random, per sequence."}
+[steps[1]] {"number": 2, "title": "Corrupt 80/10/10", "body": "[MASK], random token, or leave it — all three still scored."}
+[steps[2]] {"number": 3, "title": "Encode Bidirectionally", "body": "Every position attends to every other one."}
+[steps[3]] {"number": 4, "title": "Predict the Originals", "body": "Softmax over the vocabulary at the selected positions."}
+[steps[4]] {"number": 5, "title": "Count What It Cost", "body": "6.4× fewer targets per pass, 2× the context each."}
+[steps[5]] {"number": 6, "title": "Fine-Tune a Head", "body": "One layer on top; the encoder does the work."}
+[formulas[0]] {"label": "Objective", "formula": "maximise Σ log P(xᵢ | x∖M)", "note": "Over the masked set M only."}
+[formulas[1]] {"label": "Targets per pass", "formula": "0.15·n vs n", "note": "10 against 64 on the lab's corpus — 6.4×."}
+[formulas[2]] {"label": "Context per prediction", "formula": "n−1 vs (n−1)/2", "note": "5.44 against 2.72 tokens, measured."}
+[formulas[3]] {"label": "[MASK] exposure", "formula": "0.15 × 0.80 = 12%", "note": "Of pre-training positions; 0% at fine-tuning."}
+[formulas[4]] {"label": "BERT-base size", "formula": "109,482,240", "note": "Summed from the config, not quoted."}
+[formulas[5]] {"label": "Layer split", "formula": "attention 33% · FFN 67%", "note": "2,362,368 against 4,722,432 per layer."}
+[notationKey[0]] {"symbol": "M", "meaning": "the masked set — the positions selected for prediction"}
+[notationKey[1]] {"symbol": "[MASK]", "meaning": "the placeholder token, on 12% of pre-training positions and none afterwards"}
+[notationKey[2]] {"symbol": "[CLS]", "meaning": "the prepended token whose final state is used for sequence classification"}
+[notationKey[3]] {"symbol": "NSP", "meaning": "next-sentence prediction, BERT's second objective — which RoBERTa showed does nothing"}
+[notationKey[4]] {"symbol": "pooler", "meaning": "the 590,592-parameter layer over [CLS], unused by most fine-tuning recipes"}
+[notationKey[5]] {"symbol": "WordPiece", "meaning": "BERT's tokenizer — 30,522 pieces, and [UNK] when nothing matches"}
+[codeBlocks[0]] 
+  title: The 80/10/10 rule, written out
+  variants: []
+import torch
+
+def mask_tokens(inputs, tokenizer, rate=0.15):
+    labels = inputs.clone()
+    selected = torch.rand(inputs.shape) < rate
+    selected &= ~torch.isin(inputs, torch.tensor(tokenizer.all_special_ids))
+    labels[~selected] = -100          # -100 = "not scored" in HF losses
+
+    draw = torch.rand(inputs.shape)
+    inputs[selected & (draw < 0.8)] = tokenizer.mask_token_id
+    random_slot = selected & (draw >= 0.8) & (draw < 0.9)
+    inputs[random_slot] = torch.randint(len(tokenizer), (random_slot.sum(),))
+    # The remaining 10% keep their original token -- and are still in `labels`,
+    # so the model is scored on positions that look untouched. That is what stops
+    # it from treating "not [MASK]" as "already correct".
+    return inputs, labels
+[codeBlocks[1]] 
+  title: Sum the parameter table before quoting a headline
+  variants: []
+def bert_parameters(vocab=30522, d=768, layers=12, ffn=3072, positions=512, types=2):
+    embeddings = vocab * d + positions * d + types * d + 2 * d      # + embedding LN
+    attention = 4 * (d * d + d)                                     # Q, K, V, O
+    feed_forward = (d * ffn + ffn) + (ffn * d + d)
+    per_layer = attention + feed_forward + 2 * (2 * d)              # two layer norms
+    pooler = d * d + d
+    return embeddings + layers * per_layer + pooler
+
+print(bert_parameters())        # 109482240  -- the paper's "110M", in full
+# embeddings         23,837,184   (21.8% of the model)
+# 12 layers          85,054,464   (attention 33%, feed-forward 67% of each)
+# pooler                590,592
+#
+# The split is the design argument: two thirds of every layer is the position-wise
+# feed-forward network, and a fifth of the whole model is the vocabulary.
+[applications[0]] {"iconName": "browser", "title": "Classification & Tagging", "body": "Sentiment, NER, intent — one head on a frozen or fine-tuned encoder."}
+[applications[1]] {"iconName": "search", "title": "Retrieval & Reranking", "body": "Cross-encoder scoring is still a BERT-shaped job."}
+[applications[2]] {"iconName": "map", "title": "Sentence Embeddings", "body": "Sentence-BERT and its descendants, for similarity at scale."}
+[applications[3]] {"iconName": "help", "title": "Not For Generation", "body": "No next-token objective exists — reach for a decoder instead."}
+[takeaways[0]] "A transformer encoder trained to fill in blanks: 15% of positions selected, corrupted and predicted."
+[takeaways[1]] "Bidirectional by construction, which is exactly why it cannot generate."
+[takeaways[2]] "Counted on one corpus: 10 masked targets against 64 causal ones — 6.4× less signal per pass."
+[takeaways[3]] "And 2× the context per prediction, 5.44 tokens against 2.72, because it reads both directions."
+[takeaways[4]] "80/10/10 exists because [MASK] covers 12% of pre-training positions and 0% of fine-tuning ones."
+[takeaways[5]] "Summed from the config: 109,482,240 parameters — embeddings 21.8%, and two thirds of each layer is the feed-forward block."
+[takeaways[6]] "Its descendants are recipe changes, not architecture changes: RoBERTa retrains it, DistilBERT halves it."
+[crossLinks[0]] {"topicId": "transformers", "label": "Transformers"}
+[crossLinks[1]] {"topicId": "gpt", "label": "GPT"}
+[crossLinks[2]] {"topicId": "roberta", "label": "RoBERTa"}
+[crossLinks[3]] {"topicId": "distilbert", "label": "DistilBERT"}
+[crossLinks[4]] {"topicId": "bidirectional_rnn", "label": "Bidirectional RNNs"}
+
+######## GPT (Decoder-Only)
+[tagline] "One triangular mask, and everything that follows from it."
+[topicId] "gpt"
+[whatIsIt[0]] "GPT is the same transformer block as BERT with one line added to the attention: positions to the right of the query are set to −∞ before the softmax. That single mask is the whole architectural difference between a model that reconstructs text and one that continues it. Drawn as a matrix it is exactly triangular — over six tokens, bidirectional attention scores 36 pairs and the causal version scores 21 — and the first position attends only to itself, which is why the first token of a sequence carries no information about anything."
+[whatIsIt[1]] "What the mask buys is that every position becomes a training target. The same forward pass that gives a masked model 10 predictions on the lab's corpus gives a causal model 64, and the objective is exactly the task the model performs at inference: predict what comes next. There is no [MASK] token to create a pre-train/fine-tune mismatch and no corruption rule to tune. What it costs is context — each prediction sees only what is to its left, averaging 2.72 tokens against a masked model's 5.44 on the same corpus."
+[whatIsIt[2]] "The mask also makes generation cheap in a way a bidirectional model can never be. Because no position attends rightwards, the keys and values of tokens already generated never change, so they can be cached: each new token costs one row of scores instead of a whole matrix. Over a six-token generation that is 21 score computations instead of 56. GPT-2 small, summed from its config, is 124,439,808 parameters — the paper reports 117M, a 6.4% difference, and the released checkpoint has the larger number. Its layers are byte-for-byte the size of BERT's; what differs is the vocabulary bill, 31.6% of the model against BERT's 21.8%."
+[steps[0]] {"number": 1, "title": "Mask the Future", "body": "Set scores for j > i to −∞ before the softmax."}
+[steps[1]] {"number": 2, "title": "Predict Every Position", "body": "n targets per sequence, not 0.15n."}
+[steps[2]] {"number": 3, "title": "Train As You Serve", "body": "The objective is the inference task, exactly."}
+[steps[3]] {"number": 4, "title": "Cache the Keys", "body": "Nothing to the left changes, so nothing needs recomputing."}
+[steps[4]] {"number": 5, "title": "Generate", "body": "Sample, append, repeat — one row of scores per token."}
+[steps[5]] {"number": 6, "title": "Count the Model", "body": "124,439,808, against a reported 117M."}
+[formulas[0]] {"label": "Objective", "formula": "maximise Σ log P(xᵢ | x<ᵢ)", "note": "Every position, left context only."}
+[formulas[1]] {"label": "Causal mask", "formula": "scoreᵢⱼ = −∞ for j > i", "note": "One line; the whole difference from BERT."}
+[formulas[2]] {"label": "Pairs scored", "formula": "n(n+1)/2 vs n²", "note": "21 of 36 at n = 6."}
+[formulas[3]] {"label": "Targets per pass", "formula": "n vs 0.15n", "note": "64 against 10 — 6.4× more."}
+[formulas[4]] {"label": "KV cache", "formula": "2·layers·d·tokens", "note": "18,874,368 values for GPT-2 small at 1,024 tokens."}
+[formulas[5]] {"label": "GPT-2 small size", "formula": "124,439,808", "note": "Summed from the config; the paper says 117M."}
+[notationKey[0]] {"symbol": "x<ᵢ", "meaning": "everything before position i — all a causal model may read"}
+[notationKey[1]] {"symbol": "causal mask", "meaning": "the triangular pattern that removes rightward attention"}
+[notationKey[2]] {"symbol": "KV cache", "meaning": "stored keys and values for tokens already generated"}
+[notationKey[3]] {"symbol": "decoder-only", "meaning": "one stack, causally masked, no encoder and no cross-attention"}
+[notationKey[4]] {"symbol": "byte-level BPE", "meaning": "GPT's tokenizer — 50,257 pieces and no [UNK] token at all"}
+[notationKey[5]] {"symbol": "context window", "meaning": "1,024 positions for GPT-2 small; a learned embedding per position"}
+[codeBlocks[0]] 
+  title: The mask, and the cache the mask makes possible
+  variants: []
+import torch
+import torch.nn.functional as F
+
+def causal_attention(q, k, v):
+    scores = q @ k.transpose(-2, -1) / q.size(-1) ** 0.5
+    n = scores.size(-1)
+    mask = torch.ones(n, n, dtype=torch.bool).tril()
+    return F.softmax(scores.masked_fill(~mask, float("-inf")), -1) @ v
+
+@torch.no_grad()
+def generate(model, prompt, steps, temperature=1.0):
+    tokens = prompt
+    cache = None
+    for _ in range(steps):
+        # First call sees the whole prompt; later calls pass ONE token, because
+        # every earlier key and value is already in the cache and can never change.
+        logits, cache = model(tokens if cache is None else tokens[:, -1:], cache=cache)
+        next_token = torch.multinomial((logits[:, -1] / temperature).softmax(-1), 1)
+        tokens = torch.cat([tokens, next_token], dim=1)
+    return tokens
+
+# Without the cache, generating n tokens recomputes the whole prefix every step:
+# sum(i(i+1)/2) instead of sum(i) score computations. The mask is what makes the
+# cheaper version correct.
+[codeBlocks[1]] 
+  title: Sum it yourself — the reported figure is not the checkpoint
+  variants: []
+def gpt2_parameters(vocab=50257, d=768, layers=12, ffn=3072, positions=1024):
+    embeddings = vocab * d + positions * d          # no token-type, no embedding LN
+    attention = 4 * (d * d + d)
+    feed_forward = (d * ffn + ffn) + (ffn * d + d)
+    per_layer = attention + feed_forward + 2 * (2 * d)
+    return embeddings + layers * per_layer + 2 * d  # final layer norm
+
+print(gpt2_parameters())     # 124439808
+# The paper reports 117M. The gap is 6.4%, and it matters twice: once when you are
+# comparing model sizes across papers, and once when you are sizing a GPU. Note
+# also what is NOT here -- the output projection is tied to the input embedding,
+# so a 50,257 x 768 matrix is counted exactly once.
+[applications[0]] {"iconName": "robot", "title": "Generation", "body": "Every chat model in use is this mask plus scale plus alignment."}
+[applications[1]] {"iconName": "finance", "title": "Serving Cost", "body": "The KV cache is the memory that decides batch size and context limits."}
+[applications[2]] {"iconName": "book", "title": "Completion Tasks", "body": "Code completion, autocomplete, continuation — all left-to-right by nature."}
+[applications[3]] {"iconName": "help", "title": "Where BERT Wins", "body": "Classification and retrieval, where the whole input is available at once."}
+[takeaways[0]] "One triangular mask separates a decoder from an encoder; everything else in the block is identical."
+[takeaways[1]] "It costs half the attention matrix — 21 of 36 pairs at n = 6 — and the first position sees only itself."
+[takeaways[2]] "It buys every position as a target: 64 predictions against a masked model's 10 on the same corpus."
+[takeaways[3]] "And it costs context per prediction: 2.72 tokens against 5.44, measured on that corpus."
+[takeaways[4]] "Because nothing attends rightwards, keys and values are cacheable: 21 score computations instead of 56 over six tokens."
+[takeaways[5]] "GPT-2 small summed from its config is 124,439,808 parameters; the paper's 117M is 6.4% low."
+[takeaways[6]] "Its layers are the same size as BERT-base's — the difference is a 50,257-piece vocabulary and a 1,024-position context."
+[crossLinks[0]] {"topicId": "bert", "label": "BERT"}
+[crossLinks[1]] {"topicId": "transformers", "label": "Transformers"}
+[crossLinks[2]] {"topicId": "gpt3_gpt4", "label": "GPT-3 & GPT-4"}
+[crossLinks[3]] {"topicId": "llms", "label": "LLMs"}
+[crossLinks[4]] {"topicId": "self_cross_attention", "label": "Self- vs Cross-Attention"}
+
+######## T5 (Text-to-Text)
+[tagline] "Every task as text, and span corruption priced at 512 tokens."
+[topicId] "t5"
+[whatIsIt[0]] "T5's claim is that every NLP task is text in, text out. Classification becomes generating the word \"acceptable\"; similarity scoring becomes generating \"3.8\"; translation, summarisation and question answering were already text-to-text. Put a task prefix on the front and one encoder-decoder handles all of them, with one loss and one decoding path — which is what makes multi-task pre-training and transfer between tasks a matter of mixing data rather than of building heads."
+[whatIsIt[1]] "Its pre-training objective corrupts spans rather than single tokens, and the shape of that is the economy of the whole design. Each contiguous run of dropped tokens becomes one sentinel in the input, and the target is only the dropped runs, each introduced by its sentinel. At the length these models actually run — 512 tokens, 15% corrupted, mean span 3 — the encoder reads 461 tokens and the decoder emits 104. BERT's objective makes a model produce an output at all 512 positions, so span corruption costs 4.9× fewer decoder steps for the same corruption budget."
+[whatIsIt[2]] "The price is that there are two stacks. Summed from its config, T5-base is 222,903,552 parameters, and they are not evenly split: the decoder is 113,274,624 against the encoder's 84,953,856, because every decoder layer carries a cross-attention block the encoder layers do not have. Against BERT-base's 109,482,240 (encoder only, cannot generate) and GPT-2 small's 124,439,808 (decoder only, reads one direction), T5 pays for both and gets both — bidirectional reading of the input and generation of the output. T5 also drops every bias term in the model, which is a small saving stated for completeness rather than a design highlight."
+[steps[0]] {"number": 1, "title": "Frame as Text", "body": "A task prefix, an input string, a target string."}
+[steps[1]] {"number": 2, "title": "Corrupt Spans", "body": "15% of tokens, mean span 3, one sentinel per run."}
+[steps[2]] {"number": 3, "title": "Encode Bidirectionally", "body": "The encoder sees the whole corrupted input."}
+[steps[3]] {"number": 4, "title": "Decode the Spans Only", "body": "104 target tokens for 512 of input."}
+[steps[4]] {"number": 5, "title": "Cross-Attend", "body": "Every decoder layer reads the encoder — the extra block."}
+[steps[5]] {"number": 6, "title": "Pay for Two Stacks", "body": "222,903,552 parameters, the decoder the larger half."}
+[formulas[0]] {"label": "Corruption budget", "formula": "0.15·n tokens, spans of ~3", "note": "77 tokens in 26 spans at n = 512."}
+[formulas[1]] {"label": "Input length", "formula": "n − corrupted + spans", "note": "461 at n = 512."}
+[formulas[2]] {"label": "Target length", "formula": "corrupted + spans + 1", "note": "104 — the final sentinel is the stop signal."}
+[formulas[3]] {"label": "Against masked LM", "formula": "512 → 104 output positions", "note": "4.9× fewer decoder steps."}
+[formulas[4]] {"label": "T5-base size", "formula": "222,903,552", "note": "Encoder 84,953,856 · decoder 113,274,624."}
+[formulas[5]] {"label": "Decoder layer", "formula": "2 attention blocks + FFN", "note": "9,439,488 against the encoder layer's 7,079,424."}
+[notationKey[0]] {"symbol": "sentinel", "meaning": "the <X0>, <X1>… placeholder tokens standing in for dropped spans"}
+[notationKey[1]] {"symbol": "span", "meaning": "a contiguous run of corrupted tokens — one sentinel covers all of it"}
+[notationKey[2]] {"symbol": "task prefix", "meaning": "the string that tells one model which task this is"}
+[notationKey[3]] {"symbol": "cross-attention", "meaning": "the extra block per decoder layer; why the decoder is the bigger half"}
+[notationKey[4]] {"symbol": "relative position bias", "meaning": "T5's position scheme — a learned bias per bucket, not an embedding"}
+[notationKey[5]] {"symbol": "RMSNorm", "meaning": "T5's normalisation: a scale and no bias, in a model with no biases anywhere"}
+[codeBlocks[0]] 
+  title: Every task, one interface
+  variants: []
+from transformers import T5ForConditionalGeneration, T5Tokenizer
+
+model = T5ForConditionalGeneration.from_pretrained("t5-base")
+tokenizer = T5Tokenizer.from_pretrained("t5-base")
+
+def run(text: str) -> str:
+    ids = tokenizer(text, return_tensors="pt").input_ids
+    return tokenizer.decode(model.generate(ids, max_new_tokens=32)[0], skip_special_tokens=True)
+
+run("translate English to German: the house is small")
+run("cola sentence: the boy are running")            # -> "unacceptable"
+run("stsb sentence1: a man plays guitar sentence2: a person plays a guitar")  # -> "4.4"
+run("summarize: " + article)
+
+# The prefix is data, not configuration. Adding a task means adding examples with a
+# new prefix -- no new head, no new loss, no new decoding path. That is the claim
+# the paper is named after, and it is also why the prefixes have to be spelled
+# exactly as they were during pre-training.
+[codeBlocks[1]] 
+  title: Span corruption, and why the target is short
+  variants: []
+def span_corrupt(tokens, rate=0.15, mean_span=3):
+    budget = round(len(tokens) * rate)
+    spans = max(1, round(budget / mean_span))
+    # (span placement omitted -- what matters is the accounting below)
+    return {
+        "input_length": len(tokens) - budget + spans,
+        "target_length": budget + spans + 1,      # + the final sentinel
+        "masked_lm_output_positions": len(tokens),
+    }
+
+print(span_corrupt(list(range(512))))
+# {'input_length': 461, 'target_length': 104, 'masked_lm_output_positions': 512}
+#
+# A decoder pays per step it emits, so 104 against 512 is the whole reason this
+# objective is affordable in an encoder-decoder. It is also why the sentinels are
+# in the target at all: without them the model would not know where one recovered
+# span ends and the next begins.
+[applications[0]] {"iconName": "globe", "title": "Translation & Summarisation", "body": "The tasks an encoder-decoder was built for."}
+[applications[1]] {"iconName": "stack", "title": "Multi-Task Serving", "body": "One checkpoint, many tasks, selected by prefix."}
+[applications[2]] {"iconName": "flask", "title": "Transfer Studies", "body": "The paper is an ablation matrix; the format is what made it possible."}
+[applications[3]] {"iconName": "finance", "title": "Cost", "body": "Two stacks and cross-attention — roughly double the layer bill."}
+[takeaways[0]] "Every task framed as text in, text out, selected by a prefix that is data rather than configuration."
+[takeaways[1]] "Span corruption replaces each run of dropped tokens with one sentinel and asks for only the runs back."
+[takeaways[2]] "At 512 tokens and 15% corruption: 77 tokens in 26 spans, input 461, target 104."
+[takeaways[3]] "That is 4.9× fewer decoder steps than a masked model's 512 output positions, for the same corruption."
+[takeaways[4]] "T5-base summed from its config is 222,903,552 parameters, against a reported 220M."
+[takeaways[5]] "The decoder is the larger half — 113M against 85M — because every decoder layer adds a cross-attention block."
+[takeaways[6]] "The trade against BERT and GPT is explicit: pay for two stacks, get bidirectional reading *and* generation."
+[crossLinks[0]] {"topicId": "encoder_decoder", "label": "Encoder-Decoder Architecture"}
+[crossLinks[1]] {"topicId": "bert", "label": "BERT"}
+[crossLinks[2]] {"topicId": "gpt", "label": "GPT"}
+[crossLinks[3]] {"topicId": "bart", "label": "BART"}
+[crossLinks[4]] {"topicId": "self_cross_attention", "label": "Self- vs Cross-Attention"}
+
+######## RoBERTa
+[tagline] "Same architecture, better recipe — and 0.85ᵏ is the whole masking argument."
+[topicId] "roberta"
+[whatIsIt[0]] "RoBERTa changed no part of BERT's architecture. Same layer count, same width, same masked-language-modelling objective — the paper is a list of things BERT's *training run* did that turned out to be suboptimal. Dynamic masking instead of static, no next-sentence prediction, batches of 8,000 sequences instead of 256, 160GB of text instead of 16GB, and a 50,265-piece byte-level BPE vocabulary instead of 30,522 WordPiece pieces. Every gain came from the recipe, which is the most useful kind of result: it says the reported numbers were a training run and not a ceiling on the architecture."
+[whatIsIt[1]] "The masking change is the cheapest one and the easiest to state exactly. BERT baked its masks into the data — duplicate the corpus ten times with a different mask each time, then train for forty epochs, so every mask pattern is seen four times. A token is selected with probability 0.15 per masking, so after k independent maskings the chance it was never selected at all is 0.85ᵏ. Under ten static masks that is 19.7% of tokens never predicted; under forty dynamic maskings it is 0.15%. One in five against one in 650, from a change that costs a line of data loading."
+[whatIsIt[2]] "The vocabulary change is the one that shows up in the parameter count. Byte-level BPE at 50,265 entries against WordPiece at 30,522 makes the embedding table 39,000,576 parameters against BERT's 23,837,184 — 64% more — while the twelve layers are byte-for-byte identical, taking the model from 109,482,240 to 124,645,632. What it buys is the elimination of [UNK] entirely: with the 256 bytes as the base vocabulary, every string is representable. What it costs is fertility, more pieces per word on anything unusual, and since attention is quadratic in sequence length that cost is paid on every forward pass for the life of the model."
+[steps[0]] {"number": 1, "title": "Keep the Architecture", "body": "Nothing about the model changes. Nothing."}
+[steps[1]] {"number": 2, "title": "Re-Mask Every Epoch", "body": "Dynamic masking: 0.85⁴⁰ against 0.85¹⁰."}
+[steps[2]] {"number": 3, "title": "Drop NSP", "body": "The second objective was doing no measurable work."}
+[steps[3]] {"number": 4, "title": "Scale the Batch and Data", "body": "256 → 8,000 sequences, 16GB → 160GB."}
+[steps[4]] {"number": 5, "title": "Switch the Tokenizer", "body": "Byte-level BPE: no [UNK], 64% larger embedding table."}
+[steps[5]] {"number": 6, "title": "Re-Read the Baseline", "body": "BERT's numbers were a run, not a limit."}
+[formulas[0]] {"label": "Never predicted", "formula": "0.85ᵏ after k maskings", "note": "19.7% at k = 10, 0.15% at k = 40."}
+[formulas[1]] {"label": "Static schedule", "formula": "10 masks × 4 epochs each", "note": "40 epochs, 10 distinct patterns."}
+[formulas[2]] {"label": "Dynamic schedule", "formula": "40 masks, one per epoch", "note": "Same compute, four times the mask variety."}
+[formulas[3]] {"label": "Embedding table", "formula": "50,265 × 768 = 38,603,520", "note": "Against BERT's 30,522 × 768."}
+[formulas[4]] {"label": "Total size", "formula": "124,645,632", "note": "Layers unchanged at 85,054,464."}
+[formulas[5]] {"label": "What byte-BPE removes", "formula": "[UNK]", "note": "256 bytes as base — every string is representable."}
+[notationKey[0]] {"symbol": "static masking", "meaning": "masks fixed in the pre-processed data and reused across epochs"}
+[notationKey[1]] {"symbol": "dynamic masking", "meaning": "a fresh mask drawn every time a sequence is seen"}
+[notationKey[2]] {"symbol": "k", "meaning": "number of independent maskings a sequence receives"}
+[notationKey[3]] {"symbol": "NSP", "meaning": "next-sentence prediction — BERT's second objective, removed here"}
+[notationKey[4]] {"symbol": "byte-level BPE", "meaning": "BPE over raw bytes, so no input is ever unrepresentable"}
+[notationKey[5]] {"symbol": "fertility", "meaning": "pieces per word — what a larger vocabulary is trying to reduce"}
+[codeBlocks[0]] 
+  title: Static and dynamic masking, side by side
+  variants: []
+# BERT: mask once, at pre-processing time, and reuse.
+def build_static_dataset(corpus, duplicates=10):
+    return [mask_tokens(seq.clone()) for _ in range(duplicates) for seq in corpus]
+# 40 epochs over this sees each mask pattern 4 times, and any token that was never
+# selected in those 10 draws is never predicted at all.
+
+# RoBERTa: mask in the collator, so every epoch is a new draw.
+class DynamicMaskingCollator:
+    def __call__(self, batch):
+        return mask_tokens(torch.stack(batch).clone())
+
+print(f"never predicted, 10 static masks:  {0.85 ** 10:.4f}")   # 0.1969
+print(f"never predicted, 40 dynamic masks: {0.85 ** 40:.4f}")   # 0.0015
+# Same compute budget. One in five tokens against one in 650.
+[codeBlocks[1]] 
+  title: What the vocabulary change costs in parameters
+  variants: []
+def embedding_parameters(vocab, d=768, positions=512, types=2, norm=True):
+    return vocab * d + positions * d + types * d + (2 * d if norm else 0)
+
+bert = embedding_parameters(30522)                       # 23,837,184
+roberta = embedding_parameters(50265, positions=514, types=1)   # 39,000,576
+print(f"{roberta / bert - 1:+.1%}")                      # +63.6%
+
+# The twelve layers are identical -- 85,054,464 in both models. Every parameter of
+# the difference is vocabulary. Worth knowing before choosing a tokenizer for a
+# model you intend to fit on a particular GPU: this is the one part of the size
+# you decide before training and cannot revise afterwards.
+[applications[0]] {"iconName": "crown", "title": "A Better BERT", "body": "A drop-in replacement wherever BERT-base was the encoder."}
+[applications[1]] {"iconName": "flask", "title": "How to Ablate", "body": "The template for isolating recipe effects from architecture effects."}
+[applications[2]] {"iconName": "chart", "title": "Benchmark Reading", "body": "A reminder that a published score is one training run."}
+[applications[3]] {"iconName": "finance", "title": "Vocabulary Budget", "body": "50k pieces is 15M extra parameters before any layer exists."}
+[takeaways[0]] "Not an architecture paper: same layers, same width, same objective, better training."
+[takeaways[1]] "Static masking reuses 10 patterns across 40 epochs, so 0.85¹⁰ = 19.7% of tokens are never predicted."
+[takeaways[2]] "Dynamic masking makes that 0.85⁴⁰ = 0.15% for the same compute — one in 650 instead of one in five."
+[takeaways[3]] "NSP was removed because the ablation showed it contributing nothing."
+[takeaways[4]] "Byte-level BPE at 50,265 pieces grows the embedding table 64%, to 39,000,576, with the layers unchanged."
+[takeaways[5]] "Total size 109,482,240 → 124,645,632, and [UNK] disappears entirely."
+[takeaways[6]] "The general lesson: check whether a baseline's number is a limit of the architecture or of the run that produced it."
+[crossLinks[0]] {"topicId": "bert", "label": "BERT"}
+[crossLinks[1]] {"topicId": "distilbert", "label": "DistilBERT"}
+[crossLinks[2]] {"topicId": "hf_tokenizers", "label": "Hugging Face Tokenizers"}
+[crossLinks[3]] {"topicId": "bpe", "label": "Byte-Pair Encoding"}
+[crossLinks[4]] {"topicId": "transformers", "label": "Transformers"}
+
+######## DistilBERT
+[tagline] "Half the layers, 40% smaller — and why it is not 50%."
+[topicId] "distilbert"
+[whatIsIt[0]] "Distillation trains a small model on a large one's *distribution* rather than on the labels. The reason that helps is measurable on any real distribution: at the step a trained model is least certain about, its top choice holds 0.296 of the mass and everything else holds 0.704, with the runner-up at 0.675 of the winner's probability. A hard label keeps the 0.296 and throws the rest away. The teacher's full output says not only which answer is right but which wrong answers were close — and that ranking is signal the student can learn from."
+[whatIsIt[1]] "Temperature is what makes that structure trainable. Dividing the logits by T flattens the distribution: on the same real teacher output, T = 4 takes entropy from 1.706 to 1.838 nats and the top choice from 0.296 to 0.193, so the gradient carries information about the alternatives instead of being dominated by the winner. Because soft-target gradients shrink as 1/T², the loss is multiplied by T² — 16 at T = 4 — to keep the two terms comparable. DistilBERT's actual loss is three terms: the distillation KL, the ordinary masked-LM loss, and a cosine term aligning the student's hidden states with the teacher's."
+[whatIsIt[2]] "The compression itself is blunt: keep every second layer of BERT-base, keep the embeddings, drop the pooler, and train. Summed from the configs that is 66,362,880 parameters against 109,482,240 — 39.4% smaller, for half the layers. The two numbers do not match because the embedding table does not shrink: it is 23,835,648 parameters in both, which is 36% of DistilBERT against 22% of BERT. That is the general rule this table teaches — depth is what compression reaches and vocabulary is what it cannot, which is also why the published result (97% of BERT's GLUE score at 60% faster inference) is believable: the layers are where the compute goes, and the layers are what was halved."
+[steps[0]] {"number": 1, "title": "Take the Teacher's Distribution", "body": "Not the argmax — the 0.704 of mass beside it."}
+[steps[1]] {"number": 2, "title": "Soften It", "body": "Divide logits by T; entropy 1.706 → 1.838 at T = 4."}
+[steps[2]] {"number": 3, "title": "Scale the Loss by T²", "body": "Soft gradients shrink as 1/T²; 16× puts them back."}
+[steps[3]] {"number": 4, "title": "Halve the Depth", "body": "Every second layer of the teacher, initialised from it."}
+[steps[4]] {"number": 5, "title": "Add the Other Two Terms", "body": "Masked-LM loss and a hidden-state cosine loss."}
+[steps[5]] {"number": 6, "title": "Read the Table", "body": "39.4% smaller, not 50% — the embeddings do not move."}
+[formulas[0]] {"label": "Soft targets", "formula": "pᵢ = softmax(zᵢ / T)", "note": "T = 4 in DistilBERT."}
+[formulas[1]] {"label": "Distillation loss", "formula": "L = T²·KL(student ‖ teacher) + L_mlm + L_cos", "note": "Three terms, not one."}
+[formulas[2]] {"label": "Why T²", "formula": "soft gradients scale as 1/T²", "note": "16× at T = 4, so the terms stay comparable."}
+[formulas[3]] {"label": "Measured teacher", "formula": "top 0.296 · off-top 0.704", "note": "Runner-up at 0.675 of the winner."}
+[formulas[4]] {"label": "Size", "formula": "66,362,880 vs 109,482,240", "note": "39.4% smaller at half the layers."}
+[formulas[5]] {"label": "Embeddings", "formula": "23,835,648 in both", "note": "36% of the student, 22% of the teacher."}
+[notationKey[0]] {"symbol": "T", "meaning": "temperature — the divisor applied to logits before the softmax"}
+[notationKey[1]] {"symbol": "soft targets", "meaning": "the teacher's full distribution, used in place of a one-hot label"}
+[notationKey[2]] {"symbol": "dark knowledge", "meaning": "the off-top mass; the ranking of the wrong answers"}
+[notationKey[3]] {"symbol": "KL", "meaning": "Kullback-Leibler divergence between student and teacher distributions"}
+[notationKey[4]] {"symbol": "L_cos", "meaning": "cosine loss aligning student hidden states with the teacher's"}
+[notationKey[5]] {"symbol": "layer selection", "meaning": "every second teacher layer, used to initialise the student"}
+[codeBlocks[0]] 
+  title: The three-term loss, with the T² that is easy to forget
+  variants: []
+import torch
+import torch.nn.functional as F
+
+def distillation_loss(student_logits, teacher_logits, labels, hidden_s, hidden_t,
+                      T=4.0, alpha=5.0, beta=2.0, gamma=1.0):
+    soft = F.kl_div(
+        F.log_softmax(student_logits / T, dim=-1),
+        F.softmax(teacher_logits / T, dim=-1),
+        reduction="batchmean",
+    ) * T * T          # <- without this the soft term is ~1/16 of its intended size
+    hard = F.cross_entropy(student_logits.flatten(0, 1), labels.flatten())
+    cosine = 1 - F.cosine_similarity(hidden_s, hidden_t, dim=-1).mean()
+    return alpha * soft + beta * hard + gamma * cosine
+
+# The T² is the single most commonly dropped line in distillation code, and it does
+# not fail loudly -- training still converges, just onto the hard labels, which is
+# exactly the signal distillation was meant to add.
+[codeBlocks[1]] 
+  title: Where the parameters actually are, before choosing what to cut
+  variants: []
+def bert_like(vocab=30522, d=768, layers=12, ffn=3072, positions=512, types=2, pooler=True):
+    embeddings = vocab * d + positions * d + types * d + 2 * d
+    per_layer = 4 * (d * d + d) + (d * ffn + ffn) + (ffn * d + d) + 4 * d
+    return {
+        "embeddings": embeddings,
+        "layers": layers * per_layer,
+        "pooler": d * d + d if pooler else 0,
+    }
+
+teacher = bert_like()                                     # 109,482,240 total
+student = bert_like(layers=6, types=0, pooler=False)       #  66,362,880 total
+
+# layers:     85,054,464 -> 42,527,232   (halved, as intended)
+# embeddings: 23,837,184 -> 23,835,648   (unchanged)
+#
+# Halving the layers removes 43M parameters and 0 embedding parameters, which is why
+# the model is 39.4% smaller rather than 50%. If a table's embedding share were 60%
+# instead of 22%, cutting depth would be the wrong lever entirely -- vocabulary
+# pruning or factorised embeddings (ALBERT) would be.
+[applications[0]] {"iconName": "finance", "title": "Serving Cost", "body": "60% faster inference at 97% of the score, per the paper."}
+[applications[1]] {"iconName": "chip", "title": "On-Device NLP", "body": "Six layers fits where twelve does not."}
+[applications[2]] {"iconName": "flask", "title": "Any Teacher-Student Pair", "body": "The recipe generalises; the temperature and T² do not change."}
+[applications[3]] {"iconName": "help", "title": "When Not To", "body": "If the table is mostly embeddings, cutting depth saves little."}
+[takeaways[0]] "Distillation trains on the teacher's distribution: on a real one, 0.704 of the mass sits off the top choice."
+[takeaways[1]] "Temperature exposes that structure — at T = 4, entropy 1.706 → 1.838 nats and the top choice 0.296 → 0.193."
+[takeaways[2]] "Soft-target gradients scale as 1/T², so the loss is multiplied by T² — 16 at T = 4."
+[takeaways[3]] "The real loss has three terms: distillation KL, masked-LM, and a cosine loss on hidden states."
+[takeaways[4]] "The compression is every second layer of BERT-base, no pooler, embeddings kept."
+[takeaways[5]] "66,362,880 against 109,482,240 — 39.4% smaller, not 50%, because the embedding table does not shrink."
+[takeaways[6]] "Embeddings are 36% of the student against 22% of the teacher; depth is what compression reaches."
+[crossLinks[0]] {"topicId": "bert", "label": "BERT"}
+[crossLinks[1]] {"topicId": "roberta", "label": "RoBERTa"}
+[crossLinks[2]] {"topicId": "transfer_learning", "label": "Transfer Learning"}
+[crossLinks[3]] {"topicId": "softmax", "label": "Softmax (Output Layer)"}
+[crossLinks[4]] {"topicId": "transformers", "label": "Transformers"}
+
+######## Hugging Face Tokenizers
+[tagline] "BPE, WordPiece and Unigram trained side by side on one corpus."
+[topicId] "hf_tokenizers"
+[whatIsIt[0]] "The tokenizers library ships three training algorithms, and the choice between them is usually made by copying whatever a model card said. They differ in what they optimise. BPE merges the most frequent adjacent pair, repeatedly. WordPiece merges the pair that most increases corpus likelihood — score freq(ab)/(freq(a)·freq(b)), which prefers pairs whose halves are rare apart. Unigram goes the other way entirely: start from a large candidate set, score every piece by how much likelihood would be lost without it, and prune. All three are trained in this lab on one corpus, to one vocabulary budget, and compared on held-out text."
+[whatIsIt[1]] "The number that matters is fertility — pieces per word — because sequence length is attention cost. On the held-out sentence, BPE gives 1.667 pieces per word, WordPiece 1.667, and Unigram 1.500. Where they disagree is more instructive than the average: \"gardener\" comes out as one piece under BPE, \"garden ##er\" under WordPiece and \"garden er\" under Unigram, because BPE replays a fixed merge list, WordPiece takes the longest match from the left, and Unigram searches for the most probable segmentation — the only one of the three that can revise an early choice. On a word the corpus never contained, BPE falls back to characters, Unigram to its smallest pieces, and WordPiece emits [UNK] and loses the word outright."
+[whatIsIt[2]] "One measured detail explains a hyper-parameter nobody reads. WordPiece's score is maximal — exactly 1 — when both halves of a pair occur once, so on a small corpus the trainer spends its whole budget on one-off letter pairs: fertility comes out at 4.333 pieces per word, *worse than characters*. With a minimum pair frequency of 4 it reaches 1.667 with a 28% smaller vocabulary than BPE needed. The real fix is billions of tokens, where singleton pairs are rare — but the floor is what makes the criterion behave at any scale below that, and fertility being worse than the baseline is how the lab's first run caught its own bug."
+[steps[0]] {"number": 1, "title": "Pre-Tokenize", "body": "Split on whitespace and punctuation before any of this starts."}
+[steps[1]] {"number": 2, "title": "Train BPE", "body": "Merge the most frequent pair, repeatedly, to a vocabulary budget."}
+[steps[2]] {"number": 3, "title": "Train WordPiece", "body": "Merge by freq(ab)/(freq(a)·freq(b)) — with a frequency floor."}
+[steps[3]] {"number": 4, "title": "Train Unigram", "body": "Start large, prune what likelihood can most afford to lose."}
+[steps[4]] {"number": 5, "title": "Measure Fertility", "body": "Pieces per word on held-out text: 1.667 / 1.667 / 1.500."}
+[steps[5]] {"number": 6, "title": "Price It", "body": "Attention is n² — fertility is a permanent tax."}
+[formulas[0]] {"label": "BPE score", "formula": "freq(ab)", "note": "Merge the most common adjacent pair."}
+[formulas[1]] {"label": "WordPiece score", "formula": "freq(ab) / (freq(a)·freq(b))", "note": "Maximal at 1 when both halves occur once."}
+[formulas[2]] {"label": "Unigram objective", "formula": "maximise Σ log P(segmentation)", "note": "Pruned by likelihood loss, decoded by Viterbi."}
+[formulas[3]] {"label": "Fertility", "formula": "pieces / words", "note": "BPE 1.667 · WordPiece 1.667 · Unigram 1.500."}
+[formulas[4]] {"label": "No floor", "formula": "4.333 pieces per word", "note": "Worse than characters — the reason min_frequency exists."}
+[formulas[5]] {"label": "Attention cost", "formula": "n² scores for n pieces", "note": "100 against 81 for 10 pieces against 9."}
+[notationKey[0]] {"symbol": "fertility", "meaning": "average pieces per word — the sequence-length multiplier"}
+[notationKey[1]] {"symbol": "##", "meaning": "WordPiece's continuation marker: \"##er\" is a piece that cannot start a word"}
+[notationKey[2]] {"symbol": "</w>", "meaning": "BPE's end-of-word marker, so \"er\" inside and at the end differ"}
+[notationKey[3]] {"symbol": "Viterbi", "meaning": "the search Unigram uses to find the most probable segmentation"}
+[notationKey[4]] {"symbol": "[UNK]", "meaning": "what WordPiece emits when no piece matches; byte-level BPE has none"}
+[notationKey[5]] {"symbol": "min_frequency", "meaning": "the pair-count floor that stops the likelihood score chasing singletons"}
+[codeBlocks[0]] 
+  title: Train all three and compare them on your own text
+  variants: []
+from tokenizers import Tokenizer, models, trainers, pre_tokenizers
+
+def train(model, trainer, files):
+    tok = Tokenizer(model)
+    tok.pre_tokenizer = pre_tokenizers.Whitespace()
+    tok.train(files, trainer)
+    return tok
+
+V = 8000
+bpe = train(models.BPE(unk_token="[UNK]"),
+            trainers.BpeTrainer(vocab_size=V, min_frequency=2), files)
+wordpiece = train(models.WordPiece(unk_token="[UNK]"),
+                  trainers.WordPieceTrainer(vocab_size=V, min_frequency=2), files)
+unigram = train(models.Unigram(),
+                trainers.UnigramTrainer(vocab_size=V, unk_token="[UNK]"), files)
+
+def fertility(tok, text):
+    words = text.split()
+    return len(tok.encode(text).tokens) / len(words)
+
+for name, tok in [("bpe", bpe), ("wordpiece", wordpiece), ("unigram", unigram)]:
+    print(name, f"{fertility(tok, held_out):.3f}",
+          tok.encode("gardener").tokens)
+
+# Twenty minutes of work that decides your sequence lengths permanently. Note
+# min_frequency: leave it at 0 with the WordPiece trainer on a small corpus and the
+# likelihood score will spend the whole vocabulary on one-off pairs.
+[codeBlocks[1]] 
+  title: Measure the tax before you commit to a tokenizer
+  variants: []
+def sequence_cost(tok, corpus, max_len=512):
+    lengths = [len(tok.encode(line).tokens) for line in corpus]
+    return {
+        "mean_length": sum(lengths) / len(lengths),
+        "attention_pairs": sum(n * n for n in lengths),
+        "truncated": sum(1 for n in lengths if n > max_len),
+    }
+
+# Two things this catches that fertility alone does not:
+#   1. attention is quadratic, so a 10% longer mean sequence is ~20% more attention
+#      work on every forward pass, forever;
+#   2. truncation. A fertile tokenizer pushes real documents past the context limit,
+#      and the content that falls off the end is invisible in any loss curve.
+#
+# Run it on YOUR corpus. Fertility on English news says nothing about fertility on
+# code, chemistry, or a morphologically rich language -- which is exactly where the
+# copied-from-a-model-card choice goes wrong.
+[applications[0]] {"iconName": "globe", "title": "Multilingual Models", "body": "Fertility varies enormously by language; measure per language."}
+[applications[1]] {"iconName": "finance", "title": "Cost Control", "body": "Sequence length is the attention bill and the API bill both."}
+[applications[2]] {"iconName": "browser", "title": "Domain Adaptation", "body": "Code and chemistry tokenize badly under a news-trained vocabulary."}
+[applications[3]] {"iconName": "help", "title": "Irreversible Choices", "body": "The tokenizer is fixed before pre-training and cannot be revised after."}
+[takeaways[0]] "Three algorithms, three objectives: frequency (BPE), likelihood (WordPiece), pruning (Unigram)."
+[takeaways[1]] "Trained on one corpus to one budget, fertility came out 1.667 / 1.667 / 1.500 pieces per word."
+[takeaways[2]] "Only Unigram can revise an early choice — it decodes by Viterbi rather than replaying merges."
+[takeaways[3]] "On an unseen word, BPE and Unigram fall back to small pieces; WordPiece emits [UNK] and loses it."
+[takeaways[4]] "WordPiece's score is maximal for singleton pairs, so without a frequency floor fertility is 4.333 — worse than characters."
+[takeaways[5]] "With the floor at 4 it matches BPE's fertility using a 28% smaller vocabulary."
+[takeaways[6]] "Fertility is a permanent tax: attention is quadratic in length, and the tokenizer is fixed before pre-training begins."
+[crossLinks[0]] {"topicId": "bpe", "label": "Byte-Pair Encoding"}
+[crossLinks[1]] {"topicId": "tokenization", "label": "Tokenization"}
+[crossLinks[2]] {"topicId": "roberta", "label": "RoBERTa"}
+[crossLinks[3]] {"topicId": "bert", "label": "BERT"}
+[crossLinks[4]] {"topicId": "transformers", "label": "Transformers"}
+
+######## Autoencoders
+[tagline] "Encode-then-reconstruct networks for compression and denoising."
+[topicId] "autoencoders"
+[whatIsIt[0]] "An autoencoder is a neural network trained to reconstruct its own input, forced through a narrow bottleneck that compels it to learn a compact representation."
+[whatIsIt[1]] "The encoder squeezes input into a low-dimensional latent code; the decoder rebuilds it — and the bottleneck is where the useful, compressed features live."
+[steps[0]] {"number": 1, "title": "Encode", "body": "Map the input down to a small latent vector z."}
+[steps[1]] {"number": 2, "title": "Bottleneck", "body": "The narrow latent layer forces the network to keep only essential information."}
+[steps[2]] {"number": 3, "title": "Decode", "body": "Reconstruct the original input from z."}
+[steps[3]] {"number": 4, "title": "Minimize Reconstruction Error", "body": "Train end-to-end to make the output match the input."}
+[formulas[0]] {"label": "Objective", "formula": "min ‖x − decode(encode(x))‖²", "note": "Reconstruction loss."}
+[formulas[1]] {"label": "Bottleneck", "formula": "dim(z) ≪ dim(x)", "note": "Undercomplete latent forces compression."}
+[formulas[2]] {"label": "VAE twist", "formula": "latent = distribution", "note": "Variational autoencoders make z generative."}
+[notationKey[0]] {"symbol": "z", "meaning": "latent code — the compressed representation"}
+[notationKey[1]] {"symbol": "encoder / decoder", "meaning": "compression and reconstruction halves"}
+[notationKey[2]] {"symbol": "reconstruction loss", "meaning": "difference between input and output"}
+[codeBlocks[0]] 
+  title: A simple autoencoder (PyTorch)
+  variants: []
+import torch.nn as nn
+
+encoder = nn.Sequential(nn.Linear(784, 64), nn.ReLU(), nn.Linear(64, 16))
+decoder = nn.Sequential(nn.Linear(16, 64), nn.ReLU(), nn.Linear(64, 784))
+
+z = encoder(x)
+x_hat = decoder(z)   # trained to match x
+[applications[0]] {"iconName": "chip", "title": "Dimensionality Reduction", "body": "A non-linear alternative to PCA for compressing and visualizing data."}
+[applications[1]] {"iconName": "target", "title": "Anomaly Detection", "body": "Inputs that reconstruct poorly are flagged as anomalies."}
+[applications[2]] {"iconName": "image", "title": "Denoising & Generation", "body": "Denoising autoencoders clean corrupted inputs; VAEs generate new samples."}
+[takeaways[0]] "Autoencoders learn compressed representations by reconstructing their input through a bottleneck."
+[takeaways[1]] "The latent code captures the data's essential structure — a non-linear PCA."
+[takeaways[2]] "High reconstruction error signals anomalies."
+[takeaways[3]] "Variational autoencoders turn the latent space generative, a bridge to GANs."
+[crossLinks[0]] {"topicId": "pca", "label": "PCA"}
+[crossLinks[1]] {"topicId": "gans", "label": "GANs"}
