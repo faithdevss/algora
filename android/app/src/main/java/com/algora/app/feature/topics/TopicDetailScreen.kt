@@ -29,6 +29,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.LockOpen
@@ -49,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -338,8 +341,13 @@ private fun TopicDetailContent(
     }
     var tab by androidx.compose.runtime.saveable.rememberSaveable(topicId) { androidx.compose.runtime.mutableStateOf("Overview") }
     val accent = Color(topic.accentColor)
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val titleThreshold = with(androidx.compose.ui.platform.LocalDensity.current) { 70.dp.roundToPx() }
+    val titleScrolledOff by remember { androidx.compose.runtime.derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > titleThreshold } }
     Column(modifier = Modifier.fillMaxSize()) {
         TopicNavBar(
+            title = topic.name,
+            showTitle = titleScrolledOff,
             back = backTitle,
             onBack = onBack,
             isBookmarked = isBookmarked,
@@ -348,7 +356,7 @@ private fun TopicDetailContent(
             onToggleCompleted = { if (isCompleted) scope.launch { repository.markIncomplete(topicId) } else markCompleted() },
         )
 
-        LazyColumn(modifier = Modifier.weight(1f)) {
+        LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
             item {
                 Column(modifier = Modifier.padding(horizontal = ScreenGutter)) {
                     Text(
@@ -415,8 +423,9 @@ private fun topicEyebrow(topic: Topic): String {
 
 /** "‹ Learning" on the left; mark-complete and bookmark on the right. */
 @Composable
-private fun TopicNavBar(back: String, onBack: () -> Unit, isBookmarked: Boolean, onToggleBookmark: () -> Unit, isCompleted: Boolean, onToggleCompleted: () -> Unit) {
-    val primary = MaterialTheme.colorScheme.primary
+private fun TopicNavBar(title: String, showTitle: Boolean, back: String, onBack: () -> Unit, isBookmarked: Boolean, onToggleBookmark: () -> Unit, isCompleted: Boolean, onToggleCompleted: () -> Unit) {
+    // White on the dark surface for contrast; the accent in light mode.
+    val primary = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) Color.White else MaterialTheme.colorScheme.primary
     Row(
         modifier = Modifier.fillMaxWidth().padding(start = 10.dp, end = 4.dp, top = 4.dp).heightIn(min = 44.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -426,28 +435,23 @@ private fun TopicNavBar(back: String, onBack: () -> Unit, isBookmarked: Boolean,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(Icons.AutoMirrored.Filled.ArrowBackIos, contentDescription = null, tint = primary, modifier = Modifier.size(20.dp))
-            Text(back, color = primary, fontSize = 17.sp, maxLines = 1)
+            if (!showTitle) Text(back, color = primary, fontSize = 17.sp, maxLines = 1)
         }
-        Spacer(Modifier.weight(1f))
+        Box(modifier = Modifier.weight(1f).padding(horizontal = 4.dp), contentAlignment = Alignment.CenterStart) {
+            androidx.compose.animation.AnimatedVisibility(visible = showTitle, enter = androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.fadeOut()) {
+                Text(title, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            }
+        }
         IconButton(onClick = onToggleCompleted) {
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .then(
-                        if (isCompleted) Modifier.background(SimColors.Green, androidx.compose.foundation.shape.CircleShape)
-                        else Modifier.border(1.8.dp, primary, androidx.compose.foundation.shape.CircleShape),
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Filled.Check, contentDescription = if (isCompleted) "Mark not complete" else "Mark complete",
-                    tint = if (isCompleted) Color.White else primary.copy(alpha = 0.55f), modifier = Modifier.size(16.dp),
-                )
+            if (isCompleted) {
+                Icon(Icons.Filled.CheckCircle, contentDescription = "Mark not complete", tint = SimColors.Green)
+            } else {
+                Icon(Icons.Outlined.CheckCircle, contentDescription = "Mark complete", tint = primary)
             }
         }
         IconButton(onClick = onToggleBookmark) {
             Icon(
-                if (isBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                if (isBookmarked) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
                 contentDescription = if (isBookmarked) "Remove bookmark" else "Bookmark",
                 tint = primary,
             )

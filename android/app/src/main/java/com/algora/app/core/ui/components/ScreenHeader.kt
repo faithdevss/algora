@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.algora.app.core.ui.theme.SpaceGrotesk
 
 /**
- * The back button's touch target, and the width reserved opposite it to keep the title centred.
+ * The back button's touch target, and the width reserved opposite it when there is no trailing action.
  *
  * The mock draws a 36px button inside a 14px gutter, putting the icon's centre 32px from the edge.
  * A 36dp target is under the 48dp minimum for a tappable control, so the button is widened to 48dp
@@ -47,15 +47,14 @@ private val HeaderEndPadding = 14.dp
 /**
  * The one screen header, ported from the mock's shared `headerStyle` (docs/design/Algora.dc.html
  * line 601) and the back-button/title markup every screen that uses it repeats (lines 95, 136,
- * 309, 348): a back button, a centred 17sp Space Grotesk title, and a bottom hairline in
+ * 309, 348): a back button, a left-aligned 17sp Space Grotesk title, and a bottom hairline in
  * `--border`.
  *
  * It is deliberately not part of the scrolling body — the mock pins it with `position:sticky`, so
  * the title and the way back stay put while the content moves under them.
  *
  * `trailing` hangs an action off the right edge (the topic page's bookmark toggle, the quiz
- * timer). It replaces the spacer that otherwise balances the back button, so a trailing action
- * roughly a back button wide keeps the title optically centred; a wider one will pull it left.
+ * timer). It replaces the empty spacer that otherwise holds the right edge.
  */
 @Composable
 fun ScreenHeader(
@@ -96,7 +95,7 @@ fun ScreenHeader(
                 fontWeight = FontWeight.Bold,
                 fontSize = 17.sp,
                 color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center,
+                textAlign = TextAlign.Start,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),

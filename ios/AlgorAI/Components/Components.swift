@@ -26,7 +26,8 @@ struct ScreenHeader<Trailing: View>: View {
                 Text(title)
                     .font(AppFont.grotesk(17, .bold))
                     .lineLimit(1)
-                    .frame(maxWidth: .infinity)
+                    .padding(.leading, 4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 trailing()
                     .frame(minWidth: 44, minHeight: 44)
             }

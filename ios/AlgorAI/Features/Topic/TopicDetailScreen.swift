@@ -90,6 +90,11 @@ struct CompleteToggle: View {
     }
 }
 
+private struct TopicScrollOffsetKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
 private enum TopicTab: String, CaseIterable { case overview = "Overview", math = "Math", code = "Code", simulate = "Simulate" }
 
 /// A lesson: back link with share and bookmark, a coloured category eyebrow, a large title and tagline,
@@ -99,6 +104,7 @@ private struct TopicPage: View {
     let page: TopicContent
     @Environment(\.palette) private var palette
     @State private var tab: TopicTab = .overview
+    @State private var titleScrolledOff = false
 
     private var tabs: [TopicTab] {
         TopicTab.allCases.filter {
@@ -114,9 +120,11 @@ private struct TopicPage: View {
     var body: some View {
         let accent = Color(argb: topic.accentColor)
         VStack(spacing: 0) {
-            TopicNavBar(topic: topic)
+            TopicNavBar(topic: topic, showTitle: titleScrolledOff)
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
+                    GeometryReader { Color.clear.preference(key: TopicScrollOffsetKey.self, value: $0.frame(in: .named("topicScroll")).minY) }
+                        .frame(height: 0)
                     Text(eyebrow).font(AppFont.sans(14, .bold)).tracking(1).foregroundStyle(accent).padding(.top, 4)
                     Text(topic.name).font(AppFont.sans(32, .bold)).padding(.top, 4)
                     Text(topic.tagline).font(AppFont.sans(17)).foregroundStyle(palette.muted).padding(.top, 4)
@@ -133,6 +141,11 @@ private struct TopicPage: View {
                 }
                 .padding(.horizontal, screenGutter)
                 .padding(.bottom, screenBottomInset)
+            }
+            .coordinateSpace(name: "topicScroll")
+            .onPreferenceChange(TopicScrollOffsetKey.self) { y in
+                let off = y < -70
+                if off != titleScrolledOff { withAnimation(.easeInOut(duration: 0.18)) { titleScrolledOff = off } }
             }
         }
     }
@@ -169,6 +182,7 @@ private struct TopicPage: View {
 /// "‹ Learning" on the left; mark-complete and bookmark on the right.
 private struct TopicNavBar: View {
     let topic: Topic
+    let showTitle: Bool
     @Environment(AppStore.self) private var store
     @Environment(Router.self) private var router
     @Environment(\.palette) private var palette
@@ -181,13 +195,15 @@ private struct TopicNavBar: View {
             Button { dismiss() } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "chevron.backward").font(.system(size: 19, weight: .semibold))
-                    Text(back).font(AppFont.sans(17)).lineLimit(1)
+                    if !showTitle { Text(back).font(AppFont.sans(17)).lineLimit(1) }
                 }
                 .frame(minHeight: 44, alignment: .leading)
                 .contentShape(Rectangle())
             }
             .accessibilityLabel("Back to \(back)")
-            Spacer()
+            Text(topic.name).font(AppFont.sans(17, .semibold)).lineLimit(1).opacity(showTitle ? 1 : 0)
+                .padding(.leading, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
             DoneToggle(topicId: topic.id)
             Button { store.toggleBookmark(topic.id) } label: {
                 Image(systemName: marked ? "bookmark.fill" : "bookmark").font(.system(size: 19)).frame(width: 44, height: 44)
@@ -195,7 +211,7 @@ private struct TopicNavBar: View {
             .accessibilityLabel(marked ? "Remove bookmark" : "Bookmark")
         }
         .buttonStyle(.plain)
-        .foregroundStyle(palette.primary)
+        .foregroundStyle(palette.dark ? Color.white : palette.primary)
         .padding(.leading, 10)
         .padding(.trailing, 8)
         .padding(.top, 4)
@@ -214,16 +230,9 @@ struct DoneToggle: View {
         Button {
             if done { store.markIncomplete(topicId) } else { store.markCompleted(topicId) }
         } label: {
-            ZStack {
-                if done {
-                    Circle().fill(SimColors.green)
-                    Image(systemName: "checkmark").font(.system(size: 12, weight: .bold)).foregroundStyle(.white)
-                } else {
-                    Circle().stroke(palette.primary, lineWidth: 1.8)
-                    Image(systemName: "checkmark").font(.system(size: 11, weight: .semibold)).foregroundStyle(palette.primary.opacity(0.55))
-                }
-            }
-            .frame(width: 24, height: 24)
+            Image(systemName: done ? "checkmark.circle.fill" : "checkmark.circle")
+                .font(.system(size: 19))
+                .foregroundStyle(done ? SimColors.green : (palette.dark ? Color.white : palette.primary))
             .frame(width: 44, height: 44)
             .contentShape(Rectangle())
         }
