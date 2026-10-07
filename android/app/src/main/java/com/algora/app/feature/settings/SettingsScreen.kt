@@ -5,6 +5,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -110,12 +112,18 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 )
                 .padding(18.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // The arrow and the title together are the back control.
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(onClickLabel = "Back", role = Role.Button, onClick = onBack)
+                    .padding(end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Box(
                     modifier = Modifier
                         .size(38.dp)
-                        .background(Color.White.copy(alpha = 0.16f), RoundedCornerShape(12.dp))
-                        .clickable(onClick = onBack),
+                        .background(Color.White.copy(alpha = 0.16f), RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(

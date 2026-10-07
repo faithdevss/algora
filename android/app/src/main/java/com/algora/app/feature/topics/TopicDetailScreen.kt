@@ -6,6 +6,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -439,7 +440,12 @@ private fun TopicNavBar(title: String, showTitle: Boolean, back: String, onBack:
         }
         Box(modifier = Modifier.weight(1f).padding(horizontal = 4.dp), contentAlignment = Alignment.CenterStart) {
             androidx.compose.animation.AnimatedVisibility(visible = showTitle, enter = androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.fadeOut()) {
-                Text(title, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                // The collapsed title is part of the back control, like the arrow beside it.
+                Text(
+                    title, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.heightIn(min = 44.dp).wrapContentHeight().clickable(onClickLabel = "Back to $back", onClick = onBack),
+                )
             }
         }
         IconButton(onClick = onToggleCompleted) {

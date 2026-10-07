@@ -193,17 +193,21 @@ private struct TopicNavBar: View {
         let marked = store.bookmarks.contains(topic.id)
         HStack(spacing: 0) {
             Button { dismiss() } label: {
+                // The collapsed title is part of the back control, like the arrow beside it.
                 HStack(spacing: 4) {
                     Image(systemName: "chevron.backward").font(.system(size: 19, weight: .semibold))
-                    if !showTitle { Text(back).font(AppFont.sans(17)).lineLimit(1) }
+                    if showTitle {
+                        Text(topic.name).font(AppFont.sans(17, .semibold)).lineLimit(1).padding(.leading, 4)
+                    } else {
+                        Text(back).font(AppFont.sans(17)).lineLimit(1)
+                    }
                 }
                 .frame(minHeight: 44, alignment: .leading)
                 .contentShape(Rectangle())
+                .animation(.easeInOut(duration: 0.2), value: showTitle)
             }
             .accessibilityLabel("Back to \(back)")
-            Text(topic.name).font(AppFont.sans(17, .semibold)).lineLimit(1).opacity(showTitle ? 1 : 0)
-                .padding(.leading, 4)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            Spacer(minLength: 0)
             DoneToggle(topicId: topic.id)
             Button { store.toggleBookmark(topic.id) } label: {
                 Image(systemName: marked ? "bookmark.fill" : "bookmark").font(.system(size: 19)).frame(width: 44, height: 44)

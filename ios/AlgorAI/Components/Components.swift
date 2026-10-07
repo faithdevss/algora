@@ -13,21 +13,26 @@ struct ScreenHeader<Trailing: View>: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
+                // The arrow and the title are one back control; empty header space stays inert.
                 Button {
                     if let onBack { onBack() } else { dismiss() }
                 } label: {
-                    Image(systemName: "chevron.backward")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(palette.onSurface)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Circle())
+                    HStack(spacing: 0) {
+                        Image(systemName: "chevron.backward")
+                            .font(.system(size: 18, weight: .semibold))
+                            .frame(width: 44, height: 44)
+                        Text(title)
+                            .font(AppFont.grotesk(17, .bold))
+                            .lineLimit(1)
+                            .padding(.leading, 4)
+                            .padding(.trailing, 12)
+                    }
+                    .foregroundStyle(palette.onSurface)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
                 .accessibilityLabel("Back")
-                Text(title)
-                    .font(AppFont.grotesk(17, .bold))
-                    .lineLimit(1)
-                    .padding(.leading, 4)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                Spacer(minLength: 0)
                 trailing()
                     .frame(minWidth: 44, minHeight: 44)
             }

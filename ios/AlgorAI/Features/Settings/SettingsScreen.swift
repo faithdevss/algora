@@ -102,18 +102,23 @@ struct SettingsScreen: View {
 
     private var header: some View {
         HStack(spacing: 12) {
+            // The arrow and the title together are the back control.
             Button { dismiss() } label: {
-                Image(systemName: "chevron.backward")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 38, height: 38)
-                    .background(.white.opacity(0.16), in: RoundedRectangle(cornerRadius: 12))
+                HStack(spacing: 12) {
+                    Image(systemName: "chevron.backward")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 38, height: 38)
+                        .background(.white.opacity(0.16), in: RoundedRectangle(cornerRadius: 12))
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("Preferences").font(AppFont.sans(12)).foregroundStyle(.white.opacity(0.7))
+                        Text("Settings").font(AppFont.grotesk(22, .bold)).foregroundStyle(.white)
+                    }
+                }
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
             .accessibilityLabel("Back")
-            VStack(alignment: .leading, spacing: 0) {
-                Text("Preferences").font(AppFont.sans(12)).foregroundStyle(.white.opacity(0.7))
-                Text("Settings").font(AppFont.grotesk(22, .bold)).foregroundStyle(.white)
-            }
             Spacer()
         }
         .padding(18)
