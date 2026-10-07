@@ -1,5 +1,6 @@
 package com.algora.app
 
+import androidx.compose.ui.graphics.luminance
 import android.Manifest
 import android.graphics.Color.TRANSPARENT
 import android.os.Build
@@ -241,6 +242,7 @@ fun AlgoraApp(
     Scaffold(
         bottomBar = {
             if (!onFullScreen) {
+                val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
                 NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                     NavTab.entries.forEach { tab ->
                         val selected = when (tab) {
@@ -270,10 +272,12 @@ fun AlgoraApp(
                             icon = { Icon(resolveIcon(tab.iconName), contentDescription = tab.label) },
                             label = { Text(tab.label) },
                             // Default M3 baseline colors ignore the accent; bind them to it.
+                            // On the dark bar the deeper accents are hard to read as a label, so the selected
+                            // icon and text turn white there; the indicator pill keeps the accent.
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.primary,
-                                selectedTextColor = MaterialTheme.colorScheme.primary,
-                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                                selectedIconColor = if (isDark) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.primary,
+                                selectedTextColor = if (isDark) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.primary,
+                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = if (isDark) 0.35f else 0.14f),
                                 unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             ),

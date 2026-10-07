@@ -1,5 +1,6 @@
 package com.algora.app.feature.settings
 
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -178,7 +179,7 @@ fun SettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 accent?.label ?: "Auto — indigo in DSA mode, pink in AI mode",
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 13.sp,
             )
@@ -444,7 +445,10 @@ private fun RowScope.SwatchCircle(
             .aspectRatio(1f)
             .border(
                 width = if (selected) 2.dp else 0.dp,
-                color = if (selected) ring else Color.Transparent,
+                color = if (selected) {
+                    // The deeper accents all but vanish against the dark card, so the ring turns white there.
+                    if (MaterialTheme.colorScheme.background.luminance() < 0.5f) Color.White else ring
+                } else Color.Transparent,
                 shape = CircleShape,
             )
             .padding(4.dp)

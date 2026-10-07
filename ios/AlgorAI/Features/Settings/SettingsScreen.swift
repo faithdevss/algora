@@ -42,7 +42,7 @@ struct SettingsScreen: View {
                         }
                     }
                     Text(store.accent?.label ?? "Auto — indigo in DSA mode, pink in AI mode")
-                        .font(AppFont.sans(13, .semibold)).foregroundStyle(palette.primary)
+                        .font(AppFont.sans(13, .semibold)).foregroundStyle(palette.onSurface)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.top, 12)
                 }
@@ -138,7 +138,7 @@ struct SettingsScreen: View {
                 .fill(LinearGradient(colors: fill, startPoint: .topLeading, endPoint: .bottomTrailing))
                 .overlay { if selected { Image(systemName: "checkmark").font(.system(size: 15, weight: .bold)).foregroundStyle(.white) } }
                 .padding(4)
-                .overlay(Circle().stroke(selected ? ring : .clear, lineWidth: 2))
+                .overlay(Circle().stroke(selected ? (palette.dark ? Color.white : ring) : .clear, lineWidth: 2))
                 .aspectRatio(1, contentMode: .fit)
         }
         .buttonStyle(.plain)

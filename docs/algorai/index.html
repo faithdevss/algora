@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AlgorAI — Watch algorithms think</title>
+<meta name="description" content="60+ step-through simulations of data structures, graph search, dynamic programming and neural networks. Walk into your DSA or AI interview knowing exactly what the code does.">
+<meta name="theme-color" content="#0b0d12">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0d12; --bg2:#10131a; --card:#141822; --line:#1f2431; --line2:#2a3040;
+  --tx:#f2f3f7; --tx2:#b4b9c6; --tx3:#8a91a1;
+  --brand:#6d5dfc; --brand2:#9b4dff; --brandL:#a79fff;
+  --green:#22c07a; --amber:#f5a524; --orange:#ff8a3d; --yellow:#f5c542;
+  --r:20px; --gut:clamp(20px,5vw,40px);
+  --head:'Space Grotesk',system-ui,sans-serif; --body:'IBM Plex Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--tx);font-family:var(--body);line-height:1.5;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+:focus-visible{outline:2px solid var(--brandL);outline-offset:3px;border-radius:6px}
+.wrap{max-width:1200px;margin:0 auto;padding:0 var(--gut)}
+.eyebrow{font:600 13px var(--mono);letter-spacing:.8px;text-transform:uppercase;color:var(--brandL)}
+h1,h2,h3{font-family:var(--head);text-wrap:balance}
+h2{font-size:clamp(32px,4.6vw,52px);line-height:1.04;letter-spacing:-.02em;font-weight:700}
+.sec{padding:clamp(72px,10vw,120px) 0;border-top:1px solid var(--line)}
+.sec-head{display:flex;flex-direction:column;gap:16px;max-width:660px;margin-bottom:clamp(36px,5vw,56px)}
+.sec-head p{font-size:clamp(16px,1.6vw,18px);color:var(--tx2);text-wrap:pretty}
+
+/* header */
+header{position:sticky;top:0;z-index:50;background:rgba(11,13,18,.78);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;justify-content:space-between;height:68px;gap:16px}
+.logo{display:flex;align-items:center;gap:10px;font:700 20px var(--head)}
+.logo i{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--brand2));display:grid;place-items:center}
+.links{display:flex;align-items:center;gap:6px}
+.links a{padding:8px 14px;border-radius:10px;font-size:15px;font-weight:500;color:var(--tx2);transition:.15s}
+.links a:hover{color:#fff;background:var(--card)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 20px;border-radius:12px;font-weight:600;font-size:15px;transition:.15s}
+.btn-p{background:var(--brand);color:#fff}
+.btn-p:hover{background:#7d6fff;transform:translateY(-1px)}
+.links a.btn-p{color:#fff;margin-left:8px}
+.links a.btn-p:hover{background:#7d6fff}
+.menu{display:none;width:44px;height:44px;border-radius:12px;border:1px solid var(--line2);place-items:center}
+.menu span,.menu span::before,.menu span::after{display:block;width:18px;height:2px;background:var(--tx);border-radius:2px;position:relative;transition:.2s}
+.menu span::before,.menu span::after{content:"";position:absolute;left:0}
+.menu span::before{top:-6px}.menu span::after{top:6px}
+.menu[aria-expanded=true] span{background:transparent}
+.menu[aria-expanded=true] span::before{top:0;transform:rotate(45deg)}
+.menu[aria-expanded=true] span::after{top:0;transform:rotate(-45deg)}
+
+/* hero */
+.hero{position:relative;overflow:hidden;background:
+  radial-gradient(900px 600px at 85% -10%,rgba(155,77,255,.38),transparent 60%),
+  radial-gradient(700px 500px at 0% 20%,rgba(109,93,252,.28),transparent 60%),var(--bg)}
+.hero::before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.07) 1px,transparent 1px);background-size:28px 28px;mask-image:linear-gradient(#000,transparent 80%);-webkit-mask-image:linear-gradient(#000,transparent 80%);pointer-events:none}
+.hero-in{position:relative;display:grid;grid-template-columns:1.05fr .95fr;gap:clamp(32px,6vw,80px);align-items:center;padding-top:clamp(48px,8vw,96px);padding-bottom:clamp(56px,8vw,104px)}
+.hero-in>*,.demo-grid>*{min-width:0}
+.hero-copy{display:flex;flex-direction:column;gap:26px;align-items:flex-start}
+.pill{display:inline-flex;align-items:center;gap:8px;font:600 12.5px var(--mono);letter-spacing:.5px;padding:7px 14px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12)}
+.pill b{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px rgba(34,192,122,.2)}
+h1{font-size:clamp(44px,7.4vw,90px);line-height:.98;letter-spacing:-.035em;font-weight:700}
+h1 em{font-style:normal;background:linear-gradient(100deg,#fff 10%,var(--brandL) 60%,#d3a8ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{font-size:clamp(17px,1.9vw,20px);color:var(--tx2);max-width:520px;text-wrap:pretty}
+.stores{display:flex;flex-wrap:wrap;gap:12px}
+.store{display:flex;align-items:center;gap:12px;background:#000;border:1px solid var(--line2);border-radius:14px;padding:10px 20px 10px 16px;min-width:176px;transition:.15s}
+.store:hover{border-color:var(--brandL);transform:translateY(-2px)}
+.store svg{width:26px;height:26px;flex:none}
+.store small{display:block;font-size:11.5px;color:var(--tx2);line-height:1.2}
+.store strong{display:block;font-size:19px;font-weight:600;line-height:1.15}
+.hint{font-size:14px;color:var(--tx2)}
+.stats{display:flex;flex-wrap:wrap;gap:12px 36px;padding-top:8px;border-top:1px solid rgba(255,255,255,.1);width:100%;margin-top:6px;padding-top:22px}
+.stats div{display:flex;flex-direction:column}
+.stats b{font:700 28px var(--head);letter-spacing:-.02em}
+.stats span{font-size:13px;color:var(--tx3)}
+
+/* phone */
+.phone-col{display:flex;justify-content:center}
+.phone-box{width:min(100%,360px);aspect-ratio:393/852;position:relative;filter:drop-shadow(0 40px 60px rgba(0,0,0,.5))}
+.phone{position:absolute;left:0;top:0;width:393px;height:852px;transform-origin:0 0;border-radius:56px;background:#12151c;overflow:hidden;box-shadow:0 0 0 11px #262930,0 0 0 12px #3a3d45;transform:scale(.92)}
+.p-status{height:54px;display:flex;align-items:center;justify-content:space-between;padding:4px 34px 0 50px;font-size:17px;font-weight:600;position:relative}
+.p-isl{position:absolute;left:50%;top:11px;transform:translateX(-50%);width:125px;height:37px;border-radius:20px;background:#000}
+.p-nav{height:44px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 16px 0 8px;border-bottom:.5px solid rgba(255,255,255,.1);font-size:17px}
+.p-nav .b{display:flex;align-items:center;gap:4px;color:#8f84ff}
+.p-desc{margin:16px 16px 0;font-size:15px;line-height:1.45;color:#a6acb9}
+.p-bars{margin:16px 16px 0;border-radius:18px;background:#1c202b;padding:20px 14px 14px;height:250px;display:flex;align-items:flex-end;gap:6px}
+.p-bars .c{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px}
+.p-bars .c span{font:600 13px var(--mono);color:#e6e8ee}
+.p-bars .c div{width:100%;border-radius:6px 6px 2px 2px;transition:height .2s,background .2s}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--tx2)}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend i{width:9px;height:9px;border-radius:5px}
+.p-leg{margin:14px 16px 0}
+.p-cap{margin:16px 16px 0;font-size:17px;font-weight:600;line-height:1.35;min-height:46px}
+.track{height:28px;position:relative;display:flex;align-items:center}
+.track .bg,.track .fill{position:absolute;left:0;height:4px;border-radius:2px}
+.track .bg{right:0;background:rgba(118,118,128,.32)}
+.track .fill{background:var(--brand)}
+.track .knob{position:absolute;width:28px;height:28px;border-radius:14px;background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.3);margin-left:-14px;pointer-events:none}
+.track input{position:absolute;left:-14px;width:calc(100% + 28px);height:28px;margin:0;opacity:0;cursor:pointer}
+.p-scrub{margin:22px 16px 0}
+.p-meta{display:flex;justify-content:space-between;font:13px var(--mono);color:#9aa0ae;margin-top:8px}
+.p-ctl{margin:18px 20px 0;display:flex;align-items:center;justify-content:space-between}
+.p-ctl button{width:44px;height:44px;display:grid;place-items:center;border-radius:22px}
+.p-ctl .play{width:68px;height:68px;border-radius:34px;background:var(--brand)}
+.p-ctl .play:hover{background:#7d6fff}
+.p-ctl .spd{width:auto;min-width:44px;height:28px;padding:0 10px;border-radius:14px;background:rgba(118,118,128,.24);font-size:14px;font-weight:600}
+.p-tab{position:absolute;left:0;right:0;bottom:0;height:83px;background:rgba(20,23,31,.9);border-top:.5px solid rgba(255,255,255,.12);display:flex;padding-top:7px}
+.p-tab div{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;font-weight:500;color:#8a909d}
+.p-tab .on{color:#8f84ff}
+.p-home{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#fff}
+
+/* demo */
+.demo-grid{display:grid;grid-template-columns:.85fr 1.15fr;gap:clamp(32px,6vw,72px);align-items:center}
+.demo-copy{display:flex;flex-direction:column;gap:20px}
+.demo-copy p{font-size:18px;color:var(--tx2);max-width:460px;text-wrap:pretty}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips span{font:500 13px var(--mono);padding:6px 12px;border-radius:999px;border:1px solid var(--line2);color:var(--tx2)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:clamp(18px,3vw,28px);display:flex;flex-direction:column;gap:18px;box-shadow:0 30px 80px rgba(0,0,0,.35);min-width:0}
+.panel-h{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.panel-h b{font-size:17px;font-weight:600}
+.panel-h span{font:14px var(--mono);color:var(--tx3);white-space:nowrap}
+.panel svg.graph{width:100%;height:auto;display:block}
+.cap{background:#1b2030;border-radius:12px;padding:14px 16px;font-size:16px;font-weight:500;min-height:56px;line-height:1.4}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.btn-s{background:#1b2030;border:1px solid var(--line2);padding:11px 18px;border-radius:10px;font-weight:600;font-size:15px}
+.btn-s:hover{background:#262c3d}
+
+/* how */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;counter-reset:s}
+.step{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:28px;display:flex;flex-direction:column;gap:12px;position:relative;overflow:hidden}
+.step::before{counter-increment:s;content:"0" counter(s);font:600 13px var(--mono);color:var(--brandL)}
+.step h3{font-size:24px;letter-spacing:-.01em}
+.step p{color:var(--tx2);font-size:16px}
+.step .ic{width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,rgba(109,93,252,.25),rgba(155,77,255,.12));border:1px solid rgba(167,159,255,.25);display:grid;place-items:center;margin-bottom:6px}
+
+/* topics */
+.topics{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.topic{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:28px;display:flex;flex-direction:column;gap:10px;transition:.2s;position:relative;overflow:hidden}
+.topic:hover{border-color:var(--c);transform:translateY(-3px)}
+.topic::after{content:"";position:absolute;right:-40px;top:-40px;width:140px;height:140px;border-radius:50%;background:var(--c);opacity:.08;transition:.2s}
+.topic:hover::after{opacity:.18}
+.topic .n{font:600 13px var(--mono);color:var(--c)}
+.topic h3{font-size:24px;letter-spacing:-.01em}
+.topic p{font-size:16px;color:var(--tx2)}
+
+/* features */
+.feats{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(20px,3vw,40px)}
+.feat{display:flex;flex-direction:column;gap:16px;min-width:0}
+.feat-card{aspect-ratio:4/3;border-radius:var(--r);background:var(--card);border:1px solid var(--line);padding:20px;display:flex;flex-direction:column;gap:12px}
+.feat h3{font-size:24px;letter-spacing:-.01em}
+.feat p{font-size:16px;color:var(--tx2);text-wrap:pretty}
+.mini-h{display:flex;justify-content:space-between;font:12px var(--mono);color:var(--tx3);gap:8px}
+.plot{flex:1;position:relative;min-height:0;background:#1b2030;border-radius:12px}
+.plot i{position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;transition:background .25s}
+.plot u{position:absolute;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:5px;transform:rotate(45deg);border:3px solid;background:var(--card);transition:left .35s,top .35s}
+.feat-card input[type=range]{width:100%;accent-color:var(--brand)}
+.mini-cap{font-size:14px;font-weight:500;min-height:20px}
+.toks{display:flex;flex-wrap:wrap;gap:8px}
+.tok{display:flex;flex-direction:column;align-items:center;gap:3px;font:600 15px var(--body);border-radius:10px;padding:9px 11px 7px;border:2px solid transparent;min-width:48px;transition:background .25s}
+.tok small{font:500 11px var(--mono);color:#e3e5ec}
+.rates{display:flex;height:34px;border-radius:9px;background:rgba(118,118,128,.24);padding:2px;gap:2px;flex:1}
+.rates button{flex:1;border-radius:7px;font:600 13px var(--mono)}
+.rates button.on{background:#4b4f66}
+
+/* cta */
+.cta{padding:0 0 clamp(72px,10vw,120px)}
+.cta-in{border-radius:clamp(24px,4vw,36px);background:linear-gradient(150deg,#5b4df0,#8b3ff0);padding:clamp(40px,7vw,96px) clamp(24px,6vw,80px);display:flex;flex-direction:column;align-items:flex-start;gap:26px;position:relative;overflow:hidden}
+.cta-in::before{content:"";position:absolute;right:-120px;bottom:-260px;width:700px;height:700px;border-radius:50%;background:radial-gradient(circle,rgba(11,13,18,.5),transparent 62%)}
+.cta-in::after{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.12) 1px,transparent 1px);background-size:24px 24px;mask-image:linear-gradient(120deg,transparent 40%,#000);-webkit-mask-image:linear-gradient(120deg,transparent 40%,#000)}
+.cta-in>*{position:relative;z-index:1}
+.cta h2{font-size:clamp(36px,6vw,72px);line-height:1;letter-spacing:-.03em;max-width:760px}
+.cta p{font-size:clamp(17px,2vw,20px);max-width:520px}
+.cta .store{background:#000;border-color:transparent}
+
+footer{border-top:1px solid var(--line);padding:32px 0;font-size:14px;color:var(--tx3)}
+.foot{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center}
+.foot nav{display:flex;gap:24px}
+.foot a:hover{color:#fff}
+
+/* tablet */
+@media (max-width:1000px){
+  .hero-in{grid-template-columns:1fr;text-align:left}
+  .phone-col{order:2}
+  .demo-grid{grid-template-columns:1fr}
+  .steps,.topics{grid-template-columns:repeat(2,1fr)}
+  .feats{grid-template-columns:repeat(2,1fr)}
+  .feats .feat:last-child{grid-column:1/-1}
+  .feats .feat:last-child .feat-card{aspect-ratio:auto;min-height:260px}
+}
+/* mobile nav */
+@media (max-width:760px){
+  .menu{display:grid}
+  .links{position:absolute;top:68px;left:0;right:0;flex-direction:column;align-items:stretch;gap:4px;padding:12px var(--gut) 20px;background:rgba(11,13,18,.97);border-bottom:1px solid var(--line);display:none}
+  .links.open{display:flex}
+  .links a{padding:14px;font-size:17px}
+  .links a.btn-p{margin:8px 0 0;text-align:center;justify-content:center;padding:14px}
+}
+/* phone */
+@media (max-width:640px){
+  .steps,.topics,.feats{grid-template-columns:1fr}
+  .feats .feat:last-child{grid-column:auto}
+  .feat-card{aspect-ratio:auto;min-height:260px}
+  .stores .store{flex:1 1 100%}
+  .stats{gap:12px 28px}
+  .stats b{font-size:24px}
+  .foot{flex-direction:column;align-items:flex-start}
+  .step,.topic{padding:22px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a href="#top" class="logo" aria-label="AlgorAI home"><i><svg width="20" height="20" viewBox="0 0 38 38" fill="none"><circle cx="8" cy="10" r="4" fill="#fff"/><circle cx="8" cy="28" r="4" fill="#fff"/><circle cx="20" cy="19" r="4" fill="#fff"/><circle cx="32" cy="19" r="4" fill="#fff"/><path d="M11 12l6 5M11 26l6-5M24 19h4" stroke="#fff" stroke-width="2"/></svg></i>AlgorAI</a>
+    <button class="menu" id="menu" aria-label="Menu" aria-expanded="false" aria-controls="links"><span></span></button>
+    <nav class="links" id="links">
+      <a href="#how">How it works</a>
+      <a href="#demo">Try it</a>
+      <a href="#topics">Topics</a>
+      <a href="#download" class="btn btn-p">Get the app</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+<section class="hero">
+  <div class="wrap hero-in">
+    <div class="hero-copy">
+      <span class="pill"><b></b>60+ STEP-THROUGH SIMULATIONS</span>
+      <h1>Watch algorithms <em>think.</em></h1>
+      <p class="lead">Step through data structures, graph search, dynamic programming and neural networks one move at a time — and walk into your DSA or AI interview knowing exactly what the code does.</p>
+      <div class="stores">
+        <a class="store" href="#download"><svg viewBox="0 0 24 24" fill="#fff"><path d="M16.400 12.700c0-2.500 2-3.700 2.100-3.800-1.200-1.700-3-1.900-3.600-2-1.500-.2-3 .9-3.800.9s-2-.9-3.300-.9c-1.700 0-3.300 1-4.200 2.500-1.800 3.100-.5 7.700 1.300 10.200.9 1.200 1.900 2.600 3.200 2.500 1.300-.1 1.800-.8 3.300-.8s2 .8 3.300.8c1.400 0 2.300-1.200 3.100-2.500 1-1.400 1.400-2.800 1.400-2.900-.1 0-2.800-1.100-2.800-4zM14 5.200c.7-.9 1.200-2 1.100-3.200-1 0-2.300.7-3 1.600-.7.800-1.200 2-1.100 3.100 1.100.1 2.300-.6 3-1.500z"/></svg><span><small>Download on the</small><strong>App Store</strong></span></a>
+        <a class="store" href="#download"><svg viewBox="0 0 24 24"><path d="M3.600 2.300 13.300 12 3.600 21.700a1.600 1.600 0 0 1-.4-1.100V3.400c0-.4.100-.8.400-1.100z" fill="#2fd0ff"/><path d="m16.800 8.500-3.500 3.500 3.500 3.500 4-2.300c1.100-.6 1.100-1.600 0-2.200z" fill="#ffc83d"/><path d="M13.300 12 3.600 2.300c.4-.4 1-.4 1.700-.1l11.500 6.300z" fill="#3ddc84"/><path d="m13.300 12 3.500 3.500-11.500 6.300c-.7.300-1.300.3-1.700-.1z" fill="#ff4d5a"/></svg><span><small>Get it on</small><strong>Google Play</strong></span></a>
+      </div>
+      <span class="hint">↳ The phone is live — press play, scrub or step through it.</span>
+      <div class="stats">
+        <div><b>60+</b><span>simulations</span></div>
+        <div><b>6</b><span>topic areas</span></div>
+        <div><b>1 step</b><span>at a time</span></div>
+      </div>
+    </div>
+
+    <div class="phone-col">
+      <div class="phone-box" id="phoneBox">
+        <div class="phone" id="phone">
+          <div class="p-status"><span>9:41</span><div class="p-isl"></div>
+            <div style="display:flex;gap:6px;align-items:center"><svg width="44" height="12" viewBox="0 0 44 12"><rect x="0" y="8" width="3" height="4" rx="1" fill="#fff"/><rect x="5" y="5.5" width="3" height="6.5" rx="1" fill="#fff"/><rect x="10" y="3" width="3" height="9" rx="1" fill="#fff"/><rect x="15" y="0" width="3" height="12" rx="1" fill="#fff"/><path d="M31 11.5l-2.4-2.6a3.4 3.4 0 0 1 4.8 0zM26.4 6.6a6.6 6.6 0 0 1 9.2 0l-1.4 1.5a4.6 4.6 0 0 0-6.4 0zM24.2 4.3a9.8 9.8 0 0 1 13.600 0l-1.400 1.500a7.800 7.800 0 0 0-10.800 0z" fill="#fff"/></svg><div style="width:25px;height:12px;border-radius:4px;border:1px solid rgba(255,255,255,.4);padding:1px"><div style="width:80%;height:100%;background:#fff;border-radius:2px"></div></div></div></div>
+          <div class="p-nav"><div class="b"><svg width="12" height="20" viewBox="0 0 12 20" fill="none"><path d="M10 2L2 10l8 8" stroke="#8f84ff" stroke-width="2.600" stroke-linecap="round" stroke-linejoin="round"/></svg>Sorting</div><b style="font-weight:600">Bubble Sort</b><div style="justify-self:end;color:#8f84ff">Topic</div></div>
+          <div class="p-desc">Each pass swaps out-of-order neighbours, so the largest remaining value bubbles to the end.</div>
+          <div class="p-bars" id="hBars"></div>
+          <div class="legend p-leg"><span><i style="background:#f5c542"></i>Comparing</span><span><i style="background:#ff8a3d"></i>Swapping</span><span><i style="background:#22c07a"></i>Sorted</span></div>
+          <div class="p-cap" id="hCap"></div>
+          <div class="p-scrub">
+            <div class="track"><div class="bg"></div><div class="fill" id="hFill"></div><div class="knob" id="hKnob"></div><input type="range" id="hRange" min="0" value="0" aria-label="Scrub simulation"></div>
+            <div class="p-meta"><span id="hStep"></span><span id="hRate"></span></div>
+          </div>
+          <div class="p-ctl">
+            <button id="hReset" aria-label="Restart"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#c3c7d1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.400-5.700M4 3.500V8h4.500"/></svg></button>
+            <button id="hBack" aria-label="Previous step"><svg width="30" height="30" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M18 5.500v13L9 12zM6 5.500v13"/></svg></button>
+            <button class="play" id="hPlay" aria-label="Play or pause"></button>
+            <button id="hFwd" aria-label="Next step"><svg width="30" height="30" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M6 5.500v13L15 12zM18 5.500v13"/></svg></button>
+            <button class="spd" id="hSpd"></button>
+          </div>
+          <div class="p-tab">
+            <div><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.900" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3zM21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z"/></svg>Learning</div>
+            <div class="on"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.900" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6l-5.500 9.500A1.700 1.700 0 0 0 6 21h12a1.700 1.700 0 0 0 1.500-2.500L14 9V3M7.500 15h9"/></svg>Simulations</div>
+            <div><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.900" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 9 9M12 7a5 5 0 1 0 5 5M12 11a1 1 0 1 0 1 1M12 12l7-7"/></svg>Practice</div>
+            <div><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.900" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V11M12 20V4M19 20v-6"/></svg>Progress</div>
+          </div>
+          <div class="p-home"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="how">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">How it works</span>
+      <h2>Stop memorising. Start seeing.</h2>
+      <p>Every concept is a short simulation you control — no walls of text, no guessing what the pointer did.</p>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a79fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4.500v15L19.500 12z"/></svg></div><h3>Pick a topic</h3><p>From linked lists to attention, choose the idea you need for your next interview.</p></div>
+      <div class="step"><div class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a79fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M14 6l6 6-6 6"/></svg></div><h3>Step through it</h3><p>Play, pause, scrub or tap forward one move at a time, with a plain-English caption on every step.</p></div>
+      <div class="step"><div class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a79fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12.500 3 3 5-6"/></svg></div><h3>Explain it with confidence</h3><p>When you can watch it run, you can talk through it. Walk in knowing what the code does.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="demo">
+  <div class="wrap demo-grid">
+    <div class="demo-copy">
+      <span class="eyebrow">Graphs, made obvious</span>
+      <h2>Watch Dijkstra find the way.</h2>
+      <p>Pop the closest node, relax its edges, repeat. Step through it and the shortest-path tree builds in front of you. BFS, DFS and topological sort work the same way.</p>
+      <div class="chips"><span>BFS</span><span>DFS</span><span>Dijkstra</span><span>Topological sort</span></div>
+    </div>
+    <div class="panel">
+      <div class="panel-h"><b>Dijkstra · shortest paths from A</b><span id="djNum"></span></div>
+      <svg class="graph" id="djSvg" viewBox="0 0 335 205" role="img" aria-label="Weighted graph with six nodes"></svg>
+      <div class="legend"><span><i style="background:#f5a524"></i>Current</span><span><i style="background:#8f84ff"></i>Tentative</span><span><i style="background:#22c07a"></i>Settled</span></div>
+      <div class="cap" id="djCap" aria-live="polite"></div>
+      <div class="row"><button class="btn-s" id="djBack">← Back</button><button class="btn btn-p" id="djNext"></button></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="topics">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">What you'll learn</span>
+      <h2>From arrays to attention.</h2>
+    </div>
+    <div class="topics">
+      <div class="topic" style="--c:#22c07a"><span class="n">01</span><h3>Linear structures</h3><p>Linked lists, stacks and queues, step by step.</p></div>
+      <div class="topic" style="--c:#22c07a"><span class="n">02</span><h3>Trees &amp; heaps</h3><p>BSTs, heaps and traversals, animated.</p></div>
+      <div class="topic" style="--c:#22c07a"><span class="n">03</span><h3>Graphs</h3><p>BFS, DFS, Dijkstra, topological sort.</p></div>
+      <div class="topic" style="--c:#f5a524"><span class="n">04</span><h3>Dynamic programming</h3><p>Watch the table fill, cell by cell.</p></div>
+      <div class="topic" style="--c:#8f84ff"><span class="n">05</span><h3>Neural networks</h3><p>Forward passes, gradients and attention, visualized.</p></div>
+      <div class="topic" style="--c:#8f84ff"><span class="n">06</span><h3>LLMs</h3><p>Transformers, RAG and prompting.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Hands-on</span>
+      <h2>Poke it. It pokes back.</h2>
+    </div>
+    <div class="feats">
+      <div class="feat">
+        <div class="feat-card">
+          <div class="mini-h"><span>AI · k-means</span><span id="kmNum"></span></div>
+          <div class="plot" id="kmPlot"></div>
+          <div class="mini-cap" id="kmCap"></div>
+          <input type="range" id="kmRange" min="0" value="0" aria-label="k-means iteration">
+        </div>
+        <h3>Scrub every iteration.</h3>
+        <p>Drag through k-means as the centroids settle. Every lab has the same scrubber.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-card" style="justify-content:space-between">
+          <div class="mini-h"><span>NLP · self-attention</span></div>
+          <div class="toks" id="toks"></div>
+          <div class="mini-cap" id="attCap" aria-live="polite"></div>
+        </div>
+        <h3>See what each word attends to.</h3>
+        <p>Tap a token to reveal its attention weights across the sentence.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-card">
+          <div class="mini-h"><span>DL · gradient descent</span><span id="gdLoss"></span></div>
+          <div class="plot" style="display:grid;place-items:center;padding:8px">
+            <svg viewBox="0 0 200 115" style="width:100%;height:100%;display:block"><path d="M10 10Q100 200 190 10" fill="none" stroke="#3a3d45" stroke-width="2"/><polyline id="gdLine" fill="none" stroke="#8f84ff" stroke-width="1.600" stroke-dasharray="3 3"/><circle id="gdDot" r="6" fill="#f5a524" stroke="#141822" stroke-width="2" style="transition:all .3s"/><circle cx="100" cy="105" r="3" fill="#22c07a"/></svg>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px"><span style="font-size:13px;color:var(--tx3)">rate</span><div class="rates" id="rates"></div></div>
+        </div>
+        <h3>Feel the learning rate.</h3>
+        <p>Pick a rate and watch the optimizer converge — or overshoot.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="cta" id="download">
+  <div class="wrap">
+    <div class="cta-in">
+      <h2>Your next interview, step by step.</h2>
+      <p>Available on iPhone and Android.</p>
+      <div class="stores">
+        <a class="store" href="#"><svg viewBox="0 0 24 24" fill="#fff"><path d="M16.400 12.700c0-2.500 2-3.700 2.100-3.800-1.200-1.700-3-1.900-3.600-2-1.500-.2-3 .9-3.800.9s-2-.9-3.300-.9c-1.700 0-3.300 1-4.200 2.500-1.800 3.100-.5 7.700 1.300 10.200.9 1.200 1.900 2.600 3.200 2.500 1.300-.1 1.800-.8 3.300-.8s2 .8 3.300.8c1.400 0 2.300-1.200 3.100-2.500 1-1.400 1.400-2.800 1.400-2.900-.1 0-2.800-1.100-2.800-4zM14 5.200c.7-.9 1.200-2 1.100-3.200-1 0-2.300.7-3 1.600-.7.800-1.200 2-1.100 3.100 1.100.1 2.300-.6 3-1.500z"/></svg><span><small>Download on the</small><strong>App Store</strong></span></a>
+        <a class="store" href="#"><svg viewBox="0 0 24 24"><path d="M3.600 2.300 13.300 12 3.600 21.700a1.600 1.600 0 0 1-.4-1.100V3.400c0-.4.100-.8.400-1.100z" fill="#2fd0ff"/><path d="m16.800 8.500-3.500 3.500 3.500 3.500 4-2.300c1.100-.6 1.100-1.600 0-2.200z" fill="#ffc83d"/><path d="M13.300 12 3.600 2.300c.4-.4 1-.4 1.700-.1l11.500 6.300z" fill="#3ddc84"/><path d="m13.300 12 3.500 3.500-11.500 6.300c-.7.300-1.300.3-1.700-.1z" fill="#ff4d5a"/></svg><span><small>Get it on</small><strong>Google Play</strong></span></a>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <span>© 2026 AlgorAI</span>
+    <nav><a href="#">Privacy</a><a href="#">Terms</a><a href="#">Contact</a></nav>
+  </div>
+</footer>
+
+<script>
+(function(){
+const $ = id => document.getElementById(id);
+
+/* mobile menu */
+const menu = $('menu'), links = $('links');
+function closeMenu(){ links.classList.remove('open'); menu.setAttribute('aria-expanded','false'); }
+menu.addEventListener('click', () => { const o = links.classList.toggle('open'); menu.setAttribute('aria-expanded', o); });
+links.addEventListener('click', e => { if (e.target.closest('a')) closeMenu(); });
+addEventListener('resize', () => { if (innerWidth > 760) closeMenu(); });
+
+/* ---------- hero: bubble sort ---------- */
+function bubbleFrames(src){
+  const a = src.slice(), n = a.length;
+  const out = [{a:a.slice(),i:-1,j:-1,kind:'start',sorted:0,cap:'Press play to start the first pass.'}];
+  for (let p = 0; p < n-1; p++){
+    for (let k = 0; k < n-1-p; k++){
+      const x = a[k], y = a[k+1];
+      out.push({a:a.slice(),i:k,j:k+1,kind:'cmp',sorted:p,cap: x>y ? `${x} > ${y} — swap them.` : `${x} ≤ ${y} — keep order.`});
+      if (x>y){ a[k]=y; a[k+1]=x; out.push({a:a.slice(),i:k,j:k+1,kind:'swap',sorted:p,cap:`Swapped — ${x} moves right.`}); }
+    }
+    out.push({a:a.slice(),i:-1,j:-1,kind:'pass',sorted:p+1,cap:`Pass ${p+1} done — ${a[n-1-p]} is locked at the end.`});
+  }
+  out.push({a:a.slice(),i:-1,j:-1,kind:'done',sorted:n,cap:'Sorted. 8 values, every one in place.'});
+  return out;
+}
+const HERO = bubbleFrames([42,8,27,15,61,34,3,50]);
+const SPEEDS = [1,2,.5];
+const h = {f:0, playing:true, sp:0, timer:null};
+const PLAY = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.200" stroke-linecap="round"><path d="M8 5v14M16 5v14"/></svg>';
+const PAUSE = '<svg width="28" height="28" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="1.500" stroke-linejoin="round"><path d="M7 4.500v15L19.500 12z"/></svg>';
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (reduce) h.playing = false;
+$('hRange').max = HERO.length-1;
+
+function drawHero(){
+  const H = HERO[h.f], n = H.a.length;
+  $('hBars').innerHTML = H.a.map((v,i) => {
+    const c = i >= n-H.sorted ? '#22c07a' : (i===H.i||i===H.j) ? (H.kind==='swap'?'#ff8a3d':'#f5c542') : '#26407a';
+    return `<div class="c"><span>${v}</span><div style="height:${Math.round(v/61*170)}px;background:${c}"></div></div>`;
+  }).join('');
+  $('hCap').textContent = H.cap;
+  const pct = h.f/(HERO.length-1)*100;
+  $('hFill').style.width = pct+'%'; $('hKnob').style.left = pct+'%';
+  $('hRange').value = h.f;
+  $('hStep').textContent = `Step ${h.f+1} of ${HERO.length}`;
+  $('hRate').textContent = (.45/SPEEDS[h.sp]).toFixed(2)+' s / step';
+  $('hSpd').textContent = SPEEDS[h.sp]+'×';
+  $('hPlay').innerHTML = h.playing ? PLAY : PAUSE;
+}
+function tick(){
+  clearInterval(h.timer); h.timer = null;
+  if (h.playing) h.timer = setInterval(() => { h.f = h.f >= HERO.length-1 ? 0 : h.f+1; drawHero(); }, 450/SPEEDS[h.sp]);
+}
+function hset(patch){ Object.assign(h, patch); drawHero(); tick(); }
+$('hPlay').onclick = () => hset({playing:!h.playing, f: !h.playing && h.f>=HERO.length-1 ? 0 : h.f});
+$('hFwd').onclick = () => hset({playing:false, f:Math.min(HERO.length-1,h.f+1)});
+$('hBack').onclick = () => hset({playing:false, f:Math.max(0,h.f-1)});
+$('hReset').onclick = () => hset({playing:false, f:0});
+$('hSpd').onclick = () => hset({sp:(h.sp+1)%SPEEDS.length});
+$('hRange').oninput = e => hset({playing:false, f:+e.target.value});
+drawHero(); tick();
+
+/* phone scales to its box */
+const box = $('phoneBox'), phone = $('phone');
+function fit(){ phone.style.transform = `scale(${box.clientWidth/393})`; }
+new ResizeObserver(fit).observe(box); fit();
+
+/* pause the hero loop when offscreen */
+new IntersectionObserver(([en]) => {
+  if (!en.isIntersecting){ clearInterval(h.timer); h.timer = null; } else tick();
+}).observe(box);
+
+/* ---------- Dijkstra ---------- */
+const DN = ['A','B','C','D','E','F'];
+const POS = {A:[40,100],B:[125,40],C:[125,160],D:[215,40],E:[215,160],F:[295,100]};
+const LBL = {A:[40,76],B:[125,16],C:[125,194],D:[215,16],E:[215,194],F:[295,76]};
+const DE = [['A','B',4],['A','C',2],['B','C',1],['B','D',5],['C','E',10],['D','E',2],['D','F',6],['E','F',3]];
+const DJ = (() => {
+  const dist = {A:0}, prev = {}, done = new Set();
+  const out = [{dist:{...dist},prev:{},done:[],cur:null,cap:'Start at A: dist(A) = 0, every other node is ∞.'}];
+  while (done.size < DN.length){
+    const u = DN.filter(k => !done.has(k) && dist[k] != null).sort((x,y) => dist[x]-dist[y])[0];
+    done.add(u); const ch = [];
+    for (const [p,q,w] of DE){
+      const v = p===u ? q : q===u ? p : null;
+      if (!v || done.has(v)) continue;
+      if (dist[v]==null || dist[u]+w < dist[v]){ dist[v] = dist[u]+w; prev[v] = u; ch.push(v+' → '+dist[v]); }
+    }
+    out.push({dist:{...dist},prev:{...prev},done:[...done],cur:u,cap:'Settle '+u+' ('+dist[u]+'). '+(ch.length?'Relax: '+ch.join(', ')+'.':'No shorter paths found.')});
+  }
+  out.push({...out[out.length-1],cur:null,cap:'Done — the green edges form the shortest-path tree from A.'});
+  return out;
+})();
+let dj = 0;
+function drawDj(){
+  const S = DJ[dj];
+  let s = '';
+  for (const [u,v,w] of DE){
+    const t = S.prev[v]===u ? v : S.prev[u]===v ? u : null;
+    const c = t ? (S.done.includes(t)?'#22c07a':'#8f84ff') : '#3a3d45';
+    const [x1,y1] = POS[u], [x2,y2] = POS[v];
+    s += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width="${t?3:1.5}" style="transition:stroke .3s"/>`;
+    const mx = (x1+x2)/2, my = (y1+y2)/2;
+    s += `<rect x="${mx-9}" y="${my-9}" width="18" height="18" rx="5" fill="#141822"/><text x="${mx}" y="${my+4}" text-anchor="middle" fill="#c3c7d1" style="font:600 11px 'IBM Plex Mono'">${w}</text>`;
+  }
+  for (const k of DN){
+    const st = S.cur===k ? ['#3a2c12','#f5a524'] : S.done.includes(k) ? ['#12301f','#22c07a'] : S.dist[k]!=null ? ['#221f45','#8f84ff'] : ['#2a2e3a','#6b7180'];
+    const [x,y] = POS[k], [lx,ly] = LBL[k];
+    s += `<circle cx="${x}" cy="${y}" r="15" fill="${st[0]}" stroke="${st[1]}" stroke-width="2.5" style="transition:all .3s"/>`
+       + `<text x="${x}" y="${y+5}" text-anchor="middle" fill="#fff" style="font:600 13px 'IBM Plex Mono'">${k}</text>`
+       + `<text x="${lx}" y="${ly}" text-anchor="middle" fill="${S.dist[k]==null?'#6b7180':st[1]}" style="font:600 12px 'IBM Plex Mono'">${S.dist[k]==null?'∞':S.dist[k]}</text>`;
+  }
+  $('djSvg').innerHTML = s;
+  $('djCap').textContent = S.cap;
+  $('djNum').textContent = `Step ${dj+1} / ${DJ.length}`;
+  $('djNext').textContent = dj===DJ.length-1 ? 'Restart' : 'Next step →';
+}
+$('djNext').onclick = () => { dj = (dj+1)%DJ.length; drawDj(); };
+$('djBack').onclick = () => { dj = Math.max(0,dj-1); drawDj(); };
+drawDj();
+
+/* ---------- k-means ---------- */
+const KC = ['#8f84ff','#22c07a','#f5a524'];
+const PTS = [[18,22],[26,32],[14,38],[32,18],[68,22],[80,30],[86,16],[72,40],[44,74],[56,84],[36,86],[54,66]];
+const KM = (() => {
+  let c = [[20,25],[28,35],[16,40]];
+  const out = [{c,asg:null,cap:'Drop 3 centroids at random.'}];
+  for (let it = 0; it < 4; it++){
+    const asg = PTS.map(p => { let b=0,bd=1e9; c.forEach((q,k) => { const d=(p[0]-q[0])**2+(p[1]-q[1])**2; if(d<bd){bd=d;b=k;} }); return b; });
+    out.push({c,asg,cap:'Assign each point to its nearest centroid.'});
+    c = c.map((q,k) => { const m = PTS.filter((_,i) => asg[i]===k); return m.length ? [m.reduce((s,p)=>s+p[0],0)/m.length, m.reduce((s,p)=>s+p[1],0)/m.length] : q; });
+    out.push({c,asg,cap:'Move each centroid to the mean of its cluster.'});
+  }
+  out.push({c,asg:out[out.length-1].asg,cap:'Converged — three clean clusters.'});
+  return out;
+})();
+$('kmRange').max = KM.length-1;
+function drawKm(km){
+  const K = KM[km];
+  $('kmPlot').innerHTML = PTS.map((p,i) => `<i style="left:${p[0]}%;top:${p[1]}%;background:${K.asg?KC[K.asg[i]]:'#6b7180'}"></i>`).join('')
+    + K.c.map((p,k) => `<u style="left:${p[0]}%;top:${p[1]}%;border-color:${KC[k]}"></u>`).join('');
+  $('kmCap').textContent = K.cap;
+  $('kmNum').textContent = `iter ${km+1} / ${KM.length}`;
+}
+$('kmRange').oninput = e => drawKm(+e.target.value);
+drawKm(0);
+
+/* ---------- attention ---------- */
+const TOK = ['The','cat','sat','on','the','mat'];
+const ATT = [[.40,.35,.10,.05,.05,.05],[.15,.40,.25,.05,.05,.10],[.05,.45,.25,.10,.05,.10],[.05,.10,.30,.25,.10,.20],[.05,.05,.05,.15,.30,.40],[.05,.20,.15,.20,.15,.25]];
+let q = 2;
+function drawAtt(){
+  const row = ATT[q], top = row.reduce((b,w,i) => (i!==q && w>row[b] ? i : b), q===0?1:0);
+  $('toks').innerHTML = TOK.map((w,i) => `<button class="tok" data-i="${i}" style="border-color:${i===q?'#fff':'transparent'};background:rgba(109,93,252,${Math.min(1,.12+row[i]*1.9).toFixed(2)})"><span>${w}</span><small>${Math.round(row[i]*100)}%</small></button>`).join('');
+  $('attCap').textContent = `“${TOK[q]}” attends most to “${TOK[top]}” (${Math.round(row[top]*100)}%).`;
+}
+$('toks').addEventListener('click', e => { const b = e.target.closest('.tok'); if (b){ q = +b.dataset.i; drawAtt(); } });
+drawAtt();
+
+/* ---------- gradient descent ---------- */
+const LRS = [.1,.45,.95];
+const gX = x => 10+(x+1)*90, gY = x => 105-x*x*95;
+let lr = 1, gd = 0, gt;
+function drawGd(){
+  const xs = [-.9]; for (let k = 0; k < 8; k++) xs.push(xs[k]*(1-2*LRS[lr]));
+  const path = xs.slice(0,gd+1), xc = path[path.length-1];
+  $('gdLine').setAttribute('points', path.map(x => gX(x).toFixed(1)+','+gY(x).toFixed(1)).join(' '));
+  $('gdDot').setAttribute('cx', gX(xc).toFixed(1)); $('gdDot').setAttribute('cy', gY(xc).toFixed(1));
+  $('gdLoss').textContent = 'loss '+(xc*xc).toFixed(3);
+  $('rates').innerHTML = LRS.map((v,i) => `<button data-i="${i}" class="${i===lr?'on':''}">η ${v}</button>`).join('');
+}
+function runGd(){
+  clearInterval(gt);
+  if (reduce){ gd = 8; drawGd(); return; }
+  gt = setInterval(() => { if (gd >= 8){ clearInterval(gt); return; } gd++; drawGd(); }, 420);
+}
+$('rates').addEventListener('click', e => { const b = e.target.closest('button'); if (b){ lr = +b.dataset.i; gd = 0; drawGd(); runGd(); } });
+drawGd(); runGd();
+})();
+</script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 package com.algora.app.core.ui.theme
 
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -31,8 +32,14 @@ private fun lightColors(accent: Color, accent2: Color) = lightColorScheme(
     outlineVariant = LightBorderSubtle,
 )
 
+/**
+ * The deeper accents (indigo, violet, pink) sink into the dark surfaces as text and icons, so the dark
+ * scheme's `primary` is the accent eased toward white. Gradients and swatches keep the raw accent.
+ */
+private fun onDarkAccent(accent: Color) = lerp(accent, Color.White, 0.25f)
+
 private fun darkColors(accent: Color, accent2: Color) = darkColorScheme(
-    primary = accent,
+    primary = onDarkAccent(accent),
     onPrimary = DarkBackground,
     secondary = Blue,
     onSecondary = DarkBackground,

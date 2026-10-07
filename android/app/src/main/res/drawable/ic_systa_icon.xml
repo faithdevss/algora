@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Systa's app icon, for the "More from the developer" cross-promo tile. Traced from Systa's own
-  ic_launcher_background/foreground vectors so the promo shows the real listing icon rather than a
-  stand-in glyph. Content is scaled up from the launcher safe zone, since this renders in a ~40dp
-  tile rather than behind an adaptive-icon mask.
+  Systa's app icon, for the "More from the developer" cross-promo tile. Mirrors Systa's own
+  ic_launcher_background/foreground vectors (teal "Shade" gradient, white "»-fork" glyph) so the promo
+  shows the real listing icon rather than a stand-in glyph. The glyph is scaled up from the launcher
+  safe zone, since this renders in a ~40dp tile rather than behind an adaptive-icon mask.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
@@ -12,67 +12,32 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Warm paper base with a soft top-light wash. -->
+    <!-- Teal gradient base. -->
     <path android:pathData="M0,0h108v108h-108z">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:type="radial"
-                android:centerX="40"
-                android:centerY="36"
-                android:gradientRadius="86"
-                android:startColor="#EFF3F9"
-                android:endColor="#DCE4EF" />
+                android:type="linear"
+                android:startX="38.22"
+                android:startY="10.64"
+                android:endX="69.78"
+                android:endY="97.36">
+                <item android:offset="0" android:color="#40C8E0" />
+                <item android:offset="0.55" android:color="#00829A" />
+                <item android:offset="1" android:color="#005E70" />
+            </gradient>
         </aapt:attr>
     </path>
 
     <group
-        android:pivotX="54.5"
+        android:pivotX="54"
         android:pivotY="54"
-        android:scaleX="1.55"
-        android:scaleY="1.55">
-
-        <!-- Edges: hub -> three nodes (drawn first, tucked under nodes/hub). -->
+        android:scaleX="1.5"
+        android:scaleY="1.5">
         <path
-            android:pathData="M42,54 L71,37 M42,54 L76,54 M42,54 L71,71"
-            android:strokeColor="#2F7D6E"
-            android:strokeWidth="3.5"
-            android:strokeLineCap="round" />
-
-        <!-- Hub circle (filled teal). -->
-        <path
-            android:fillColor="#2F7D6E"
-            android:pathData="M27,54 a15,15 0 1,0 30,0 a15,15 0 1,0 -30,0 z" />
-
-        <!-- Double chevron inside hub. -->
-        <path
-            android:pathData="M37,48 L43,54 L37,60 M43,48 L49,54 L43,60"
-            android:strokeColor="#F6F1E7"
-            android:strokeWidth="3"
+            android:pathData="M39.06,46.8 L44.46,54 L39.06,61.2 M46.26,46.8 L51.66,54 L46.26,61.2 M51.66,54 L58.86,54 M58.86,54 L64.26,45 M58.86,54 L64.26,63 M63.18,43.2 a2.88,2.88 0 1,0 5.76,0 a2.88,2.88 0 1,0 -5.76,0 M63.18,64.8 a2.88,2.88 0 1,0 5.76,0 a2.88,2.88 0 1,0 -5.76,0"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="3.6"
             android:strokeLineCap="round"
             android:strokeLineJoin="round" />
-
-        <!-- Node A (top) -->
-        <path
-            android:fillColor="#2F7D6E"
-            android:pathData="M65,37 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0 z" />
-        <path
-            android:fillColor="#F1EAD9"
-            android:pathData="M68.2,37 a2.8,2.8 0 1,0 5.6,0 a2.8,2.8 0 1,0 -5.6,0 z" />
-
-        <!-- Node B (middle) -->
-        <path
-            android:fillColor="#2F7D6E"
-            android:pathData="M70,54 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0 z" />
-        <path
-            android:fillColor="#F1EAD9"
-            android:pathData="M73.2,54 a2.8,2.8 0 1,0 5.6,0 a2.8,2.8 0 1,0 -5.6,0 z" />
-
-        <!-- Node C (bottom) -->
-        <path
-            android:fillColor="#2F7D6E"
-            android:pathData="M65,71 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0 z" />
-        <path
-            android:fillColor="#F1EAD9"
-            android:pathData="M68.2,71 a2.8,2.8 0 1,0 5.6,0 a2.8,2.8 0 1,0 -5.6,0 z" />
     </group>
 </vector>

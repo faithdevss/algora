@@ -121,7 +121,8 @@ struct Palette: Equatable {
     var dark: Bool
     var accent: AccentColor
 
-    var primary: Color { accent.color }
+    /// The deeper accents sink into dark surfaces as text and icons, so dark mode eases them toward white.
+    var primary: Color { dark ? accent.color.lightened(0.25) : accent.color }
     var tertiary: Color { accent.gradientEnd }
     var secondary: Color { Brand.blue }
     var background: Color { dark ? Color(hex: 0x161A22) : Color(hex: 0xF7F8FA) }
@@ -148,3 +149,13 @@ extension EnvironmentValues {
 let screenGutter: CGFloat = 18
 /// Bottom inset for a scrolling body.
 let screenBottomInset: CGFloat = 24
+
+extension Color {
+    /// This colour blended toward white by `amount` (0 = unchanged, 1 = white).
+    func lightened(_ amount: Double) -> Color {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        UIColor(self).getRed(&r, green: &g, blue: &b, alpha: &a)
+        let t = CGFloat(amount)
+        return Color(red: Double(r + (1 - r) * t), green: Double(g + (1 - g) * t), blue: Double(b + (1 - b) * t), opacity: Double(a))
+    }
+}
