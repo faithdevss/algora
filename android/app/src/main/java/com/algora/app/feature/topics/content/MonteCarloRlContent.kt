@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,43 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val monteCarloRlContent = TopicContent(
     topicId = "monte_carlo_rl",
+    figure = Figure(
+        caption = "Monte Carlo's variance, measured in the page's lab: the \"up, then right\" policy " +
+            "on the slippery 4×4 grid, values estimated by averaging whole returns, and the largest " +
+            "error against the exact Vπ after 1, 5, 20, 100 and 500 episodes at the lab's three " +
+            "slip rates. Nothing improves until enough episodes have ended — the first checkpoints " +
+            "are flat. After that the curves are unbiased but not orderly. At slip 0.3, where " +
+            "slips send the agent all over the grid and every state is visited often, the error " +
+            "falls to 0.299. At slip 0.1 the rarely visited states are averaged over only a handful " +
+            "of returns, and one unlucky return pushes the largest error up to 1.255 at 500 " +
+            "episodes, worse than it was at 100. An average of real returns has no bias to " +
+            "correct, only noise — and it only shrinks where there are enough returns to average.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "slip 0.1",
+                    listOf(FigurePoint(0.000f, 0.709f), FigurePoint(0.259f, 0.709f), FigurePoint(0.482f, 0.709f), FigurePoint(0.741f, 0.620f), FigurePoint(1.000f, 0.965f)),
+                    tone = FigureTone.Warn,
+                ),
+                FigureSeries(
+                    "slip 0.2",
+                    listOf(FigurePoint(0.000f, 0.658f), FigurePoint(0.259f, 0.658f), FigurePoint(0.482f, 0.658f), FigurePoint(0.741f, 0.544f), FigurePoint(1.000f, 0.528f)),
+                    tone = FigureTone.Muted,
+                ),
+                FigureSeries(
+                    "slip 0.3",
+                    listOf(FigurePoint(0.000f, 0.619f), FigurePoint(0.259f, 0.813f), FigurePoint(0.482f, 0.619f), FigurePoint(0.741f, 0.493f), FigurePoint(1.000f, 0.230f)),
+                    tone = FigureTone.Accent,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(1f, 0.965f, "1.255", FigureTone.Warn),
+                FigurePoint(1f, 0.230f, "0.299"),
+            ),
+            xLabel = "episodes, log scale (1 → 500)",
+            yLabel = "largest error vs exact Vπ, 0 to 1.3",
+        ),
+    ),
     whatIsIt = listOf(
         "Monte Carlo methods estimate values the most direct way available: play a complete episode, compute the actual return that followed each state, and average those returns over many episodes. No transition model, no reward function, and — crucially — no bootstrapping. The target is a real observed number, not another estimate.",
         "That makes MC unbiased. The sample return is by definition a draw from the distribution whose mean is Vπ(s), so the estimate converges to the true value with no systematic error at all, and it stays correct even when the state is not really Markov — since it never relies on the next state summarizing anything. The price is variance: a return sums dozens of random rewards and random transitions, so individual samples scatter widely and many episodes are needed to average that noise down.",

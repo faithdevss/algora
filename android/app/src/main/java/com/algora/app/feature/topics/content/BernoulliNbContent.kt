@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,38 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val bernoulliNbContent = TopicContent(
     topicId = "bernoulli_nb",
+    figure = Figure(
+        caption = "The page's lab scoring one short message, \"goal … goal … great\", against two " +
+            "classes over a six-word vocabulary. Each row is one word's factor for each class: " +
+            "P(word | class) if the word is present, 1 − P(word | class) if it is absent. The " +
+            "second \"goal\" changes nothing — Bernoulli records presence, not counts. What makes " +
+            "it Bernoulli is the four middle rows: match, team, vote and policy never appear, and " +
+            "still vote. Vote and policy are common in politics, so their absence keeps 0.80 for " +
+            "sports and only 0.25 for politics. Summed in log space, sports wins −3.52 to −6.34, a " +
+            "gap of 2.82 — of which the absent words contribute 1.07. Multinomial naive Bayes " +
+            "skips absent words entirely and would see a gap of 1.75, which is why Bernoulli suits " +
+            "short texts where what is missing is evidence.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0.60", "0.40"),
+                listOf("0.80", "0.25"),
+                listOf("0.40", "0.75"),
+                listOf("0.40", "0.75"),
+                listOf("0.80", "0.25"),
+                listOf("0.80", "0.25"),
+                listOf("0.60", "0.50"),
+                listOf("−3.52", "−6.34"),
+            ),
+            rowHeaders = listOf("prior", "goal ✓", "match ✗", "team ✗", "vote ✗", "policy ✗", "great ✓", "log total"),
+            colHeaders = listOf("sports", "politics"),
+            marks = listOf(
+                FigureCell(4, 0, FigureTone.Accent),
+                FigureCell(5, 0, FigureTone.Accent),
+                FigureCell(7, 0, FigureTone.Accent),
+                FigureCell(7, 1, FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Bernoulli naive Bayes models each feature as a binary present/absent indicator rather than a count. A term appearing five times and a term appearing once are the same input; what the model estimates is P(term appears | class).",
         "The consequence that actually distinguishes it is easy to miss: Bernoulli scores *every term in the vocabulary*, not only the ones the document contains. An absent term contributes log(1 − P(term | class)), so a word that does not appear still moves the score. Multinomial NB ignores absent terms completely. If a spam classifier learns that legitimate mail nearly always contains the recipient's name, then the *absence* of that name is evidence — and only Bernoulli can use it.",

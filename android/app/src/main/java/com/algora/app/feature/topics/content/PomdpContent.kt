@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,35 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val pomdpContent = TopicContent(
     topicId = "pomdp",
+    figure = Figure(
+        caption = "The page's lab: an agent that knows the 4×4 map but not where it is, with a " +
+            "sensor that reports only how many of its four sides are blocked. Each row is one " +
+            "action or observation. It starts uniform over the 13 open cells, 0.08 each. Sensing " +
+            "two blocked sides rules out every cell with a different count and leaves 5 equally " +
+            "likely. Moving up shifts every candidate as the agent would have moved — walls stop " +
+            "some, so two candidates merge into one at 0.40. Sensing one blocked side leaves 2, " +
+            "and one more move localises it at (1,0) with certainty. The last column reruns the same " +
+            "sequence with a sensor that is wrong 10% of the time: mismatching cells are " +
+            "down-weighted instead of ruled out, so the same evidence ends at 0.89 rather than " +
+            "1.00. That belief vector, updated by Bayes' rule, is the state a POMDP agent actually " +
+            "plans over.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("13", "0.08", "0.08"),
+                listOf("5", "0.20", "0.19"),
+                listOf("4", "0.40", "0.38"),
+                listOf("2", "0.50", "0.43"),
+                listOf("1", "1.00", "0.77"),
+                listOf("1", "1.00", "0.89"),
+            ),
+            rowHeaders = listOf("start", "sense 2", "move ↑", "sense 1", "move ↑", "sense 2"),
+            colHeaders = listOf("candidates", "top belief", "noisy sensor"),
+            marks = listOf(
+                FigureCell(4, 1, FigureTone.Accent),
+                FigureCell(5, 2, FigureTone.Primary),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A Partially Observable MDP is an MDP where the agent never sees the state. It receives an observation o ~ O(·|s) that is some lossy function of it — a camera that cannot see behind a wall, a sensor with noise, a poker hand that hides the opponent's cards.",
         "The consequence is sharper than it first sounds: the observation is not Markov, so everything built on top of it breaks. Two genuinely different states can produce identical observations, and any policy mapping observations to actions must treat them identically. In a corridor where every tile looks the same, a deterministic reactive policy that goes left will go left in all of them — and if left is wrong in one, it is stuck there forever. This is why a POMDP can require a stochastic policy even though its underlying MDP has an optimal deterministic one.",

@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,37 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val eclatContent = TopicContent(
     topicId = "eclat",
+    figure = Figure(
+        caption = "The page's lab with the database turned on its side: each item keeps the list " +
+            "of basket ids it appears in, and support is just the length of a list. D appears in " +
+            "only 2 of 10 baskets, below the minimum support of 3, so it leaves the search before " +
+            "it starts. Every larger itemset is an intersection of two lists that share a prefix — " +
+            "A ∩ B keeps baskets 1, 2, 3, 5, 7 and 10 (support 6), AB ∩ AC gives ABC at 3 — and " +
+            "the baskets are never read again. A ∩ E shares only basket 5, so AE is dropped and " +
+            "everything that would extend it is skipped without a count; BC ∩ BE meets in 2 " +
+            "baskets, so BCE goes the same way. Depth first, each prefix is finished before the " +
+            "next is started, so only one branch's lists are in memory at a time.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("1,2,3,5,7,10", "6"),
+                listOf("1,2,3,4,5,7,8,9,10", "9"),
+                listOf("1,4,5,7,8", "5"),
+                listOf("1,2,3,5,7,10", "6"),
+                listOf("1,5,7", "3"),
+                listOf("5", "1"),
+                listOf("1,5,7", "3"),
+                listOf("5,8", "2"),
+            ),
+            rowHeaders = listOf("A", "B", "C", "AB", "AC", "AE", "ABC", "BCE"),
+            colHeaders = listOf("basket ids", "support"),
+            marks = listOf(
+                FigureCell(3, 1, FigureTone.Accent),
+                FigureCell(6, 1, FigureTone.Accent),
+                FigureCell(5, 1, FigureTone.Warn),
+                FigureCell(7, 1, FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Eclat finds exactly the frequent itemsets Apriori finds. What changes is the data layout, and the algorithm follows from it. Apriori stores the database horizontally — basket 1 holds these items, basket 2 holds those — so counting an itemset means reading every basket. Eclat stores it vertically: for each item, the set of transaction ids containing it, its tid-list.",
         "In that layout support stops being something you count and becomes something you already have. The support of an itemset is the length of its tid-list, and the tid-list of X ∪ Y is the intersection of the tid-lists of X and Y. So after one initial pass to build the lists, the database is never read again — the search is pure set intersection, done depth-first, extending one prefix as far as it will go before backtracking.",

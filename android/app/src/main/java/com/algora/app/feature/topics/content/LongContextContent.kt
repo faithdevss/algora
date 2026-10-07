@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,44 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val longContextContent = TopicContent(
     topicId = "long_context",
+    figure = Figure(
+        caption = "Attention's share of prefill FLOPs for LLaMA-2-7B (d = 4,096, FFN width 11,008) " +
+            "as the context grows, from the page's per-layer formulas: 4·L²·d for attention " +
+            "against 8·L·d² for the projections and 6·L·d·d_ffn for the feed-forward block. The " +
+            "share is 4L / (4L + 8d + 6·d_ffn), so it depends on length alone. At 4k tokens " +
+            "attention is 14% of the work and the quadratic term really was ignorable; it " +
+            "passes everything else combined at 24,704 tokens, almost exactly 6·d; at 1M it is " +
+            "98%. The algorithm never changed — the length did. Compute is only one of the three " +
+            "prices, and not the largest: the KV cache at 1M is 512 GiB, ≈40× the weights, before " +
+            "grouped-query attention divides it, and reading five retrieved passages instead of " +
+            "stuffing the window costs 21,072× less prefill.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "attention share",
+                    listOf(
+                        FigurePoint(0f, 0.04f), FigurePoint(0.1f, 0.077f), FigurePoint(0.2f, 0.142f),
+                        FigurePoint(0.3f, 0.249f), FigurePoint(0.4f, 0.399f), FigurePoint(0.5f, 0.57f),
+                        FigurePoint(0.6f, 0.726f), FigurePoint(0.7f, 0.841f), FigurePoint(0.8f, 0.914f),
+                        FigurePoint(0.9f, 0.955f), FigurePoint(1f, 0.977f),
+                    ),
+                ),
+                FigureSeries(
+                    "half",
+                    listOf(FigurePoint(0f, 0.5f), FigurePoint(1f, 0.5f)),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.2f, 0.142f, "4k: 14%", FigureTone.Muted),
+                FigurePoint(0.459f, 0.5f, "24,704"),
+                FigurePoint(1f, 0.977f, "1M: 98%", FigureTone.Warn),
+            ),
+            xLabel = "context, 1k → 1M tokens (log)",
+            yLabel = "attention / all prefill FLOPs",
+        ),
+    ),
     whatIsIt = listOf(
         "A context window has three prices and the advertised number mentions none of them. The lab computes all three over LLaMA-2-7B's configuration — 32 layers, 32 heads, head dimension 128 — so every figure is checkable against a real model rather than a shape.",
         "**Price one is the KV cache**, which is linear in the length and paid at every decode step. At 4k tokens it is 2.0 GiB, already a sixth of the weights. At 1M it is **512 GiB — ≈40× the model itself**. This is the price grouped-query attention exists to cut, and it is the cheapest win in the stack: share one K/V head across a group of query heads and the cache divides by the group size, taking 1M tokens from 512 GiB to 128 GiB at GQA-8 and to 16 GiB at multi-query.",

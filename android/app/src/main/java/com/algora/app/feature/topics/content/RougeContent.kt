@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,11 +15,36 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val rougeContent = TopicContent(
     topicId = "rouge",
+    figure = Figure(
+        caption = "The page's lab: three candidates scored by ROUGE-1 against one 11-word reference " +
+            "summary. The real 8-word summary recalls 8 of the reference's 11 words and every " +
+            "word it uses is in the reference — recall 0.727, precision 1.000, F1 0.842. " +
+            "Submitting the whole 31-word source document is the do-nothing baseline that recall " +
+            "cannot see: it contains all 11 words, so recall is a perfect 1.000, and only precision " +
+            "(11/31 = 0.355) exposes the padding. The single word \"budget\" is the opposite " +
+            "exploit — perfect precision, recall 0.091. F1 is the only column where both exploits " +
+            "collapse (0.524 and 0.167) and the real summary wins, which is why F1 — or recall under " +
+            "a length cap — is what should be reported.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0.727", "1.000", "0.842"),
+                listOf("1.000", "0.355", "0.524"),
+                listOf("0.091", "1.000", "0.167"),
+            ),
+            rowHeaders = listOf("summary, 8 w", "whole doc, 31 w", "\"budget\""),
+            colHeaders = listOf("recall", "precision", "F1"),
+            marks = listOf(
+                FigureCell(0, 2, FigureTone.Accent),
+                FigureCell(1, 0, FigureTone.Warn),
+                FigureCell(2, 1, FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "ROUGE is BLEU's mirror image. Summarisation's failure mode is leaving things out rather than making things up, so ROUGE reports **recall**: what fraction of the reference summary's n-grams the candidate managed to include. ROUGE-1 counts unigrams, ROUGE-2 bigrams, and ROUGE-L uses the longest common subsequence — which needs no fixed n and rewards keeping content in order.",
-        "**Recall-first has an obvious exploit, and the field walked into it for years.** Submit the entire source document — 34 words, no summarisation performed at all — and ROUGE-1 recall is **0.800**. Nothing was selected, compressed or decided; the words are simply all still there. Any system reporting recall alone is being scored against a do-nothing baseline that is genuinely hard to beat.",
-        "**Precision closes it decisively:** the whole document's ROUGE-1 precision is 0.235, so F1 lands at 0.364 against the focused summary's 1.000. Report F1, or report recall under a length budget — which is exactly what the original DUC evaluations did, and why they were harder to game than much of what followed.",
-        "**Two blind spots remain.** ROUGE-1 is a bag of words, so a summary with its clauses swapped — saying the board's review *followed* the announcement rather than preceded it — scores 1.000, identical to the correct summary, while ROUGE-2 falls to 0.778 and ROUGE-L to 0.500. And a correct abstractive summary that shares almost no vocabulary scores 0.105. Optimising ROUGE therefore teaches a model to *extract* and copy the reference's phrasing, which is precisely the behaviour abstractive summarisation exists to escape: **the metric selects against the capability it is used to measure.**",
+        "**Recall-first has an obvious exploit, and the field walked into it for years.** In the lab the reference summary is 11 words. Submit the entire source document instead — 31 words, no summarisation performed at all — and ROUGE-1 recall is a perfect **1.000**. Nothing was selected, compressed or decided; the words are simply all still there. Any system reporting recall alone is being scored against a do-nothing baseline it cannot beat.",
+        "**Precision closes it decisively:** the whole document's ROUGE-1 precision is 11/31 = 0.355, so F1 lands at 0.524 against the focused 8-word summary's 0.842 (recall 0.727, precision 1.000). The opposite exploit fails the same way: the single word \"budget\" has perfect precision and recall 0.091, F1 0.167. Report F1, or report recall under a length budget — which is exactly what the original DUC evaluations did, and why they were harder to game than much of what followed.",
+        "**Two blind spots remain** (the second code block below shows both). ROUGE-1 is a bag of words, so a summary with its clauses swapped — saying the board's review *followed* the announcement rather than preceded it — scores 1.000, identical to the correct summary, while ROUGE-2 falls to 0.778 and ROUGE-L to 0.500. And a correct abstractive summary that shares almost no vocabulary scores 0.105. Optimising ROUGE therefore teaches a model to *extract* and copy the reference's phrasing, which is precisely the behaviour abstractive summarisation exists to escape: **the metric selects against the capability it is used to measure.**",
     ),
     steps = listOf(
         StepCard(1, "Count Reference N-Grams Covered", "Recall is the primary direction — what the summary kept.", 0xFF0EA5E9),
@@ -27,8 +56,8 @@ internal val rougeContent = TopicContent(
     ),
     formulas = listOf(
         FormulaEntry("ROUGE-N recall", "matched n-grams / reference n-grams", "The primary direction, and the exploitable one."),
-        FormulaEntry("The do-nothing baseline", "recall 0.800, precision 0.235", "Submitting the whole 34-word document."),
-        FormulaEntry("F1", "2PR / (P + R)", "0.364 for the whole document against 1.000 for a real summary."),
+        FormulaEntry("The do-nothing baseline", "recall 1.000, precision 0.355", "Submitting the whole 31-word document against an 11-word reference."),
+        FormulaEntry("F1", "2PR / (P + R)", "0.524 for the whole document against 0.842 for a real summary."),
         FormulaEntry("ROUGE-L", "LCS(candidate, reference) / lengths", "No fixed n, and it notices order."),
         FormulaEntry("The reorder", "R1 1.000 · R2 0.778 · RL 0.500", "Same words, reversed claim — R1 cannot see it."),
         FormulaEntry("The abstractive case", "R1 F1 0.105, R2 0.000", "Correct, well-written, and unrewarded."),
@@ -51,10 +80,10 @@ internal val rougeContent = TopicContent(
                     ["rouge1", "rouge2", "rougeL"], use_stemmer=True
                 )
 
-                # A focused summary:      R1 p=1.000 r=1.000 f=1.000
-                # The whole document:     R1 p=0.235 r=0.800 f=0.364
+                # An 8-word summary:      R1 p=1.000 r=0.727 f=0.842
+                # The whole document:     R1 p=0.355 r=1.000 f=0.524
                 #                                    ^^^^^^^
-                #   No summarisation performed, four fifths of the reference recalled.
+                #   No summarisation performed, the whole reference recalled.
                 #
                 # Report f, not r. Or cap the length and then report r --
                 # which is what DUC did, and why it was harder to game.
@@ -93,7 +122,7 @@ internal val rougeContent = TopicContent(
     ),
     takeaways = listOf(
         "ROUGE reports recall because summarisation's failure is omission — and that direction is exactly what makes it gameable.",
-        "Copying the whole document scores 0.800 recall for summarising nothing; its precision of 0.235 is the only thing that stops it.",
+        "Copying the whole document scores perfect recall for summarising nothing; its precision of 0.355 is the only thing that stops it.",
         "ROUGE-1 cannot see word order: a summary with its clauses swapped scores 1.000, identical to the correct one, while ROUGE-L halves to 0.500.",
         "A correct abstractive summary sharing little vocabulary scores 0.105, so optimising ROUGE trains models to extract rather than abstract.",
         "Quote ROUGE-1/2/L together as F1, on one test set, with multiple references — the disagreements between them are the diagnostic.",

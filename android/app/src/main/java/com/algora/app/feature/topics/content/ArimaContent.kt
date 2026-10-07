@@ -19,14 +19,14 @@ internal val arimaContent = TopicContent(
     figure = Figure(
         caption = "What \"stationary\" looks like when it is measured: the autocorrelation of the " +
             "lab's 48 training months at lags 1 to 12, undifferenced and after one and two rounds " +
-            "of differencing. Undifferenced it starts at 0.884 and decays slowly to 0.314 — every " +
-            "month still remembers the one a year before it, which is a trend, not a signal a " +
-            "model can use. One difference collapses lag 1 to 0.063 and the whole profile into a " +
-            "band around zero: that is d = 1, and it costs exactly one row. Take a second and lag " +
-            "1 goes to −0.469 — over-differencing does not read as \"more stationary\", it reads " +
-            "as a large negative autocorrelation the model then has to fit. The one thing d = 1 " +
-            "does not remove is the annual cycle, still visible as +0.342 at lag 12, which is the " +
-            "whole reason SARIMA exists.",
+            "of differencing. Undifferenced it starts at 0.851 and decays slowly, still 0.292 at " +
+            "lag 8 and 0.322 at lag 12 — every month still remembers the ones before it, which is " +
+            "a trend, not a signal a model can use. One difference collapses lag 1 to 0.084 and " +
+            "the whole profile into a band around zero: that is d = 1, and it costs exactly one " +
+            "row. Take a second and lag 1 goes to −0.488 — over-differencing does not read as " +
+            "\"more stationary\", it reads as a large negative autocorrelation the model then has " +
+            "to fit. The one thing d = 1 does not remove is the annual cycle, still visible as " +
+            "+0.250 at lag 12, which is the whole reason SARIMA exists.",
         shape = FigureShape.Plot(
             series = listOf(
                 FigureSeries(
@@ -38,44 +38,44 @@ internal val arimaContent = TopicContent(
                 FigureSeries(
                     "d = 0",
                     listOf(
-                        FigurePoint(0.000f, 0.942f), FigurePoint(0.091f, 0.894f),
-                        FigurePoint(0.182f, 0.855f), FigurePoint(0.273f, 0.819f),
-                        FigurePoint(0.364f, 0.791f), FigurePoint(0.455f, 0.759f),
-                        FigurePoint(0.545f, 0.742f), FigurePoint(0.636f, 0.722f),
-                        FigurePoint(0.727f, 0.695f), FigurePoint(0.818f, 0.689f),
-                        FigurePoint(0.909f, 0.675f), FigurePoint(1.000f, 0.657f),
+                        FigurePoint(0.000f, 0.925f), FigurePoint(0.091f, 0.855f),
+                        FigurePoint(0.182f, 0.788f), FigurePoint(0.273f, 0.736f),
+                        FigurePoint(0.364f, 0.706f), FigurePoint(0.455f, 0.674f),
+                        FigurePoint(0.545f, 0.648f), FigurePoint(0.636f, 0.646f),
+                        FigurePoint(0.727f, 0.647f), FigurePoint(0.818f, 0.665f),
+                        FigurePoint(0.909f, 0.670f), FigurePoint(1.000f, 0.661f),
                     ),
                     tone = FigureTone.Warn,
                 ),
                 FigureSeries(
                     "d = 1",
                     listOf(
-                        FigurePoint(0.000f, 0.531f), FigurePoint(0.091f, 0.504f),
-                        FigurePoint(0.182f, 0.415f), FigurePoint(0.273f, 0.389f),
-                        FigurePoint(0.364f, 0.481f), FigurePoint(0.455f, 0.419f),
-                        FigurePoint(0.545f, 0.429f), FigurePoint(0.636f, 0.443f),
-                        FigurePoint(0.727f, 0.400f), FigurePoint(0.818f, 0.527f),
-                        FigurePoint(0.909f, 0.639f), FigurePoint(1.000f, 0.671f),
+                        FigurePoint(0.000f, 0.542f), FigurePoint(0.091f, 0.531f),
+                        FigurePoint(0.182f, 0.444f), FigurePoint(0.273f, 0.345f),
+                        FigurePoint(0.364f, 0.461f), FigurePoint(0.455f, 0.408f),
+                        FigurePoint(0.545f, 0.352f), FigurePoint(0.636f, 0.443f),
+                        FigurePoint(0.727f, 0.459f), FigurePoint(0.818f, 0.564f),
+                        FigurePoint(0.909f, 0.609f), FigurePoint(1.000f, 0.625f),
                     ),
                     tone = FigureTone.Accent,
                 ),
                 FigureSeries(
                     "d = 2",
                     listOf(
-                        FigurePoint(0.000f, 0.265f), FigurePoint(0.091f, 0.557f),
-                        FigurePoint(0.182f, 0.468f), FigurePoint(0.273f, 0.428f),
-                        FigurePoint(0.364f, 0.570f), FigurePoint(0.455f, 0.479f),
-                        FigurePoint(0.545f, 0.502f), FigurePoint(0.636f, 0.497f),
-                        FigurePoint(0.727f, 0.435f), FigurePoint(0.818f, 0.476f),
-                        FigurePoint(0.909f, 0.560f), FigurePoint(1.000f, 0.548f),
+                        FigurePoint(0.000f, 0.256f), FigurePoint(0.091f, 0.545f),
+                        FigurePoint(0.182f, 0.523f), FigurePoint(0.273f, 0.377f),
+                        FigurePoint(0.364f, 0.588f), FigurePoint(0.455f, 0.501f),
+                        FigurePoint(0.545f, 0.415f), FigurePoint(0.636f, 0.537f),
+                        FigurePoint(0.727f, 0.459f), FigurePoint(0.818f, 0.520f),
+                        FigurePoint(0.909f, 0.508f), FigurePoint(1.000f, 0.506f),
                     ),
                     tone = FigureTone.Primary,
                 ),
             ),
             markers = listOf(
-                FigurePoint(0.000f, 0.942f, "0.884 · a trend", FigureTone.Warn),
-                FigurePoint(0.000f, 0.265f, "−0.469 · too far"),
-                FigurePoint(1.000f, 0.671f, "+0.342 · the season"),
+                FigurePoint(0.000f, 0.925f, "0.851 · a trend", FigureTone.Warn),
+                FigurePoint(0.000f, 0.256f, "−0.488 · too far"),
+                FigurePoint(1.000f, 0.625f, "+0.250 · the season"),
             ),
             xLabel = "lag, 1 → 12 months",
             yLabel = "autocorrelation, −1 → +1",

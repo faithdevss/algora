@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,10 +15,37 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val jaccardSimilarityContent = TopicContent(
     topicId = "jaccard_similarity",
+    figure = Figure(
+        caption = "Four comparisons from the page's lab, each a ratio of shared to total. Two " +
+            "sentences as word sets share 5 of 7 distinct words: J = 0.714, and the repeated " +
+            "\"data\" in one of them counts once, by design. Cosine on the same pair says 0.849, " +
+            "higher, because a count vector still sees the repeat — the two measures agree on the " +
+            "ranking but not the scale. Two sentences that mean the same thing in different words " +
+            "(\"the model learns\" / \"a network is trained\") score exactly 0: Jaccard sees only " +
+            "surface overlap. Split words into character 3-grams instead and \"learning\" vs " +
+            "\"learner\" shares 3 of 8, J = 0.375 — partial credit for spelling variants, which " +
+            "is the basis of fuzzy matching and, with longer shingles and MinHash, of web-scale " +
+            "near-duplicate detection.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("5", "7", "0.714"),
+                listOf("—", "—", "0.849"),
+                listOf("0", "7", "0.000"),
+                listOf("3", "8", "0.375"),
+            ),
+            rowHeaders = listOf("word sets", "cosine, counts", "paraphrase", "3-grams"),
+            colHeaders = listOf("shared", "union", "score"),
+            marks = listOf(
+                FigureCell(0, 2, FigureTone.Accent),
+                FigureCell(2, 2, FigureTone.Warn),
+                FigureCell(3, 2, FigureTone.Primary),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Jaccard similarity is set overlap: |A ∩ B| / |A ∪ B|. Applied to text it throws away counts, weights and order and keeps only membership — a document becomes the set of things in it. On the lab's pair, five shared terms over a union of seven gives 0.714, and the fact that \"data\" appears twice in one document and once in the other changes nothing. That is the design, not an oversight: for \"how much of this material is also in that\", repetition is noise.",
         "Cosine over the same two documents gives 0.849, higher, because it still sees the repeated term aligning the two vectors. Neither number is more correct — they answer different questions. Cosine asks how similar the emphasis is and is the right choice over TF-IDF weights and embeddings; Jaccard asks how much of the material is shared and is the right choice for deduplication, plagiarism, permission sets, tags and shingles, where a count would mean nothing anyway.",
-        "Near-duplicate detection does not use word sets at all — it uses character k-shingles, which preserve local word order: at k = 5 the lab's documents have 35 and 22 shingles and score 0.629. Comparing those sets exactly is O(|A| + |B|) per pair and quadratic across a corpus, which is why MinHash exists. Hash every shingle under k independent permutations and keep the minimum under each; the probability that two sets' minima agree is *exactly* their Jaccard similarity, so the fraction of matching signature positions estimates it, with error shrinking as 1/√k. On the lab's pair, with the lab's hash family, the estimates run 0.688 at k = 16, 0.641 at 64 and 0.598 at 256 against a true 0.629 — other hash functions (such as the md5 code below) give different draws around the same value. Fixed-width signatures then feed locality-sensitive hashing, which finds candidate near-duplicates in a web-scale corpus without comparing all pairs.",
+        "Near-duplicate detection does not use word sets at all — it uses character k-shingles, which preserve local word order: at k = 5 the two documents in the code below have 35 and 22 shingles and score 0.629. Comparing those sets exactly is O(|A| + |B|) per pair and quadratic across a corpus, which is why MinHash exists. Hash every shingle under k independent permutations and keep the minimum under each; the probability that two sets' minima agree is *exactly* their Jaccard similarity, so the fraction of matching signature positions estimates it, with error shrinking as 1/√k. With one hash family the estimates run 0.688 at k = 16, 0.641 at 64 and 0.598 at 256 against a true 0.629 — other hash functions (such as the md5 code below) give different draws around the same value. Fixed-width signatures then feed locality-sensitive hashing, which finds candidate near-duplicates in a web-scale corpus without comparing all pairs.",
     ),
     steps = listOf(
         StepCard(1, "Choose the Element", "Words for topical overlap, character k-shingles for near-duplicates, tags or IDs for sets.", 0xFF8B5CF6),
@@ -30,7 +61,7 @@ internal val jaccardSimilarityContent = TopicContent(
         FormulaEntry("Against cosine", "J = 0.714 vs cos = 0.849", "Same pair; cosine still sees the repeated term, Jaccard cannot."),
         FormulaEntry("Shingled", "J₅ = 0.629 over 35 and 22 shingles", "Character 5-shingles, which keep local word order."),
         FormulaEntry("MinHash identity", "P(min_h(A) = min_h(B)) = J(A,B)", "Exact, not approximate — the estimator is unbiased by construction."),
-        FormulaEntry("Estimator error", "σ ≈ √(J(1−J)/k)", "Lab's hash family: 0.688 at k=16, 0.641 at k=64, 0.598 at k=256 against a true 0.629; other hashes give different draws."),
+        FormulaEntry("Estimator error", "σ ≈ √(J(1−J)/k)", "One hash family gives 0.688 at k=16, 0.641 at k=64, 0.598 at k=256 against a true 0.629; other hashes give different draws."),
     ),
     notationKey = listOf(
         NotationEntry("k-shingle", "a contiguous window of k characters (or words); the unit near-duplicate detection compares"),

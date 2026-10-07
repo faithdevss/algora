@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,33 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val layerNormalizationContent = TopicContent(
     topicId = "layer_normalization",
+    figure = Figure(
+        caption = "The same four-feature input pushed through both normalisations at batch size " +
+            "one — the case the page computes. BatchNorm takes each feature's mean and variance " +
+            "down the batch axis, and a column with one entry has variance exactly zero, so every " +
+            "feature becomes 0/√ε and the row comes out as zeros whatever went in. LayerNorm takes " +
+            "its statistics across the row instead — mean 1.25, variance 2.8125 here — and " +
+            "returns a normalised version of the input that keeps its shape: the largest feature " +
+            "is still the largest, the order is untouched. Nothing about the batch entered the " +
+            "LayerNorm row, which is why it is bit-identical in a batch of 4 or of 32, and why " +
+            "BatchNorm needs frozen running statistics at inference while LayerNorm needs none.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("2.0", "−1.0", "0.5", "3.5"),
+                listOf("0", "0", "0", "0"),
+                listOf("0.447", "−1.342", "−0.447", "1.342"),
+            ),
+            rowHeaders = listOf("input", "BatchNorm", "LayerNorm"),
+            colHeaders = listOf("f₁", "f₂", "f₃", "f₄"),
+            marks = listOf(
+                FigureCell(1, 0, FigureTone.Warn),
+                FigureCell(1, 1, FigureTone.Warn),
+                FigureCell(1, 2, FigureTone.Warn),
+                FigureCell(1, 3, FigureTone.Warn),
+                FigureCell(2, 3, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Batch Normalization and Layer Normalization compute the exact same operation — subtract a mean, divide by a standard deviation — over two different axes of the same activation tensor. BatchNorm's mean and variance run down the batch axis, one statistic per feature, pooled across every example currently in the mini-batch. LayerNorm's run across the feature axis, one statistic per example, using nothing from any other row. That one axis swap is the entire difference, and it has a consequence worth computing rather than asserting: at batch size 1, BatchNorm's per-feature variance is the variance of a single number against itself, which is exactly zero. Every feature normalizes to 0/√(0+ε) — the output is the zero vector, regardless of what the input was. LayerNorm, at the same batch size 1, is unaffected, because it was never looking at the batch axis in the first place.",
         "The axis choice has a second, sharper consequence: LayerNorm's output for a given row is provably independent of every other row in the batch. Feed the identical input vector into a batch of size 4 and a batch of size 32 built from otherwise different data, and LayerNorm returns bit-identical output both times — verified here to 10⁻¹² — because its statistic never reads another row. BatchNorm's output for that same fixed input differs between the two batches, because its statistic is a function of who else happens to be present. A model built on LayerNorm behaves identically whether it is run one example at a time or in a batch of a thousand; a model built on BatchNorm does not, which is why BatchNorm needs a separate running-average statistic frozen at inference time and LayerNorm needs nothing of the sort.",

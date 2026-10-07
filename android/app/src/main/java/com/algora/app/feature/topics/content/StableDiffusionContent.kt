@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,34 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val stableDiffusionContent = TopicContent(
     topicId = "stable_diffusion",
+    figure = Figure(
+        caption = "Where latent diffusion's savings come from, priced in the page's lab for one " +
+            "512×512 image. The autoencoder squeezes 786,432 pixel values into a 64×64×4 latent of " +
+            "16,384 — 48× fewer — but the bigger win is downstream. The U-Net's self-attention " +
+            "compares every token with every other, so 64× fewer tokens means 4,096× fewer pairs. " +
+            "Cross-attention to the 77 text tokens is linear in the image tokens and only saves " +
+            "the 64×. A 50-step DDIM sampler against DDPM's 1,000 adds another 20×, and together " +
+            "the attention work per image falls 81,920-fold, from 68.7 trillion pair comparisons " +
+            "to 839 million. That arithmetic, not a better denoiser, is why the model runs on a " +
+            "consumer GPU.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("786,432", "16,384", "48×"),
+                listOf("262,144", "4,096", "64×"),
+                listOf("68.7B", "16.8M", "4,096×"),
+                listOf("20.2M", "315k", "64×"),
+                listOf("1,000", "50", "20×"),
+                listOf("68.7T", "839M", "81,920×"),
+            ),
+            rowHeaders = listOf("values", "tokens", "self-attn pairs", "cross-attn", "steps", "attn / image"),
+            colHeaders = listOf("pixel", "latent", "saving"),
+            marks = listOf(
+                FigureCell(2, 2, FigureTone.Accent),
+                FigureCell(5, 2, FigureTone.Accent),
+                FigureCell(3, 2, FigureTone.Muted),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Stable Diffusion is a diffusion model that does not run on pixels. A separately trained autoencoder compresses a 512×512×3 image to a 64×64×4 latent, the whole noising and denoising process happens there, and the decoder turns the finished latent back into an image exactly once at the end. That is the entire idea, and its justification is a division: 786,432 elements become 16,384, a factor of 48. Diffusion needs many forward passes over the same tensor — that is what makes it expensive and what makes it stable — so a 48× smaller tensor is not a 48× smaller saving. It is 48× per pass, multiplied by every pass.",
         "The self-attention layers in the denoising UNet make the saving much larger than 48×, because attention is quadratic in token count and the token count is what was reduced. A 512×512 image is 262,144 spatial tokens; the latent is 4,096. Self-attention compares every token with every other, so that is 68,719,476,736 pairs against 16,777,216 — a factor of 4,096, the square of the 64× reduction in tokens. Cross-attention behaves completely differently and it is worth not conflating them: it compares image tokens against 77 text tokens, so it is linear in image tokens and the same compression buys only 64×. Add a 50-step DDIM schedule in place of DDPM's 1,000 and the self-attention work over a full sampling run falls by 81,920×. That is the number that moved image generation from a cluster to a consumer graphics card.",

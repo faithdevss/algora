@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,33 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val mcmcContent = TopicContent(
     topicId = "mcmc",
+    figure = Figure(
+        caption = "The Metropolis rule as a function: α = min(1, p(x′)/p(x)), the probability of " +
+            "accepting a proposal from how much more (or less) probable it is than where the chain " +
+            "stands. It never needs the normalising constant — only the ratio, in which the " +
+            "constant cancels. Everything right of 1 is uphill and always accepted; the lab's " +
+            "first proposal has a ratio of 0.28/0.03 and moves at once. Downhill moves are " +
+            "accepted with probability equal to the ratio: the lab's 0.27/0.56 gives α = 0.48, the " +
+            "uniform draw comes up 0.59, and the chain stays put — that repeat counts as a sample " +
+            "too. Taking some downhill moves is what lets the chain cover the whole crescent " +
+            "instead of sitting on its peak; in the lab 250 of 500 proposals are accepted, inside " +
+            "the 20–50% band random-walk samplers aim for.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "α = min(1, ratio)",
+                    listOf(FigurePoint(0f, 0f), FigurePoint(0.5f, 1f), FigurePoint(1f, 1f)),
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.24f, 0.48f, "0.27/0.56 → 0.48", FigureTone.Warn),
+                FigurePoint(0.24f, 0.59f, "u = 0.59: refused", FigureTone.Muted),
+                FigurePoint(0.85f, 1f, "uphill: always"),
+            ),
+            xLabel = "p(x′) / p(x), 0 → 2",
+            yLabel = "acceptance probability α",
+        ),
+    ),
     whatIsIt = listOf(
         "Bayesian inference keeps running into the same wall. The posterior is p(θ|D) ∝ p(D|θ)p(θ), and turning that proportionality into an equality requires dividing by ∫p(D|θ)p(θ)dθ — an integral over the whole parameter space that is almost never solvable in closed form and hopeless numerically past a handful of dimensions.",
         "MCMC sidesteps it entirely. Rather than compute the posterior, build a Markov chain whose stationary distribution *is* the posterior, run it, and treat the states it visits as samples. Metropolis-Hastings does this with one idea: propose a move, and accept it with probability min(1, p(new)/p(old)). Because that ratio is all you need, the unknown normalizing constant cancels — you never had to compute the thing that was blocking you. Uphill moves are always accepted; downhill moves are accepted sometimes, which is what stops the chain collapsing onto the mode and lets it map the whole distribution.",

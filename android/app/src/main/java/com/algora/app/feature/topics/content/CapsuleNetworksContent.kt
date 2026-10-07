@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,9 +15,32 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val capsuleNetworksContent = TopicContent(
     topicId = "capsule_networks",
+    figure = Figure(
+        caption = "The page's lab: three lower capsules vote for parent A. Votes 1 and 2 agree; vote " +
+            "3 points elsewhere. Routing starts every vote at an even split, 0.50 to A, then each " +
+            "round adds the agreement û·v to the vote's logit and re-takes a softmax over the " +
+            "parents. After 3 rounds, CapsNet's count on MNIST, the agreeing votes send 0.76 and " +
+            "0.90 to A and the outlier only 0.21. A's length, the probability A is present, rises " +
+            "from 0.48 with equal weights to 0.73. Max-pooling keeps the loudest input; routing " +
+            "keeps what agrees, and the iterations are why capsules never scaled well.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0.50", "0.50", "0.50", "0.48"),
+                listOf("0.76", "0.90", "0.21", "0.73"),
+            ),
+            rowHeaders = listOf("start", "3 rounds"),
+            colHeaders = listOf("vote 1", "vote 2", "vote 3", "|v_A|"),
+            marks = listOf(
+                FigureCell(1, 0, FigureTone.Accent),
+                FigureCell(1, 1, FigureTone.Accent),
+                FigureCell(1, 2, FigureTone.Warn),
+                FigureCell(1, 3),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
-        "A capsule replaces a single scalar activation with a vector, and replaces max-pooling's \"keep the strongest, discard the rest\" with routing-by-agreement: a vote that agrees with the emerging consensus gets more say in the next round, and one that disagrees gets less. Concretely, three lower-level capsules each cast a vote — a small vector — for what a higher-level digit capsule should output. Two of the three votes here point in nearly the same direction; the third points nearly opposite. Routing starts every vote at equal weight and asks, over a few iterations, which votes keep agreeing with where the group is heading.",
-        "After three iterations — the number the original Capsule Networks paper uses — the two agreeing votes' routing coefficients have risen from 0.5 to 0.59 and 0.64, while the disagreeing vote's has fallen to 0.41: a real but partial correction. Run the identical process for ten iterations instead of three, and the coefficients diverge sharply — 0.994, 0.999, and 0.004 — the disagreeing vote is functionally voted out. The digit capsule's output direction moves correspondingly: a naive unweighted average of all three votes points 24.4° off the two agreeing votes' true consensus direction; three rounds of routing narrows that to 16.7°; ten rounds narrows it to 6.1°, matching the pure two-vote agreement almost exactly.",
+        "A capsule replaces a single scalar activation with a vector: its direction encodes the pose of what it detected, its length the probability that the thing is there. Max-pooling's \"keep the strongest, discard the rest\" is replaced by routing-by-agreement: each lower capsule predicts the pose of every parent, û = W·u, and splits its vote between the parents according to how well its prediction agrees with each one's output. In the lab, three lower capsules vote for parent A; two of their votes agree, the third points elsewhere.",
+        "Routing starts every vote at an even split — 0.50 of each to A, the rest to B — and in each round adds the agreement û·v to that vote's logit, then re-takes a softmax over the parents. After 3 rounds, the count CapsNet uses on MNIST, the two agreeing votes send 0.76 and 0.90 of themselves to A, and the outlier only 0.21. A's output length, read as the probability that A is present, rises to 0.73, against 0.48 with the equal weights it started from. The code below runs a separate single-parent version and shows the same direction: more rounds push the outlier's weight further toward zero.",
         "That iterative reweighting is precisely what a fixed operation cannot do. Average pooling assigns every input equal weight forever, no matter how much one of them disagrees with the rest — it has no mechanism to notice agreement. Max pooling keeps a single winner and discards everything else, including partial evidence from votes that agree with each other but lose to a stronger unrelated activation. Routing-by-agreement keeps all three votes but reweights them based on a measured property of the vote itself: how well it agrees with the very output it is contributing to, recomputed fresh every round.",
     ),
     steps = listOf(
@@ -21,7 +48,7 @@ internal val capsuleNetworksContent = TopicContent(
         StepCard(2, "Start Every Route at Equal Weight", "Routing logits at zero — no vote is favored before any agreement is measured.", 0xFF3B82F6),
         StepCard(3, "Combine, Then Squash", "A weighted sum of the votes, squashed to keep vector length between 0 and 1.", 0xFF10B981),
         StepCard(4, "Measure Agreement, Update the Weights", "Each vote's dot product with the squashed output raises or lowers its own logit.", 0xFFF59E0B),
-        StepCard(5, "Repeat — the Weights Converge to the Agreeing Votes", "3 rounds: a partial shift. 10 rounds: the disagreeing vote's weight collapses to 0.004.", 0xFFEC4899),
+        StepCard(5, "Repeat — Weight Moves to the Agreeing Votes", "After 3 rounds the shares to A are 0.76, 0.90 and 0.21; |v_A| rises from 0.48 to 0.73.", 0xFFEC4899),
     ),
     formulas = listOf(
         FormulaEntry("Routing weight", "c_ij = softmax_j(b_ij)", "Over the higher capsules j a lower capsule i could route to."),
@@ -80,9 +107,9 @@ internal val capsuleNetworksContent = TopicContent(
     ),
     takeaways = listOf(
         "A capsule outputs a vector, not a scalar, and higher capsules combine lower capsules' votes by routing-by-agreement instead of pooling.",
-        "Three routing iterations (the standard count) shift weight toward two agreeing votes (0.5 → 0.59, 0.64) and away from a conflicting one (0.5 → 0.41) — a real but partial correction.",
-        "Ten iterations diverge sharply: 0.994, 0.999, 0.004 — the disagreeing vote is functionally excluded.",
-        "The output direction moves correspondingly: 24.4° off true consensus (naive average) → 16.7° (3 rounds) → 6.1° (10 rounds, essentially converged).",
+        "In the lab, three routing rounds move the shares sent to A from 0.50 each to 0.76 and 0.90 for the agreeing votes and 0.21 for the outlier.",
+        "A's length — the probability it is present — rises from 0.48 with equal weights to 0.73 after routing.",
+        "In the code example's single-parent run, ten rounds push the outlier to 0.004 and the output direction from 24.4° off consensus to 6.1°.",
         "That reweighting-by-agreement, recomputed every round, is exactly what a fixed pooling operation has no mechanism to do.",
     ),
     crossLinks = listOf(

@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,34 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val denseNetContent = TopicContent(
     topicId = "densenet",
+    figure = Figure(
+        caption = "The page's lab: one six-layer dense block with a 64-channel input and growth rate " +
+            "k = 32. Every layer reads the concatenation of the block's input and every earlier " +
+            "layer's output, so its input widens by 32 each time — 64, 96, 128 … 224 — and nothing " +
+            "earlier is overwritten, unlike a ResNet's addition. What keeps that affordable is the " +
+            "1×1 bottleneck in front of each 3×3: it squeezes however many channels arrived down " +
+            "to 128, so the 3×3 always costs the same 9·128·32 = 36,864 weights and only the 1×1 " +
+            "grows. The whole block is 331,776 weights for 21 direct connections, and it emits " +
+            "64 + 6·32 = 256 channels, which a transition layer then halves before the next block.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("64", "45.1k"),
+                listOf("96", "49.2k"),
+                listOf("128", "53.2k"),
+                listOf("160", "57.3k"),
+                listOf("192", "61.4k"),
+                listOf("224", "65.5k"),
+                listOf("256", "331.8k"),
+            ),
+            rowHeaders = listOf("L1", "L2", "L3", "L4", "L5", "L6", "out"),
+            colHeaders = listOf("channels in", "weights"),
+            marks = listOf(
+                FigureCell(5, 0, FigureTone.Primary),
+                FigureCell(6, 0, FigureTone.Accent),
+                FigureCell(6, 1, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "DenseNet takes ResNet's shortcut and changes the operator: concatenate instead of add. Inside a dense block, layer ℓ receives the feature maps of *every* earlier layer stacked along the channel axis, and passes its own output on to every later one. A six-layer block therefore has 21 direct connections rather than six. Nothing has to be recomputed, and features from early layers stay literally available — not summed into a mixture — all the way to the classifier.",
         "Because every layer sees everything before it, each one only needs to contribute a little. That contribution is the growth rate k, typically 32: layer ℓ receives k₀ + k(ℓ − 1) channels and emits k new ones. The simulation walks a six-layer block from 64 input channels — 64, 96, 128, 160, 192, 224 arriving — and shows why the 1×1 bottleneck is not optional: it pins the 3×3's input at 4k = 128 channels regardless of how wide the concatenation has grown, so only the 1×1's cost scales with the concatenated width: per-layer cost still grows linearly (128 parameters per incoming channel against 288 without the bottleneck), which pays off in deeper blocks.",

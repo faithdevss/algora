@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,37 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val policyIterationContent = TopicContent(
     topicId = "policy_iteration",
+    figure = Figure(
+        caption = "The page's lab, round by round: policy iteration started from \"right if you " +
+            "can, else up\", which walks the start cell into the pit. Each row is one full " +
+            "evaluation followed by one greedy improvement; the first column counts the states " +
+            "whose action the improvement changed, and the other three are Vπ at three cells for " +
+            "the policy being evaluated that round. Read down any value column and it never " +
+            "falls — the start goes −0.794, −0.400, +0.427, while (3,3) waits at −0.400 until " +
+            "round 4 and then jumps to +0.519 — which is the improvement theorem made visible: " +
+            "every state gets at least as good at once, and nothing is traded away. Changes run " +
+            "9, 6, 4, 2, 0, and the round that changes nothing is the proof of optimality. Five " +
+            "evaluations for a 13-state grid, against value iteration's six sweeps on the same " +
+            "world — few rounds, but each one is a whole evaluation.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("9", "−0.794", "−0.886", "−0.940"),
+                listOf("6", "−0.400", "−0.400", "−0.400"),
+                listOf("4", "+0.427", "+0.427", "−0.400"),
+                listOf("2", "+0.427", "+0.621", "+0.519"),
+                listOf("0", "+0.427", "+0.621", "+0.519"),
+            ),
+            rowHeaders = listOf("1", "2", "3", "4", "5"),
+            colHeaders = listOf("changed", "(3,0)", "(2,1)", "(3,3)"),
+            marks = listOf(
+                FigureCell(0, 1, FigureTone.Warn),
+                FigureCell(2, 1, FigureTone.Accent),
+                FigureCell(3, 2, FigureTone.Accent),
+                FigureCell(3, 3, FigureTone.Accent),
+                FigureCell(4, 0, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Policy iteration alternates two operations until they stop disagreeing. Evaluation computes Vπ for the current policy exactly. Improvement replaces the policy with the one that acts greedily on those values. Repeat. When improvement changes nothing, you are done — and for a finite MDP, done means optimal.",
         "The policy improvement theorem is what makes the loop safe rather than hopeful. If a new policy π′ is greedy with respect to Vπ, then Vπ′(s) ≥ Vπ(s) for every state simultaneously — never better here at the cost of worse there. So each round is a strict improvement unless the policy is already optimal, and since a finite MDP has finitely many deterministic policies, the loop cannot run forever and cannot cycle.",

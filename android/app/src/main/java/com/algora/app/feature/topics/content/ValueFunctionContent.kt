@@ -16,38 +16,32 @@ import com.algora.app.core.data.model.TopicContent
 internal val valueFunctionContent = TopicContent(
     topicId = "value_function",
     figure = Figure(
-        caption = "The same 4×4 world, evaluated rather than optimised: V under the uniform-random " +
-            "policy, computed by sweeping the Bellman expectation backup — a sum weighted by π, " +
-            "not a max — until it stops moving. What the table holds is the answer to one " +
-            "question per cell: from here, moving in a random direction forever, what is the " +
-            "expected discounted return? Almost all of it is negative, because a random walk in " +
-            "this world mostly wanders and pays −0.04 a step, and the shading is a gradient " +
-            "climbing toward the goal at (0,3). The cell to look at is (1,2), directly above the " +
-            "pit: it is worth −0.478 here and +0.860 under the optimal policy, the same square in " +
-            "the same world differing by 1.34 because value is a property of a policy and not of " +
-            "a state. The start at (3,0) is −0.420 against +0.427. The ramp is stretched over the " +
-            "walkable range rather than over −1 to +1, because anchoring it to the two " +
-            "terminals flattened every cell between them into the same pale blue; both of " +
-            "those clamp instead, and the wall at (1,1) and the pit at (1,3) are told apart " +
-            "by their outlines rather than by their fill. And nothing in this table says " +
-            "which way to move — reading an action off it needs the transition model, which is " +
-            "the gap Q closes.",
-        shape = FigureShape.Heatmap(
-            values = listOf(
-                listOf(0.508f, 0.658f, 0.940f, 1.000f),
-                listOf(0.421f, 0.000f, 0.275f, 0.000f),
-                listOf(0.359f, 0.313f, 0.242f, 0.060f),
-                listOf(0.341f, 0.314f, 0.267f, 0.199f),
+        caption = "The page's lab: the same 4×4 world evaluated under its two fixed policies, " +
+            "\"up, then right\" and \"right, then up\", by sweeping the Bellman expectation backup " +
+            "— the action the policy takes, not a max — until it stops moving (50 sweeps, γ = 0.9, " +
+            "−0.04 a step). Each column is one square on the first policy's path from the start to " +
+            "the goal. Under \"up, then right\" every square on that path is positive and rises toward the goal, " +
+            "+0.427 at the start to +1.000 beside it; this policy happens to be optimal here, so " +
+            "these are also V*. Under \"right, then up\" the top three squares agree — at (1,0) " +
+            "the wall blocks \"right\", so it goes up too, and along the top row both policies head " +
+            "right into the goal. The bottom two split: from (3,0) and (2,0) it walks right along " +
+            "the row and then up into the pit, so the start is worth −0.794 instead of +0.427. Same " +
+            "squares, same world, values more than a whole reward apart: value is a property of a " +
+            "policy, not of a state. And nothing in the table says which way to move — reading an " +
+            "action off it needs the transition model, which is the gap Q closes.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("+0.427", "+0.519", "+0.621", "+0.734", "+1.000"),
+                listOf("−0.794", "−0.837", "+0.621", "+0.734", "+1.000"),
             ),
-            rowLabels = listOf("row 0", "row 1", "row 2", "row 3"),
-            colLabels = listOf("c0", "c1", "c2", "c3"),
+            rowHeaders = listOf("up → right", "right → up"),
+            colHeaders = listOf("(3,0)", "(2,0)", "(1,0)", "(0,0)", "(0,2)"),
             marks = listOf(
-                FigureCell(0, 3, FigureTone.Accent),
-                FigureCell(1, 3, FigureTone.Warn),
-                FigureCell(1, 1, FigureTone.Muted),
+                FigureCell(0, 0, FigureTone.Accent),
+                FigureCell(0, 1, FigureTone.Accent),
+                FigureCell(1, 0, FigureTone.Warn),
+                FigureCell(1, 1, FigureTone.Warn),
             ),
-            legend = "V^π, uniform-random · the ramp is stretched over the walkable cells, " +
-                "−0.666 to +0.104, so the terminals clamp · outlined: goal, pit, wall",
         ),
     ),
     whatIsIt = listOf(

@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,10 +15,33 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val chunkingContent = TopicContent(
     topicId = "chunking",
+    figure = Figure(
+        caption = "The page's lab sentence, chunked. One regular expression over the POS tags — " +
+            "DT? JJ* NN+, an optional determiner, any adjectives, one or more nouns — scans left to " +
+            "right and finds three noun phrases, [0, 3), [4, 6) and [7, 9); two more rules add the " +
+            "verb and the preposition, and every word now sits in exactly one flat phrase. The row " +
+            "underneath is the same output written as BIO labels — B- begins a chunk, I- continues " +
+            "it — which is why chunking and named-entity recognition share their models. What the " +
+            "bracketing cannot say is the point of the trade: nothing records that \"in the " +
+            "garden\" attaches to \"chased\" rather than to \"a cat\". One linear pass buys the " +
+            "phrases; attachment and nesting need a parser.",
+        shape = FigureShape.Strip(
+            cells = listOf("the", "small", "dog", "chased", "a", "cat", "in", "the", "garden"),
+            bands = listOf(
+                FigureBand(0, 2, "NP", FigureTone.Accent),
+                FigureBand(3, 3, "VP", FigureTone.Primary),
+                FigureBand(4, 5, "NP", FigureTone.Accent),
+                FigureBand(6, 6, "PP", FigureTone.Muted),
+                FigureBand(7, 8, "NP", FigureTone.Accent),
+            ),
+            aux = listOf("B-NP", "I-NP", "I-NP", "B-VP", "B-NP", "I-NP", "B-PP", "B-NP", "I-NP"),
+            auxLabel = "BIO",
+        ),
+    ),
     whatIsIt = listOf(
         "Chunking — shallow parsing — finds the flat phrases in a sentence without building a tree. Chunks never nest and never overlap, so \"the small dog chased a cat in the garden\" is [NP the small dog] [VP chased] [NP a cat] [PP in] [NP the garden] and nothing more is said about how those pieces relate. It runs over POS tags rather than words, which is why a regular expression per phrase type is enough: NP = DT? JJ* NN+, VP = a verb tag, PP = a preposition.",
         "The output is normally written as BIO tags — B- starts a chunk, I- continues one, O is outside — which turns a span problem into a per-token classification and lets a sequence labeller learn it. That encoding is the reason chunking and named entity recognition share their models entirely: they differ in what the spans mean, not in how they are represented or trained.",
-        "The part worth internalising is the evaluation. Chunks are scored as exact-match spans, so a boundary that moves by one token loses the whole span, not part of it. In the lab, moving the first NP's start from \"the\" to \"small\" leaves two of its three tokens correct and scores that span zero: F1 falls from 1.00 to 0.80, while per-token accuracy only falls to 0.78. Quoting the token number is how shallow parsers get oversold. The reason to accept that strictness is cost: chunking is a single linear pass — 9 steps for this sentence against 729 for a cubic parse — and for information extraction, template filling or feeding a noun-phrase list to a search index, the tree was never needed. Chunk when you want the phrases; parse when you need to know what attaches to what.",
+        "The part worth internalising is the evaluation. Chunks are scored as exact-match spans, so a boundary that moves by one token loses the whole span, not part of it. In the scoring example below, moving the first NP's start from \"the\" to \"small\" leaves two of its three tokens correct and scores that span zero: F1 falls from 1.00 to 0.80, while per-token accuracy only falls to 0.78. Quoting the token number is how shallow parsers get oversold. The reason to accept that strictness is cost: chunking is a single linear pass — 9 steps for this sentence against 729 for a cubic parse — and for information extraction, template filling or feeding a noun-phrase list to a search index, the tree was never needed. Chunk when you want the phrases; parse when you need to know what attaches to what.",
     ),
     steps = listOf(
         StepCard(1, "Tag First", "Chunk grammars match tag sequences, so tagging accuracy caps chunking accuracy.", 0xFFF59E0B),
@@ -100,7 +127,7 @@ internal val chunkingContent = TopicContent(
     takeaways = listOf(
         "Chunks are flat, non-overlapping phrases matched over POS tags — one regex per phrase type is a working chunker.",
         "BIO encoding turns spans into per-token labels, which is exactly why chunking and NER share their models.",
-        "Exact-match span scoring gives no partial credit: one boundary token wrong took F1 from 1.00 to 0.80 in the lab.",
+        "Exact-match span scoring gives no partial credit: one boundary token wrong takes F1 from 1.00 to 0.80 in the example below.",
         "Token accuracy (0.78 here) counts a different unit — say which one you are reporting.",
         "It is O(n) against a parse's O(n³) — 9 steps vs 729 — and gives phrases without attachment.",
     ),

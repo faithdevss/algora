@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,36 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val vectorDatabasesContent = TopicContent(
     topicId = "vector_databases",
+    figure = Figure(
+        caption = "The page's 180-vector corpus, searched five ways, with recall against the " +
+            "exact answer. Brute force compares the query to all 180 and is exact by construction. " +
+            "IVF probing one k-means cell does 28 comparisons and returns 60% of the true " +
+            "neighbours — the rest sit just across the cell boundary — and probing a second cell " +
+            "costs 7 more comparisons and brings them all back. The graph rows fail differently: " +
+            "a plain 6-nearest-neighbour graph over this corpus splits into 3 disconnected " +
+            "components, so a walk that starts in the wrong one cannot reach the answer at any " +
+            "candidate-list size, and recall is 0.00. Two random long-range links per vector join " +
+            "it into one component and the same stranded start reaches 100% in three hops. Recall " +
+            "is not a property of an index; it is a dial, and each row is a different price for a " +
+            "notch of it.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("180 dist.", "1.00"),
+                listOf("28 dist.", "0.60"),
+                listOf("35 dist.", "1.00"),
+                listOf("3 parts", "0.00"),
+                listOf("1 part", "1.00"),
+            ),
+            rowHeaders = listOf("brute force", "IVF, 1 cell", "IVF, 2 cells", "6-NN graph", "+ long links"),
+            colHeaders = listOf("cost", "recall"),
+            marks = listOf(
+                FigureCell(1, 1, FigureTone.Warn),
+                FigureCell(2, 1, FigureTone.Accent),
+                FigureCell(3, 1, FigureTone.Warn),
+                FigureCell(4, 1, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A vector database answers exactly one question: which stored vectors are nearest this one. Everything else it offers — metadata filters, hybrid search, persistence, replication — is ordinary database work wrapped around that primitive. The honest baseline is to compare against every stored vector, which is exact by construction and linear in the corpus. Every index below is an approximation measured against it, and the number that matters is recall: what fraction of the true nearest neighbours it actually returned.",
         "Two families dominate, and they fail differently. IVF partitions the vectors into cells with k-means and scans only the cells a query probes, so its failure is geometric: a query near a cell boundary has true neighbours sitting just across it. In the lab, probing one cell returns 60% recall for 28 comparisons against the corpus's 180; probing two returns 100% for 35. That is the trade the whole field runs on — recall is not a property of the index, it is a dial with a price per notch.",

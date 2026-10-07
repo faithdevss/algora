@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,10 +16,56 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val prophetContent = TopicContent(
     topicId = "prophet",
+    figure = Figure(
+        caption = "The page's lab, swept: Prophet-style trend plus seasonality fitted to four years " +
+            "of monthly data and scored on the held-out year, for every number of changepoints " +
+            "from 0 to 8, with and without seasonal terms. With Fourier order 0 there is no " +
+            "seasonality at all and the forecast error sits between 5.4 and 7.3 — around the " +
+            "seasonal-naive benchmark of 6.74 (dashed), which simply repeats last year. Add a " +
+            "second-order Fourier series and every setting drops to 1.9–2.7. The changepoints " +
+            "barely matter on this series, and the flexible ones do not help: none at all " +
+            "forecasts best (1.92) and the default four is 2.68, because the trend here is steady " +
+            "and the ridge penalty keeps unneeded slope changes small. On this data the calendar " +
+            "shape is the model; the trend's kinks are detail.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "seasonal naive, 6.74",
+                    listOf(FigurePoint(0f, 0.843f), FigurePoint(1f, 0.843f)),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "no seasonality (K = 0)",
+                    listOf(
+                        FigurePoint(0.000f, 0.676f), FigurePoint(0.125f, 0.671f), FigurePoint(0.250f, 0.743f),
+                        FigurePoint(0.375f, 0.865f), FigurePoint(0.500f, 0.916f), FigurePoint(0.625f, 0.784f),
+                        FigurePoint(0.750f, 0.729f), FigurePoint(0.875f, 0.714f), FigurePoint(1.000f, 0.730f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+                FigureSeries(
+                    "Fourier order K = 2",
+                    listOf(
+                        FigurePoint(0.000f, 0.240f), FigurePoint(0.125f, 0.242f), FigurePoint(0.250f, 0.253f),
+                        FigurePoint(0.375f, 0.302f), FigurePoint(0.500f, 0.335f), FigurePoint(0.625f, 0.331f),
+                        FigurePoint(0.750f, 0.311f), FigurePoint(0.875f, 0.287f), FigurePoint(1.000f, 0.265f),
+                    ),
+                    tone = FigureTone.Accent,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0f, 0.24f, "0 changepoints: 1.92"),
+                FigurePoint(0.5f, 0.335f, "default 4: 2.68", FigureTone.Muted),
+            ),
+            xLabel = "changepoints, 0 → 8",
+            yLabel = "forecast RMSE, 0 to 8",
+        ),
+    ),
     whatIsIt = listOf(
         "Prophet is not a new statistical idea; it is a deliberate engineering choice about who forecasts. Its authors' observation was that most business forecasting is done by analysts who know the domain and not the Box-Jenkins method, and that ARIMA's parameters are unintuitive to exactly those people. So Prophet models a series as a sum of interpretable pieces — y(t) = g(t) + s(t) + h(t) + ε — and fits it as a curve-fitting problem in which every parameter means something a domain expert can reason about.",
         "The trend g(t) is piecewise linear, with candidate changepoints laid across the history and a sparse prior on the slope change at each. That prior is the important part: without it the fit puts a kink at every candidate and extrapolates whatever the last one happened to say. The seasonality s(t) is a Fourier series, so the number of terms directly sets how wiggly the annual pattern may be. Holidays h(t) are simply indicator regressors with their own windows — which is Prophet's genuinely useful contribution, because \"Black Friday moves and Easter moves and both matter\" is very awkward to express in a seasonal ARIMA and trivial here.",
-        "The consequences are worth being clear-eyed about. Because it is curve fitting rather than a sequential model, Prophet does not require stationarity, handles missing data and irregular sampling without complaint, and is robust to outliers — all genuine advantages. But it also does not learn from autocorrelation the way ARIMA does: it fits a shape to the calendar, and if what you need is short-horizon prediction from recent momentum, an AR model will beat it. Published benchmarks have found it losing to well-tuned classical methods and even to seasonal-naive on some series. The simulation shows both sides — with no changepoints the trend is one straight line and the forecast is poor, and with too many and no penalty the slope changes alternate wildly and it is fitting noise.",
+        "The consequences are worth being clear-eyed about. Because it is curve fitting rather than a sequential model, Prophet does not require stationarity, handles missing data and irregular sampling without complaint, and is robust to outliers — all genuine advantages. But it also does not learn from autocorrelation the way ARIMA does: it fits a shape to the calendar, and if what you need is short-horizon prediction from recent momentum, an AR model will beat it. Published benchmarks have found it losing to well-tuned classical methods and even to seasonal-naive on some series. The lab lets you check which piece is doing the work on its series. Without any seasonal terms (Fourier order 0) every setting of the trend forecasts the held-out year at 5.4–7.3, no better than the seasonal-naive 6.74; with order 2 it drops to 1.9–2.7. Changepoints, by contrast, barely matter here — and none at all forecasts best — because this series has a steady trend and the ridge penalty keeps extra slope changes small.",
     ),
     steps = listOf(
         StepCard(1, "Lay Out Changepoints", "Candidates across the first 80% of history — a changepoint near the end has almost no data after it.", 0xFF10B981),

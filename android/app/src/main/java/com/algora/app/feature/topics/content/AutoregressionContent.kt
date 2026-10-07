@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,10 +16,48 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val autoregressionContent = TopicContent(
     topicId = "autoregression",
+    figure = Figure(
+        caption = "The page's lab, every setting of its lag slider: an AR(p) model fitted to four " +
+            "years of a monthly seasonal series and scored on the held-out fifth year, against " +
+            "the seasonal-naive benchmark that simply repeats last year (dashed, 6.74). With one " +
+            "to seven lags the model cannot reach twelve months back, the season washes out of " +
+            "its forecast, and it loses — 9.26 to 9.95 for p up to 4, still 7.47 at p = 7. From " +
+            "p = 8 it starts to span the cycle and wins (5.32), and it bottoms out at 2.33 with " +
+            "twelve lags, exactly one year. Past that the extra lags are noise it has to estimate " +
+            "from the same 36 usable rows, and the error creeps back up. AR can represent " +
+            "seasonality; it just has to spend a parameter on every month in between to do it — " +
+            "which is the price SARIMA's single seasonal difference avoids.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "seasonal naive, 6.74",
+                    listOf(FigurePoint(0f, 0.674f), FigurePoint(1f, 0.674f)),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "AR(p)",
+                    listOf(
+                        FigurePoint(0.000f, 0.926f), FigurePoint(0.077f, 0.973f), FigurePoint(0.154f, 0.995f),
+                        FigurePoint(0.231f, 0.984f), FigurePoint(0.308f, 0.806f), FigurePoint(0.385f, 0.799f),
+                        FigurePoint(0.462f, 0.747f), FigurePoint(0.538f, 0.532f), FigurePoint(0.615f, 0.526f),
+                        FigurePoint(0.692f, 0.397f), FigurePoint(0.769f, 0.305f), FigurePoint(0.846f, 0.233f),
+                        FigurePoint(0.923f, 0.249f), FigurePoint(1.000f, 0.260f),
+                    ),
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.538f, 0.532f, "p = 8 wins"),
+                FigurePoint(0.846f, 0.233f, "p = 12: 2.33", FigureTone.Accent),
+            ),
+            xLabel = "lags p, 1 → 14",
+            yLabel = "forecast RMSE, 0 to 10",
+        ),
+    ),
     whatIsIt = listOf(
         "An autoregressive model is ordinary linear regression with an unusual choice of features: the series' own recent values. yₜ = c + φ₁yₜ₋₁ + … + φₚyₜ₋ₚ + εₜ. Build the lagged design matrix and least squares does the rest, which is why AR is the natural bridge from regression to time series — nothing new is required except the discipline about what you are allowed to know when.",
         "Two consequences follow immediately and neither is obvious from the regression framing. First, the model is only usable if the series is stationary: if |φ₁| ≥ 1 the process is non-stationary (φ₁ = 1 is a random walk, |φ₁| > 1 explodes) and the process has no fixed mean to regress toward, which is why ARIMA's differencing step exists. Second, forecasting more than one step means feeding predictions back in as inputs, so errors compound with the horizon — the twelfth prediction is built almost entirely from earlier predictions.",
-        "The limitation the simulation is built to show is subtler than a failure. An AR model has no seasonal term at all, so the only way it can reach an event twelve months back is to carry a lag for every month in between. Slide p across the lab and watch it happen: against the seasonal-naive benchmark — \"next year looks like last year\" — every order up to eight loses, and from nine onward the model finally spans the annual cycle and wins. It is not that AR cannot represent seasonality; it is that it has to spend nine to twelve parameters, estimated from thirty-six usable rows, to say what one seasonal difference says in a single subtraction. That price is exactly why SARIMA and Holt-Winters exist.",
+        "The limitation the simulation is built to show is subtler than a failure. An AR model has no seasonal term at all, so the only way it can reach an event twelve months back is to carry a lag for every month in between. Slide p across the lab and watch it happen: against the seasonal-naive benchmark — \"next year looks like last year\" — every order up to seven loses — AR(2) forecasts at 9.73 against the benchmark's 6.74 — and from eight onward the model starts to span the annual cycle and wins, bottoming out at 2.33 with twelve lags. It is not that AR cannot represent seasonality; it is that it has to spend eight to twelve parameters, estimated from thirty-six usable rows, to say what one seasonal difference says in a single subtraction. That price is exactly why SARIMA and Holt-Winters exist.",
     ),
     steps = listOf(
         StepCard(1, "Check Stationarity First", "A trending series breaks the model's premise. Difference it, or use ARIMA, before fitting.", 0xFF10B981),

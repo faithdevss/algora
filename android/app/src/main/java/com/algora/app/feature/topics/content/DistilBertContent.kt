@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,31 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val distilBertContent = TopicContent(
     topicId = "distilbert",
+    figure = Figure(
+        caption = "DistilBERT against its teacher, BERT-base: half the layers, 40% fewer " +
+            "parameters, 60% faster inference, and about 97% of the GLUE score. The student keeps " +
+            "the teacher's width and is initialised from every other teacher layer; what it trains " +
+            "on is the teacher's full output distribution, softened by a temperature T, not just " +
+            "the right answer. The page's lab shows why that carries more: at the teacher's least " +
+            "certain step its top guess gets only 23%, with the runner-up at 22% — a near tie that " +
+            "a one-hot label would erase, throwing away 77% of what the teacher knows. Raising T " +
+            "from 1 to 2 lifts the distribution's entropy from 2.53 to 2.63 bits, spreading that " +
+            "information further at the cost of a weaker signal on the top class.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("12", "6"),
+                listOf("110M", "66M"),
+                listOf("1×", "1.6×"),
+                listOf("100%", "≈97%"),
+            ),
+            rowHeaders = listOf("layers", "parameters", "inference speed", "GLUE score"),
+            colHeaders = listOf("BERT-base", "DistilBERT"),
+            marks = listOf(
+                FigureCell(1, 1, FigureTone.Accent),
+                FigureCell(3, 1, FigureTone.Primary),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Distillation trains a small model on a large one's *distribution* rather than on the labels. The reason that helps is measurable on any real distribution: at the step a trained model is least certain about, its top choice holds 0.296 of the mass and everything else holds 0.704, with the runner-up at 0.675 of the winner's probability. A hard label keeps the 0.296 and throws the rest away. The teacher's full output says not only which answer is right but which wrong answers were close — and that ranking is signal the student can learn from.",
         "Temperature is what makes that structure trainable. Dividing the logits by T flattens the distribution: on the same real teacher output, T = 4 takes entropy from 1.706 to 1.838 nats and the top choice from 0.296 to 0.193, so the gradient carries information about the alternatives instead of being dominated by the winner. Because soft-target gradients shrink as 1/T², the loss is multiplied by T² — 16 at T = 4 — to keep the two terms comparable. DistilBERT's actual loss is three terms: the distillation KL, the ordinary masked-LM loss, and a cosine term aligning the student's hidden states with the teacher's.",

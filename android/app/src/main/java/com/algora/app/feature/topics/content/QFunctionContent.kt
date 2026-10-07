@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,33 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val qFunctionContent = TopicContent(
     topicId = "q_function",
+    figure = Figure(
+        caption = "The start cell's row of the Q-table, as the page's lab learns it: Q-learning with " +
+            "ε = 0.2 exploration and α = 0.5, read after 1, 10, 50 and 300 episodes. Each column is " +
+            "one action's value; the greedy policy is simply the largest number in the row, read " +
+            "off with no model and no lookahead. After one episode every action is still at the " +
+            "step cost, and after ten they are all slightly negative — value has not reached the " +
+            "start yet. By episode 50 → leads at 0.43. By 300 the row has settled into the true " +
+            "shape: ↓ and ← bump into the edge and cost a step (0.34), while ↑ and → are tied at " +
+            "0.43, because both are six-step routes to the goal. A tie is where Q-learning is " +
+            "fragile: every target takes a max over estimates like these, and a max over noisy " +
+            "estimates picks whichever error happened to point up.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("−0.04", "−0.04", "−0.04", "−0.04"),
+                listOf("−0.11", "−0.10", "−0.10", "−0.11"),
+                listOf("0.02", "0.33", "0.29", "0.43"),
+                listOf("0.43", "0.34", "0.34", "0.43"),
+            ),
+            rowHeaders = listOf("ep 1", "ep 10", "ep 50", "ep 300"),
+            colHeaders = listOf("↑", "↓", "←", "→"),
+            marks = listOf(
+                FigureCell(2, 3, FigureTone.Accent),
+                FigureCell(3, 0, FigureTone.Accent),
+                FigureCell(3, 3, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "The action-value function Qπ(s,a) is the expected return from taking action a in state s and following π afterwards. Where V scores a situation, Q scores a decision — one number per action, per state.",
         "That extra index is what makes Q the workhorse of model-free control. To act well from V you must ask \"where would each action land me?\", which requires the transition model. From Q you simply take the largest of the numbers already sitting in front of you. No model, no lookahead: argmaxₐ Q(s,a) is the greedy policy, computable directly from experience. This is the single reason Q-learning, SARSA, DQN and the entire Rainbow lineage are built on Q rather than V.",

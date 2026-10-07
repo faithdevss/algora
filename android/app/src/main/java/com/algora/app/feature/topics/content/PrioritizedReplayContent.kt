@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,50 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val prioritizedReplayContent = TopicContent(
     topicId = "prioritized_replay",
+    figure = Figure(
+        caption = "The page's lab: Q-learning with a replay buffer on a six-state chain whose only " +
+            "reward sits at the far end, so almost every stored transition has a TD error of zero. " +
+            "Mean error against the optimal Q, episode by episode, for uniform sampling and for " +
+            "sampling in proportion to |TD error|. Uniform replay spends most of its four replays " +
+            "per step on transitions that teach nothing, and the reward diffuses backwards one " +
+            "lucky sample at a time: 0.700, 0.428, 0.153, 0.056, then under the 0.05 line at " +
+            "episode 5. Prioritized replay keeps sampling the frontier where values are still " +
+            "changing — 0.647, 0.159, then 0.048 at episode 3. The price is that the replayed " +
+            "distribution is no longer the one the agent experiences, which is what the " +
+            "importance-sampling weights, annealed towards β = 1, correct.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "converged, 0.05",
+                    listOf(FigurePoint(0f, 0.071f), FigurePoint(1f, 0.071f)),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "uniform",
+                    listOf(
+                        FigurePoint(0f, 1f), FigurePoint(0.2f, 0.612f), FigurePoint(0.4f, 0.218f),
+                        FigurePoint(0.6f, 0.080f), FigurePoint(0.8f, 0.008f), FigurePoint(1f, 0.0004f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+                FigureSeries(
+                    "prioritized",
+                    listOf(
+                        FigurePoint(0f, 0.924f), FigurePoint(0.2f, 0.227f), FigurePoint(0.4f, 0.069f),
+                        FigurePoint(0.6f, 0.018f), FigurePoint(0.8f, 0.007f), FigurePoint(1f, 0.0015f),
+                    ),
+                    tone = FigureTone.Accent,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.4f, 0.069f, "3 episodes"),
+                FigurePoint(0.8f, 0.008f, "5 episodes", FigureTone.Warn),
+            ),
+            xLabel = "episode, 1 → 6",
+            yLabel = "mean |Q − Q*|, 0 to 0.7",
+        ),
+    ),
     whatIsIt = listOf(
         "Prioritized Experience Replay samples transitions in proportion to how much the agent can learn from them, measured by their TD error, instead of uniformly.",
         "Surprising transitions — where the prediction was most wrong — are replayed more often, speeding up learning, with importance-sampling weights to correct the resulting bias.",

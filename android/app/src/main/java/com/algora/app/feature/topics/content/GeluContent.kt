@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,44 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val geluContent = TopicContent(
     topicId = "gelu",
+    figure = Figure(
+        caption = "GELU against ReLU over the range where they differ. Above z ≈ 2 the two are " +
+            "indistinguishable and below z ≈ −3 GELU is within 0.004 of zero, so everything this " +
+            "function is for lives in a band around the origin. There it does two things ReLU " +
+            "cannot. It dips — to −0.170 at z = −0.752, so a unit that is slightly off still " +
+            "passes a small signal and a nonzero gradient instead of being cut flat. And it has no " +
+            "kink: the corner where ReLU's derivative jumps from 0 to 1 is replaced by a smooth " +
+            "bend, which is where the largest gap between them, 0.170 at z = +0.752, sits. That " +
+            "shape is z·Φ(z), an input weighted by how likely a normal draw is to fall below it — " +
+            "a random keep-or-drop gate replaced by its expectation.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "ReLU",
+                    listOf(FigurePoint(0f, 0.111f), FigurePoint(0.6f, 0.111f), FigurePoint(1f, 1f)),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "GELU",
+                    listOf(
+                        FigurePoint(0f, 0.109f), FigurePoint(0.1f, 0.104f), FigurePoint(0.2f, 0.091f),
+                        FigurePoint(0.3f, 0.067f), FigurePoint(0.35f, 0.052f), FigurePoint(0.4f, 0.041f),
+                        FigurePoint(0.45f, 0.036f), FigurePoint(0.5f, 0.043f), FigurePoint(0.55f, 0.067f),
+                        FigurePoint(0.6f, 0.111f), FigurePoint(0.65f, 0.178f), FigurePoint(0.7f, 0.265f),
+                        FigurePoint(0.75f, 0.37f), FigurePoint(0.8f, 0.485f), FigurePoint(0.9f, 0.733f),
+                        FigurePoint(1f, 0.98f),
+                    ),
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.45f, 0.036f, "−0.170 at −0.752", FigureTone.Warn),
+                FigurePoint(0.75f, 0.37f, "gap 0.170"),
+            ),
+            xLabel = "z, −3 to +2",
+            yLabel = "output, −0.25 to 2",
+        ),
+    ),
     whatIsIt = listOf(
         "GELU is z·Φ(z) — the input times the probability that a standard normal draw falls below it. Its motivation is different in kind from every other activation here. Rather than shaping a curve to have nice properties, it asks what happens if a unit is kept or dropped at random with probability depending on its own value, and then takes the expectation of that. It is dropout and ReLU merged into one deterministic function.",
         "Shape-wise the result is a smoothed ReLU with a dip: the simulation measures a minimum of −0.1700 at z = −0.752, and a maximum deviation from ReLU of 0.1700 occurring at z = 0.752. That is a small difference in absolute terms and it is concentrated exactly at the kink, where ReLU is not differentiable — which is the part that matters for optimisation. Against Swish, which it closely resembles, the largest gap is 0.1930; the two were derived completely differently and landed in almost the same place, and neither has a convincing argument for being better.",

@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,60 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val discountFactorContent = TopicContent(
     topicId = "discount_factor",
+    figure = Figure(
+        caption = "The page's lab, solved four times on the same 4×4 grid with only γ changed, " +
+            "and V* read along the optimal route from the start back to the cell beside the goal. " +
+            "Every curve starts at 1.000 one step out, because the goal's reward is collected on " +
+            "arrival. γ = 0 is flat at −0.04 from two steps on: a pure bandit, blind to anything " +
+            "it cannot reach in one move. γ = 0.5 has a horizon of about two steps and is already " +
+            "below zero by five, so the start cell, six steps out, values the goal at −0.046 — " +
+            "less than standing still costs. γ = 0.9 is the first setting whose ~10-step horizon " +
+            "covers the route, giving the start +0.427, and γ = 0.99 lifts it to +0.755. That " +
+            "last gain is not free: it is the same contraction modulus that sets how fast planning " +
+            "converges, and the same lean on V(s′) that compounds bootstrap error in a learner.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "γ = 0",
+                    listOf(
+                        FigurePoint(0f, 1f), FigurePoint(0.2f, 0.055f), FigurePoint(0.4f, 0.055f),
+                        FigurePoint(0.6f, 0.055f), FigurePoint(0.8f, 0.055f), FigurePoint(1f, 0.055f),
+                    ),
+                    tone = FigureTone.Warn,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "γ = 0.5",
+                    listOf(
+                        FigurePoint(0f, 1f), FigurePoint(0.2f, 0.509f), FigurePoint(0.4f, 0.264f),
+                        FigurePoint(0.6f, 0.141f), FigurePoint(0.8f, 0.080f), FigurePoint(1f, 0.049f),
+                    ),
+                    tone = FigureTone.Muted,
+                ),
+                FigureSeries(
+                    "γ = 0.9",
+                    listOf(
+                        FigurePoint(0f, 1f), FigurePoint(0.2f, 0.873f), FigurePoint(0.4f, 0.758f),
+                        FigurePoint(0.6f, 0.655f), FigurePoint(0.8f, 0.563f), FigurePoint(1f, 0.479f),
+                    ),
+                ),
+                FigureSeries(
+                    "γ = 0.99",
+                    listOf(
+                        FigurePoint(0f, 1f), FigurePoint(0.2f, 0.955f), FigurePoint(0.4f, 0.909f),
+                        FigurePoint(0.6f, 0.865f), FigurePoint(0.8f, 0.821f), FigurePoint(1f, 0.777f),
+                    ),
+                    tone = FigureTone.Accent,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(1f, 0.479f, "start +0.427"),
+                FigurePoint(1f, 0.049f, "−0.046", FigureTone.Warn),
+            ),
+            xLabel = "steps from the goal, 1 → 6",
+            yLabel = "V*(s), −0.1 to 1",
+        ),
+    ),
     whatIsIt = listOf(
         "The discount factor γ ∈ [0,1) sets how much a reward arriving k steps from now is worth today: γᵏ times its face value. It is the single number that decides whether an agent is a scavenger or a planner.",
         "Two jobs are bundled into one hyperparameter, and it helps to keep them apart. Mathematically, γ < 1 guarantees the infinite sum of rewards converges and makes the Bellman operator a contraction — without it, values in a continuing task can diverge and nothing is well defined. Behaviourally, γ defines an effective horizon of roughly 1/(1−γ) steps: γ = 0.9 means the agent effectively reasons about the next ten steps, γ = 0.99 about a hundred, and γ = 0 makes it purely greedy for immediate reward.",

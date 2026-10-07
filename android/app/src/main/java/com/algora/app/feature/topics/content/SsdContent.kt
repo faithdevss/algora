@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,32 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val ssdContent = TopicContent(
     topicId = "ssd",
+    figure = Figure(
+        caption = "Where SSD300's 8,732 default boxes live, level by level, as the page's lab sums " +
+            "them from the table rather than quoting the total. Each of six feature maps gets its " +
+            "own small convolutional head predicting class scores and box offsets for every " +
+            "default box on it, and all six run in a single forward pass — no proposal stage. The " +
+            "38×38 map at stride 8 carries 5,776 boxes, two thirds of the total, and is the only " +
+            "one fine enough for small objects; yet its features come from shallow layers with " +
+            "little context, which is where SSD trails two-stage detectors and what FPN later " +
+            "fixed. Nearly all 8,732 boxes are background, so training keeps only the hardest " +
+            "negatives at 3 for every positive.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("8", "4", "5,776"),
+                listOf("16", "6", "2,166"),
+                listOf("32", "6", "600"),
+                listOf("64", "6", "150"),
+                listOf("100", "4", "36"),
+                listOf("300", "4", "4"),
+            ),
+            rowHeaders = listOf("38 × 38", "19 × 19", "10 × 10", "5 × 5", "3 × 3", "1 × 1"),
+            colHeaders = listOf("stride", "boxes / cell", "boxes"),
+            marks = listOf(
+                FigureCell(0, 2, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "SSD agrees with YOLO that a detector should be one forward pass and disagrees about scale. One grid over one feature map carries a single notion of object size; SSD attaches detection heads to six feature maps of decreasing resolution, so a 38×38 map at stride 8 handles small objects and a 1×1 map handles ones that fill the frame. Prediction happens at every scale rather than at one, using the pyramid the backbone already produces.",
         "Each head places default boxes — anchors, by another name — at every location: 4 or 6 shapes per position, each predicting a class distribution and a four-number offset. Counted level by level that is 5,776 + 2,166 + 600 + 150 + 36 + 4 = 8,732 boxes for SSD300, and the simulation sums them from the level table rather than quoting the total. Nearly two thirds come from the finest map alone, which is exactly where small objects live and where a coarse detector fails.",

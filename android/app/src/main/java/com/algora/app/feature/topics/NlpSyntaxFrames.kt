@@ -138,7 +138,7 @@ private fun gloveFrames(): List<NbFrame> {
         NbFrame(listOf(NbBlock.Caption("cosine similarity to \"king\" · 4-d vectors w + w̃"), NbBlock.Bars(sims.map { NbBar(it.first, f2(it.second), max(it.second, 0.0), if (it.first == "queen") NbInk.Green else NbInk.Sky) }, labelWidth = 64)),
             listOf(nbLegend(NbInk.Green, "Same contexts as king")),
             "\"king\" and \"queen\" {share every context}.",
-            "Both appear between \"the\" and \"rules\", so their rows of X are nearly identical and their vectors end up close: cosine ${f2(cosA(run.w[k], run.w[q]))}."),
+            "Their rows of X are identical, yet the cosine is only ${f2(cosA(run.w[k], run.w[q]))}: each row gives 2 targets for 4 dimensions plus a bias, so many different vectors fit exactly. A real corpus supplies thousands of shared contexts, and those pull such words together."),
         NbFrame(listOf(NbBlock.Caption("why log counts"), NbBlock.Table(listOf("ratio", "meaning"), listOf(1.2f, 1f), listOf(
             NbRow(listOf(nbCell("P(ice|solid) / P(steam|solid)"), nbCell("8.9 — large", NbInk.Green))),
             NbRow(listOf(nbCell("P(ice|gas) / P(steam|gas)"), nbCell("0.085 — small", NbInk.Red))),

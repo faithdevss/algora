@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,30 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val categoricalNbContent = TopicContent(
     topicId = "categorical_nb",
+    figure = Figure(
+        caption = "The page's lab: classify one day, {sunny, cool, high humidity, windy}, from 14 " +
+            "training days. Each feature has its own count table, so every factor is a label " +
+            "looked up and never a number compared. \"yes\" starts ahead on the prior, 9 of 14 = " +
+            "0.643, and cool favours it, but sunny (2/9 against 3/5), high (3/9 against 4/5) and " +
+            "windy (3/9 against 3/5) all favour \"no\". The completed products are 0.0053 for yes " +
+            "and 0.0206 for no, so no wins, P(no) = 0.80 once normalised. One zero count would " +
+            "wipe out a whole row, which is why α is added to every cell.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0.643", "2/9", "3/9", "3/9", "3/9", "0.0053"),
+                listOf("0.357", "3/5", "1/5", "4/5", "3/5", "0.0206"),
+            ),
+            rowHeaders = listOf("yes", "no"),
+            colHeaders = listOf("prior", "sunny", "cool", "high", "windy", "product"),
+            marks = listOf(
+                FigureCell(0, 2, FigureTone.Muted),
+                FigureCell(1, 1, FigureTone.Muted),
+                FigureCell(1, 3, FigureTone.Muted),
+                FigureCell(1, 4, FigureTone.Muted),
+                FigureCell(1, 5, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Categorical naive Bayes handles features whose values are unordered labels — colour, region, browser, weather. Each feature gets its own probability table, one row per class and one column per possible value, estimated by counting.",
         "It exists because the alternatives quietly encode a lie. Label-encoding {sunny, overcast, rain} as {0, 1, 2} and feeding that to Gaussian NB asserts that overcast lies numerically between sunny and rain, and that the gap from sunny to rain is twice the gap from sunny to overcast. Neither is true, and the model will act on both. One-hot encoding avoids the false ordering but then hands Bernoulli NB a set of indicators it treats as independent, when exactly one of them is guaranteed to be 1 — a hard dependency the model has no way to know about. Categorical NB models the feature as what it is: a single draw from a categorical distribution.",

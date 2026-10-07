@@ -23,7 +23,7 @@ internal val gaussianNbContent = TopicContent(
             "0.647 and 0.644. Eight numbers — 2pK, four means and four variances — against QDA's " +
             "ten on the same data. Within each class the two curves nearly coincide, so the " +
             "picture looks like two bells rather than four, and that is the point: the quantity " +
-            "that separates this data is not on it. The positive class's true correlation is " +
+            "that separates this data is not on it. The positive class's measured correlation is " +
             "0.943, and QDA fits it as an off-diagonal 0.609; naive Bayes has no parameter that " +
             "could hold it, so it is silently zero. On this sample both models misclassify none " +
             "of the 80 — the model is wrong and the predictions are not.",

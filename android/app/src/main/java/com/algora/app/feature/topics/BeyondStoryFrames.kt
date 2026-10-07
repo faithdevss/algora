@@ -534,7 +534,7 @@ private fun meteorStory(): LsLab {
             fr(head, listOf(F("F = 10PR / (R + 9P) =", f(r.f, 4), LsInk.Lilac)),
                 "Recall weighted 9× over precision." to "Missing content is punished more than extra words."),
             fr(head, listOf(F("chunks =", "${r.ch}"), F("penalty = 0.5 · (${r.ch}/${r.m})³ =", f(r.pen, 4), LsInk.Yellow)),
-                "${r.ch} chunk${if (r.ch > 1) "s" else ""}: contiguous runs in matching order." to if (k == 1) "Every word present, order destroyed: 8 chunks, heavy penalty." else "Fewer chunks means better word order."),
+                "${r.ch} chunk${if (r.ch > 1) "s" else ""}: contiguous runs in matching order." to if (k == 1) "Every word present, order broken: ${r.ch} chunks for ${r.m} matches, heavy penalty." else "Fewer chunks means better word order."),
             fr(head + B(listOf(lsRow("BLEU", f(b, 4), b, LsInk.Slate), lsRow("METEOR", f(r.score, 4), r.score, LsInk.Blue, LsText.Strong))),
                 listOf(F("METEOR = F · (1 − penalty) =", f(r.score, 4), LsInk.Blue)),
                 when (k) {

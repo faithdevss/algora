@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,30 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val xlnetContent = TopicContent(
     topicId = "xlnet",
+    figure = Figure(
+        caption = "XLNet's sharper complaint about BERT, priced on the page's \"New York\" example. " +
+            "Mask both tokens and BERT predicts each one independently, so the probability it " +
+            "assigns the pair is a product of two marginals: 0.30 × 0.35 = 0.105. The true joint " +
+            "factorises with a dependency — P(New) × P(York | New) = 0.30 × 0.90 = 0.270 — because " +
+            "seeing \"New\" nearly settles \"York\". That is a 2.6× gap on one ordinary bigram, " +
+            "and BERT's objective has no term that could represent it. XLNet keeps autoregression " +
+            "and randomises the order of prediction instead: in some sampled order \"New\" comes " +
+            "first and \"York\" conditions on it, and no [MASK] ever enters the input. The price " +
+            "is the number of orders — 24 for four tokens, 40,320 for eight — handled with " +
+            "two-stream attention.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0.30", "0.35", "0.105"),
+                listOf("0.30", "0.90", "0.270"),
+            ),
+            rowHeaders = listOf("BERT, independent", "true joint"),
+            colHeaders = listOf("P(New)", "P(York | …)", "P(pair)"),
+            marks = listOf(
+                FigureCell(0, 2, FigureTone.Warn),
+                FigureCell(1, 2, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "XLNet is best understood as a precise critique of BERT with an architecture attached. The critique has two halves. First, masking corrupts the input with a [MASK] token that appears in 12% of pretraining positions (15% selected, 80% of those masked) and in exactly none at fine-tuning time, so the model spends pretraining learning about a symbol its real inputs never contain. Second — and this is the sharper one — masking multiple tokens and predicting them independently assumes they are conditionally independent given the context, and they are not.",
         "The lab prices that assumption. Mask both tokens of \"New York\" and BERT's objective multiplies two marginals: 0.30 × 0.35 = 0.105. The true joint factorises as P(New) × P(York | New) = 0.30 × 0.90 = 0.270, because seeing \"New\" nearly determines \"York\". That is a 2.6× gap on one ordinary bigram, and BERT's objective has no way to represent the dependency at all.",

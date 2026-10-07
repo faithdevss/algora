@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,37 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val actorCriticContent = TopicContent(
     topicId = "actor_critic",
+    figure = Figure(
+        caption = "Two networks reading the same state, and one number passing between them. The " +
+            "actor picks the action; the environment answers with r and s′; the critic turns that " +
+            "into δ = r + γV(s′) − V(s) — was this step better or worse than the critic expected? " +
+            "That δ goes two ways. The critic squares it and descends, so its estimate tracks the " +
+            "returns it keeps seeing. The actor takes it as the weight on ∇log π(a|s), and it must " +
+            "arrive detached: if gradients flow back through δ into V, the actor learns to move the " +
+            "critic's estimate rather than its own behaviour. Swapping the observed return for δ is " +
+            "the whole trade with REINFORCE — one random reward and a guess, instead of an episode's " +
+            "worth of random rewards — so the variance drops and the bias of an untrained critic " +
+            "comes in.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("s", 0.05f, 0.50f, FigureTone.Primary),
+                FigureGraphNode("actor π", 0.32f, 0.15f, FigureTone.Primary),
+                FigureGraphNode("env", 0.66f, 0.15f),
+                FigureGraphNode("r, s′", 0.95f, 0.50f),
+                FigureGraphNode("δ", 0.66f, 0.85f, FigureTone.Accent),
+                FigureGraphNode("critic V", 0.32f, 0.85f, FigureTone.Primary),
+            ),
+            edges = listOf(
+                FigureEdge(0, 1, directed = true),
+                FigureEdge(0, 5, directed = true),
+                FigureEdge(1, 2, "a", directed = true),
+                FigureEdge(2, 3, directed = true),
+                FigureEdge(3, 4, "r + γV(s′)", directed = true),
+                FigureEdge(5, 4, "V(s)", directed = true),
+                FigureEdge(4, 1, "A, detached", directed = true, tone = FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Actor-critic methods pair a policy (the actor) with a value estimator (the critic): the actor picks actions, and the critic evaluates them to give a lower-variance learning signal.",
         "By replacing REINFORCE's noisy episode return with the critic's estimate, they learn faster and can update every step instead of every episode.",

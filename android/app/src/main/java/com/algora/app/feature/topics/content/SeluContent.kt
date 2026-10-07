@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,10 +16,42 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val seluContent = TopicContent(
     topicId = "selu",
+    figure = Figure(
+        caption = "The page's lab: activation variance layer by layer, width 64, LeCun " +
+            "initialisation, the same inputs and the same weights for both stacks. SELU starts at " +
+            "1.000, holds 1.01 at layer 5, 0.95 at layer 10 and 0.90 at layer 20, with the mean " +
+            "at −0.01. It stays close to the fixed point that λ and α were solved for, not exactly " +
+            "on it, because a finite layer only approximates the averages the derivation assumes. " +
+            "tanh is down to 0.10 by layer 5 and 0.02 by layer 20. The guarantee needs plain dense " +
+            "layers, LeCun init and alpha dropout: skip connections or batch norm break it.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "SELU",
+                    listOf(
+                        FigurePoint(0f, 0.952f), FigurePoint(0.25f, 0.962f), FigurePoint(0.5f, 0.905f),
+                        FigurePoint(1f, 0.857f),
+                    ),
+                    tone = FigureTone.Accent,
+                ),
+                FigureSeries(
+                    "tanh",
+                    listOf(FigurePoint(0f, 0.952f), FigurePoint(0.25f, 0.095f), FigurePoint(1f, 0.019f)),
+                    tone = FigureTone.Warn,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(1f, 0.857f, "0.90"),
+                FigurePoint(1f, 0.019f, "0.02", FigureTone.Warn),
+            ),
+            xLabel = "layer, 0 → 20",
+            yLabel = "variance, 0 to 1.05",
+        ),
+    ),
     whatIsIt = listOf(
         "SELU is ELU multiplied by λ, with α and λ fixed at 1.6732632 and 1.0507010. Those digits are not tuned — they are the solution to a fixed-point equation, chosen so that a layer maps activations with mean 0 and variance 1 to activations with mean 0 and variance 1. The claim that follows is unusually strong: a deep stack of these normalises itself, with no normalisation layer anywhere.",
-        "The simulation tests it rather than repeating it. Twenty layers, LeCun normal initialisation, and the mean stays within a few hundredths of zero and the standard deviation within a few hundredths of one the whole way down — layer 20 measures mean −0.014, std 0.971. The same twenty layers with ReLU end at std 0.090 and with tanh at 0.148, both having lost most of their signal. The property is real and it reproduces.",
-        "Two conditions come attached, and the second one is easy to miss. The fixed point is derived assuming LeCun normal initialisation with variance 1/n; run the identical SELU stack under He initialisation instead and layer 20 comes out at mean 2.00 and std 4.81 — the self-normalisation is simply gone. It also requires its own dropout variant, alpha-dropout, because ordinary dropout does not preserve mean and variance. So why is SELU not everywhere? The property holds for plain feedforward stacks and not for convolutions, residual connections or attention, where the architecture moves the statistics itself; and batch and layer normalisation deliver the same stability with none of the conditions. SELU is worth knowing as a result about what an activation function *can* do on its own, and it is rarely the right default.",
+        "The lab tests it rather than repeating it. Inputs drawn from N(0, 1) go through a width-64 stack with LeCun initialisation. Five layers in, SELU holds variance 1.01; the tanh stack with the same inputs and the same weights is already down to 0.10. At layer 10 SELU reads 0.95, and at layer 20 the mean is −0.01 and the variance 0.90 — close to the fixed point, not on it, because a finite-width layer only approximates the averages the derivation assumes. tanh has drifted to 0.02 by then, having lost almost all of its signal.",
+        "Two conditions come attached, and the second one is easy to miss. The fixed point is derived assuming LeCun normal initialisation with variance 1/n; the code below runs the identical SELU stack under He initialisation and the last layer comes out at mean 2.00 and std 4.81 — the self-normalisation is simply gone. It also requires its own dropout variant, alpha-dropout, because ordinary dropout does not preserve mean and variance. So why is SELU not everywhere? The property holds for plain feedforward stacks and not for convolutions, residual connections or attention, where the architecture moves the statistics itself; and batch and layer normalisation deliver the same stability with none of the conditions. SELU is worth knowing as a result about what an activation function *can* do on its own, and it is rarely the right default.",
     ),
     steps = listOf(
         StepCard(1, "Scale ELU by λ", "f(z) = λ·ELU(z). The two constants are the entire difference.", 0xFFF59E0B),
@@ -105,7 +142,7 @@ internal val seluContent = TopicContent(
     ),
     takeaways = listOf(
         "λ and α are the solution to a fixed-point equation, not tuned values.",
-        "It genuinely self-normalises: mean ~0 and std ~1 held across twenty layers, measured.",
+        "It holds up when measured: variance 1.01 at layer 5 and 0.90 at layer 20, where tanh with the same weights has fallen to 0.10 and then 0.02.",
         "It requires LeCun normal init — under He the property vanishes entirely.",
         "It also requires alpha-dropout, since ordinary dropout destroys the variance.",
         "It does not survive convolutions, residual connections or attention, which is why normalisation layers won.",

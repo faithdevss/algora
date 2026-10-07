@@ -470,7 +470,7 @@ private func rainbowLab() -> RbLab {
             ("Double", "overestimation", "peak Q(A,left) \(f(d[0].peak, 3)) → \(f(d[1].peak, 3))"),
             ("Replay", "wasted samples", "error @200 steps \(f(chainErr(rbRepRun(0)[200]!), 2)) → \(f(chainErr(rbRepRun(16)[200]!), 2))"),
             ("Dueling", "relearning V per action", "V learned from every action"),
-            ("Noisy", "dithering exploration", "goal reached \(pct(n.eg.ok)) → \(pct(n.nz.ok))"),
+            ("Noisy", "dithering exploration", "steps to goal \(f(n.eg.mean, 1)) → \(f(n.nz.mean, 1))"),
             ("C51", "averaging away risk", "full return distribution"),
             ("Multi-step", "slow reward propagation", "n-step targets"),
         ]

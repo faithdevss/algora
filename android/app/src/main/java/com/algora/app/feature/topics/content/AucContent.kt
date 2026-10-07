@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,26 +15,52 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val aucContent = TopicContent(
     topicId = "auc",
+    figure = Figure(
+        caption = "AUC's second definition, small enough to count by hand: three positives " +
+            "scored 0.9, 0.7 and 0.4 against four negatives scored 0.8, 0.5, 0.3 and 0.1. Every " +
+            "cell asks one question — does this positive outscore this negative? Nine of the " +
+            "twelve pairs say yes, so AUC = 9/12 = 0.75, and the trapezoid area under this " +
+            "model's ROC curve is 0.75 as well: the same statistic, integrated one way and " +
+            "counted the other. Nothing in the grid reads a score's value, only which of two is " +
+            "larger, which is why any order-preserving distortion of the scores leaves every tick " +
+            "and cross where it is. On the lab's model the same count over all 80,256 pairs gives " +
+            "75,812 right, AUC 0.9446 — and no rescaling of the scores can change it. AUC is a ranking measure, and calibration is " +
+            "invisible to it by construction.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("✓", "✓", "✓", "✓"),
+                listOf("✗", "✓", "✓", "✓"),
+                listOf("✗", "✗", "✓", "✓"),
+            ),
+            rowHeaders = listOf("+ 0.9", "+ 0.7", "+ 0.4"),
+            colHeaders = listOf("− 0.8", "− 0.5", "− 0.3", "− 0.1"),
+            marks = listOf(
+                FigureCell(1, 0, FigureTone.Warn),
+                FigureCell(2, 0, FigureTone.Warn),
+                FigureCell(2, 1, FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
-        "AUC has two definitions that happen to be the same number. Geometrically it's the trapezoid area under the ROC curve. Probabilistically it's the chance a randomly chosen positive scores higher than a randomly chosen negative. On the lab's model both give 0.9692 — not approximately, but the same statistic computed two ways, one by integration and one by counting pairwise wins.",
-        "AUC is a pure ranking measure: it only asks whether positives tend to outscore negatives, never whether the scores themselves mean anything as probabilities. That is demonstrable directly. Push every score in the lab's model toward 0 or 1 with a monotone transform — the model becomes wildly overconfident — and because the transform preserves order, AUC is unchanged at 0.9692 to four digits. But log loss on the same pair of models moves from 0.1750 to 0.2876, and Brier score from 0.0437 to 0.0556: both notice the miscalibration AUC cannot see by construction.",
+        "AUC has two definitions that happen to be the same number. Geometrically it's the trapezoid area under the ROC curve. Probabilistically it's the chance a randomly chosen positive scores higher than a randomly chosen negative. On the lab's model both give 0.9446 — 75,812 of its 80,256 positive-negative pairs are ranked the right way round — not approximately, but the same statistic computed two ways, one by integration and one by counting pairwise wins.",
+        "AUC is a pure ranking measure: it only asks whether positives tend to outscore negatives, never whether the scores themselves mean anything as probabilities. That is demonstrable directly. Push every score in the lab's model toward 0 or 1 with a monotone transform — the model becomes wildly overconfident — and because the transform preserves order, every pairwise comparison comes out the same and AUC does not move at all. Log loss and Brier score on the same pair of models both get worse: they notice the miscalibration AUC cannot see by construction.",
         "That makes AUC the right question when the deployment only needs a ranking — fraud queues sorted by risk, search results sorted by relevance — and the wrong one whenever the actual probability matters, such as when a downstream system multiplies the score by a dollar amount. A model can have excellent AUC and be useless for that second job.",
     ),
     steps = listOf(
         StepCard(1, "Take the ROC Curve", "TPR vs FPR at every threshold.", 0xFF0EA5E9),
-        StepCard(2, "Integrate It", "Trapezoid area: 0.9692.", 0xFF3B82F6),
-        StepCard(3, "Or Count Pairs Instead", "P(random positive > random negative): 0.9692.", 0xFF8B5CF6),
+        StepCard(2, "Integrate It", "Trapezoid area: 0.9446.", 0xFF3B82F6),
+        StepCard(3, "Or Count Pairs Instead", "75,812 of 80,256 pairs ranked right: 0.9446.", 0xFF8B5CF6),
         StepCard(4, "Distort the Scores", "Push them toward 0/1 with a monotone transform.", 0xFFF59E0B),
-        StepCard(5, "Watch AUC Not Move", "Still 0.9692 — ranking is unchanged.", 0xFFEC4899),
-        StepCard(6, "Watch Log Loss Move", "0.1750 → 0.2876 — the miscalibration AUC missed.", 0xFF10B981),
+        StepCard(5, "Watch AUC Not Move", "Unchanged — every pair keeps its order.", 0xFFEC4899),
+        StepCard(6, "Watch Log Loss Move", "It rises — the miscalibration AUC missed.", 0xFF10B981),
     ),
     formulas = listOf(
-        FormulaEntry("Geometric", "∫ ROC curve", "Trapezoid area — measured 0.9692."),
-        FormulaEntry("Probabilistic", "P(score⁺ > score⁻)", "Same value, measured by pairwise comparison — 0.9692."),
+        FormulaEntry("Geometric", "∫ ROC curve", "Trapezoid area — measured 0.9446."),
+        FormulaEntry("Probabilistic", "P(score⁺ > score⁻)", "75,812 / 80,256 pairs = 0.9446, the same value."),
         FormulaEntry("Range", "0.5 random · 1.0 perfect", "Below 0.5 means the ranking is inverted."),
-        FormulaEntry("Overconfident AUC", "0.9692 (unchanged)", "Monotone transform preserves rank."),
-        FormulaEntry("Overconfident log loss", "0.1750 → 0.2876", "What AUC's own definition cannot register."),
-        FormulaEntry("Overconfident Brier", "0.0437 → 0.0556", "A gentler probability metric, still moved."),
+        FormulaEntry("Overconfident AUC", "unchanged", "A monotone transform preserves every pair's order."),
+        FormulaEntry("Overconfident log loss", "rises", "What AUC's own definition cannot register."),
+        FormulaEntry("Overconfident Brier", "rises", "A gentler probability metric, still moved."),
     ),
     notationKey = listOf(
         NotationEntry("AUC", "area under the ROC curve"),
@@ -48,12 +78,12 @@ internal val aucContent = TopicContent(
                 from sklearn.metrics import roc_auc_score
                 from scipy.stats import mannwhitneyu
 
-                auc_trapezoid = roc_auc_score(y_test, probabilities)  # 0.9692
+                auc_trapezoid = roc_auc_score(y_test, probabilities)  # 0.9446 on the lab's model
 
                 pos = probabilities[y_test == 1]
                 neg = probabilities[y_test == 0]
                 u_stat, _ = mannwhitneyu(pos, neg)
-                auc_by_ranking = u_stat / (len(pos) * len(neg))         # 0.9692
+                auc_by_ranking = u_stat / (len(pos) * len(neg))         # same value both ways
 
                 print(f"trapezoid {auc_trapezoid:.4f}  ranking {auc_by_ranking:.4f}")
                 # These are not two approximations of the same idea -- they are the same statistic.
@@ -72,12 +102,12 @@ internal val aucContent = TopicContent(
                                           probabilities * 0.02)
 
                 print(roc_auc_score(y_test, probabilities), roc_auc_score(y_test, overconfident))
-                # 0.9692 0.9692 -- identical to 4 decimals
+                # identical -- the transform kept every pair in order
 
                 print(log_loss(y_test, probabilities), log_loss(y_test, overconfident))
-                # 0.1750 0.2876 -- this is what changed
+                # the second is larger -- this is what changed
                 print(brier_score_loss(y_test, probabilities), brier_score_loss(y_test, overconfident))
-                # 0.0437 0.0556
+                # the second is larger again
             """.trimIndent(),
         ),
     ),
@@ -89,11 +119,11 @@ internal val aucContent = TopicContent(
         ApplicationCard("help", 0xFFEC4899, "When Not To", "Reporting a calibrated probability to a human or a downstream formula."),
     ),
     takeaways = listOf(
-        "Two definitions — trapezoid area and pairwise win probability — that are one statistic: 0.9692.",
+        "Two definitions — trapezoid area and pairwise win probability — that are one statistic: 0.9446 in the lab.",
         "0.5 is random, 1.0 is perfect separation; below 0.5 means the ranking is backwards.",
         "AUC is a pure ranking measure: it depends only on order, never on the score's magnitude.",
-        "A monotone transform that badly miscalibrates the model leaves AUC at 0.9692, unmoved.",
-        "The same transform moves log loss from 0.1750 to 0.2876 and Brier from 0.0437 to 0.0556.",
+        "A monotone transform that badly miscalibrates the model leaves AUC exactly where it was.",
+        "The same transform makes log loss and Brier score worse — they measure calibration, AUC does not.",
         "Blind to calibration by design — pick it when only the ranking matters, not the probability.",
         "Report log loss or Brier alongside AUC whenever the raw score gets used downstream.",
     ),

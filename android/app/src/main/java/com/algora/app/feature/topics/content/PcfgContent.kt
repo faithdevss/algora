@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,29 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val pcfgContent = TopicContent(
     topicId = "pcfg",
+    figure = Figure(
+        caption = "The page's lab sentence, \"she saw the man with the telescope\", has two legal " +
+            "parses, and a PCFG ranks them by multiplying the probabilities of the rules each one " +
+            "uses. Under VP attachment the prepositional phrase modifies the seeing — she used the " +
+            "telescope — and the tree scores 1.0 × 0.40 × 0.30 × 0.14 × 0.20 = 0.0034. Under NP " +
+            "attachment it modifies the man, who has the telescope: 1.0 × 0.40 × 0.70 × 0.20 × " +
+            "0.20 × 0.20 = 0.0022. Same words, same grammar, a 1.5× preference for VP attachment, " +
+            "which is what probabilistic CYK reports as the best parse. The weakness is visible in " +
+            "the arithmetic: the rules are scored without the words, so \"saw the man with the " +
+            "hat\" would get exactly the same preference — which is why lexicalised and neural " +
+            "parsers replaced plain PCFGs.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("she used the telescope", "0.0034"),
+                listOf("the man has it", "0.0022"),
+            ),
+            rowHeaders = listOf("VP attach", "NP attach"),
+            colHeaders = listOf("reading", "P(tree)"),
+            marks = listOf(
+                FigureCell(0, 1, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A context-free grammar says which sentences a language allows and what structures they can have. Its problem in practice is not that it rejects too much — it is that it accepts too much: for an ordinary sentence a treebank grammar returns dozens to thousands of legal parse trees and has no way to say which one a person meant. A probabilistic CFG attaches a probability to every rule, with the rules sharing a left-hand side summing to 1, so a tree's score is the product of the rules used to build it and the parses become ranked instead of merely listed.",
         "The lab's sentence is the standard case: \"she saw the man with the telescope\". Under VP attachment the prepositional phrase modifies the seeing — she used the telescope — and scores 0.0034. Under NP attachment it modifies the man, who was holding it, and scores 0.0022. Same words, same grammar, two grammatical trees, and the grammar prefers the first by 1.5×. Nothing else in the sentence decides it; the preference comes entirely from VP → VP PP at 0.30 being a likelier rule than NP → NP PP at 0.20.",

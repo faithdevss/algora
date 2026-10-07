@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,10 +16,36 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val coreferenceContent = TopicContent(
     topicId = "coreference",
+    figure = Figure(
+        caption = "The page's lab document — \"Ada Lovelace wrote to Charles Babbage from London. She " +
+            "admired his engine.\" — and the agreement check that resolves it with no learning at " +
+            "all. \"She\" is singular, feminine and animate: Babbage fails on gender, London on " +
+            "animacy, and one of three candidates survives. \"his\" is masculine and animate, and " +
+            "again one candidate is left. The output is two clusters, one per entity, which is " +
+            "what downstream reading needs — \"She admired his engine\" becomes \"Lovelace " +
+            "admired Babbage's engine\". Agreement runs out the moment two candidates match: in " +
+            "\"the trophy didn't fit in the suitcase because it was too big\", both are singular, " +
+            "neuter and inanimate, and only knowing how trophies and suitcases work picks one.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("Ada", 0.12f, 0.20f, FigureTone.Primary),
+                FigureGraphNode("Babbage", 0.50f, 0.20f, FigureTone.Primary),
+                FigureGraphNode("London", 0.88f, 0.20f, FigureTone.Muted),
+                FigureGraphNode("She", 0.25f, 0.85f, FigureTone.Accent),
+                FigureGraphNode("his", 0.75f, 0.85f, FigureTone.Accent),
+            ),
+            edges = listOf(
+                FigureEdge(3, 0, "fem ✓", directed = true, tone = FigureTone.Accent),
+                FigureEdge(4, 1, "masc ✓", directed = true, tone = FigureTone.Accent),
+                FigureEdge(3, 1, "✗", tone = FigureTone.Warn),
+                FigureEdge(4, 2, "✗", tone = FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Coreference resolution decides which mentions in a text point at the same entity: \"Ada Lovelace … she … her\" is one chain, \"Charles Babbage … his\" is another. It runs in two parts — find the mentions (every noun phrase and pronoun is a candidate, including the ones that refer to nothing) and then partition them into chains. Everything that consumes text as a whole document rather than a sentence at a time depends on it: summarisation that says \"she\" without an antecedent is broken, and a knowledge-base extractor that treats \"the company\" and \"Acme\" as two entities has doubled its facts.",
-        "Cheap agreement features get you further than expected. A singular feminine pronoun cannot refer to \"Charles Babbage\" or to \"London\", so number, gender and animacy filtering resolves the lab's easy document with no learning at all. But there is an evaluation subtlety that catches people: a mention-pair model links each mention to its nearest compatible antecedent, and that antecedent is frequently another pronoun — \"her\" resolves to \"She\", not to \"Ada Lovelace\". Scored on immediate links the lab's resolver gets 67%; scored on the entity each chain resolves to after transitive closure, which is what the task actually asks for, it gets 100%. Reporting the first number is a real mistake, not a hypothetical one.",
-        "Then there are the sentences agreement cannot touch. \"The city council refused the demonstrators a permit because they feared violence\" — \"they\" is the council. Change one word to \"advocated\" and it becomes the demonstrators. Nothing syntactic differs, so any recency or salience heuristic answers the same for both and scores exactly 50% on the pair: the score of guessing. That is what Winograd schemas are designed to measure, and why the task resisted feature engineering for decades — it needs world knowledge about who fears and who advocates. Large language models finally pushed accuracy past 90% on these, and they did it with that knowledge rather than a better syntactic feature. Cost matters too: mention-pair scoring is quadratic in mentions (15 pairs for the lab's 6), and the standard metric is the average of MUC, B³ and CEAF, because each one alone can be gamed by over- or under-merging chains.",
+        "Cheap agreement features get you further than expected. A singular feminine pronoun cannot refer to \"Charles Babbage\" or to \"London\", so number, gender and animacy filtering resolves the lab's document with no learning at all: \"She\" keeps 1 of 3 candidates, \"his\" likewise. But there is an evaluation subtlety that catches people: a mention-pair model links each mention to its nearest compatible antecedent, and that antecedent is frequently another pronoun — \"her\" resolves to \"She\", not to \"Ada Lovelace\". Add a third pronoun, \"her\", as the code below does, and scored on immediate links the resolver gets 67%; scored on the entity each chain resolves to after transitive closure, which is what the task actually asks for, it gets 100%. Reporting the first number is a real mistake, not a hypothetical one.",
+        "Then there are the sentences agreement cannot touch. \"The city council refused the demonstrators a permit because they feared violence\" — \"they\" is the council. Change one word to \"advocated\" and it becomes the demonstrators. Nothing syntactic differs, so any recency or salience heuristic answers the same for both and scores exactly 50% on the pair: the score of guessing. That is what Winograd schemas are designed to measure, and why the task resisted feature engineering for decades — it needs world knowledge about who fears and who advocates. Large language models finally pushed accuracy past 90% on these, and they did it with that knowledge rather than a better syntactic feature. Cost matters too: mention-pair scoring is quadratic in mentions (15 pairs for 6 mentions), and the standard metric is the average of MUC, B³ and CEAF, because each one alone can be gamed by over- or under-merging chains.",
     ),
     steps = listOf(
         StepCard(1, "Detect Mentions", "Every NP and pronoun is a candidate; over-generate, then filter.", 0xFFF59E0B),
@@ -101,7 +132,7 @@ internal val coreferenceContent = TopicContent(
     takeaways = listOf(
         "Two steps: detect mentions, then partition them into chains — one chain per entity.",
         "Number, gender and animacy agreement resolves the easy majority with no model at all.",
-        "Score chains, not links: the lab's resolver is 67% when each antecedent must be the named mention (a flawed check) and 100% on the entities they close to.",
+        "Score chains, not links: in the example below a resolver is 67% when each antecedent must be the named mention (a flawed check) and 100% on the entities they close to.",
         "Winograd pairs pin every syntactic heuristic to 50% — one word flips the answer and the parse is identical.",
         "Mention-pair scoring is O(m²), and CoNLL F1 averages MUC, B³ and CEAF because each alone can be gamed.",
     ),

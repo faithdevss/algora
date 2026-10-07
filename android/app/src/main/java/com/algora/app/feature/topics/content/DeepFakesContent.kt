@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,40 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val deepFakesContent = TopicContent(
     topicId = "deepfakes",
+    figure = Figure(
+        caption = "The page's lab: swap error, A's expression put onto B's face, as B's expression " +
+            "space is rotated away from A's. The dashed line is the bar to clear: a model that " +
+            "ignores its input and always outputs B's average face scores 0.366. The shared " +
+            "encoder clears it easily when the two faces move alike, 0.181 at 0°, and holds to " +
+            "0.230 at 45°. Then it climbs: 0.311 at 60°, and 0.612 at 75°, well past the " +
+            "baseline. One encoder per identity is worse than the baseline even at 0°, at 0.480. " +
+            "Both setups rebuild their own faces with error 0.000, so reconstruction quality says " +
+            "nothing about the swap.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "shared encoder",
+                    listOf(
+                        FigurePoint(0f, 0.270f), FigurePoint(0.167f, 0.276f), FigurePoint(0.333f, 0.296f),
+                        FigurePoint(0.5f, 0.343f), FigurePoint(0.667f, 0.464f), FigurePoint(0.833f, 0.913f),
+                    ),
+                    tone = FigureTone.Accent,
+                ),
+                FigureSeries(
+                    "mean-face baseline",
+                    listOf(FigurePoint(0f, 0.546f), FigurePoint(1f, 0.546f)),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0f, 0.716f, "independent 0.480", FigureTone.Warn),
+                FigurePoint(0.833f, 0.913f, "0.612 at 75°", FigureTone.Warn),
+            ),
+            xLabel = "angle between expression spaces, 0° → 90°",
+            yLabel = "swap error, 0 to 0.67",
+        ),
+    ),
     whatIsIt = listOf(
         "The classic face-swap architecture is one shared encoder and two identity-specific decoders. Both identities' faces go through the same encoder; identity A's faces are reconstructed by decoder A and identity B's by decoder B, each trained only on its own person. The swap is what happens when you break that pairing at inference: run A's face through the shared encoder and hand the code to decoder B. The intended division of labour is that the encoder captures pose and expression while each decoder supplies a specific face. Nothing in the loss states that division — it is a hoped-for consequence of the encoder being shared and the decoders not being.",
         "The sharing is genuinely load-bearing, and the failure without it is worse than it sounds. Give each identity its own encoder and the two latent spaces are fitted independently, so each orders and scales its directions by that identity's own variance. The same expression lands on different numbers and the receiving decoder reads it as a different expression. Scored against the correct answer — identity B's face wearing identity A's expression — the independent arrangement reaches an error of 0.480, while a model that ignores the input completely and always emits B's average face scores 0.366. Independent encoders do not merely degrade the swap; they are measurably worse than not attempting it. The shared encoder scores 0.181, comfortably better than the baseline, and this is not a reconstruction problem: both arrangements rebuild their own identity's faces essentially perfectly.",

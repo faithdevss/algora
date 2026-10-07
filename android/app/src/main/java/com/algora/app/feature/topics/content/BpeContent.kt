@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,9 +15,33 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val bpeContent = TopicContent(
     topicId = "bpe",
+    figure = Figure(
+        caption = "The page's lab: four BPE merges learned from a tiny corpus — \"low\", \"lower\", " +
+            "\"newest\" and \"widest\", weighted by how often each appears — and then replayed to " +
+            "encode \"lowest\", a word the corpus never contained. Each round merges the most " +
+            "frequent adjacent pair and adds exactly one symbol to the vocabulary: e + s (9 times), " +
+            "es + t (9), est + </w> (9), l + o (7), taking the vocabulary from 11 symbols to 15. " +
+            "Encoding does not search for a best split; it applies the merges in the order they " +
+            "were learned, and \"lowest\" shrinks from 7 symbols to 6, 5, 4 and finally 3 tokens, " +
+            "none unknown, by reusing pieces learned from other words.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("e + s → es", "9", "6"),
+                listOf("es + t → est", "9", "5"),
+                listOf("est + </w>", "9", "4"),
+                listOf("l + o → lo", "7", "3"),
+            ),
+            rowHeaders = listOf("merge 1", "merge 2", "merge 3", "merge 4"),
+            colHeaders = listOf("pair", "count", "\"lowest\" tokens"),
+            marks = listOf(
+                FigureCell(3, 2, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
-        "Byte-pair encoding builds a subword vocabulary from data: start with individual characters and repeatedly merge the most frequent adjacent pair into a new token.",
-        "It resolves the vocabulary dilemma. Word-level tokenizers explode in size and still meet unknown words; character-level ones make sequences far too long. BPE lands in between — frequent words end up as single tokens, rare ones decompose into familiar pieces, and nothing is ever out-of-vocabulary.",
+        "Byte-pair encoding builds a subword vocabulary by repeatedly merging the most frequent adjacent pair of symbols. It starts from single characters — so any text can be written and nothing is ever unknown — and each merge adds exactly one new symbol to the vocabulary. The number of merges is the only knob: more merges mean longer pieces, shorter sequences and a larger vocabulary.",
+        "The lab learns four merges from a tiny corpus of \"low\", \"lower\", \"newest\" and \"widest\" with their counts, starting from 11 symbols. Every adjacent pair is counted, weighted by how often its word appears: \"e + s\" occurs 9 times and becomes \"es\"; then \"es + t\" makes \"est\" (9 times); then \"est + </w>\" makes the word-final \"est</w>\"; then \"l + o\" (7 times) makes \"lo\". The vocabulary is now 15.",
+        "Encoding a word does not search for the best split; it replays the merges in the order they were learned. \"lowest\" never appeared in the corpus, but it starts as 7 symbols and each merge applies in turn — es, est, est</w>, lo — leaving 3 tokens, none unknown, because it reuses pieces learned from other words. That is the property GPT-2's 50,257-token vocabulary relies on: frequent words collapse to one token, rare ones split into a few, and sequence length — which drives attention cost — stays manageable.",
     ),
     steps = listOf(
         StepCard(1, "Split Into Characters", "Every word becomes a character sequence with an end-of-word marker.", 0xFF14B8A6),
@@ -100,6 +128,7 @@ internal val bpeContent = TopicContent(
         "Common words become single tokens; rare words decompose — so nothing is out-of-vocabulary.",
         "Vocabulary size trades against sequence length, and sequence length drives attention cost.",
         "Token boundaries are why models miscount characters: 'strawberry' is a few tokens, not ten letters.",
+        "In the lab four merges (es, est, est</w>, lo) turn the unseen word \"lowest\" from 7 symbols into 3 tokens, none unknown.",
     ),
     crossLinks = listOf(
         CrossLink("tokenization", "Tokenization"),

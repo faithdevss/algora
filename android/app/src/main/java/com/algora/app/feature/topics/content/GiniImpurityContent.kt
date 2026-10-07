@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,56 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val giniImpurityContent = TopicContent(
     topicId = "gini_impurity",
+    figure = Figure(
+        caption = "The three splitting criteria as functions of a two-class node's positive share " +
+            "p. Entropy peaks at 1.000 and Gini at 0.500 when the node is evenly mixed, and both " +
+            "are strictly concave — curved all the way down. Misclassification rate is " +
+            "min(p, 1 − p): two straight lines meeting at a corner. That shape is the whole story " +
+            "behind the page's splits A and C. Being piecewise linear, error rate only counts how " +
+            "many examples sit on the wrong side of each child's majority — 50 + 50 in A, 100 + 0 " +
+            "in C, the same 100 — so both earn exactly 0.2500 of gain, and the fact that C made " +
+            "one child completely pure is invisible to it. " +
+            "A curved criterion rewards the split that pushes a child further out toward a pure " +
+            "node, which is why Gini (0.1250 vs 0.1667) and entropy (0.1887 vs 0.3113) both " +
+            "prefer C, and why trees are grown on them rather than on error rate.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "error rate",
+                    listOf(FigurePoint(0f, 0f), FigurePoint(0.5f, 0.5f), FigurePoint(1f, 0f)),
+                    tone = FigureTone.Warn,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "Gini",
+                    listOf(
+                        FigurePoint(0f, 0f), FigurePoint(0.05f, 0.095f), FigurePoint(0.1f, 0.18f),
+                        FigurePoint(0.2f, 0.32f), FigurePoint(0.3f, 0.42f), FigurePoint(0.4f, 0.48f),
+                        FigurePoint(0.5f, 0.5f), FigurePoint(0.6f, 0.48f), FigurePoint(0.7f, 0.42f),
+                        FigurePoint(0.8f, 0.32f), FigurePoint(0.9f, 0.18f), FigurePoint(0.95f, 0.095f),
+                        FigurePoint(1f, 0f),
+                    ),
+                    tone = FigureTone.Accent,
+                ),
+                FigureSeries(
+                    "entropy",
+                    listOf(
+                        FigurePoint(0f, 0f), FigurePoint(0.05f, 0.286f), FigurePoint(0.1f, 0.469f),
+                        FigurePoint(0.2f, 0.722f), FigurePoint(0.3f, 0.881f), FigurePoint(0.4f, 0.971f),
+                        FigurePoint(0.5f, 1f), FigurePoint(0.6f, 0.971f), FigurePoint(0.7f, 0.881f),
+                        FigurePoint(0.8f, 0.722f), FigurePoint(0.9f, 0.469f), FigurePoint(0.95f, 0.286f),
+                        FigurePoint(1f, 0f),
+                    ),
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.5f, 1f, "entropy 1.0"),
+                FigurePoint(0.5f, 0.5f, "Gini, error 0.5", FigureTone.Muted),
+            ),
+            xLabel = "share of class 1 in the node, p",
+            yLabel = "impurity",
+        ),
+    ),
     whatIsIt = listOf(
         "Gini impurity is a splitting criterion a decision tree uses while growing, not a metric reported once a model is finished: 1 − Σp², the chance two randomly drawn labels from a node disagree. It is a different measure from the economics Gini coefficient of inequality — both are named after the statistician Corrado Gini (impurity is his \"mutability\" / Gini–Simpson index), but one measures heterogeneity and the other inequality.",
         "On a parent node of 400 examples split evenly (200/200), gini is 0.500 — the maximum for two classes — and entropy is 1.000, also its maximum. Four candidate splits of that node score: a perfect split (200/0 · 0/200) maxes every criterion at once — gini gain 0.5000, entropy gain 1.0000, error-rate gain 0.5000. The other three splits disagree with each other in a way that matters for which one a tree picks.",

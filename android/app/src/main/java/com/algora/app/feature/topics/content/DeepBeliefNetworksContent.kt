@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,25 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val deepBeliefNetworksContent = TopicContent(
     topicId = "deep_belief_networks",
+    figure = Figure(
+        caption = "The page's measurement of greedy layer-wise pretraining: two RBMs stacked " +
+            "(six inputs → three hidden units → two top units), each trained only to reconstruct " +
+            "the layer below with CD-1, never shown a label, on the same two-category data the RBM " +
+            "page uses. Then the question: do the two categories end up apart at the top? The " +
+            "pretrained stack separates them by 1.06. A stack of the identical architecture left " +
+            "at its random initial weights separates them by 0.003 — essentially nothing, over 300 " +
+            "times less. That gap, measured before any supervised fine-tuning, is the entire " +
+            "historical argument for DBNs: unsupervised layers had already organised the data " +
+            "into the classes a classifier would later need. Better initialisations, ReLUs and " +
+            "batch norm later made the trick unnecessary for most deep networks.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("greedy pretrained", 1f, FigureTone.Accent),
+                FigureBar("random init", 0.003f, FigureTone.Warn),
+            ),
+            yLabel = "top-layer class separation, 0 to 1.06",
+        ),
+    ),
     whatIsIt = listOf(
         "A Deep Belief Network stacks Restricted Boltzmann Machines and trains them greedily, one layer at a time: the first RBM trains on the raw data as usual, and then its hidden-layer activations — not the raw data — become the second RBM's visible input. Each layer is trained to reconstruct the layer below it, in sequence, with no supervised signal and no communication between the layers during training. The historical motivation was blunt: before ReLU, careful initialization, batch normalization and residual connections existed, a deep network trained end-to-end by backpropagation from a random start regularly failed outright, and greedy pretraining was the fix that let depth work at all.",
         "The claim worth measuring is whether that greedy, layer-by-layer, entirely unsupervised process gives the network a genuine head start — separation between classes at the top layer before a single labeled example has been used anywhere. Measured on a two-layer stack (six inputs to three hidden units to two top-layer units) built on the same two-category data the RBM topic trains on: a stack pretrained greedily this way shows a top-layer class separation of 1.06. A stack of the identical architecture, left at its random initial weights with no pretraining at all, shows a separation of 0.003 — essentially zero, over 300 times smaller.",

@@ -316,13 +316,13 @@ private func alphaGoLab() -> RbLab {
             case 2:
                 return fr([L("value network (noise σ = \(js(sig)))"), RbTtt.visBars(mine, best)],
                           [F("v(s) = true value + noise σ =", js(sig)), F("share on best =", pct(share(mine)), "#22a06b")],
-                          (sig == 0 ? "A perfect evaluator focuses the search instantly." : "A noisy evaluator (σ \(js(sig))) helps less.", "The “network” here is the exact game value plus noise — a stand-in that shows how evaluator quality drives search."), lg)
+                          (sig == 0 ? "A noise-free evaluator puts \(pct(share(mine))) on the best move." : "With noise σ \(js(sig)): \(pct(share(mine))) on the best move.", "The “network” here is the exact game value plus noise — a stand-in that shows how evaluator quality drives search."), lg)
             default:
                 let all = [("playouts", plain)] + [0, 0.3, 0.8].map { ("value σ \(js($0))", agSearch($0)) }
                 return fr([L("share of visits on the best move"), B(all.enumerated().map { j, x in
                     Rb.row(x.0, pct(share(x.1)), share(x.1), j == 0 ? "#9aa0ae" : "#22a06b")
-                })], [F("better evaluator → sharper search")],
-                          ("Search is only as good as its leaf evaluations.", "AlphaGo’s strength came from learned evaluation good enough to replace rollouts on a 19×19 board."), lg)
+                })], [F("less evaluator noise → more visits on the best move")],
+                          ("Here random playouts (\(pct(share(plain)))) beat every value net.", "On 3×3, a few random games already rank moves well. AlphaGo’s gain came on 19×19, where playouts are nearly noise and a learned evaluator is the only usable one."), lg)
             }
         }
     }

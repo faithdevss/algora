@@ -17,56 +17,47 @@ import com.algora.app.core.data.model.TopicContent
 internal val opticsContent = TopicContent(
     topicId = "optics",
     figure = Figure(
-        caption = "The lab's 36 points in OPTICS' processing order, each carrying the reachability " +
+        caption = "The lab's 22 points in OPTICS' processing order, each carrying the reachability " +
             "distance it was reached at — the algorithm's actual output, before anything has been " +
-            "called a cluster. The terrain reads directly: the first twenty points are the tight " +
-            "cluster and never rise above 0.030, the thirteen after the peak are the loose one and " +
-            "sit between 0.062 and 0.112, and the 0.410 spike between them is the gap. Both " +
-            "densities are on the same axis, which is the thing one eps cannot express. The dashed " +
-            "line is a flat cut at 0.05, and that cut reproduces DBSCAN(0.05) up to border-point assignment: the tight cluster " +
-            "survives whole and all fourteen loose points are above the line, so they become noise. " +
-            "Nothing below 0.112 keeps the loose cluster intact, and that is nearly four times the " +
-            "tight cluster's deepest internal distance. The final bar is 0 because the last stray " +
-            "restarts the ordering — a restart, not a valley.",
+            "called a cluster. The terrain reads directly: the first eight points are the tight " +
+            "cluster and never rise above 0.305; three strays follow at 1.516, 2.260 and 2.368; the " +
+            "nine after them are the loose cluster, between 0.573 and 0.675; and two last strays " +
+            "sit at 1.203 and 1.829. Both densities are on the same axis, which is the thing one " +
+            "eps cannot express. The dashed line is a flat cut at 0.4, the lab's lowest: the tight " +
+            "cluster survives whole and all nine loose points are above the line, so they become " +
+            "noise — DBSCAN at that eps, up to border points. The lab's starting cut, 1.0, sits " +
+            "above the loose valley and below every stray, and reads two clusters off the same " +
+            "ordering without rerunning anything. The first bar is drawn at 0 because the starting " +
+            "point has no reachability at all.",
         shape = FigureShape.Plot(
             series = listOf(
                 FigureSeries(
-                    "a flat cut at 0.05",
-                    listOf(FigurePoint(0f, 0.119f), FigurePoint(1f, 0.119f)),
+                    "a flat cut at 0.4",
+                    listOf(FigurePoint(0f, 0.167f), FigurePoint(1f, 0.167f)),
                     tone = FigureTone.Muted,
                     dashed = true,
                 ),
                 FigureSeries(
                     "reachability",
                     listOf(
-                        FigurePoint(0.000f, 0.000f), FigurePoint(0.029f, 0.060f),
-                        FigurePoint(0.057f, 0.045f), FigurePoint(0.086f, 0.045f),
-                        FigurePoint(0.114f, 0.048f), FigurePoint(0.143f, 0.048f),
-                        FigurePoint(0.171f, 0.058f), FigurePoint(0.200f, 0.042f),
-                        FigurePoint(0.229f, 0.042f), FigurePoint(0.257f, 0.030f),
-                        FigurePoint(0.286f, 0.025f), FigurePoint(0.314f, 0.025f),
-                        FigurePoint(0.343f, 0.036f), FigurePoint(0.371f, 0.039f),
-                        FigurePoint(0.400f, 0.039f), FigurePoint(0.429f, 0.049f),
-                        FigurePoint(0.457f, 0.068f), FigurePoint(0.486f, 0.073f),
-                        FigurePoint(0.514f, 0.073f), FigurePoint(0.543f, 0.073f),
-                        FigurePoint(0.571f, 0.673f), FigurePoint(0.600f, 0.976f),
-                        FigurePoint(0.629f, 0.268f), FigurePoint(0.657f, 0.148f),
-                        FigurePoint(0.686f, 0.148f), FigurePoint(0.714f, 0.148f),
-                        FigurePoint(0.743f, 0.151f), FigurePoint(0.771f, 0.151f),
-                        FigurePoint(0.800f, 0.152f), FigurePoint(0.829f, 0.162f),
-                        FigurePoint(0.857f, 0.183f), FigurePoint(0.886f, 0.188f),
-                        FigurePoint(0.914f, 0.188f), FigurePoint(0.943f, 0.171f),
-                        FigurePoint(0.971f, 0.171f), FigurePoint(1.000f, 0.000f),
+                        FigurePoint(0.000f, 0.000f), FigurePoint(0.048f, 0.062f), FigurePoint(0.095f, 0.060f),
+                        FigurePoint(0.143f, 0.060f), FigurePoint(0.190f, 0.060f), FigurePoint(0.238f, 0.062f),
+                        FigurePoint(0.286f, 0.100f), FigurePoint(0.333f, 0.127f), FigurePoint(0.381f, 0.632f),
+                        FigurePoint(0.429f, 0.942f), FigurePoint(0.476f, 0.987f), FigurePoint(0.524f, 0.281f),
+                        FigurePoint(0.571f, 0.281f), FigurePoint(0.619f, 0.239f), FigurePoint(0.667f, 0.239f),
+                        FigurePoint(0.714f, 0.239f), FigurePoint(0.762f, 0.259f), FigurePoint(0.810f, 0.259f),
+                        FigurePoint(0.857f, 0.259f), FigurePoint(0.905f, 0.278f), FigurePoint(0.952f, 0.501f),
+                        FigurePoint(1.000f, 0.762f),
                     ),
                 ),
             ),
             markers = listOf(
-                FigurePoint(0.286f, 0.025f, "tight · 0.010"),
-                FigurePoint(0.600f, 0.976f, "the gap · 0.410", FigureTone.Warn),
-                FigurePoint(0.771f, 0.151f, "loose · 0.064"),
+                FigurePoint(0.143f, 0.060f, "tight · 0.145"),
+                FigurePoint(0.476f, 0.987f, "stray · 2.368", FigureTone.Warn),
+                FigurePoint(0.667f, 0.239f, "loose · 0.573"),
             ),
-            xLabel = "processing order, 36 points",
-            yLabel = "reachability distance, 0 → 0.42",
+            xLabel = "processing order, 22 points",
+            yLabel = "reachability distance, 0 → 2.4",
         ),
     ),
     whatIsIt = listOf(

@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,33 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val kernelPcaContent = TopicContent(
     topicId = "kernel_pca",
+    figure = Figure(
+        caption = "Two concentric rings — 40 points at radius 0.3 and 60 at radius 1.0, with a " +
+            "little radial noise — projected onto the first component of each method, and the " +
+            "range of values each ring lands on. Linear PCA puts the inner ring at −0.29…0.45, " +
+            "entirely inside the outer ring's −0.99…1.09: there is no straight axis along which " +
+            "\"which ring\" is the direction of greatest variance, so none is found. Kernel PCA " +
+            "with an RBF kernel at γ = 5 does the same eigendecomposition on the 100 × 100 centred " +
+            "Gram matrix instead, and its first component sends the inner ring to −0.64…−0.19 and " +
+            "the outer to 0.18…0.53 — disjoint, with a clean gap between them. The middle row is " +
+            "the caveat: at γ = 1 the kernel's length scale is wider than the rings' separation, " +
+            "and the ranges overlap again. The kernel changes what \"direction\" means, and γ " +
+            "decides whether the new meaning fits the data.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("−0.29…0.45", "−0.99…1.09", "overlap"),
+                listOf("−0.50…0.31", "−0.63…0.69", "overlap"),
+                listOf("−0.64…−0.19", "0.18…0.53", "gap 0.37"),
+            ),
+            rowHeaders = listOf("PCA", "kPCA γ=1", "kPCA γ=5"),
+            colHeaders = listOf("inner ring", "outer ring", "separable?"),
+            marks = listOf(
+                FigureCell(0, 2, FigureTone.Warn),
+                FigureCell(1, 2, FigureTone.Warn),
+                FigureCell(2, 2, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "PCA searches for the directions of greatest variance, and \"direction\" means a straight axis. When the structure in the data is not linear — two concentric rings, a spiral, a curved sheet — the answer PCA is looking for does not exist in the space it searches, and no amount of iteration finds it. Kernel PCA keeps every step of PCA and changes only the inner product.",
         "The mechanism is the kernel trick, the same one behind the RBF support vector machine. PCA can be written entirely in terms of inner products between data points; replace every ⟨xᵢ, xⱼ⟩ with k(xᵢ, xⱼ) = exp(−γ‖xᵢ−xⱼ‖²) and you are doing PCA in the feature space that kernel implicitly defines — a space that for the RBF kernel is infinite-dimensional, and which nobody ever constructs. You eigendecompose the n×n Gram matrix instead of the d×d covariance matrix, and the components come out as coefficients over the training points rather than as vectors in feature space.",

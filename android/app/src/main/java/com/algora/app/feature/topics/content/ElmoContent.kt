@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,10 +15,33 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val elmoContent = TopicContent(
     topicId = "elmo",
+    figure = Figure(
+        caption = "The page's lab: \"bank\" in four sentences, two about a river and two about " +
+            "money, and the cosine between its vectors. A static embedding such as word2vec has " +
+            "one row per word, so every occurrence is the same vector and every pair scores 1.00 " +
+            "— the river sense and the money sense averaged into one point between them. ELMo " +
+            "runs a forward and a backward LSTM over each sentence and concatenates their states, " +
+            "so \"stream\", which comes after \"bank\", reaches it through the backward pass. Two " +
+            "river uses then sit at 0.99 and a river use against a money use falls to −0.17: the " +
+            "senses separate with no sense inventory and no labels. The price is that nothing can " +
+            "be precomputed — the model has to run on every sentence.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("1.00", "0.99"),
+                listOf("1.00", "−0.17"),
+            ),
+            rowHeaders = listOf("river · river", "river · money"),
+            colHeaders = listOf("word2vec", "ELMo"),
+            marks = listOf(
+                FigureCell(1, 0, FigureTone.Warn),
+                FigureCell(1, 1, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "ELMo — Embeddings from Language Models, 2018 — broke the assumption every embedding before it made: that a word has one vector. In word2vec, GloVe and FastText, \"bank\" has a single row in a table, and every occurrence in every corpus votes on the same numbers, so the river sense and the money sense are averaged into one point. ELMo makes the representation a function of the whole sentence, so the same word produces a different vector in each occurrence it appears in.",
         "The mechanism is a two-layer bidirectional LSTM trained as a language model — forward predicting the next token, backward predicting the previous one — over character-CNN inputs, so it has no vocabulary limit either. The contribution people underrate is the *deep* part: rather than taking the top layer, ELMo exposes all of them and lets each downstream task learn its own mixture, γ·Σⱼ sⱼhⱼ. Lower layers turn out to carry syntax and upper layers semantics, so a POS tagger and a question-answering model weight them differently. Freezing the language model and adding its layer mixture to each task's existing model — whose own parameters are all trained — beat the state of the art on six benchmarks at once.",
-        "In the lab, one word in four sentences produces four vectors: the two river sentences sit at cosine 0.953 with each other and the two money sentences at 0.954, while every cross-sense pair scores lower — 0.904 on average. Word sense disambiguation with no sense inventory and no labels; the senses were never enumerated, they fell out of context. The trade ELMo introduced is one every contextual model since inherits: a 1M-word lookup table at 300 dimensions is 300M parameters you can memory-map and read instantly, while ELMo is 93.6M parameters that must *run* on every sentence. Smaller model, larger bill — nothing can be precomputed. Within a year BERT replaced the LSTM with a transformer, made the objective deeply bidirectional rather than two independent directions, and made fine-tuning the whole model the default; the idea that survived intact is the one ELMo established, that a token's representation is a function of its context.",
+        "In the lab, one word in four sentences produces four vectors: the two river sentences sit at cosine 0.99 with each other, while a river sentence against a money sentence scores −0.17 — same sense close, different sense far, where a static vector's similarity to each use is fixed. Word sense disambiguation with no sense inventory and no labels; the senses were never enumerated, they fell out of context. The trade ELMo introduced is one every contextual model since inherits: a 1M-word lookup table at 300 dimensions is 300M parameters you can memory-map and read instantly, while ELMo is 93.6M parameters that must *run* on every sentence. Smaller model, larger bill — nothing can be precomputed. Within a year BERT replaced the LSTM with a transformer, made the objective deeply bidirectional rather than two independent directions, and made fine-tuning the whole model the default; the idea that survived intact is the one ELMo established, that a token's representation is a function of its context.",
     ),
     steps = listOf(
         StepCard(1, "Embed Characters", "A character CNN produces the input vector, so any word — seen or not — has one.", 0xFF6366F1),
@@ -28,7 +55,7 @@ internal val elmoContent = TopicContent(
         FormulaEntry("biLM objective", "Σ log p(tₖ | t₁…tₖ₋₁) + log p(tₖ | tₖ₊₁…t_N)", "Two independent directions — not jointly bidirectional, which is BERT's later fix."),
         FormulaEntry("Layer mixture", "ELMoₖ = γ Σ_{j=0..L} sⱼ h_{k,j}", "s softmax-normalised and learned per task; γ scales the whole vector."),
         FormulaEntry("Representations per token", "2L + 1 = 5 for the two-layer model", "The character embedding plus two hidden states in each direction."),
-        FormulaEntry("Sense separation, measured", "within 0.953 / 0.954 · across 0.904", "Every same-sense pair beats every cross-sense pair in the lab."),
+        FormulaEntry("Sense separation, in the lab", "river–river 0.99 · river–money −0.17", "Four occurrences of \"bank\", four vectors."),
         FormulaEntry("Static baseline", "cos(bank, bank) = 1.00 by construction", "One vector per type — there is nothing else it could be."),
         FormulaEntry("Parameter trade", "300M lookup (1M × 300) vs 93.6M that must run", "Smaller model, and nothing can be precomputed."),
     ),
@@ -98,7 +125,7 @@ internal val elmoContent = TopicContent(
     ),
     takeaways = listOf(
         "A word's vector becomes a function of its sentence: four occurrences of \"bank\", four different vectors.",
-        "Measured in the lab, same-sense pairs score 0.953 and 0.954 while every cross-sense pair is lower (0.904 average).",
+        "In the lab, two river uses of \"bank\" score cosine 0.99 while a river use against a money use scores −0.17.",
         "It is a two-layer biLM over character inputs, so there is no vocabulary limit and no <unk>.",
         "The layer mixture γΣsⱼhⱼ is the durable idea — lower layers carry syntax, upper layers semantics, and tasks weight them differently.",
         "The cost is inference: 93.6M parameters that must run per sentence, against a 300M-parameter table you could memory-map.",

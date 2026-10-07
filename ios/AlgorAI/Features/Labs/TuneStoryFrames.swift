@@ -184,7 +184,7 @@ private func dpoStory() -> LsLab {
                           [F("loss = −log σ(β[(log π(y_w) − log π(y_l)) − ref])")],
                           ("The policy is its own reward model.", "How much more likely the policy makes a response than the reference does, scaled by β, plays the role of the reward."))
             default:
-                let note = beta < 0.5 ? "small steps per pair, the policy stays near the reference" : beta > 1 ? "large β moves far from the reference fast" : "a middle setting"
+                let note = beta < 0.5 ? "a small β is a weak leash, so the policy moves furthest from the reference (KL \(f(kl, 2)) nats)" : beta > 1 ? "a large β holds the policy close to the reference (KL \(f(kl, 2)) nats)" : "a middle setting (KL \(f(kl, 2)) nats)"
                 return fr(head + [.label("policy after \(big) steps"), bars],
                           [F("mean DPO loss =", f(loss, 3), .lilac), F("KL(π ‖ π_ref) =", f(kl, 3) + " nats")],
                           s == 4 ? ("After 1,000 steps: \(pct(pi["A"]!)) on the best response.", "β = \(lsJs(beta)): \(note). The mislabelled D ≻ A pair keeps pulling the other way.")

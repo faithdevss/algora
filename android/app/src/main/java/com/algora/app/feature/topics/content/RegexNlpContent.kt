@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,34 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val regexNlpContent = TopicContent(
     topicId = "regex_nlp",
+    figure = Figure(
+        caption = "The page's lab sentence, tokenised three ways, counting how many pieces each " +
+            "tricky unit is cut into. \\w+ — the pattern everyone writes first — finds 21 tokens " +
+            "where a linguist counts 12, because every apostrophe, hyphen, dot and @ becomes a " +
+            "split point: the e-mail address falls into 4 pieces and the date into 3. Allowing inner " +
+            "punctuation when a word character follows, \\w+(?:['@.\\-]\\w+)*, holds most units " +
+            "together and gets 12 — but it still drops the final dot of U.S. and the % of 3.5%. " +
+            "Adding an abbreviation alternative and an optional % keeps all six whole. Each fix is " +
+            "a rule about one kind of unit; the patterns grow with the corner cases, which is why " +
+            "regex tokenisers are where real tokenisers start, not where they end.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("2", "1", "1"),
+                listOf("2", "1", "1"),
+                listOf("4", "1", "1"),
+                listOf("2", "1 (no dot)", "1"),
+                listOf("2", "1 (no %)", "1"),
+                listOf("3", "1", "1"),
+            ),
+            rowHeaders = listOf("Smith's", "e-mail", "a.smith@x.co", "U.S.", "3.5%", "2024-01-05"),
+            colHeaders = listOf("\\w+", "+ inner punct.", "+ abbrev, %"),
+            marks = listOf(
+                FigureCell(2, 0, FigureTone.Warn),
+                FigureCell(3, 1, FigureTone.Warn),
+                FigureCell(4, 1, FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A regular expression is a pattern describing a set of strings, and in NLP it is the layer everything else stands on: word tokenizers, sentence splitters, date and money extractors, cleaning rules and the fallback rules inside every industrial NER system are regexes. The reason is that they are declarative, auditable and need no training data — for a well-defined surface form like an ISO date or a VAT number, a pattern beats a model on precision, cost and explainability, and always will.",
         "The craft is in what the pattern does to the text you did not think about. \\w+ is what everyone writes first, and on one ordinary sentence it finds 21 tokens where a linguist would count 12: \\w matches letters, digits and underscore and nothing else, so every internal dot, hyphen and apostrophe is a boundary. \"a.smith@x.co\" becomes four tokens, none of which is an e-mail address; \"3.5%\" becomes 3 and 5; \"U.S.\" becomes U and S. Fixing it means an alternation of specific branches — e-mail, ISO date, dotted abbreviation, hyphenated word, decimal with percent — before the general one, because alternation is first-match, not longest-match. Moving the general branch to the front is a one-line edit that takes the same six branches from 12 tokens to 16, and the damage is not uniform: the branches that begin with a digit still fire, while the e-mail is left as \".smith@x.co\" after the letters branch has eaten its first character — a token that looks like the pattern worked.",

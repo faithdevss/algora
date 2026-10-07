@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,26 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val birchContent = TopicContent(
     topicId = "birch",
+    figure = Figure(
+        caption = "The page's lab: points arrive one at a time with threshold T = 0.4, and each is " +
+            "either absorbed by the nearest clustering feature or starts a new one. Points 1–6 " +
+            "are too far from everything (absorbing point 2 would make a radius of 2.64, point 6 " +
+            "one of 0.50), so each starts its own CF. From point 7 on, the entries are in place: " +
+            "7 joins CF3 at radius 0.35, then 8, 9, 10 and 11 are absorbed too, and only N, LS " +
+            "and SS change. Point 12 is 0.72 from its nearest entry and starts CF7. No point is " +
+            "kept, so one pass is enough, and the result depends on the order the points " +
+            "arrived in.",
+        shape = FigureShape.Strip(
+            cells = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"),
+            bands = listOf(
+                FigureBand(0, 5, "start new CFs", FigureTone.Warn),
+                FigureBand(6, 10, "absorbed", FigureTone.Accent),
+                FigureBand(11, 11, "new", FigureTone.Warn),
+            ),
+            aux = listOf("CF1", "CF2", "CF3", "CF4", "CF5", "CF6", "CF3", "CF4", "CF5", "CF6", "CF3", "CF7"),
+            auxLabel = "entry",
+        ),
+    ),
     whatIsIt = listOf(
         "BIRCH was designed for data that does not fit in memory. It makes a single pass, never stores a data point, and keeps only a running summary of each group it has encountered — then runs a conventional clustering algorithm on those summaries instead of on the data.",
         "The summary is the whole idea. A clustering feature is three numbers: N, the count; LS, the vector sum; and SS, the sum of squares. From those alone you can compute the group's centroid, radius and diameter, and — critically — two clustering features can be merged by adding them componentwise. That additivity is what makes a streaming pass possible: a new point is absorbed into the nearest feature if it fits within a threshold radius, and starts a new one otherwise, with the original point discarded either way.",

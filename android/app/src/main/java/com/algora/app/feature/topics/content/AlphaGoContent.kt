@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,9 +15,30 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val alphaGoContent = TopicContent(
     topicId = "alphago",
+    figure = Figure(
+        caption = "The page's lab: 100 MCTS simulations on one tic-tac-toe position, each run judging " +
+            "leaf positions a different way, and the share of visits that reach the best move. " +
+            "Random playouts get 54%. The \"value network\" runs replace playouts with the exact " +
+            "game value plus noise — a stand-in that isolates how evaluator quality steers search: " +
+            "47% with no noise, 45% with noise σ = 0.3, 42% with σ = 0.8. The noisier the " +
+            "evaluator, the weaker the focus. On a board this small, random games are already a " +
+            "decent estimate, so playouts hold their own here; on a 19×19 Go board they are close " +
+            "to noise, and AlphaGo's leap was a learned value network good enough to replace them, " +
+            "with a policy network narrowing which moves are searched at all.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("random playouts", 0.54f, FigureTone.Primary),
+                FigureBar("value, σ 0", 0.47f, FigureTone.Accent),
+                FigureBar("value, σ 0.3", 0.45f, FigureTone.Muted),
+                FigureBar("value, σ 0.8", 0.42f, FigureTone.Warn),
+            ),
+            yLabel = "share of visits on the best move",
+        ),
+    ),
     whatIsIt = listOf(
-        "AlphaGo was the first program to beat a world champion at Go, combining deep neural networks with Monte Carlo Tree Search.",
-        "It bootstrapped from human expert games via supervised learning, then improved through self-play reinforcement learning — a policy network to suggest moves and a value network to judge positions.",
+        "AlphaGo kept Monte Carlo tree search and replaced its guesswork. Plain MCTS judges a position by playing random games to the end, which on a 19×19 Go board is nearly noise. AlphaGo added a policy network, trained first on human games and then by self-play, to suggest which moves to search, and a value network to judge a position directly instead of finishing the game at random. In 2016 it beat Lee Sedol 4–1.",
+        "The lab compares evaluators on a small tic-tac-toe position with 100 simulations each, measuring the share of visits that land on the best move. Random playouts reach 54%. A \"value network\" — here the exact game value plus noise, a stand-in that isolates evaluator quality — gets 47% with no noise, 45% with noise σ = 0.3 and 42% with σ = 0.8: the noisier the evaluator, the weaker the focus. On a board this small random playouts are already a fair estimate, which is why they hold their own here; the point of the value network is the 19×19 board, where they are not.",
+        "Search is only as good as its leaf evaluations, and AlphaGo's strength came from learned evaluation good enough to replace rollouts, with the policy network narrowing the search to plausible moves. AlphaGo Zero and AlphaZero then dropped the human games and the rollouts entirely, merging policy and value into one network trained only by self-play.",
     ),
     steps = listOf(
         StepCard(1, "Supervised Policy", "Train a policy network to imitate expert human moves.", 0xFF818CF8),

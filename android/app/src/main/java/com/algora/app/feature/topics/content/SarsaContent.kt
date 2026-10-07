@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,36 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val sarsaContent = TopicContent(
     topicId = "sarsa",
+    figure = Figure(
+        caption = "The page's cliff lab after 400 training episodes at ε = 0.1, both greedy routes " +
+            "on one 4×6 grid. Q = Q-learning's route, S = SARSA's. Q-learning walks the row directly " +
+            "above the cliff — 7 steps, the shortest there is — because its target assumes every " +
+            "later move is greedy. SARSA climbs to the top row and takes 11, because its target " +
+            "includes the 10% of moves that are random, and from the edge a random ↓ costs −100. " +
+            "The cliff shows up in SARSA's values first: the edge cells it avoids are worth −11, " +
+            "−14 and −15 to it against −6, −5 and −4 to Q-learning. And the detour pays while " +
+            "exploration is still on — over the last 100 training episodes SARSA averages a return " +
+            "of −21 against Q-learning's −26, because Q-learning keeps stepping off the edge it " +
+            "believes is safe.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("S", "S", "S", "S", "·", "·"),
+                listOf("S", "·", "·", "S", "S", "S"),
+                listOf("Q S", "Q", "Q", "Q", "Q", "Q S"),
+                listOf("start", "cliff", "cliff", "cliff", "cliff", "goal"),
+            ),
+            marks = listOf(
+                FigureCell(0, 0, FigureTone.Accent), FigureCell(0, 1, FigureTone.Accent),
+                FigureCell(0, 2, FigureTone.Accent), FigureCell(0, 3, FigureTone.Accent),
+                FigureCell(1, 0, FigureTone.Accent), FigureCell(1, 3, FigureTone.Accent),
+                FigureCell(1, 4, FigureTone.Accent), FigureCell(1, 5, FigureTone.Accent),
+                FigureCell(2, 1, FigureTone.Primary), FigureCell(2, 2, FigureTone.Primary),
+                FigureCell(2, 3, FigureTone.Primary), FigureCell(2, 4, FigureTone.Primary),
+                FigureCell(3, 1, FigureTone.Warn), FigureCell(3, 2, FigureTone.Warn),
+                FigureCell(3, 3, FigureTone.Warn), FigureCell(3, 4, FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "SARSA is TD learning applied to Q, named after the five things one update touches: sₜ, aₜ, rₜ₊₁, sₜ₊₁, aₜ₊₁. It moves Q(s,a) toward r + γQ(s′,a′), where a′ is the action the agent is genuinely going to take next — sampled from the same ε-greedy policy it is following.",
         "That last clause is the entire difference from Q-learning, which uses maxₐ′ Q(s′,a′) instead. One term, and it changes what is being learned. SARSA is on-policy: it estimates the value of the policy actually running, exploration included, so the cost of the occasional random action is baked into its numbers. Q-learning is off-policy: it estimates the value of the greedy policy regardless of what generated the data, so exploration is invisible to it.",

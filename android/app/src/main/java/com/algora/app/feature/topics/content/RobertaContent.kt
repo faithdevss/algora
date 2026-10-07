@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,31 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val robertaContent = TopicContent(
     topicId = "roberta",
+    figure = Figure(
+        caption = "RoBERTa's cheapest change, in the page's lab: one 12-token sentence seen over four " +
+            "epochs, with 15% (2 tokens) masked each time. BERT chose its masks once, when the " +
+            "data was preprocessed, so every epoch poses the identical puzzle and only 2 positions " +
+            "are ever predicted. RoBERTa draws fresh masks as each batch is built, so the same " +
+            "sentence becomes a new exercise every pass: 4 distinct positions predicted after two " +
+            "epochs, 6 after three, 8 after four. The architecture never changed. With dynamic " +
+            "masking, next-sentence prediction removed, batches raised from 256 to 8K and data from " +
+            "16 to 160 GB, RoBERTa showed that most of BERT's apparent limits were under-training " +
+            "rather than the objective.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("2", "2"),
+                listOf("2", "4"),
+                listOf("2", "6"),
+                listOf("2", "8"),
+            ),
+            rowHeaders = listOf("epoch 1", "epoch 2", "epoch 3", "epoch 4"),
+            colHeaders = listOf("BERT, static", "RoBERTa, dynamic"),
+            marks = listOf(
+                FigureCell(3, 0, FigureTone.Warn),
+                FigureCell(3, 1, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "RoBERTa changed no part of BERT's architecture. Same layer count, same width, same masked-language-modelling objective — the paper is a list of things BERT's *training run* did that turned out to be suboptimal. Dynamic masking instead of static, no next-sentence prediction, batches of 8,000 sequences instead of 256, 160GB of text instead of 16GB, and a 50,265-piece byte-level BPE vocabulary instead of 30,522 WordPiece pieces. Every gain came from the recipe, which is the most useful kind of result: it says the reported numbers were a training run and not a ceiling on the architecture.",
         "The masking change is the cheapest one and the easiest to state exactly. BERT baked its masks into the data — duplicate the corpus ten times with a different mask each time, then train for forty epochs, so every mask pattern is seen four times. A token is selected with probability 0.15 per masking, so after k independent maskings the chance it was never selected at all is 0.85ᵏ. Under ten static masks that is 19.7% of tokens never predicted; under forty dynamic maskings it is 0.15%. One in five against one in 650, from a change that costs a line of data loading.",

@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,29 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val rwkvContent = TopicContent(
     topicId = "rwkv",
+    figure = Figure(
+        caption = "The page's lab at step 7: eight tokens, each with a key k (its bid to be " +
+            "remembered), and the weight each one gets in RWKV's output, e^(k − w·distance) " +
+            "normalised, with decay w = 0.1. There is no query — a token's weight depends only on " +
+            "its own key and how long ago it arrived. Token 5's key of 3.5 outbids its distance and " +
+            "takes 87% of the output two steps later; token 4, with key 1.0, gets 6.5%; tokens " +
+            "with negative keys barely register. Because the weights are exponentials of key " +
+            "minus distance, the whole history folds into two running numbers per channel — " +
+            "a ← e^(−w)·a + e^k·v and b ← e^(−w)·b + e^k, output a/b — and that state is the same " +
+            "size at token 8 and at token one million.",
+        shape = FigureShape.Strip(
+            cells = listOf("0.3", "−1.1", "−1.7", "−1.7", "1.0", "3.5", "−1.4", "−0.9"),
+            bands = listOf(
+                FigureBand(5, 5, "k = 3.5", FigureTone.Accent),
+            ),
+            pointers = listOf(
+                FigurePointer(5, "87%"),
+                FigurePointer(7, "now", FigureTone.Muted),
+            ),
+            aux = listOf("2.2%", "0.6%", "0.4%", "0.4%", "6.5%", "87%", "0.7%", "2.0%"),
+            auxLabel = "weight at t = 7",
+        ),
+    ),
     whatIsIt = listOf(
         "RWKV replaces attention with a weighted average that has no query in it. A token's weight is exp(k) — how much it asked to be remembered — times exp(−w·distance), a decay the model learns once per channel, plus a bonus u on the current token so the present is not drowned by the past. Both sums are carried in a fixed-size state, so training looks like a parallel operator and inference looks like an RNN.",
         "Because there is no query, both sums can be accumulated incrementally and rescaled by a running maximum — exactly the trick Flash Attention uses, arrived at independently for the same reason. Written the textbook way the operator overflows a float64 once a key reaches 720; the stabilised form agrees with it to 4e-16 everywhere it is defined. The decay also has to be applied *before* the new token is folded in rather than after; getting that order wrong makes the two forms disagree by 5e-2 rather than 1e-16, which is small enough to look like rounding and is not.",

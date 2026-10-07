@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,10 +15,36 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val fastTextContent = TopicContent(
     topicId = "fasttext",
+    figure = Figure(
+        caption = "FastText's change to word2vec, as the page's lab draws it: a word is the sum of " +
+            "its character n-grams (here 3-grams, with < and > marking the edges) plus the whole " +
+            "word. \"king\" is <ki, kin, ing, ng>. \"kingdom\" and \"kings\" share the first three " +
+            "of those, so training on any of them moves the others. The last two rows are what " +
+            "word2vec cannot do at all: \"kingly\" never appeared in training, yet 3 of its 6 " +
+            "n-grams already have trained vectors, so it gets a meaningful one; the typo \"kingg\" " +
+            "shares 3 of its 5 with \"king\" and lands next to it. Real FastText uses n = 3 to 6 — " +
+            "dozens of n-grams for a long word — and hashes them into a fixed table of 2 million " +
+            "buckets, trading memory and a few collisions for words it has never seen.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("4", "—", "seen"),
+                listOf("7", "3", "seen"),
+                listOf("5", "3", "seen"),
+                listOf("6", "3", "unseen"),
+                listOf("5", "3", "typo"),
+            ),
+            rowHeaders = listOf("king", "kingdom", "kings", "kingly", "kingg"),
+            colHeaders = listOf("3-grams", "shared w/ king", "in training"),
+            marks = listOf(
+                FigureCell(3, 2, FigureTone.Accent),
+                FigureCell(4, 2, FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "FastText keeps word2vec's objective exactly and changes what a word *is*. Instead of one vector per type, a word is a bag of character n-grams of length 3–6 taken from the word wrapped in boundary markers, plus the whole word as one more token: \"king\" becomes <ki, kin, ing, ng>, <kin, king, ing>, <king, king>, <king> and king — ten n-grams plus the whole word, eleven pieces. The word's vector is the sum of its subwords' vectors, and training is the same skip-gram or CBOW objective over those sums.",
-        "That single change fixes word2vec's two hardest failures. Out-of-vocabulary words stop being a wall: a word the corpus never contained still has n-grams that were seen, so a vector can be composed for it. In the lab, \"kings\" is unseen — word2vec returns <unk> and stops — while FastText builds it from 6 of its 15 n-grams and lands at cosine 0.98 to \"king\". \"monarchy\", also unseen and sharing no whole word with the corpus, scores 0.81 to \"king\" and 0.82 to \"kingdom\" against 0.36 to \"dog\". And morphology becomes shared evidence rather than a source of unrelated types, which is why the gains are largest in Turkish, Finnish, German and Arabic, where one lemma has hundreds of surface forms and each is otherwise its own row in the table.",
-        "The cost is size and a little blurring. This tiny corpus already needs 299 n-gram vectors for 26 word types, and a real corpus needs millions — production FastText hashes n-grams into a fixed 2M-bucket table and accepts the collisions. Sharing characters also means words that look alike are pulled together whether or not they are related, which is a real error mode on short words and proper nouns. What stays is the property that makes it deployable: inference is a lookup and a sum, no network runs, so it serves language identification and text classification at a scale and latency no transformer touches.",
+        "That single change fixes word2vec's two hardest failures. Out-of-vocabulary words stop being a wall: a word the corpus never contained still has n-grams that were seen, so a vector can be composed for it. In the lab, with character 3-grams, \"king\" is <ki · kin · ing · ng>, and \"kingdom\" and \"kings\" share its first three of those, so evidence for one helps all. \"kingly\" never appeared — word2vec has no vector for it at all — but 3 of its 6 n-grams are already trained, so FastText composes one; the typo \"kingg\" shares 3 of its 5 n-grams with \"king\" and lands close to it. And morphology becomes shared evidence rather than a source of unrelated types, which is why the gains are largest in Turkish, Finnish, German and Arabic, where one lemma has hundreds of surface forms and each is otherwise its own row in the table.",
+        "The cost is size and a little blurring. Real FastText uses n = 3 to 6, so a long word like \"internationalization\" sums dozens of n-gram vectors, and a real corpus needs millions of them — production FastText hashes n-grams into a fixed 2M-bucket table and accepts the collisions. Sharing characters also means words that look alike are pulled together whether or not they are related, which is a real error mode on short words and proper nouns. What stays is the property that makes it deployable: inference is a lookup and a sum, no network runs, so it serves language identification and text classification at a scale and latency no transformer touches.",
     ),
     steps = listOf(
         StepCard(1, "Wrap and Cut", "Add < and > to the word, then take every n-gram of length 3–6.", 0xFF6366F1),
@@ -28,9 +58,9 @@ internal val fastTextContent = TopicContent(
         FormulaEntry("Word vector", "v(w) = Σ_{g ∈ G(w)} z_g", "G(w) is the n-gram set of w, plus w itself."),
         FormulaEntry("Scoring", "s(w, c) = Σ_{g ∈ G(w)} z_g · u_c", "The dot product distributes over the sum, so nothing else changes."),
         FormulaEntry("Subword count", "\"king\" → 10 n-grams at 3 ≤ n ≤ 6", "Wrapped as <king>, plus the whole word: 11 pieces."),
-        FormulaEntry("Vocabulary growth", "26 word types → 299 distinct n-grams", "Measured on the lab's corpus; hashing bounds it in production."),
-        FormulaEntry("OOV composed", "\"kings\": 6 of 15 n-grams known → cos 0.98 to \"king\"", "word2vec has no vector for it at all."),
-        FormulaEntry("Derivation, not inflection", "\"monarchy\" → 0.81 king, 0.82 kingdom, 0.36 dog", "Also unseen, and shares no whole word with the corpus."),
+        FormulaEntry("Vocabulary growth", "n = 3…6 → dozens of n-grams per long word", "Millions in a real corpus; hashing bounds it in production."),
+        FormulaEntry("OOV composed", "\"kingly\": 3 of 6 n-grams already trained", "word2vec has no vector for it at all."),
+        FormulaEntry("Typos", "\"kingg\": 3 of 5 n-grams shared with \"king\"", "So a misspelling lands near the right word."),
     ),
     notationKey = listOf(
         NotationEntry("subword / character n-gram", "a contiguous run of n characters inside the marked word"),
@@ -61,7 +91,7 @@ internal val fastTextContent = TopicContent(
 
                 # "kings" never appeared in training:
                 #   word2vec  -> KeyError / <unk>
-                #   fastText  -> composed from 6 of its 15 n-grams, cos 0.98 to "king"
+                #   fastText  -> composed from the n-grams it shares with "king", "kingdom", ...
             """.trimIndent(),
         ),
         CodeBlock(
@@ -96,9 +126,9 @@ internal val fastTextContent = TopicContent(
     ),
     takeaways = listOf(
         "A word is a bag of character 3–6-grams plus itself; its vector is the sum of theirs — word2vec's maths, otherwise unchanged.",
-        "Unseen words get real vectors: \"kings\" composes from 6 of 15 n-grams to cosine 0.98 with \"king\".",
+        "Unseen words get real vectors: \"kingly\" composes from the 3 of its 6 n-grams already trained.",
         "Morphological relatives share evidence, which is why the gains concentrate in morphologically rich languages.",
-        "The cost is table size — 299 n-grams for 26 words here — handled in production by hashing into 2M buckets.",
+        "The cost is table size — millions of n-grams in a real corpus — handled in production by hashing into 2M buckets.",
         "Inference stays a lookup and a sum, so it still serves classification at scales no transformer reaches.",
     ),
     crossLinks = listOf(

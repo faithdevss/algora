@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,34 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val kModesContent = TopicContent(
     topicId = "k_modes",
+    figure = Figure(
+        caption = "The page's lab: eight rows of four categorical attributes (colour, size, " +
+            "shape, finish) and two centres, c1 = red small round matte and c2 = blue large " +
+            "square gloss. There is no distance and no mean: each row's cost to a centre is the " +
+            "number of attributes that differ, and it joins the centre with fewer mismatches. " +
+            "Rows 1–3 join c1, rows 4–8 join c2. Each centre then takes the most common value in " +
+            "each column of its rows. c2's shape becomes round, one centre value changes, and the " +
+            "loop repeats until nothing moves.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0", "4", "c1"),
+                listOf("1", "3", "c1"),
+                listOf("1", "3", "c1"),
+                listOf("4", "0", "c2"),
+                listOf("3", "1", "c2"),
+                listOf("3", "1", "c2"),
+                listOf("3", "2", "c2"),
+                listOf("3", "1", "c2"),
+            ),
+            rowHeaders = listOf("row 1", "row 2", "row 3", "row 4", "row 5", "row 6", "row 7", "row 8"),
+            colHeaders = listOf("to c1", "to c2", "joins"),
+            marks = listOf(
+                FigureCell(0, 0, FigureTone.Accent), FigureCell(1, 0, FigureTone.Accent),
+                FigureCell(2, 0, FigureTone.Accent), FigureCell(3, 1), FigureCell(4, 1),
+                FigureCell(5, 1), FigureCell(6, 1), FigureCell(7, 1),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "K-modes is Lloyd's algorithm for data that has no arithmetic. There is no mean of {red, blue, green} and no meaningful Euclidean distance between them, so k-modes replaces the distance with a count of mismatched attributes and the centre with the most frequent value in each attribute.",
         "The two obvious workarounds are both worse. Label-encoding categories as 0, 1, 2 and running k-means asserts that blue lies numerically between red and green and that red is twice as far from green as from blue — a total fabrication the algorithm will then optimize against. One-hot encoding avoids the false ordering but inflates dimensionality, and in the resulting space every pair of distinct categories is exactly √2 apart, so the geometry k-means depends on has been flattened away.",

@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,15 +15,36 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val chiSquareSelectionContent = TopicContent(
     topicId = "chi_square_selection",
+    figure = Figure(
+        caption = "Chi-square scores for the lab's five features, each computed from a contingency " +
+            "table of that feature alone against the label. \"useful\" scores 214.7 and its " +
+            "near-copy \"duplicate\" 177.7 — the filter cannot tell that the second adds nothing " +
+            "to the first. The remaining three bars are almost invisible on the same scale, and " +
+            "that is the point: xorB scores 6.0, the pure-noise column 0.8, and xorA 0.0. Yet xorA " +
+            "and xorB together predict the label 88% of the time. Each is individually independent " +
+            "of y, so a score that looks at one feature at a time sees nothing, and half of a real " +
+            "signal ranks below the noise. Zero model fits buys a ranking; it does not buy " +
+            "interactions or redundancy.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("useful", 1f, FigureTone.Accent),
+                FigureBar("duplicate", 0.828f, FigureTone.Primary),
+                FigureBar("xorB", 0.028f, FigureTone.Warn),
+                FigureBar("noise", 0.004f, FigureTone.Muted),
+                FigureBar("xorA", 0f, FigureTone.Warn),
+            ),
+            yLabel = "χ² score, 0 to 214.7",
+        ),
+    ),
     whatIsIt = listOf(
         "Chi-square feature selection scores each feature against the target on its own, from a contingency table: χ² = Σ (observed − expected)² / expected, where expected is what the counts would be if feature and target were independent. It needs no model, no fitting and no iteration — on the lab's five features it produces a full ranking at a cost of zero model fits, which is the entire reason it is still the default filter on very wide data.",
-        "On data with a genuine univariate signal it works exactly as advertised: \"useful\" scores 275, its near-copy \"duplicate\" 171, and the three uninformative features come in under 1.5. It also cannot tell the useful feature from the copy — \"duplicate\" agrees with \"useful\" 90% of the time, adds nothing a model does not already have, and ranks second. A univariate score has no way to notice redundancy, because it never looks at two features together.",
-        "The same blindness has a sharper form. On data where the label is exactly xorA ⊕ xorB — the pair determines it perfectly, with no noise — chi-square ranks \"noise\" first at 3.79 and puts the two features that *are* the signal at 2.62 and 1.98. The signal ranks below the noise. So treat it as a cheap filter for obviously dead columns, not as a decision about which features matter, and remember its input requirement: chi-square is defined on non-negative counts, so applying it to a centred or standardized column is a category error rather than a weak result.",
+        "On a genuine univariate signal it works exactly as advertised: on the lab's five features \"useful\" scores 214.7 and its near-copy \"duplicate\" 177.7. It also cannot tell the useful feature from the copy — \"duplicate\" adds nothing a model does not already have from \"useful\", and still ranks second. A univariate score has no way to notice redundancy, because it never looks at two features together.",
+        "The same blindness has a sharper form. In the same data, xorA ⊕ xorB predicts y 88% of the time — but each of the two on its own is nearly independent of the label, so chi-square scores xorB 6.0 and xorA 0.0, the latter below the pure-noise column at 0.8. Half of a real signal ranks below the noise. So treat it as a cheap filter for obviously dead columns, not as a decision about which features matter, and remember its input requirement: chi-square is defined on non-negative counts, so applying it to a centred or standardized column is a category error rather than a weak result.",
     ),
     steps = listOf(
         StepCard(1, "Build the Table", "Observed counts by feature value and label.", 0xFF06B6D4),
         StepCard(2, "Compute Expected", "What independence would predict, per cell.", 0xFF3B82F6),
-        StepCard(3, "Sum the Discrepancy", "χ² = Σ (O − E)² / E — 275 for the useful feature.", 0xFF10B981),
+        StepCard(3, "Sum the Discrepancy", "χ² = Σ (O − E)² / E — 214.7 for the useful feature.", 0xFF10B981),
         StepCard(4, "Rank", "Every feature, zero model fits.", 0xFF8B5CF6),
         StepCard(5, "Check for Redundancy", "It cannot see it: the copy ranks second.", 0xFFF59E0B),
         StepCard(6, "Check for Interactions", "On XOR data the signal ranks below the noise.", 0xFFEC4899),
@@ -27,8 +52,8 @@ internal val chiSquareSelectionContent = TopicContent(
     formulas = listOf(
         FormulaEntry("Chi-square", "χ² = Σ (O − E)² / E", "Over the cells of the contingency table."),
         FormulaEntry("Expected count", "E = row total × column total / n", "Under independence."),
-        FormulaEntry("Measured ranking", "useful 275 · duplicate 171", "Noise features under 1.5."),
-        FormulaEntry("XOR data", "noise 3.79 ranks first", "xorB 2.62, xorA 1.98 — the actual signal."),
+        FormulaEntry("Measured ranking", "useful 214.7 · duplicate 177.7", "Then xorB 6.0, noise 0.8, xorA 0.0."),
+        FormulaEntry("The XOR pair", "xorA 0.0 < noise 0.8", "Yet xorA ⊕ xorB predicts y 88% of the time."),
         FormulaEntry("Cost", "0 model fits", "Against RFE's p − 1."),
         FormulaEntry("Requirement", "non-negative counts", "Not valid on centred or scaled columns."),
     ),
@@ -72,8 +97,7 @@ internal val chiSquareSelectionContent = TopicContent(
 
                 scores, _ = chi2(X, y)
                 print(scores.round(2))         # all three are sampling noise: the order depends on the seed
-                                               # (the lab's draw gave [3.79 1.98 2.62], noise first;
-                                               # this seed gives [0.08 0.17 2.15])
+                                               # (this seed gives [0.08 0.17 2.15])
                 print(f"a alone: {(y == a).mean():.2f}, b alone: {(y == b).mean():.2f}")   # ~0.50
 
                 # Each feature is individually independent of the label -- 50% agreement -- so no
@@ -91,9 +115,9 @@ internal val chiSquareSelectionContent = TopicContent(
     ),
     takeaways = listOf(
         "χ² = Σ (O − E)² / E over a contingency table: a ranking for zero model fits.",
-        "On univariate signal it works — useful 275, duplicate 171, the rest under 1.5.",
-        "It cannot see redundancy: a 90%-identical copy of the best feature ranks second.",
-        "On XOR-labelled data it ranks noise first at 3.79 and the two signal features at 2.62 and 1.98.",
+        "On univariate signal it works — useful 214.7, duplicate 177.7.",
+        "It cannot see redundancy: a near-copy of the best feature ranks second.",
+        "The XOR pair predicts y 88% of the time together, yet xorA scores 0.0 — below pure noise at 0.8.",
         "That is not a tuning problem: each XOR feature is individually independent of the label.",
         "Valid only on non-negative counts — chi-square on a standardized column is a category error.",
         "Use it as a cheap filter on wide data, and a model-based selector when interactions are plausible.",

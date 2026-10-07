@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,69 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val swishContent = TopicContent(
     topicId = "swish",
+    figure = Figure(
+        caption = "Swish, z·σ(βz), at the lab's three settings of β, against ReLU (dashed). The gate " +
+            "σ(βz) is the whole function: wide open for large positive z, so f ≈ z, and shut for " +
+            "large negative z, so f → 0 — with a smooth, non-monotone stretch in between. At " +
+            "β = 1 (SiLU) the curve dips to −0.278 at z = −1.278 before rising back to zero, so a " +
+            "slightly negative input passes a small negative signal instead of being cut off, and " +
+            "its slope overshoots 1, peaking at 1.100 near z = 2.4. At β = 0.5 the dip is deeper " +
+            "(−0.557 at −2.557) and the curve sits closer to the line z/2; at β = 2 it is shallower " +
+            "and tighter (−0.139 at −0.639) and already close to ReLU. As β grows the gate becomes " +
+            "a step and Swish becomes ReLU — a learnable β lets the network choose where between.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "ReLU",
+                    listOf(FigurePoint(0f, 0.231f), FigurePoint(0.667f, 0.231f), FigurePoint(1f, 1.000f)),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "β = 0.5",
+                    listOf(
+                        FigurePoint(0.000f, 0.047f), FigurePoint(0.083f, 0.031f), FigurePoint(0.167f, 0.020f),
+                        FigurePoint(0.250f, 0.017f), FigurePoint(0.333f, 0.024f), FigurePoint(0.417f, 0.046f),
+                        FigurePoint(0.458f, 0.063f), FigurePoint(0.500f, 0.086f), FigurePoint(0.542f, 0.113f),
+                        FigurePoint(0.583f, 0.147f), FigurePoint(0.625f, 0.186f), FigurePoint(0.667f, 0.231f),
+                        FigurePoint(0.708f, 0.282f), FigurePoint(0.750f, 0.339f), FigurePoint(0.833f, 0.470f),
+                        FigurePoint(0.917f, 0.623f), FigurePoint(1.000f, 0.793f),
+                    ),
+                    tone = FigureTone.Primary,
+                ),
+                FigureSeries(
+                    "β = 1 (SiLU)",
+                    listOf(
+                        FigurePoint(0.000f, 0.203f), FigurePoint(0.083f, 0.191f), FigurePoint(0.167f, 0.176f),
+                        FigurePoint(0.250f, 0.158f), FigurePoint(0.333f, 0.139f), FigurePoint(0.417f, 0.126f),
+                        FigurePoint(0.458f, 0.124f), FigurePoint(0.500f, 0.127f), FigurePoint(0.542f, 0.138f),
+                        FigurePoint(0.583f, 0.158f), FigurePoint(0.625f, 0.189f), FigurePoint(0.667f, 0.231f),
+                        FigurePoint(0.708f, 0.285f), FigurePoint(0.750f, 0.350f), FigurePoint(0.833f, 0.512f),
+                        FigurePoint(0.917f, 0.702f), FigurePoint(1.000f, 0.908f),
+                    ),
+                    tone = FigureTone.Accent,
+                ),
+                FigureSeries(
+                    "β = 2",
+                    listOf(
+                        FigurePoint(0.000f, 0.230f), FigurePoint(0.083f, 0.230f), FigurePoint(0.167f, 0.228f),
+                        FigurePoint(0.250f, 0.224f), FigurePoint(0.333f, 0.217f), FigurePoint(0.417f, 0.203f),
+                        FigurePoint(0.458f, 0.194f), FigurePoint(0.500f, 0.185f), FigurePoint(0.542f, 0.178f),
+                        FigurePoint(0.583f, 0.179f), FigurePoint(0.625f, 0.194f), FigurePoint(0.667f, 0.231f),
+                        FigurePoint(0.708f, 0.291f), FigurePoint(0.750f, 0.371f), FigurePoint(0.833f, 0.570f),
+                        FigurePoint(0.917f, 0.780f), FigurePoint(1.000f, 0.986f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.454f, 0.124f, "−0.278"),
+                FigurePoint(0.241f, 0.017f, "−0.557", FigureTone.Primary),
+            ),
+            xLabel = "z, −4 to +2",
+            yLabel = "output, −0.6 to 2",
+        ),
+    ),
     whatIsIt = listOf(
         "Swish is z·σ(βz): the input multiplied by a gate computed from the input itself. It is smooth everywhere, unbounded above, bounded below, and — unlike every activation before it in this category — it is not monotone. It dips to −0.2785 at z = −1.2785 before coming back up, which the simulation measures rather than quotes.",
         "That dip has a consequence worth seeing: the derivative exceeds 1, peaking at 1.0998. Sigmoid, tanh, ReLU, Leaky ReLU and ELU all have derivatives capped at 1 or below, so they can only attenuate the backward signal. Swish can amplify it slightly. β interpolates between two things you already know — at β → 0 the gate is a constant ½ and Swish becomes the linear z/2, at β → ∞ the gate becomes a step and Swish becomes ReLU exactly. β = 1 is the usual choice and is what SiLU means.",

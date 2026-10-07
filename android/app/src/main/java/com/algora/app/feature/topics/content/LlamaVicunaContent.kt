@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,32 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val llamaVicunaContent = TopicContent(
     topicId = "llama_vicuna",
+    figure = Figure(
+        caption = "LLaMA's thesis, priced in the page's lab: train a smaller model far past " +
+            "Chinchilla's compute-optimal 20 tokens per parameter, because training is paid once " +
+            "and inference (≈ 2 × parameters FLOPs per token) is paid on every token served. " +
+            "LLaMA-1 65B sat near the optimum (1.1×), LLaMA-3 70B ran to 214 tokens per parameter " +
+            "(10.7×), and Mistral 7B to 1,096 (54.8×). The lab's lifetime comparison makes the " +
+            "trade concrete: a 7B model on 8T tokens costs 3.4e23 FLOPs to train against 5.9e23 for " +
+            "a 70B model on 1.4T, and every token it serves is 10× cheaper — by 10¹³ tokens " +
+            "served, the 70B model has cost 4.2× as much in total. Vicuna then showed how far a " +
+            "LLaMA base could be pushed by fine-tuning on about 70K shared conversations.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("20", "1×"),
+                listOf("21.5", "1.1×"),
+                listOf("214", "10.7×"),
+                listOf("1,096", "54.8×"),
+            ),
+            rowHeaders = listOf("Chinchilla", "LLaMA-1 65B", "LLaMA-3 70B", "Mistral 7B"),
+            colHeaders = listOf("tokens / param", "vs optimal"),
+            marks = listOf(
+                FigureCell(0, 0, FigureTone.Muted),
+                FigureCell(2, 1, FigureTone.Primary),
+                FigureCell(3, 1, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "LLaMA's thesis is the inverse of Chinchilla's. Chinchilla asks how to spend a *training* budget optimally; LLaMA asks what to do when the model will be served millions of times, so inference cost — which depends on parameters alone and not at all on training tokens — dominates the lifetime bill. The answer is to train a smaller model far past compute-optimal: LLaMA-1 7B used about 143 tokens per parameter (1T tokens; the 65B at 21.5 is roughly Chinchilla-optimal), LLaMA-3 70B used 214, and Mistral 7B reportedly trained far beyond that (its token count was never disclosed) against Chinchilla's 20. None of those is a mistake; they are optimising a different objective.",
         "The arithmetic behind that is simple enough to check. Inference costs roughly 2N FLOPs per token, where N is the parameter count — training tokens do not appear in the formula. A 7B model costs 1.4 × 10¹⁰ FLOPs per token to run and a 70B costs 1.4 × 10¹¹, so ten times the training spend on the smaller model pays for itself once you serve enough tokens. The architecture changes are correspondingly small and have all been adopted elsewhere: pre-normalisation with RMSNorm instead of post-LayerNorm, SwiGLU in place of the GELU feed-forward, and rotary position embeddings instead of learned ones. Together they are what a modern transformer block looks like.",

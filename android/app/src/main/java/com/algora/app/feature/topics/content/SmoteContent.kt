@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,25 +15,49 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val smoteContent = TopicContent(
     topicId = "smote",
+    figure = Figure(
+        caption = "The page's lab before and after SMOTE: 6 minority points against 60 majority, then " +
+            "24 synthetic minority points, each placed a random fraction of the way from a real " +
+            "minority point to one of its minority neighbours. Scored by k-NN on held-out points, " +
+            "recall goes from 0.40 to 0.90 — the minority region is now dense enough for its " +
+            "neighbours to outvote the majority. The precision column is the half that gets left " +
+            "out of the pitch: 0.67 to 0.56, because the filled region now also claims a few " +
+            "majority points. Every synthetic point sits on a segment between two real ones, never " +
+            "outside their span, so SMOTE can only densify the region the minority already " +
+            "occupies. And it belongs inside each training fold: a synthetic point built from a " +
+            "validation row's neighbour leaks that row into training.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("6 : 60", "0.40", "0.67"),
+                listOf("30 : 60", "0.90", "0.56"),
+            ),
+            rowHeaders = listOf("original", "SMOTE"),
+            colHeaders = listOf("minority : majority", "recall", "precision"),
+            marks = listOf(
+                FigureCell(1, 1, FigureTone.Accent),
+                FigureCell(1, 2, FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
-        "SMOTE — Synthetic Minority Over-sampling Technique — does not copy minority rows, it interpolates between them. Pick a minority point, pick one of its k nearest minority neighbours, and place a new point somewhere on the segment between them. Repeat until the classes are balanced. On the lab's 10:1 problem that takes the training fold from 99 rows to 180, and the minority region becomes dense with points inferred from the 9 real ones it had.",
-        "It works, in the direction it is meant to. Scored with 5-NN on an untouched real test split, minority recall goes from 0.667 to 1.000 — every minority case found. Precision goes from 0.400 to 0.333 and accuracy from 0.879 to 0.818, because the way recall was bought was by pushing the decision boundary into majority territory. That is a trade with a name and a price, not a free win, and quoting the recall without the precision is how SMOTE gets oversold.",
-        "The mistake that costs more than the trade is where it is applied. A synthetic point is built from a real neighbour, so if that neighbour lands in the validation fold, the training set now contains something interpolated towards a row it is about to be scored on. Measured over 5 folds at 1-NN: 0.954 for the pipeline that resamples before splitting against 0.908 for the one that resamples inside each fold. Those 4.6 points are not a result, they are a leak — and the leaky number is the one that will not reproduce in production. Resample inside the pipeline, and compare against the two cheaper options first: class weights, which invent no data at all, and moving the decision threshold, which is free at inference time.",
+        "SMOTE — Synthetic Minority Over-sampling Technique — does not copy minority rows, it interpolates between them. Pick a minority point, pick one of its k nearest minority neighbours, and place a new point somewhere on the segment between them — x + λ(x_nn − x) with λ drawn between 0 and 1. Repeat until the classes are closer to balanced. The lab starts from 6 minority points against 60 majority, a 10:1 problem, and adds 24 synthetic points, taking the minority to 30.",
+        "It works, in the direction it is meant to. Scored by k-NN on held-out points, minority recall goes from 0.40 to 0.90. Precision goes from 0.67 to 0.56, because the way recall was bought was by filling the minority region until it claims a few majority points too. That is a trade with a name and a price, not a free win, and quoting the recall without the precision is how SMOTE gets oversold.",
+        "The mistake that costs more than the trade is where it is applied. A synthetic point is built from a real neighbour, so if that neighbour lands in the validation fold, the training set now contains something interpolated towards a row it is about to be scored on. Score that pipeline and the number is inflated by construction: it does not reproduce in production, where no synthetic point was ever built from the row being predicted. Resample inside the pipeline, and compare against the two cheaper options first: class weights, which invent no data at all, and moving the decision threshold, which is free at inference time.",
     ),
     steps = listOf(
         StepCard(1, "Split First", "Before any resampling. This is the whole ballgame.", 0xFFEC4899),
         StepCard(2, "Find Minority Neighbours", "k nearest, among minority points only.", 0xFF3B82F6),
         StepCard(3, "Interpolate", "A new point on the segment, not a copy of an old one.", 0xFFF97316),
-        StepCard(4, "Balance the Training Fold", "99 rows → 180 here.", 0xFF10B981),
-        StepCard(5, "Score Recall and Precision", "0.667 → 1.000 recall, 0.400 → 0.333 precision.", 0xFF8B5CF6),
+        StepCard(4, "Balance the Training Fold", "6 minority points → 30 here, against 60 majority.", 0xFF10B981),
+        StepCard(5, "Score Recall and Precision", "0.40 → 0.90 recall, 0.67 → 0.56 precision.", 0xFF8B5CF6),
         StepCard(6, "Compare the Cheap Options", "Class weights and thresholds first.", 0xFF6366F1),
     ),
     formulas = listOf(
         FormulaEntry("Synthetic point", "x' = xᵢ + λ(xⱼ − xᵢ), λ ~ U(0,1)", "xⱼ is one of xᵢ's k minority neighbours."),
-        FormulaEntry("Imbalance", "120:12 = 10:1", "A majority-only classifier scores 90.9% accuracy."),
-        FormulaEntry("Measured recall", "0.667 → 1.000", "5-NN on an untouched real test split."),
-        FormulaEntry("Measured precision", "0.400 → 0.333", "The cost of moving the boundary."),
-        FormulaEntry("The leak", "0.954 vs 0.908", "Resampling before the split against inside the folds."),
+        FormulaEntry("Imbalance", "60:6 = 10:1", "A majority-only classifier scores 90.9% accuracy."),
+        FormulaEntry("Measured recall", "0.40 → 0.90", "k-NN on held-out points, after 24 synthetic points."),
+        FormulaEntry("Measured precision", "0.67 → 0.56", "The cost of moving the boundary."),
+        FormulaEntry("The leak", "resample before the split → inflated scores", "Synthetic points built from validation rows' neighbours."),
         FormulaEntry("Cheaper alternatives", "class weights · threshold", "No synthetic data, no leak surface."),
     ),
     notationKey = listOf(
@@ -61,9 +89,9 @@ internal val smoteContent = TopicContent(
                 ])
                 print(cross_val_score(pipeline, X, y, cv=5, scoring="recall").mean())
 
-                # The lab measures the gap between these two at 0.954 vs 0.908 over 5 folds (with its own
-                # 1-NN estimator); this 5-NN recall code will print different numbers. It is
-                # not a subtle bug -- it produces a number you will be asked to reproduce.
+                # The leaky pipeline reports the higher score, and it is the one that will not
+                # reproduce in production. It is not a subtle bug -- it produces a number you will
+                # be asked to reproduce.
             """.trimIndent(),
         ),
         CodeBlock(
@@ -100,10 +128,10 @@ internal val smoteContent = TopicContent(
     ),
     takeaways = listOf(
         "Interpolates new minority points between real ones — it does not duplicate rows.",
-        "On a 10:1 problem it took the training fold from 99 rows to 180, from 9 real minority points.",
-        "Minority recall 0.667 → 1.000, measured on an untouched real test split.",
-        "Precision 0.400 → 0.333 and accuracy 0.879 → 0.818: recall was bought, not found.",
-        "Resampling before the split reported 0.954 against the honest pipeline's 0.908 — a 4.6-point leak.",
+        "On a 10:1 problem it took the minority from 6 real points to 30 by adding 24 synthetic ones.",
+        "Minority recall 0.40 → 0.90, measured on held-out points.",
+        "Precision 0.67 → 0.56: recall was bought, not found.",
+        "Resampling before the split leaks validation rows into training through their neighbours — the inflated score will not reproduce.",
         "Resample inside the pipeline so each fold's synthetic rows come only from its own training data.",
         "Class weights and threshold moves cost nothing and invent no data — make SMOTE beat them first.",
     ),

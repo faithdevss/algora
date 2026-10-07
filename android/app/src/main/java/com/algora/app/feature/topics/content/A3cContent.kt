@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,9 +15,34 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val a3cContent = TopicContent(
     topicId = "a3c",
+    figure = Figure(
+        caption = "A3C against A2C with eight workers each, as the page's lab compares them. The noise " +
+            "in the gradient is the same, 0.298 for one worker falling to 0.112 for eight, because " +
+            "it comes from averaging independent rollouts, not from running them out of step. What " +
+            "asynchrony changes is the other two rows. Each A3C worker pushes its gradient " +
+            "whenever it finishes, computed from parameters that may already be out of date when " +
+            "it lands, so gradients arrive slightly stale — more so with more workers. What it " +
+            "buys is throughput on many CPU cores where workers finish at different times. On a " +
+            "GPU the synchronous version wins: all actors batch into one forward pass and no " +
+            "gradient is ever stale, which is why A2C became the default.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0.112", "0.112"),
+                listOf("fresh", "may be stale"),
+                listOf("GPU batch", "many CPU cores"),
+            ),
+            rowHeaders = listOf("gradient sd, 8", "gradients", "suits"),
+            colHeaders = listOf("A2C (sync)", "A3C (async)"),
+            marks = listOf(
+                FigureCell(1, 1, FigureTone.Warn),
+                FigureCell(1, 0, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
-        "A3C (Asynchronous Advantage Actor-Critic) runs many worker agents in parallel, each exploring its own environment copy and asynchronously pushing gradients to a shared global network.",
-        "The asynchrony itself decorrelates experience — different workers see different states — removing the need for a replay buffer.",
+        "A3C — asynchronous advantage actor-critic — came first. Each worker pulls a copy of the shared parameters, runs its own rollout, computes an advantage actor-critic gradient and pushes it back to the shared model whenever it is ready, with no waiting for the slowest worker. It trained Atari agents on CPUs without a replay buffer, because many workers in different states already decorrelate the updates.",
+        "The lab separates what the parallelism does from what the asynchrony does. Averaging 8 workers' gradients cuts the noise from 0.298 to 0.112, exactly as in A2C — the variance reduction comes from averaging independent rollouts, not from running them out of step. What asynchrony adds is throughput on hardware where workers finish at different times.",
+        "It also adds a cost. A worker computes its gradient from parameters that may already be out of date by the time its update lands, so gradients arrive slightly wrong, and the staleness grows with the number of workers. That is why the synchronous version won: on a GPU, batching every actor into one forward pass is faster than running them separately, and the gradients are never stale. Same algorithm, better fit for the hardware.",
     ),
     steps = listOf(
         StepCard(1, "Global + Local Networks", "A shared global network; each worker keeps a local copy.", 0xFF818CF8),

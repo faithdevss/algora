@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,9 +16,48 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val decisionTransformerContent = TopicContent(
     topicId = "decision_transformer",
+    figure = Figure(
+        caption = "The page's lab: a decision transformer trained on 250 mostly poor trajectories " +
+            "(returns −1.25 to 0.75), asked for a range of target returns, and what it actually " +
+            "achieved. For targets from 0.00 to 0.75 the conditioning works exactly — ask for 0.25 " +
+            "and it gets 0.25 — because it picks the action that logged trajectories with that much " +
+            "return still to come took from each state. Ask for −0.50 and it gets −1.25: a target " +
+            "can be matched only by behaviour the log actually contains. Beyond the data it " +
+            "saturates — asking for 1.00 or 2.00 returns 0.75, the best logged return. It can " +
+            "stitch together the best behaviour it has seen; it cannot invent better. Plain " +
+            "behaviour cloning, for comparison, copies the majority action and scores −1.25; " +
+            "return conditioning gives the filtering of \"clone only the good trajectories\" for free.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "achieved = requested",
+                    listOf(FigurePoint(0f, 0.273f), FigurePoint(0.5f, 0.727f)),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "achieved",
+                    listOf(
+                        FigurePoint(0f, 0f), FigurePoint(0.2f, 0.455f), FigurePoint(0.3f, 0.545f),
+                        FigurePoint(0.4f, 0.636f), FigurePoint(0.5f, 0.727f), FigurePoint(0.6f, 0.727f),
+                        FigurePoint(1f, 0.727f),
+                    ),
+                    tone = FigureTone.Accent,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.5f, 0.727f, "best logged 0.75"),
+                FigurePoint(1f, 0.727f, "asked 2.00", FigureTone.Warn),
+                FigurePoint(0f, 0f, "asked −0.5: −1.25", FigureTone.Warn),
+            ),
+            xLabel = "requested return, −0.5 → 2.0",
+            yLabel = "achieved return, −1.25 to 1.5",
+        ),
+    ),
     whatIsIt = listOf(
-        "The Decision Transformer reframes offline RL as sequence modeling: a Transformer is trained to predict the next action given a history of returns, states, and actions.",
-        "No value functions, no Bellman backups — you feed it a desired return ('reward-to-go') and it generates actions that achieve it, treating control like language modeling.",
+        "The Decision Transformer recasts RL as sequence modelling. It trains a transformer on logged trajectories written as (return-to-go, state, action) tokens, and learns to predict the action that came next. To act, you tell it the return you want — the return-to-go — and it outputs the action that logged trajectories with that much return still to come took from here, decrementing the target after each reward. There is no value function and no Bellman backup.",
+        "The lab uses a deliberately mixed log: 250 trajectories from random walkers with different biases, returns from −1.25 to 0.75, mean −0.59, most of them poor. Behaviour cloning copies the majority action in each state; near the start that is ←, so the clone oscillates and scores −1.25, the worst outcome in the data. Conditioning on return changes that: ask for 0.00 and it achieves 0.00; ask for 0.25, 0.50 or 0.75 and it hits each exactly — though a low target like −0.50 lands on −1.25, since it can only reproduce returns the log contains. Targets beyond the data saturate — asking for 2.00 returns 0.75, the best logged return.",
+        "That is both the appeal and the limit. Return conditioning gives the filtering of \"clone only the good trajectories\" for free — here it matches cloning the top 10%, both at 0.75 — and it can stitch good behaviour together, but it cannot invent behaviour better than the best it has seen, and it struggles in stochastic environments where a high return was luck rather than skill. Dynamic-programming methods like CQL can exceed the data; sequence models trade that for stability and simplicity.",
     ),
     steps = listOf(
         StepCard(1, "Tokenize Trajectories", "Represent each trajectory as a sequence of (return-to-go, state, action) tokens.", 0xFF818CF8),
@@ -54,6 +98,7 @@ internal val decisionTransformerContent = TopicContent(
         "It predicts actions autoregressively — no value functions or Bellman updates.",
         "Prompting with a target return-to-go steers the generated behavior.",
         "It ports Transformer scaling and simplicity into offline RL.",
+        "In the lab cloning the mixed log scores −1.25; conditioning on return hits targets from 0.00 to 0.75 exactly and saturates at the best logged 0.75.",
     ),
     crossLinks = listOf(
         CrossLink("transformers", "Transformers"),

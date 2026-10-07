@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,33 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val gpt3Gpt4Content = TopicContent(
     topicId = "gpt3_gpt4",
+    figure = Figure(
+        caption = "The page's lab table: parameters, training tokens, tokens per parameter and " +
+            "training compute (≈ 6 × parameters × tokens) for GPT-3 and the models that followed " +
+            "it. GPT-3 changed scale, not shape — the same decoder-only design at 175B parameters, " +
+            "trained on 300B tokens, 1.7 per parameter. Chinchilla's result was that for a fixed " +
+            "compute budget the ratio should be about 20: its 70B model on 1.4T tokens beat much " +
+            "larger ones. The LLaMA rows then went far past that on purpose — LLaMA-3 70B saw 15T " +
+            "tokens, 214 per parameter, about 20× GPT-3's compute spent on data rather than size — " +
+            "because a model that will be served millions of times is cheaper to over-train once " +
+            "than to run large forever.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("175B", "300B", "1.7", "3.2e23"),
+                listOf("70B", "1.4T", "20", "5.9e23"),
+                listOf("65B", "1.4T", "21.5", "5.5e23"),
+                listOf("70B", "2T", "28.6", "8.4e23"),
+                listOf("70B", "15T", "214", "6.3e24"),
+            ),
+            rowHeaders = listOf("GPT-3", "Chinchilla", "LLaMA-1", "LLaMA-2", "LLaMA-3"),
+            colHeaders = listOf("params", "tokens", "tok / param", "FLOPs"),
+            marks = listOf(
+                FigureCell(0, 2, FigureTone.Warn),
+                FigureCell(1, 2, FigureTone.Accent),
+                FigureCell(4, 2, FigureTone.Primary),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "GPT-3's contribution was not architectural — it is a decoder-only transformer of the same shape as GPT-2, scaled to 175B parameters and 300B training tokens. What that scale produced was qualitative rather than incremental: in-context learning, where the model performs a task from a handful of examples in the prompt with no gradient update at all. The interface to a language model stopped being fine-tuning and became prompting, which is the reason the paper is titled \"Language Models are Few-Shot Learners\".",
         "Scaling laws are why anyone spent the money. Test loss falls as a smooth power law in parameters, data and compute across many orders of magnitude, so the return on a larger run is predictable before it starts. Chinchilla then showed GPT-3 had allocated its budget wrongly: for a fixed compute budget, loss is minimised at roughly 20 training tokens per parameter, and GPT-3 used 1.7. It was not too large — it was under-trained for its size, and Chinchilla — a 70B model on 1.4T tokens, trained with the same compute as the 280B Gopher (about 1.9× GPT-3's) — outperformed GPT-3, Gopher and larger models. Every lab's budget arithmetic changed after that paper.",

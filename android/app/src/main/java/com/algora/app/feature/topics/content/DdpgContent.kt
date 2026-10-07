@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,37 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val ddpgContent = TopicContent(
     topicId = "ddpg",
+    figure = Figure(
+        caption = "Where DQN takes a max over actions, DDPG trains a network to be the max. The " +
+            "actor μ proposes one real-valued action, exploration noise is added on top because " +
+            "nothing in a deterministic policy explores, and the critic scores the pair. The " +
+            "highlighted edge is the algorithm: ∂Q/∂a, the critic's slope with respect to the " +
+            "action, is chained back into μ's weights, so the actor climbs whatever surface the " +
+            "critic has learned. The critic itself is plain TD regression onto y = r + γQ′(s′, " +
+            "μ′(s′)), built from target copies that trail the online networks by τ ≈ 0.005 per " +
+            "step. That edge is also the failure mode: an actor pushed uphill on Q finds the places " +
+            "Q overvalues before it finds the places that are good, which is the overestimation " +
+            "TD3's twin critics exist to cap.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("s", 0.05f, 0.50f, FigureTone.Primary),
+                FigureGraphNode("actor μ", 0.30f, 0.15f, FigureTone.Primary),
+                FigureGraphNode("a + noise", 0.62f, 0.15f),
+                FigureGraphNode("critic Q", 0.62f, 0.85f, FigureTone.Primary),
+                FigureGraphNode("y", 0.95f, 0.85f, FigureTone.Muted),
+                FigureGraphNode("μ′, Q′", 0.95f, 0.30f, FigureTone.Muted),
+            ),
+            edges = listOf(
+                FigureEdge(0, 1, directed = true),
+                FigureEdge(1, 2, directed = true),
+                FigureEdge(2, 3, directed = true),
+                FigureEdge(0, 3, directed = true),
+                FigureEdge(3, 1, "∂Q/∂a", directed = true, tone = FigureTone.Accent),
+                FigureEdge(5, 4, directed = true),
+                FigureEdge(4, 3, "TD target", directed = true),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "DDPG (Deep Deterministic Policy Gradient) is an off-policy actor-critic for continuous control that combines the deterministic policy gradient with DQN's replay buffer and target networks.",
         "Think of it as 'DQN for continuous actions': a deterministic actor proposes actions, a critic scores them, and both learn from replayed experience.",

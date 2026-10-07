@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,35 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val dcganContent = TopicContent(
     topicId = "dcgan",
+    figure = Figure(
+        caption = "Why DCGAN's generator uses 4×4 kernels at stride 2: how many times a transposed " +
+            "convolution writes to each interior output position, counted before any weight is " +
+            "learned. Each input is stamped into a kernel-sized window of the output, the windows " +
+            "a stride apart, so the count is uneven exactly when the stride does not divide the " +
+            "kernel. Kernel 4 at stride 2 writes every position twice. Kernel 3 alternates 1, 2 — " +
+            "every other pixel gets half its neighbour's contributions, and whatever the weights " +
+            "learn, that pattern repeats across the image as the checkerboard artefact. Kernel 5 " +
+            "softens it to 2, 3 with the same period. At stride 3 the rule holds again: 4 and 5 " +
+            "leave an uneven weave, 6 is uniform. Output size for 8 inputs at k = 4, s = 2 is " +
+            "(8 − 1)·2 + 4 = 18.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("2, 2, 2, 2", "uniform"),
+                listOf("1, 2, 1, 2", "checkerboard"),
+                listOf("2, 3, 2, 3", "faint weave"),
+                listOf("1, 1, 2, 1, 1, 2", "uneven"),
+                listOf("2, 2, 2, 2", "uniform"),
+            ),
+            rowHeaders = listOf("k 4, s 2", "k 3, s 2", "k 5, s 2", "k 4, s 3", "k 6, s 3"),
+            colHeaders = listOf("writes per position", "result"),
+            marks = listOf(
+                FigureCell(0, 1, FigureTone.Accent),
+                FigureCell(1, 1, FigureTone.Warn),
+                FigureCell(3, 1, FigureTone.Warn),
+                FigureCell(4, 1, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "DCGAN is the paper that made GANs trainable, and its contribution was not a new loss — the objective is Goodfellow's, unchanged. It was a list of architectural rules: replace pooling with strided convolutions, use batch normalization in both networks, drop the fully connected hidden layers, use ReLU in the generator with tanh at the output, and LeakyReLU throughout the discriminator. Most of that list is empirical, arrived at by \"extensive model exploration\" and honestly labelled as such. One item on it is not empirical at all, and it is the one worth the arithmetic.",
         "A transposed convolution builds a larger output by writing each input value into a kernel-sized window. How many times a given output position gets written depends only on the kernel and the stride, and it is countable before any image exists. With kernel 4 and stride 2 — DCGAN's choice — every interior output position is written exactly twice: the coverage is uniform. With kernel 3 and stride 2 the counts alternate 1, 2, 1, 2 forever. With kernel 5 and stride 2 they alternate 2, 3. With kernel 4 and stride 3 they run 1, 1, 2. The pattern is exact: coverage is uniform precisely when the stride divides the kernel. That periodic unevenness, compounded across four upsampling layers, is the checkerboard artefact, and it is a property of two integers rather than of the data or the training.",

@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,11 +15,34 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val meteorContent = TopicContent(
     topicId = "meteor",
+    figure = Figure(
+        caption = "The page's lab: three candidates scored against \"the committee approved the " +
+            "revised budget on friday\". The paraphrase shares 5 words: P = 0.500, R = 0.625, and " +
+            "the recall-weighted F = 0.610. Its 4 chunks make a penalty of 0.256, so METEOR gives " +
+            "0.454 where BLEU gives 0. The shuffled reference matches every word, so F = 1.000, " +
+            "but one pair stays adjacent and the 8 matches form 7 chunks: penalty 0.335, score " +
+            "0.665. An exact copy is a single chunk and scores 0.999. However badly the order is " +
+            "broken, the penalty can never go past γ = 0.5.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0.610", "4 / 5", "0.256", "0.454"),
+                listOf("1.000", "7 / 8", "0.335", "0.665"),
+                listOf("1.000", "1 / 8", "0.001", "0.999"),
+            ),
+            rowHeaders = listOf("paraphrase", "shuffled", "exact copy"),
+            colHeaders = listOf("F", "chunks", "penalty", "METEOR"),
+            marks = listOf(
+                FigureCell(0, 3, FigureTone.Accent),
+                FigureCell(1, 2, FigureTone.Warn),
+                FigureCell(2, 3, FigureTone.Muted),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "METEOR exists because of BLEU's paraphrase zero. Instead of counting n-grams it builds an explicit word-to-word alignment, matching in stages — exact words first, then stems, then WordNet synonyms in the full metric. On the paraphrase BLEU scores 0.0000, that alignment finds **5 matched words** and METEOR reports **0.4537**.",
         "**The alignment is scored as a harmonic mean weighted 9:1 towards recall** — α = 0.9, so F = P·R / (αP + (1−α)R). That single constant is a claim about the task: in translation, missing content is worse than adding it. On the paraphrase, precision 0.500 and recall 0.625 combine to 0.610 — pulled towards recall rather than sitting halfway.",
         "**Then the fragmentation penalty, which is how an alignment-based metric recovers the word order a bag of matches threw away.** Group the alignment into runs contiguous in *both* sentences and count them: 4 chunks over 5 matched words gives γ·(chunks/matches)^β = 0.256, and the final score is F × (1 − penalty).",
-        "**The penalty's ceiling is exact and worth seeing hit.** Shuffle the reference's own words and every word still matches, so F is a perfect 1.000 — but each match becomes its own chunk, 8 chunks for 8 matches, so (chunks/matches)^β = 1 and the penalty is exactly γ = 0.5. Score **0.500 — half, never zero.** Word order can cost at most γ of the score, by construction, which is a design decision rather than an accident.",
+        "**The penalty has a ceiling, and the lab's shuffle comes close to it.** Shuffle the reference's own words and every word still matches, so F is a perfect 1.000 — but the matches break into runs. In the lab's shuffle one pair stays adjacent, so 8 matches form 7 chunks: penalty 0.5·(7/8)³ = 0.335, score **0.665**. If no two words stay adjacent, every match is its own chunk, (chunks/matches)^β = 1 and the penalty reaches exactly γ = 0.5 — the code below shows that case scoring **0.500, half, never zero.** Word order can cost at most γ of the score, by construction, which is a design decision rather than an accident.",
     ),
     steps = listOf(
         StepCard(1, "Align In Stages", "Exact matches first, then stems, then synonyms — greedy, one-to-one.", 0xFF0EA5E9),
@@ -30,6 +57,7 @@ internal val meteorContent = TopicContent(
         FormulaEntry("Penalty", "γ·(chunks / matches)^β, γ = 0.5, β = 3", "0.256 on the paraphrase."),
         FormulaEntry("METEOR", "F × (1 − penalty)", "0.610 × 0.744 = 0.4537."),
         FormulaEntry("The paraphrase", "BLEU 0.0000 → METEOR 0.4537", "The case the metric was built for."),
+        FormulaEntry("Lab shuffle", "F 1.000, 7 chunks, penalty 0.335, score 0.665", "One pair stayed adjacent, so 7 chunks for 8 matches."),
         FormulaEntry("Full shuffle", "F 1.000, penalty 0.500, score 0.500", "The ceiling: chunks = matches ⇒ penalty = γ."),
         FormulaEntry("Degenerate output", "BLEU 0.0000, METEOR 0.1250", "Both reject it; only METEOR separates it from the paraphrase."),
     ),
@@ -94,7 +122,7 @@ internal val meteorContent = TopicContent(
         "METEOR aligns words in stages (exact, stem, synonym) rather than counting n-grams, which is why it scores the paraphrase BLEU zeroes at 0.4537.",
         "Its F-mean weights recall 9:1 over precision — an explicit claim that omission is worse than padding.",
         "The fragmentation penalty recovers word order: 4 chunks over 5 matches costs 0.256 of the score.",
-        "A full shuffle hits the penalty's exact ceiling, γ = 0.5, scoring 0.500 — order can never cost more than half.",
+        "The lab's shuffle scores 0.665 (7 chunks); a shuffle with no adjacent pair hits the ceiling γ = 0.5 and scores 0.500 — order can never cost more than half.",
         "The price is portability: stemmers, WordNets and per-language tuned constants, which is why BLEU won adoption and learned metrics are replacing both.",
     ),
     crossLinks = listOf(

@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,9 +15,38 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val rainbowDqnContent = TopicContent(
     topicId = "rainbow_dqn",
+    figure = Figure(
+        caption = "Rainbow's six ingredients, each matched to the failure of plain DQN it fixes, with " +
+            "the measurement from that technique's own page where the lab has one. Double " +
+            "estimation stops a max over noise from inflating values (0.095 → 0.003 on the trap). " +
+            "Replay reuses experience (error after 200 steps 0.33 → 0.00). Dueling learns a state's " +
+            "value from every action taken in it. Noisy Nets replace coin-flip exploration with " +
+            "learned, consistent noise. C51 keeps the whole return distribution, and multi-step " +
+            "targets move reward back n states per update. Combined, Rainbow beat every " +
+            "single-component variant on Atari — but the paper's ablations found the gains do not " +
+            "simply add: prioritized replay and multi-step returns mattered most, and dueling and " +
+            "Double barely registered once the others were in.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("overestimation", "0.095 → 0.003"),
+                listOf("wasted samples", "0.33 → 0.00"),
+                listOf("relearning V", "V from every action"),
+                listOf("dithering", "learned noise"),
+                listOf("averaging risk", "full distribution"),
+                listOf("slow propagation", "n-step targets"),
+            ),
+            rowHeaders = listOf("Double", "Replay", "Dueling", "Noisy", "C51", "Multi-step"),
+            colHeaders = listOf("fixes", "in the labs"),
+            marks = listOf(
+                FigureCell(1, 1, FigureTone.Accent),
+                FigureCell(5, 1, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
-        "Rainbow DQN combines six independent improvements to DQN into a single agent that substantially outperforms any of them alone.",
-        "It's the empirical answer to 'which DQN tricks actually stack?' — and the ablation showed most components contribute — prioritized replay, multi-step returns and distributional RL matter most, while double and dueling had small effects.",
+        "Rainbow DQN is not a new idea but an answer to an empirical question: which of the separately published fixes to DQN actually stack? It combines six — Double Q-learning, prioritized experience replay, the dueling architecture, multi-step returns, distributional value learning (C51) and Noisy Nets — into one agent, and on Atari it beat every one of them alone.",
+        "Each ingredient targets a different failure of plain DQN, and the lab lines them up with the measurements from their own pages: Double estimation cuts the overestimated value of a bad action from 0.095 to 0.003; replay takes the error after 200 steps from 0.33 to 0.00; the dueling head learns the state's value from every action; Noisy Nets replace dithering exploration with consistent, learned noise; C51 keeps the whole return distribution instead of its mean; and multi-step targets carry reward back n steps per update instead of one.",
+        "Not all six matter equally. In the Rainbow paper's ablations, removing prioritized replay or multi-step returns hurt the most, distributional learning was close behind, and removing the dueling head or Double Q-learning barely registered once the others were present — the fixes overlap, so each one's marginal value depends on what else is already there. That is the useful lesson beyond the agent itself: improvements measured in isolation do not simply add.",
     ),
     steps = listOf(
         StepCard(1, "Double + Dueling", "Decoupled action selection plus separate value/advantage streams.", 0xFF818CF8),

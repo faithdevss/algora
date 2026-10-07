@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,9 +16,52 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val explodingGradientContent = TopicContent(
     topicId = "exploding_gradient",
+    figure = Figure(
+        caption = "The page's lab, plotted on a log axis because no linear one could hold it: mean " +
+            "|activation| at each of twelve ReLU layers of width 16, same seed, two weight scales. " +
+            "At He's σw = √(2/16) = 0.35 the gain per layer is about 1 and the signal wanders " +
+            "between 0.20 and 0.52 the whole way down. At σw = 1.5 the gain is 1.5·√8 ≈ 4.2 in " +
+            "theory and 4.07 measured, and twelve layers turn 2.2 into 11.3 million — a straight " +
+            "line on this axis, because depth is an exponent. The backward pass multiplies by the " +
+            "same weights, so the gradient at layer 1 is 1.4 × 10⁷ times the one at the top. " +
+            "Nothing has overflowed yet; float32 tops out near 3.4 × 10³⁸. What fails first is " +
+            "the update: a step that size throws the weights somewhere the next forward pass does " +
+            "overflow, and the loss reads NaN.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "He, σw = 0.35",
+                    listOf(
+                        FigurePoint(0f, 0.080f), FigurePoint(0.091f, 0.079f), FigurePoint(0.182f, 0.061f),
+                        FigurePoint(0.273f, 0.060f), FigurePoint(0.364f, 0.038f), FigurePoint(0.455f, 0.062f),
+                        FigurePoint(0.545f, 0.077f), FigurePoint(0.636f, 0.063f), FigurePoint(0.727f, 0.056f),
+                        FigurePoint(0.818f, 0.069f), FigurePoint(0.909f, 0.034f), FigurePoint(1f, 0.058f),
+                    ),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "σw = 1.5",
+                    listOf(
+                        FigurePoint(0f, 0.149f), FigurePoint(0.091f, 0.219f), FigurePoint(0.182f, 0.271f),
+                        FigurePoint(0.273f, 0.339f), FigurePoint(0.364f, 0.387f), FigurePoint(0.455f, 0.480f),
+                        FigurePoint(0.545f, 0.566f), FigurePoint(0.636f, 0.621f), FigurePoint(0.727f, 0.684f),
+                        FigurePoint(0.818f, 0.766f), FigurePoint(0.909f, 0.802f), FigurePoint(1f, 0.895f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(1f, 0.895f, "1.1 × 10⁷", FigureTone.Warn),
+                FigurePoint(1f, 0.058f, "0.33", FigureTone.Muted),
+            ),
+            xLabel = "layer 1 → 12",
+            yLabel = "mean |activation|, 10⁻¹ to 10⁸ (log)",
+        ),
+    ),
     whatIsIt = listOf(
-        "The same product, with the average factor on the other side of one. If each layer multiplies the signal by more than one on average, depth compounds it upward instead of downward — and unlike vanishing gradients, this failure is visible in the forward pass. In the simulation, twelve ReLU layers initialised at a scale of 1.5 instead of He's 0.35 take the mean activation from 1.4 to 5.7 million, compounding at roughly 4× per layer. Thirty layers instead of twelve would reach about 10¹⁷–10¹⁸ — still inside float32 (max 3.4 × 10³⁸) but far past fp16's 65,504 limit.",
-        "The gradients follow, reaching a total norm around 10¹⁵. That number is what a NaN loss looks like one step before it happens: the update is finite and enormous, the weights land somewhere absurd, the next forward pass overflows, and every parameter in the model becomes NaN simultaneously. The symptom people report is \"the loss went to NaN at step 400\" — the cause was a geometric series doing what geometric series do, several steps earlier.",
+        "The same product, with the average factor on the other side of one. If each layer multiplies the signal by more than one on average, depth compounds it upward instead of downward — and unlike vanishing gradients, this failure is visible in the forward pass. In the simulation, twelve ReLU layers initialised at a scale of 1.5 instead of He's 0.35 take the mean activation from 2.2 to 11.3 million, compounding at roughly 4× per layer. Thirty layers instead of twelve would reach about 10¹⁷–10¹⁸ — still inside float32 (max 3.4 × 10³⁸) but far past fp16's 65,504 limit.",
+        "The gradients follow on the way back: the lab measures the mean gradient at layer 1 at 1.4 × 10⁷ times the one at the output, and the global weight-gradient norm at about 2.7 × 10⁸. Numbers like these are what a NaN loss looks like one step before it happens: the update is finite and enormous, the weights land somewhere absurd, the next forward pass overflows, and every parameter in the model becomes NaN simultaneously. The symptom people report is \"the loss went to NaN at step 400\" — the cause was a geometric series doing what geometric series do, several steps earlier.",
         "The standard fix is global-norm gradient clipping, and the detail that makes it work is worth being precise about. Compute the norm over the entire gradient — every parameter in the model as one vector — and if it exceeds a threshold, multiply *everything* by threshold/norm. Because a single factor is applied uniformly, the direction of the step is unchanged and only its length is capped; clipping each parameter independently would distort the direction, which is why `clip_grad_norm_` is the one in general use and `clip_grad_value_` is not. Alongside it: a sensible initialisation scale, and lower learning rates. Recurrent networks are where this bites hardest, because an unrolled RNN multiplies by the *same* matrix at every timestep — so if its largest singular value exceeds one, growth is possible and structural rather than incidental (it is necessary for explosion, not sufficient — saturating nonlinearities can keep gradients bounded). It is worth noting that exploding gradients, for all the drama, are the easier failure to have: they announce themselves loudly and clipping usually resolves them in an afternoon, where a vanishing gradient can silently cost a project months.",
     ),
     steps = listOf(

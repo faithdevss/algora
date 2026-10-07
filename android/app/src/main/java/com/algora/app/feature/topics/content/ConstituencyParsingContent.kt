@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,9 +15,34 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val constituencyParsingContent = TopicContent(
     topicId = "constituency_parsing",
+    figure = Figure(
+        caption = "The page's lab parse of \"the small dog chased a cat\": nested phrases, read " +
+            "bottom-up. Two noun phrases form first, the verb and its object combine into a verb " +
+            "phrase — the nesting a chunker cannot express — and S spans the whole sentence. A " +
+            "parser is scored on the labelled spans alone, (label, start, end), with the POS " +
+            "layer excluded so tagger accuracy cannot inflate the score: here NP [0,3), VP [3,6), " +
+            "NP [4,6) and S [0,6). The lab's flawed parse adds one wrong bracket, NP [3,6): four of " +
+            "its five predicted spans are in the gold tree, so precision is 0.80 while recall " +
+            "stays 1.00, and F1 is 0.89. A parse that missed a bracket instead would keep " +
+            "precision at 1.00 and lose recall — which is why both are always quoted.",
+        shape = FigureShape.Tree(
+            nodes = listOf(
+                FigureNode("S", null, FigureTone.Primary),
+                FigureNode("NP", 0, FigureTone.Accent),
+                FigureNode("VP", 0, FigureTone.Accent),
+                FigureNode("the", 1),
+                FigureNode("small", 1),
+                FigureNode("dog", 1),
+                FigureNode("chased", 2),
+                FigureNode("NP", 2, FigureTone.Accent),
+                FigureNode("a", 7),
+                FigureNode("cat", 7),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A constituency (phrase-structure) parse groups words into nested phrases: a sentence is a noun phrase plus a verb phrase, the noun phrase is a determiner, an adjective and a noun, and so on down to the words at the leaves. It answers a different question from a dependency parse — not \"what relates to what\" but \"which spans of this sentence behave as units\". Those units are what substitution, movement and coordination tests identify, and they are what a grammar-checking or phrase-extraction task actually wants.",
-        "Parsers are scored on labelled brackets, and the evaluation has a shape worth knowing. evalb compares the set of (label, start, end) spans, excluding part-of-speech nodes so that a tagger's accuracy cannot inflate the parser's. The lab's flawed parse — the object noun phrase flattened into the verb phrase — gets every bracket it predicts right, so precision is 1.00, but recovers only 3 of the gold tree's 4 spans, so recall is 0.75 and F1 is 0.86. That asymmetry is why all three numbers are reported: a parser that emits fewer, safer brackets can hold precision at 1.00 forever.",
+        "Parsers are scored on labelled brackets, and the evaluation has a shape worth knowing. evalb compares the set of (label, start, end) spans, excluding part-of-speech nodes so that a tagger's accuracy cannot inflate the parser's. A parse that flattens the object noun phrase into the verb phrase (the code below) gets every bracket it predicts right, so precision is 1.00, but recovers only 3 of the gold tree's 4 spans, so recall is 0.75 and F1 is 0.86. The lab shows the opposite mistake: an extra, wrong bracket NP [3,6) means 4 of 5 predicted spans are in gold, so precision falls to 0.80 while recall stays 1.00, and F1 is 0.89. That asymmetry is why all three numbers are reported: a parser that emits fewer, safer brackets can hold precision at 1.00 forever.",
         "The two formalisms are convertible, and the conversion is a table of head rules — the head of a VP is its verb, the head of an NP is its rightmost noun, the head of an S is its VP's head. Percolating those upward turns the lab's phrase tree into heads that match the dependency lab's gold parse for the same sentence exactly, which is computed rather than claimed. This is how the Penn Treebank became a dependency treebank, and it means any argument that one formalism carries more information than the other has to be about the annotation, not the notation. Algorithmically, exact parsing is chart-based and cubic — CYK over a PCFG — while modern neural parsers either score spans independently and decode with a chart, or generate the bracketed string with a sequence model.",
     ),
     steps = listOf(
@@ -106,7 +135,7 @@ internal val constituencyParsingContent = TopicContent(
     ),
     takeaways = listOf(
         "Constituency parses answer \"which spans are units\", where dependency parses answer \"what relates to what\".",
-        "evalb scores labelled brackets excluding POS nodes: the lab's flat-VP parse gets P 1.00, R 0.75, F1 0.86.",
+        "evalb scores labelled brackets excluding POS nodes: a flat-VP parse gets P 1.00, R 0.75; the lab's extra bracket gets P 0.80, R 1.00.",
         "Precision and recall must both be quoted — a parser emitting fewer brackets keeps precision at 1.00 for free.",
         "Head rules convert the tree into dependencies; on the lab's sentence the conversion reproduces the dependency gold exactly.",
         "Exact parsing is the cubic CYK chart; the formalism choice is about the task, not about information content.",

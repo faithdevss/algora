@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,31 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val restrictedBoltzmannMachinesContent = TopicContent(
     topicId = "restricted_boltzmann_machines",
+    figure = Figure(
+        caption = "What CD-1 training does to the page's RBM — six visible bits, three hidden " +
+            "units, no labels anywhere — measured before and after. Untrained, with random " +
+            "weights, it reconstructs an input with 49.8% of bits wrong: a coin flip per bit. " +
+            "After contrastive-divergence training, which only ever pushes reconstructions " +
+            "towards the data, the error is 17.0%. The second row is the surprise. The data has " +
+            "two categories the RBM was never told about, and the separation between them in the " +
+            "hidden layer goes from 0.06 to 1.33 — over twenty times larger — because two hidden " +
+            "units learned to fire for one category and the third for the other. Structure the " +
+            "labels would have described emerged from reconstruction pressure alone, which is " +
+            "what made RBMs the building block of the deep belief net.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("49.8%", "17.0%"),
+                listOf("0.06", "1.33"),
+            ),
+            rowHeaders = listOf("bits wrong", "class separation"),
+            colHeaders = listOf("untrained", "after CD-1"),
+            marks = listOf(
+                FigureCell(0, 0, FigureTone.Warn),
+                FigureCell(0, 1, FigureTone.Accent),
+                FigureCell(1, 1, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A Restricted Boltzmann Machine has a visible layer and a hidden layer, connected by one weight matrix — and, unlike a general Boltzmann machine, no visible-visible or hidden-hidden connections at all. That restriction is what makes the model tractable: with no connections within a layer, every hidden unit's probability given the visible layer is an independent sigmoid, and every visible unit's probability given the hidden layer is too. Sampling alternates cleanly between the two layers, which is exactly what training needs.",
         "Training uses Contrastive Divergence (CD-1): from a real data example, sample the hidden layer once, reconstruct the visible layer from that, then read the hidden probabilities again — three steps instead of running the Gibbs chain to equilibrium, which is the exact quantity the true gradient would need. It is an approximation, and measured directly it is a good one: an untrained RBM (random weights) reconstructs a six-bit input with 49.8% of bits wrong — no better than a coin flip per bit. After training with CD-1 on the same data, reconstruction error falls to 17.0%, well under half.",

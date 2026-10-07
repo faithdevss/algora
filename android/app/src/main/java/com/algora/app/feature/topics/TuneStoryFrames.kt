@@ -210,7 +210,7 @@ private fun dpoStory(): LsLab {
                 else -> fr(head + listOf(L("policy after $big steps"), bars),
                     listOf(F("mean DPO loss =", f(loss, 3), LsInk.Lilac), F("KL(π ‖ π_ref) =", f(kl, 3) + " nats")),
                     if (s == 4) "After 1,000 steps: ${pct(pi.getValue("A"))} on the best response." to "β = ${lsBetaText(beta)}: ${
-                        if (beta < 0.5) "small steps per pair, the policy stays near the reference" else if (beta > 1) "large β moves far from the reference fast" else "a middle setting"
+                        if (beta < 0.5) "a small β is a weak leash, so the policy moves furthest from the reference (KL ${f(kl, 2)} nats)" else if (beta > 1) "a large β holds the policy close to the reference (KL ${f(kl, 2)} nats)" else "a middle setting (KL ${f(kl, 2)} nats)"
                     }. The mislabelled D ≻ A pair keeps pulling the other way."
                     else "Step $big: the ranking A > B > C > D is emerging." to "KL from the reference is ${f(kl, 2)} nats so far.")
             }

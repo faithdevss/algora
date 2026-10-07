@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureLayer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,9 +15,30 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val muZeroContent = TopicContent(
     topicId = "muzero",
+    figure = Figure(
+        caption = "MuZero's learned model, as the page's lab unrolls it. A representation function " +
+            "turns the board into a hidden state h₀; a dynamics function takes a hidden state and an " +
+            "action and returns the next hidden state and a reward; a prediction function reads a " +
+            "policy and a value off any hidden state. Search runs entirely on these learned states — " +
+            "no board is ever reconstructed and no rules are consulted — so each state only has to " +
+            "predict what the search will ask for. The lab tests how forgiving that is: 40 searches " +
+            "of 120 simulations each, every value drawn from a deliberately imperfect model, and with " +
+            "model errors of 0%, 10% and 30% the search picks the best move 100% of the time. That " +
+            "tolerance is what let MuZero match AlphaZero without the rules and extend to Atari.",
+        shape = FigureShape.LayerStack(
+            layers = listOf(
+                FigureLayer("observation", "the board", FigureTone.Muted),
+                FigureLayer("h₀ = repr(obs)", "hidden state", FigureTone.Primary),
+                FigureLayer("h₁, r = dyn(h₀, a)", "imagined step", FigureTone.Accent),
+                FigureLayer("p, v = pred(h)", "what search needs", FigureTone.Primary),
+            ),
+            horizontal = true,
+        ),
+    ),
     whatIsIt = listOf(
-        "MuZero matches AlphaZero's superhuman play but without being told the rules — it learns its own model of the environment's dynamics purely from experience.",
-        "It plans in a learned latent space, predicting only what matters for decisions — reward, value, and policy — rather than reconstructing full observations.",
+        "MuZero searches without being told the rules. AlphaZero needs a simulator to know what each move does; MuZero learns a model instead — but not a model of the board. It learns three functions: a representation that turns the observation into a hidden state, a dynamics function that maps a hidden state and an action to the next hidden state and a reward, and a prediction function that outputs a policy and value from any hidden state. Search runs entirely on those learned states.",
+        "The hidden state never has to reconstruct the board; it only has to be good enough to predict what the search will ask for — reward, value and policy. The lab tests how much error search tolerates: 40 searches of 120 simulations each, with every value coming from a deliberately imperfect model. With a model error rate of 0%, 10% or even 30%, search still picks the best move 100% of the time on this position — the many simulations average out much of the model's error.",
+        "That robustness is why the approach scales. MuZero matched AlphaZero on Go, chess and shogi without the rules, and extended to Atari, where there are no rules to search with at all. The lesson it shares with Dreamer is that a model for planning needs to be accurate about what matters for decisions, not about every pixel.",
     ),
     steps = listOf(
         StepCard(1, "Representation", "Encode the observation history into an initial latent state.", 0xFF818CF8),

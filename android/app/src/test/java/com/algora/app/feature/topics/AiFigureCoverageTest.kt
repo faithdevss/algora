@@ -86,6 +86,52 @@ class AiFigureCoverageTest {
         "hmm", "n_grams", "cosine_similarity", "word2vec_skipgram", "dependency_parsing",
         // M8 — the five hubs other topics link into, and the last of the phase.
         "bleu", "lora_qlora", "ppo", "value_iteration", "value_function",
+        // Phase 15 — forty more from the remaining Tier A, chosen by inbound cross-links and
+        // curriculum weight. See docs/plan/phase-15-priority-figures.md.
+        // P1 — RL core: actor-critic family plus the tabular methods, on the page's own gridworld.
+        "actor_critic", "sac", "ddpg", "td_learning", "monte_carlo_rl", "policy_iteration",
+        "q_function", "sarsa", "discount_factor",
+        // P2 — deep learning: transformer internals, activations, training dynamics, detection.
+        "feed_forward", "layer_normalization", "flash_attention", "vit", "gelu", "exploding_gradient",
+        "lr_schedulers", "alexnet", "bidirectional_rnn", "fast_rcnn", "faster_rcnn",
+        // P3 — LLM practice: reasoning, grounding, adaptation, efficiency and long context.
+        "chain_of_thought", "hallucination_mitigation", "react", "peft", "quantization",
+        "fine_tuning_full", "dpo", "vector_databases", "mistral_mixtral", "long_context", "ssm",
+        // P4 — ML metrics, preprocessing and structure, plus two NLP.
+        "auc", "silhouette_score", "z_score_standardization", "smote", "gini_impurity",
+        "kernel_pca", "bayesian_networks", "rouge", "glove",
+        // Phase 16 — fifty more: the rest of Tier A except twelve low-value pages. Each figure is
+        // drawn from the topic's visible lab; see docs/plan/phase-16-figures-and-lab-alignment.md.
+        // Q1 — RL and model evaluation.
+        "dynamic_programming", "exploration_exploitation", "pomdp", "prioritized_replay",
+        "adjusted_r_squared", "davies_bouldin",
+        // Q2 — classic ML: naive Bayes, selection, association rules, forecasting, sampling.
+        "bernoulli_nb", "rfe", "chi_square_selection", "eclat", "autoregression", "sarima", "prophet",
+        "mcmc", "restricted_boltzmann_machines", "deep_belief_networks",
+        // Q3 — deep learning: activations, CNNs, graphs, generative models, detection, SSMs.
+        "swish", "efficientnet", "densenet", "group_normalization", "gcn", "gat", "dcgan", "cyclegan",
+        "stylegan", "stable_diffusion", "ssd", "mamba", "rwkv",
+        // Q4 — NLP: syntax, similarity, sentiment, embeddings and tokenizers.
+        "chunking", "constituency_parsing", "coreference", "pcfg", "jaccard_similarity", "regex_nlp",
+        "sentiment_lexicon", "word2vec_cbow", "fasttext", "elmo", "hf_tokenizers",
+        // Q5 — pretrained families, evaluation and agents.
+        "bart", "distilbert", "roberta", "t5", "xlnet", "gpt3_gpt4", "llama_vicuna", "mmlu",
+        "tree_of_thoughts", "ai_agents",
+        // R1 — deep RL: value methods and policy gradients.
+        "dqn", "double_dqn", "dueling_dqn", "experience_replay", "target_networks", "noisy_nets", "c51",
+        "rainbow_dqn", "reinforce", "a2c", "a3c", "gae", "trpo", "td3", "dpg", "max_entropy_rl",
+        // R2 — exploration, model-based and multi-agent RL.
+        "epsilon_greedy", "ucb", "thompson_sampling", "boltzmann_exploration", "intrinsic_motivation",
+        "icm", "rnd", "dyna_q", "world_models", "dreamer", "mbpo", "mcts", "minimax", "alphago",
+        "alphazero", "muzero", "self_play", "maddpg", "qmix", "vdn", "meta_rl",
+        // R3 — offline, imitation and RLHF.
+        "offline_rl", "cql", "iql", "decision_transformer", "imitation_learning", "irl", "gail", "rlhf",
+        // R4 — ML, deep learning and NLP stubs.
+        "rnn", "lstm_gru", "neural_network_basics", "autoencoders", "diffusion_models", "regularization",
+        "model_evaluation", "naive_bayes", "bow_tfidf", "lemmatization", "ner", "rag", "bpe",
+        // R5 — the twelve Phase 16 skipped.
+        "deepfakes", "complement_nb", "categorical_nb", "k_modes", "birch", "affinity_propagation",
+        "incremental_pca", "meteor", "kan", "neural_odes", "capsule_networks", "selu",
     )
 
     @Test
@@ -103,6 +149,6 @@ class AiFigureCoverageTest {
     @Test
     fun `the pilot is the size the phase was scoped against`() {
         // Keeps the batch table in docs/plan/phase-12-ai-figures.md verifiable rather than folklore.
-        assertEquals(149, pilotFigures.size)
+        assertEquals(309, pilotFigures.size)
     }
 }

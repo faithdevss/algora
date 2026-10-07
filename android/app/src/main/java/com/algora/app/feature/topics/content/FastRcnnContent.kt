@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureLayer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,29 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val fastRcnnContent = TopicContent(
     topicId = "fast_rcnn",
+    figure = Figure(
+        caption = "Fast R-CNN's pipeline, with the one change that matters at the top: the " +
+            "convolutional stack runs once per image rather than once per proposal. Each of the " +
+            "~2,000 proposals is then projected onto that shared feature map by dividing its " +
+            "coordinates by the stride, 16 for VGG-16's conv5, and RoI pooling turns a region of " +
+            "any size into a fixed 7×7×512 block by max-pooling inside a 7×7 grid of bins — which " +
+            "is what lets one dense head read every proposal. Classification and box refinement " +
+            "are two heads on that same network, trained together by one multi-task loss, so " +
+            "R-CNN's separate SVMs and its on-disk feature cache are gone. Both roundings in the " +
+            "pooling step — box to grid, grid to bins — are the misalignment RoIAlign later " +
+            "removes. The proposals themselves still come from selective search, outside the " +
+            "network, and that is now the slowest box in the diagram.",
+        shape = FigureShape.LayerStack(
+            layers = listOf(
+                FigureLayer("image + ~2,000 proposals", "from selective search", FigureTone.Warn),
+                FigureLayer("VGG-16 conv, once", "stride 16 feature map", FigureTone.Accent),
+                FigureLayer("project each RoI", "box ÷ 16", FigureTone.Primary),
+                FigureLayer("RoI pool", "any size → 7×7×512", FigureTone.Primary),
+                FigureLayer("fc6, fc7", "4,096 each", FigureTone.Muted),
+                FigureLayer("two heads", "class (K+1) · box (4K)", FigureTone.Primary),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "R-CNN runs the convolutional stack once per proposal, 2,000 times over the same image, on regions that overlap heavily. Fast R-CNN runs it once. The image passes through the convolutions a single time, and each proposal is *projected* onto that shared feature map — a box in image pixels becomes a box on the feature grid by dividing by the stride. All the expensive work is now shared.",
         "The piece that makes it possible is RoI pooling: take the projected region, divide it into a fixed 7×7 grid of bins whatever its size, and max-pool inside each bin. Any region becomes a 7×7 feature block that a dense head can read. That also collapses R-CNN's three training stages into one — class scores and box refinement come from two heads on one network trained with a single multi-task loss, so there is no SVM stage and no feature cache on disk.",

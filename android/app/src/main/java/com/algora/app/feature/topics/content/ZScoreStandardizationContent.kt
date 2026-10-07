@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,32 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val zScoreStandardizationContent = TopicContent(
     topicId = "z_score_standardization",
+    figure = Figure(
+        caption = "The page's two measurements of the same k-NN problem over age and income. " +
+            "Unscaled, income supplies 99.996% of every squared distance and accuracy is 0.738 — " +
+            "the classifier is effectively ignoring age. Both scalers fix that, and on clean data " +
+            "they land within a point of each other: min-max 0.900, z-score 0.888, with z-score " +
+            "splitting the distance 51% / 49%. The second column is where they part. Add a single " +
+            "income of 5,000,000 before fitting and min-max, which is defined by the two extremes, " +
+            "squeezes every real point into 0.026 of its range; z-score leaves them spanning " +
+            "0.289, eleven times the room. Z-score is not robust — the outlier still drags both μ " +
+            "and σ — but it degrades where min-max collapses, and for columns with real tails the " +
+            "median and IQR are the version that does not move.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0.738", "—"),
+                listOf("0.900", "0.026"),
+                listOf("0.888", "0.289"),
+            ),
+            rowHeaders = listOf("raw", "min-max", "z-score"),
+            colHeaders = listOf("k-NN accuracy", "span, 1 outlier"),
+            marks = listOf(
+                FigureCell(0, 0, FigureTone.Warn),
+                FigureCell(1, 1, FigureTone.Warn),
+                FigureCell(2, 1, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Z-score standardization subtracts a column's mean and divides by its standard deviation, so the result has mean 0 and standard deviation 1. Unlike min-max it does not produce a bounded range — the lab's two columns end up spanning 3.58 and 3.13, because how far the extremes sit is a property of the data, not of the transform. What it produces instead is a column measured in standard deviations, which is what makes coefficients, distances and regularization penalties comparable across features.",
         "The reason to reach for it is the same as for any scaler, and the lab measures it the same way: a k-NN classifier over age and income where income supplies 99.996% of the squared distance goes from 0.738 accuracy to 0.888 after standardizing, with the distance split moving to 51% / 49%. Min-max reaches 0.900 on this data. The two are within a point of each other and the choice between them is not about accuracy on clean data — it is about what happens when the data is not clean.",

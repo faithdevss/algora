@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,30 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val reactContent = TopicContent(
     topicId = "react",
+    figure = Figure(
+        caption = "The page's two-hop question — what year was the language the Linux kernel is " +
+            "written in first released — as the ReAct trace actually runs it. The first search " +
+            "uses the question's own words, and over the lab's eight-passage corpus TF-IDF cosine " +
+            "puts the passage with the answer fifth: it is about C, not Linux, and shares almost " +
+            "no vocabulary with what was asked. A single retrieval stops there. The observation " +
+            "that comes back says the kernel is written in C, and the next thought writes a " +
+            "different query from it — \"C language first released\" — which the same retriever " +
+            "ranks first. That rewrite, a query that is a function of the previous observation, " +
+            "is the whole contribution; closed-book, the model answers a fluent and specific " +
+            "\"1970\" against the true 1972.",
+        shape = FigureShape.Strip(
+            cells = listOf("think", "search", "obs: C", "think", "search", "obs: 1972", "finish"),
+            bands = listOf(
+                FigureBand(0, 2, "hop 1 — question words", FigureTone.Muted),
+                FigureBand(3, 5, "hop 2 — rewritten", FigureTone.Primary),
+            ),
+            pointers = listOf(
+                FigurePointer(1, "rank 5 of 8", FigureTone.Warn),
+                FigurePointer(4, "rank 1 of 8"),
+                FigurePointer(6, "1972"),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "ReAct interleaves reasoning and acting: the model writes a thought, takes an action, reads the observation, and only then writes its next thought. The two halves it combines each fail on their own. Chain of thought reasons but cannot check anything, so a missing fact becomes a fluent invention. A single tool call acts but cannot decide what to ask for next, so a question whose answer depends on an earlier answer is unreachable. Interleaving is what makes the second query a function of the first observation.",
         "The lab's question is deliberately two-hop — what year was the language the Linux kernel is written in first released — and the retrieval is real TF-IDF cosine over an eight-passage corpus, so the measurement is not a story. The passage holding the answer is about C, not about Linux, and it shares almost no vocabulary with the question as asked: it ranks **fifth of eight**, outside any sensible top-k. One retrieval cannot reach it. After the first observation establishes that the kernel is written in C, the second thought writes a different query — \"C language first released\" — and the same retriever puts that passage at **rank 1**. The rewrite is the entire contribution.",

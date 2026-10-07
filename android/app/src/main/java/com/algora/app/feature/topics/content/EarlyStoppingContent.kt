@@ -17,78 +17,79 @@ import com.algora.app.core.data.model.TopicContent
 internal val earlyStoppingContent = TopicContent(
     topicId = "early_stopping",
     figure = Figure(
-        caption = "One 4,000-step run of the lab's degree-9 fit, all three curves on one scale " +
-            "(MSE ÷ 0.025) against a log step axis, because everything worth seeing happens in the " +
-            "first 3% of training. Training loss falls the entire way — 0.01254 at step 20 to " +
-            "0.01012 at step 4,000 — while true risk, measured against the clean function nobody " +
-            "gets to see during training, bottoms out at step 100 and then climbs 37% above its " +
-            "floor by the end. That divergence is overfitting, and it is the only place it is " +
-            "visible. Validation loss is the proxy you actually have: its own minimum lands at " +
-            "step 120, close to true risk's 100, and then it jitters within about 1% of that minimum " +
-            "for the remaining 3,880 steps. The bet early stopping makes is that a noisy estimate " +
-            "of roughly the right place beats a clean training curve's promise that more is better.",
+        caption = "The page's lab: a linear model with 40 features fitted by gradient descent to 30 " +
+            "training rows — more weights than equations, so it can fit the noise too — and scored " +
+            "on 30 validation rows it never trains on. Training loss falls the whole way, 11.08 to " +
+            "0.037 over 1,500 steps. Validation falls with it from 10.11 to its minimum, 4.89 at " +
+            "step 583, and then climbs steadily to 5.47 at the end: from there on the model is " +
+            "learning the training set's noise. Stopping at 583 keeps 11% of validation loss that " +
+            "training to the end gives back. With the lab's default patience of 50, training halts " +
+            "at step 633 — fifty steps without a new best — and restores the weights from 583, so " +
+            "867 of the 1,500 steps are never run.",
         shape = FigureShape.Plot(
             series = listOf(
                 FigureSeries(
                     "validation",
                     listOf(
-                        FigurePoint(0.361f, 0.935f), FigurePoint(0.445f, 0.861f),
-                        FigurePoint(0.494f, 0.836f), FigurePoint(0.555f, 0.825f),
-                        FigurePoint(0.577f, 0.824f), FigurePoint(0.639f, 0.827f),
-                        FigurePoint(0.722f, 0.830f), FigurePoint(0.806f, 0.832f),
-                        FigurePoint(0.890f, 0.830f), FigurePoint(1f, 0.827f),
+                        FigurePoint(0.000f, 0.911f), FigurePoint(0.033f, 0.684f), FigurePoint(0.067f, 0.601f),
+                        FigurePoint(0.100f, 0.554f), FigurePoint(0.133f, 0.520f), FigurePoint(0.167f, 0.495f),
+                        FigurePoint(0.200f, 0.476f), FigurePoint(0.233f, 0.462f), FigurePoint(0.267f, 0.452f),
+                        FigurePoint(0.300f, 0.446f), FigurePoint(0.333f, 0.442f), FigurePoint(0.367f, 0.440f),
+                        FigurePoint(0.400f, 0.440f), FigurePoint(0.433f, 0.441f), FigurePoint(0.467f, 0.443f),
+                        FigurePoint(0.500f, 0.445f), FigurePoint(0.533f, 0.448f), FigurePoint(0.567f, 0.451f),
+                        FigurePoint(0.600f, 0.454f), FigurePoint(0.633f, 0.457f), FigurePoint(0.667f, 0.461f),
+                        FigurePoint(0.700f, 0.464f), FigurePoint(0.733f, 0.468f), FigurePoint(0.767f, 0.471f),
+                        FigurePoint(0.800f, 0.474f), FigurePoint(0.833f, 0.478f), FigurePoint(0.867f, 0.481f),
+                        FigurePoint(0.900f, 0.484f), FigurePoint(0.933f, 0.487f), FigurePoint(0.967f, 0.490f),
+                        FigurePoint(1.000f, 0.493f),
                     ),
                     FigureTone.Primary,
                 ),
                 FigureSeries(
                     "training",
                     listOf(
-                        FigurePoint(0.361f, 0.502f), FigurePoint(0.445f, 0.463f),
-                        FigurePoint(0.494f, 0.452f), FigurePoint(0.555f, 0.446f),
-                        FigurePoint(0.577f, 0.444f), FigurePoint(0.639f, 0.440f),
-                        FigurePoint(0.722f, 0.434f), FigurePoint(0.806f, 0.424f),
-                        FigurePoint(0.890f, 0.414f), FigurePoint(1f, 0.405f),
+                        FigurePoint(0.000f, 0.998f), FigurePoint(0.033f, 0.264f), FigurePoint(0.067f, 0.131f),
+                        FigurePoint(0.100f, 0.085f), FigurePoint(0.133f, 0.062f), FigurePoint(0.167f, 0.048f),
+                        FigurePoint(0.200f, 0.039f), FigurePoint(0.233f, 0.032f), FigurePoint(0.267f, 0.026f),
+                        FigurePoint(0.300f, 0.022f), FigurePoint(0.333f, 0.019f), FigurePoint(0.367f, 0.017f),
+                        FigurePoint(0.400f, 0.014f), FigurePoint(0.433f, 0.013f), FigurePoint(0.467f, 0.011f),
+                        FigurePoint(0.500f, 0.010f), FigurePoint(0.533f, 0.009f), FigurePoint(0.567f, 0.008f),
+                        FigurePoint(0.600f, 0.008f), FigurePoint(0.633f, 0.007f), FigurePoint(0.667f, 0.006f),
+                        FigurePoint(0.700f, 0.006f), FigurePoint(0.733f, 0.005f), FigurePoint(0.767f, 0.005f),
+                        FigurePoint(0.800f, 0.005f), FigurePoint(0.833f, 0.005f), FigurePoint(0.867f, 0.004f),
+                        FigurePoint(0.900f, 0.004f), FigurePoint(0.933f, 0.004f), FigurePoint(0.967f, 0.004f),
+                        FigurePoint(1.000f, 0.003f),
                     ),
                     FigureTone.Muted,
                     dashed = true,
                 ),
-                FigureSeries(
-                    "true risk",
-                    listOf(
-                        FigurePoint(0.361f, 0.257f), FigurePoint(0.445f, 0.206f),
-                        FigurePoint(0.494f, 0.191f), FigurePoint(0.555f, 0.186f),
-                        FigurePoint(0.577f, 0.187f), FigurePoint(0.639f, 0.191f),
-                        FigurePoint(0.722f, 0.199f), FigurePoint(0.806f, 0.210f),
-                        FigurePoint(0.890f, 0.226f), FigurePoint(1f, 0.256f),
-                    ),
-                    FigureTone.Warn,
-                ),
             ),
-            xLabel = "training step, log scale (20 → 4,000)",
-            yLabel = "MSE",
+            xLabel = "training step, 0 → 1,500",
+            yLabel = "MSE, 0 → 11.1",
             markers = listOf(
-                FigurePoint(0.577f, 0.824f, "val min, step 120", FigureTone.Accent),
-                FigurePoint(0.555f, 0.186f, "true min, step 100", FigureTone.Accent),
+                FigurePoint(0.389f, 0.440f, "val min 4.89, step 583", FigureTone.Accent),
+                FigurePoint(1f, 0.493f, "final 5.47", FigureTone.Warn),
             ),
         ),
     ),
     whatIsIt = listOf(
-        "Early stopping halts training at the point a held-out validation set says to, rather than running to a fixed epoch count. The usual picture is a clean U: validation loss falls, bottoms out, then rises as the model starts fitting noise the validation set does not share. Fit here for real — a degree-9 polynomial trained by gradient descent on 20 noisy points, watched against a 20-point validation set and scored, separately, against the noise-free function underneath both — the picture is messier and more informative than the textbook curve. Validation loss reaches its minimum at step 120 of a 4,000-step run, then wanders within about 1% of that minimum for the rest of training: it neither collapses nor recovers cleanly, it jitters, because 20 points is a small and noisy sample of the true generalization error.",
-        "The true-risk curve — error against the clean function the training and validation noise were both added to, which no real deployment ever gets to measure directly but which is exactly what early stopping is trying to protect — tells a cleaner story: it falls from step 20 to a true minimum at step 100, then climbs monotonically for the rest of the run, ending 37% higher at step 4,000 than at its floor. Training loss, over the same stretch, keeps falling the entire time (0.0111 at step 120 down to 0.0101 at step 4,000) — the model is still improving on the data it can see while getting worse on the function that data was drawn from. That divergence, not any single number, is overfitting.",
-        "Validation loss's own minimum (step 120) lands close to but not exactly at true risk's minimum (step 100) — it is an estimate of the quantity that actually matters, built from 20 noisy points, and estimates have their own noise. What makes it useful anyway is asymmetric: stopping a little early or a little late near a shallow validation minimum costs almost nothing, because true risk is nearly flat near its own floor, while training to the end costs a measured 37% in the metric nobody can directly observe during training. Early stopping is a bet that a noisy proxy's rough location is worth far more than a clean training curve's false promise that more steps are always better.",
+        "Early stopping halts training at the point a held-out validation set says to, rather than running to a fixed epoch count. The lab makes the case with a model that can overfit on purpose: 40 features and only 30 training rows, so gradient descent has more weights than equations and will eventually fit the noise as well as the signal. Training loss falls for all 1,500 steps, from 11.08 to 0.037 — it always will, which is exactly why it cannot be the stopping signal.",
+        "Validation loss, on 30 rows the model never updates on, tells the real story. It falls alongside training loss from 10.11 to a minimum of 4.89 at step 583, then climbs steadily to 5.47 by the end. Stopping at 583 keeps 11% of validation loss that training to completion gives back. In practice you do not know the minimum in advance, so you wait a set number of steps — the patience — for a new best: at the lab's default of 50, training halts at step 633 and restores the weights from 583; at 10 it halts at 593, at 200 at 783. Every setting restores the same weights here because this validation curve is smooth; on noisy curves a short patience stops on a blip.",
+        "Validation loss is itself only an estimate of the thing early stopping protects — error on the function the data came from. The code example below measures that directly on a separate run, a degree-9 polynomial on 20 noisy points scored against the noise-free function: validation's minimum lands at step 120, true risk's at step 100, and by step 4,000 true risk is 37% worse than its floor while validation has moved by about 1%. The proxy's rough location is still worth far more than a training curve that promises more steps are always better.",
     ),
     steps = listOf(
         StepCard(1, "Split Off a Validation Set", "Held out from training, never used to update a single weight.", 0xFF64748B),
         StepCard(2, "Train and Score Every Few Steps", "Track training loss and validation loss on the same schedule.", 0xFF3B82F6),
         StepCard(3, "Watch Validation Loss, Not Training Loss", "Training loss falls the whole time — it always will.", 0xFFF59E0B),
-        StepCard(4, "Stop at (or Near) Its Minimum", "Step 120 of 4,000 here — a small fraction of the full budget.", 0xFF10B981),
-        StepCard(5, "Check What You Actually Bought", "True risk at that point: 0.0047. At step 4,000: 0.0064 — 37% worse.", 0xFFEC4899),
+        StepCard(4, "Stop at (or Near) Its Minimum", "Step 583 of 1,500 here; patience 50 halts at 633 and restores it.", 0xFF10B981),
+        StepCard(5, "Check What You Actually Bought", "Validation 4.89 at step 583 against 5.47 at the end — 11% kept.", 0xFFEC4899),
     ),
     formulas = listOf(
         FormulaEntry("Training objective", "min_θ (1/n) Σ (f_θ(xᵢ) − yᵢ)²", "Minimized on the training split only."),
         FormulaEntry("Stopping rule", "t* = argmin_t L_val(θ_t)", "The step whose validation loss is lowest."),
         FormulaEntry("What you cannot see", "R_true(θ) = E[(f_θ(x) − f(x))²]", "Error against the clean function — validation only estimates it."),
-        FormulaEntry("Measured", "0.0047 (t=100) → 0.0064 (t=4000)", "True risk's floor versus its value at the end of training — 37% worse."),
+        FormulaEntry("Measured in the lab", "4.89 (t=583) → 5.47 (t=1500)", "Validation loss at its minimum versus at the end of training — 11% kept by stopping."),
+        FormulaEntry("Code example", "0.0047 (t=100) → 0.0064 (t=4000)", "True risk on the separate degree-9 run — 37% worse by the end."),
     ),
     notationKey = listOf(
         NotationEntry("L_val(θ_t)", "validation loss at training step t"),
@@ -98,7 +99,7 @@ internal val earlyStoppingContent = TopicContent(
     ),
     codeBlocks = listOf(
         CodeBlock(
-            title = "Three curves, one training run",
+            title = "A separate run, with the curve you cannot see",
             accentColor = 0xFF64748B,
             code = """
                 import numpy as np
@@ -129,11 +130,11 @@ internal val earlyStoppingContent = TopicContent(
         ApplicationCard("help", 0xFFEC4899, "The Honest Caveat", "Validation loss is an estimate; it can be noisy, and its minimum is not always the true one."),
     ),
     takeaways = listOf(
-        "Training loss falls for the entire run — 0.0111 to 0.0101 — which is exactly why it cannot be the stopping signal.",
-        "Validation loss bottoms at step 120 of 4,000, then jitters within about 1% of that floor for the rest of training.",
-        "True risk — error against the noise-free function, never directly observable during training — bottoms at step 100 and then climbs monotonically.",
-        "By step 4,000, true risk is 37% worse than at its own floor, even though validation loss barely moved.",
-        "The two minima (validation at 120, true risk at 100) are close but not identical — validation is an estimate of the thing that matters, not the thing itself.",
+        "Training loss falls for the entire run — 11.08 to 0.037 — which is exactly why it cannot be the stopping signal.",
+        "Validation loss bottoms at 4.89 at step 583 of 1,500, then climbs to 5.47 as the model fits the training noise.",
+        "Stopping at the minimum keeps 11% of validation loss; patience 50 halts at step 633 and restores the step-583 weights.",
+        "Patience trades compute for robustness: 10 halts at 593, 200 at 783, and on a noisy validation curve a short patience stops on a blip.",
+        "Validation is an estimate of the thing that matters: on the code example's separate run, its minimum (step 120) sits near true risk's (step 100), and training on cost 37% in true risk.",
         "Early stopping is a bet that a noisy proxy's rough location beats training to completion — and here, measurably, it is a good bet.",
     ),
     crossLinks = listOf(

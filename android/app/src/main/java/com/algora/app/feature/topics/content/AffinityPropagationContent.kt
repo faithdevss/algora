@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,34 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val affinityPropagationContent = TopicContent(
     topicId = "affinity_propagation",
+    figure = Figure(
+        caption = "The page's lab: how many exemplars have emerged after each number of message " +
+            "rounds. Every point starts as a candidate. Responsibility r(i,k) says how well k " +
+            "suits i compared with i's other options; availability a(i,k) says how much support " +
+            "k already has from everyone else. They alternate with damping, and point 3's choice " +
+            "moves from point 2 to point 6 to point 4 while they settle. Through round 5 no point " +
+            "has r(k,k) + a(k,k) > 0, so there are no exemplars. By round 10 there are three, and " +
+            "rounds 20, 40 and 80 change nothing. Nobody set the number three: a higher preference " +
+            "p on the diagonal would let more points volunteer.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "exemplars",
+                    listOf(
+                        FigurePoint(0.158f, 0f), FigurePoint(0.251f, 0f), FigurePoint(0.367f, 0f),
+                        FigurePoint(0.525f, 1f), FigurePoint(0.684f, 1f), FigurePoint(0.842f, 1f),
+                        FigurePoint(1f, 1f),
+                    ),
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.367f, 0f, "0 at round 5", FigureTone.Warn),
+                FigurePoint(0.525f, 1f, "3 at round 10"),
+            ),
+            xLabel = "rounds, 2 → 80 (log scale)",
+            yLabel = "exemplars, 0 to 3",
+        ),
+    ),
     whatIsIt = listOf(
         "Affinity propagation picks its cluster centres from among the data points themselves, and is never told how many to find. Every point starts as a candidate exemplar, and the algorithm runs a message-passing negotiation until a stable set of exemplars emerges.",
         "Two messages circulate between every pair. Responsibility r(i,k) is point i telling candidate k how well-suited it looks *compared to i's other options* — it is a competitive signal. Availability a(i,k) is candidate k telling i how much support it has already accumulated from everyone else — a cooperative one. Each is computed from the other, alternately, with damping to stop the pair oscillating. Where they settle, r(k,k) + a(k,k) > 0 identifies the exemplars.",

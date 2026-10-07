@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,29 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val t5Content = TopicContent(
     topicId = "t5",
+    figure = Figure(
+        caption = "T5's one idea, as the page's lab lays it out: every task is text in, text out. " +
+            "A short prefix names the task, the same encoder reads the input, and the same " +
+            "decoder writes the answer as text — a German sentence, the word \"acceptable\", the " +
+            "number \"3.8\" spelled as characters, or a summary. Classification and regression " +
+            "become generation, so there is one model, one cross-entropy loss over target " +
+            "tokens, and one decoding path for all of them. Pretraining fits the same mould: " +
+            "spans of C4 text are replaced by sentinels — \"the <X> sat on <Y>\" — and the decoder " +
+            "generates what was removed, \"<X> cat <Y> the mat\", so pretraining and fine-tuning " +
+            "use the identical interface from T5-base to T5-11B.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("translate English to German:", "Das ist gut."),
+                listOf("cola sentence:", "acceptable"),
+                listOf("stsb sentence1: … sentence2:", "3.8"),
+                listOf("summarize:", "(summary)"),
+            ),
+            colHeaders = listOf("task prefix", "decoder output"),
+            marks = listOf(
+                FigureCell(2, 1, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "T5's claim is that every NLP task is text in, text out. Classification becomes generating the word \"acceptable\"; similarity scoring becomes generating \"3.8\"; translation, summarisation and question answering were already text-to-text. Put a task prefix on the front and one encoder-decoder handles all of them, with one loss and one decoding path — which is what makes multi-task pre-training and transfer between tasks a matter of mixing data rather than of building heads.",
         "Its pre-training objective corrupts spans rather than single tokens, and the shape of that is the economy of the whole design. Each contiguous run of dropped tokens becomes one sentinel in the input, and the target is only the dropped runs, each introduced by its sentinel. At the length these models actually run — 512 tokens, 15% corrupted, mean span 3 — the encoder reads 461 tokens and the decoder emits 104. BERT's objective makes a model produce an output at all 512 positions, so span corruption costs 4.9× fewer decoder steps for the same corruption budget.",

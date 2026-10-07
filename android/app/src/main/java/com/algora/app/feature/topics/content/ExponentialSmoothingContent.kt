@@ -19,43 +19,36 @@ internal val exponentialSmoothingContent = TopicContent(
     figure = Figure(
         caption = "Holt-Winters on the lab's 48 training months at α = 0.3, β = 0.1, γ = 0.3, with " +
             "two of its three components drawn. The dashed line is the level: the series as the " +
-            "model believes it would be with the annual cycle taken out, climbing from 108.29 to " +
-            "146.19. The solid line is the fit, and the gap between them is the other two " +
-            "components — a seasonal figure running from −10.37 to +6.36 and repeating every 12 " +
-            "months, plus a trend that stays under 1.7 a month throughout and ends at 0.441. The " +
-            "three add, exactly: the first forecast month is 146.187 + 0.441 + 0.499 = 147.126. " +
-            "The trend being invisible at this scale is the honest picture of it — 0.441 against " +
-            "a level of 146 is what a slowing series looks like, and the model is tracking the " +
-            "slope change at month 30 rather than the one global trend a straight line would fit.",
+            "model believes it would be with the annual cycle taken out, climbing from 43.55 to " +
+            "61.96. The solid line is the fit, and the gap between them is the other two " +
+            "components — a seasonal figure that in the last year runs from −7.80 to " +
+            "+4.10 and repeats every 12 months, plus a trend that peaks at " +
+            "0.77 a month and ends at 0.315. The three add, exactly: the first forecast " +
+            "month is 61.963 + 0.315 + 0.776 = 63.055. The trend stays small and " +
+            "keeps moving because it is re-estimated every month: it reaches 0.77 at month " +
+            "33 and falls back to 0.181 three months later, tracking the " +
+            "local slope rather than the one global trend a straight line would fit.",
         shape = FigureShape.Plot(
             series = listOf(
                 FigureSeries(
                     "level",
                     listOf(
-                        FigurePoint(0.000f, 0.172f), FigurePoint(0.021f, 0.180f),
-                        FigurePoint(0.043f, 0.185f), FigurePoint(0.064f, 0.188f),
-                        FigurePoint(0.085f, 0.189f), FigurePoint(0.106f, 0.189f),
-                        FigurePoint(0.128f, 0.188f), FigurePoint(0.149f, 0.187f),
-                        FigurePoint(0.170f, 0.185f), FigurePoint(0.191f, 0.183f),
-                        FigurePoint(0.213f, 0.180f), FigurePoint(0.234f, 0.178f),
-                        FigurePoint(0.255f, 0.264f), FigurePoint(0.277f, 0.299f),
-                        FigurePoint(0.298f, 0.310f), FigurePoint(0.319f, 0.337f),
-                        FigurePoint(0.340f, 0.349f), FigurePoint(0.362f, 0.372f),
-                        FigurePoint(0.383f, 0.397f), FigurePoint(0.404f, 0.405f),
-                        FigurePoint(0.426f, 0.416f), FigurePoint(0.447f, 0.436f),
-                        FigurePoint(0.468f, 0.417f), FigurePoint(0.489f, 0.429f),
-                        FigurePoint(0.511f, 0.510f), FigurePoint(0.532f, 0.577f),
-                        FigurePoint(0.553f, 0.589f), FigurePoint(0.574f, 0.610f),
-                        FigurePoint(0.596f, 0.651f), FigurePoint(0.617f, 0.705f),
-                        FigurePoint(0.638f, 0.719f), FigurePoint(0.660f, 0.742f),
-                        FigurePoint(0.681f, 0.748f), FigurePoint(0.702f, 0.716f),
-                        FigurePoint(0.723f, 0.720f), FigurePoint(0.745f, 0.719f),
-                        FigurePoint(0.766f, 0.727f), FigurePoint(0.787f, 0.772f),
-                        FigurePoint(0.809f, 0.756f), FigurePoint(0.830f, 0.812f),
-                        FigurePoint(0.851f, 0.804f), FigurePoint(0.872f, 0.786f),
-                        FigurePoint(0.894f, 0.796f), FigurePoint(0.915f, 0.818f),
-                        FigurePoint(0.936f, 0.824f), FigurePoint(0.957f, 0.806f),
-                        FigurePoint(0.979f, 0.797f), FigurePoint(1.000f, 0.803f),
+                        FigurePoint(0.000f, 0.281f), FigurePoint(0.021f, 0.287f), FigurePoint(0.043f, 0.291f),
+                        FigurePoint(0.064f, 0.293f), FigurePoint(0.085f, 0.294f), FigurePoint(0.106f, 0.294f),
+                        FigurePoint(0.128f, 0.293f), FigurePoint(0.149f, 0.292f), FigurePoint(0.170f, 0.291f),
+                        FigurePoint(0.191f, 0.289f), FigurePoint(0.213f, 0.287f), FigurePoint(0.234f, 0.286f),
+                        FigurePoint(0.255f, 0.339f), FigurePoint(0.277f, 0.412f), FigurePoint(0.298f, 0.415f),
+                        FigurePoint(0.319f, 0.441f), FigurePoint(0.340f, 0.441f), FigurePoint(0.362f, 0.424f),
+                        FigurePoint(0.383f, 0.451f), FigurePoint(0.404f, 0.493f), FigurePoint(0.426f, 0.486f),
+                        FigurePoint(0.447f, 0.446f), FigurePoint(0.468f, 0.422f), FigurePoint(0.489f, 0.425f),
+                        FigurePoint(0.511f, 0.512f), FigurePoint(0.532f, 0.535f), FigurePoint(0.553f, 0.579f),
+                        FigurePoint(0.574f, 0.606f), FigurePoint(0.596f, 0.612f), FigurePoint(0.617f, 0.651f),
+                        FigurePoint(0.638f, 0.677f), FigurePoint(0.660f, 0.712f), FigurePoint(0.681f, 0.750f),
+                        FigurePoint(0.702f, 0.720f), FigurePoint(0.723f, 0.664f), FigurePoint(0.745f, 0.626f),
+                        FigurePoint(0.766f, 0.676f), FigurePoint(0.787f, 0.744f), FigurePoint(0.809f, 0.752f),
+                        FigurePoint(0.830f, 0.753f), FigurePoint(0.851f, 0.768f), FigurePoint(0.872f, 0.778f),
+                        FigurePoint(0.894f, 0.829f), FigurePoint(0.915f, 0.841f), FigurePoint(0.936f, 0.844f),
+                        FigurePoint(0.957f, 0.835f), FigurePoint(0.979f, 0.817f), FigurePoint(1.000f, 0.822f),
                     ),
                     tone = FigureTone.Primary,
                     dashed = true,
@@ -63,40 +56,32 @@ internal val exponentialSmoothingContent = TopicContent(
                 FigureSeries(
                     "level + trend + season",
                     listOf(
-                        FigurePoint(0.000f, 0.090f), FigurePoint(0.021f, 0.185f),
-                        FigurePoint(0.043f, 0.311f), FigurePoint(0.064f, 0.234f),
-                        FigurePoint(0.085f, 0.298f), FigurePoint(0.106f, 0.253f),
-                        FigurePoint(0.128f, 0.269f), FigurePoint(0.149f, 0.172f),
-                        FigurePoint(0.170f, 0.065f), FigurePoint(0.191f, 0.084f),
-                        FigurePoint(0.213f, 0.131f), FigurePoint(0.234f, 0.239f),
-                        FigurePoint(0.255f, 0.093f), FigurePoint(0.277f, 0.267f),
-                        FigurePoint(0.298f, 0.420f), FigurePoint(0.319f, 0.350f),
-                        FigurePoint(0.340f, 0.440f), FigurePoint(0.362f, 0.407f),
-                        FigurePoint(0.383f, 0.448f), FigurePoint(0.404f, 0.379f),
-                        FigurePoint(0.426f, 0.283f), FigurePoint(0.447f, 0.316f),
-                        FigurePoint(0.468f, 0.387f), FigurePoint(0.489f, 0.476f),
-                        FigurePoint(0.511f, 0.408f), FigurePoint(0.532f, 0.534f),
-                        FigurePoint(0.553f, 0.705f), FigurePoint(0.574f, 0.645f),
-                        FigurePoint(0.596f, 0.717f), FigurePoint(0.617f, 0.722f),
-                        FigurePoint(0.638f, 0.797f), FigurePoint(0.660f, 0.704f),
-                        FigurePoint(0.681f, 0.625f), FigurePoint(0.702f, 0.660f),
-                        FigurePoint(0.723f, 0.644f), FigurePoint(0.745f, 0.783f),
-                        FigurePoint(0.766f, 0.747f), FigurePoint(0.787f, 0.780f),
-                        FigurePoint(0.809f, 0.885f), FigurePoint(0.830f, 0.802f),
-                        FigurePoint(0.851f, 0.927f), FigurePoint(0.872f, 0.886f),
-                        FigurePoint(0.894f, 0.854f), FigurePoint(0.915f, 0.765f),
-                        FigurePoint(0.936f, 0.675f), FigurePoint(0.957f, 0.685f),
-                        FigurePoint(0.979f, 0.714f), FigurePoint(1.000f, 0.839f),
+                        FigurePoint(0.000f, 0.187f), FigurePoint(0.021f, 0.260f), FigurePoint(0.043f, 0.381f),
+                        FigurePoint(0.064f, 0.396f), FigurePoint(0.085f, 0.449f), FigurePoint(0.106f, 0.426f),
+                        FigurePoint(0.128f, 0.271f), FigurePoint(0.149f, 0.227f), FigurePoint(0.170f, 0.088f),
+                        FigurePoint(0.191f, 0.234f), FigurePoint(0.213f, 0.310f), FigurePoint(0.234f, 0.342f),
+                        FigurePoint(0.255f, 0.189f), FigurePoint(0.277f, 0.309f), FigurePoint(0.298f, 0.503f),
+                        FigurePoint(0.319f, 0.516f), FigurePoint(0.340f, 0.596f), FigurePoint(0.362f, 0.570f),
+                        FigurePoint(0.383f, 0.397f), FigurePoint(0.404f, 0.383f), FigurePoint(0.426f, 0.291f),
+                        FigurePoint(0.447f, 0.431f), FigurePoint(0.468f, 0.466f), FigurePoint(0.489f, 0.472f),
+                        FigurePoint(0.511f, 0.363f), FigurePoint(0.532f, 0.530f), FigurePoint(0.553f, 0.616f),
+                        FigurePoint(0.574f, 0.693f), FigurePoint(0.596f, 0.752f), FigurePoint(0.617f, 0.724f),
+                        FigurePoint(0.638f, 0.644f), FigurePoint(0.660f, 0.637f), FigurePoint(0.681f, 0.500f),
+                        FigurePoint(0.702f, 0.668f), FigurePoint(0.723f, 0.726f), FigurePoint(0.745f, 0.719f),
+                        FigurePoint(0.766f, 0.623f), FigurePoint(0.787f, 0.700f), FigurePoint(0.809f, 0.848f),
+                        FigurePoint(0.830f, 0.871f), FigurePoint(0.851f, 0.886f), FigurePoint(0.872f, 0.892f),
+                        FigurePoint(0.894f, 0.770f), FigurePoint(0.915f, 0.798f), FigurePoint(0.936f, 0.637f),
+                        FigurePoint(0.957f, 0.718f), FigurePoint(0.979f, 0.785f), FigurePoint(1.000f, 0.837f),
                     ),
                     tone = FigureTone.Accent,
                 ),
             ),
             markers = listOf(
-                FigurePoint(0.000f, 0.172f, "level 108.29"),
-                FigurePoint(1.000f, 0.803f, "level 146.19"),
+                FigurePoint(0.000f, 0.281f, "level 43.55"),
+                FigurePoint(1.000f, 0.822f, "level 61.96"),
             ),
             xLabel = "month, 1 → 48",
-            yLabel = "series value, 98 → 158",
+            yLabel = "series value, 34 → 68",
         ),
     ),
     whatIsIt = listOf(

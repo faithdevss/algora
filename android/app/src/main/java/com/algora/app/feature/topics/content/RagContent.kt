@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,9 +15,35 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val ragContent = TopicContent(
     topicId = "rag",
+    figure = Figure(
+        caption = "The page's lab: \"What is the refund window?\" asked about a private policy. " +
+            "Closed-book, the model answers fluently that refunds are accepted within 30 days — " +
+            "specific, unsourced and wrong. With retrieval, the query is embedded (here as a TF-IDF " +
+            "vector; production systems use a dense embedding model) and compared by cosine with " +
+            "every chunk in a five-document store. The policy chunk scores 0.51; a chunk about " +
+            "damaged items shares only the word \"refund\" and scores 0.22; the rest share nothing. " +
+            "The top two go into the prompt with an instruction to answer only from them, and the " +
+            "answer becomes 45 days, with a citation. If retrieval had missed the first row, no " +
+            "amount of generation quality would have recovered it — RAG is bounded by its search.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("The refund window is 45 days…", "0.51"),
+                listOf("Damaged items … full refund…", "0.22"),
+                listOf("Shipping is free on orders…", "0.00"),
+                listOf("Gift cards cannot be refunded…", "0.00"),
+                listOf("Support is available by chat…", "0.00"),
+            ),
+            colHeaders = listOf("stored chunk", "cosine"),
+            marks = listOf(
+                FigureCell(0, 1, FigureTone.Accent),
+                FigureCell(1, 1, FigureTone.Primary),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
-        "Retrieval-augmented generation answers a question by first fetching relevant passages from a corpus and then generating an answer conditioned on them, rather than relying on what the model memorized during training.",
-        "It fixes three specific problems: knowledge frozen at the training cutoff, hallucination when the model does not know, and the impossibility of putting a private corpus into the weights. The corpus becomes a swappable index, so updating knowledge means re-indexing rather than retraining.",
+        "Retrieval-augmented generation answers from documents rather than from memory. The question is embedded as a vector, the most similar chunks of a document store are retrieved, and they are pasted into the prompt with an instruction to answer only from them. The model's weights supply language and reasoning; the documents supply the facts, which can be private, recent, and cited.",
+        "The lab asks \"What is the refund window?\" about a private, changeable policy. Closed-book, the model answers fluently and specifically — \"Refunds are accepted within 30 days\" — with no source and no way to know it is out of date. With retrieval, the query is turned into a TF-IDF vector over a five-document store (production systems use a dense embedding model) and compared by cosine: the policy chunk, \"The refund window is 45 days from delivery for unused items\", scores 0.51; a chunk about damaged items shares only the word \"refund\" and scores 0.22; the rest score 0. The top two go into the prompt, and the answer becomes 45 days, cited.",
+        "RAG's quality is bounded by its retrieval. If the right chunk is not retrieved, the model either refuses or falls back on its weights; if a misleading chunk is retrieved, it will faithfully repeat it. So most of the engineering is in chunking, the embedding model, hybrid keyword-plus-vector search and re-ranking — and in evaluating retrieval separately from generation.",
     ),
     steps = listOf(
         StepCard(1, "Chunk the Corpus", "Split documents into passages of a few hundred tokens with a little overlap so context is not cut mid-thought.", 0xFF3B82F6),
@@ -92,6 +122,7 @@ internal val ragContent = TopicContent(
         "Retrieval quality caps answer quality: if the right passage is not in the top-k, generation cannot recover.",
         "Chunking and overlap are quietly the highest-leverage knobs in the whole pipeline.",
         "Hybrid retrieval plus a cross-encoder reranker beats pure vector search on almost every real corpus.",
+        "In the lab the closed-book answer is a confident 30 days; retrieval finds the policy chunk (cosine 0.51) and the answer becomes the correct 45 days.",
     ),
     crossLinks = listOf(
         CrossLink("word_embeddings", "Word Embeddings"),

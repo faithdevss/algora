@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,27 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val hallucinationMitigationContent = TopicContent(
     topicId = "hallucination_mitigation",
+    figure = Figure(
+        caption = "The page's ten-question population, scored three ways at the same 60% coverage " +
+            "— six of ten questions answered, the rest refused. Answering everything gets 0.605. " +
+            "Refusing when self-consistency confidence falls below 0.8 lifts that only to 0.668, " +
+            "because on this population confidence does not separate the two groups: the four " +
+            "unanswerable questions are built so every sampled chain lands on the same wrong " +
+            "answer, which is what a hallucination is, so the model's agreement with itself is " +
+            "high exactly where it is wrong — 0.88 on the most confident false claim against 0.71 " +
+            "on the least confident true one. Grounding refuses unless a retrieved passage " +
+            "supports the claim, and reaches 0.959 at the same coverage. The difference is the " +
+            "signal, not the threshold: one reads the evidence, the other reads how firmly the " +
+            "model believes what it says.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("answer all", 0.605f, FigureTone.Muted),
+                FigureBar("confidence ≥ 0.8", 0.668f, FigureTone.Warn),
+                FigureBar("grounded", 0.959f, FigureTone.Accent),
+            ),
+            yLabel = "accuracy on answered, 0 to 1",
+        ),
+    ),
     whatIsIt = listOf(
         "A hallucination is not a random error. A model that is unsure produces different answers on different samples, which is detectable and mostly harmless. A hallucination is the other case: a fluent, specific, confidently-held claim that happens to be false, produced the same way every time. The distinction matters because almost every popular mitigation is a detector, and a detector's usefulness depends entirely on which of the two it is looking at.",
         "The lab makes that concrete on ten questions — six the corpus supports and four it cannot. Confidence is what self-consistency would report (the expected share of samples landing on the modal answer), and accuracy is what those samples would actually get right; both are computed exactly rather than sampled. The four unanswerable questions are constructed so the model is *systematically* wrong about them — every chain lands on the same wrong answer — because that is what a hallucination is. Under that construction the reported confidence does not separate the two groups at all: the least-confident supported question sits at 0.71 while the most-confident unsupported one sits at 0.88, and the expected calibration error is 0.225.",

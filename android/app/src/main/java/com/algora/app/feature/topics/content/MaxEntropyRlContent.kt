@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,9 +15,36 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val maxEntropyRlContent = TopicContent(
     topicId = "max_entropy_rl",
+    figure = Figure(
+        caption = "How the entropy weight α reshapes a policy over two nearly tied actions worth 1.0 " +
+            "and 0.9, using the maximum-entropy optimum π(a) ∝ exp(Q(a)/α) from the page's lab. " +
+            "Ordinary RL (α → 0) is winner-take-all: 100 / 0, a policy betting that its own value " +
+            "estimates are right to a tenth. At α = 0.05 the lab's split is 88 / 12 — the better " +
+            "action dominates, but the alternative stays alive. At α = 0.2 it is 62 / 38, and at " +
+            "α = 0.5 nearly even, 55 / 45. α is the exchange rate between reward and randomness, " +
+            "and it has a price: on the continuous task in the SAC lab, α = 0.2 gives up 0.10 of " +
+            "expected reward. What it buys is exploration that is part of the objective and a " +
+            "policy that degrades gracefully when its estimates — or the environment — turn out " +
+            "wrong.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("100%", "0%"),
+                listOf("88%", "12%"),
+                listOf("62%", "38%"),
+                listOf("55%", "45%"),
+            ),
+            rowHeaders = listOf("α → 0 (greedy)", "α = 0.05", "α = 0.2", "α = 0.5"),
+            colHeaders = listOf("Q = 1.0", "Q = 0.9"),
+            marks = listOf(
+                FigureCell(0, 1, FigureTone.Warn),
+                FigureCell(1, 1, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
-        "Maximum-entropy RL augments the standard reward objective with a bonus for policy entropy, so the agent is rewarded for acting as randomly as possible while still succeeding.",
-        "This 'act randomly where it doesn't hurt' principle improves exploration, robustness, and the ability to capture multiple good strategies instead of one brittle solution.",
+        "Standard RL maximises expected return, and its optimal policy is deterministic: one best action per state, every alternative discarded. Maximum-entropy RL changes the objective to return plus α times the policy's entropy, E[Σ rₜ + α·H(π(·|sₜ))], so the agent is paid for staying random where randomness costs little.",
+        "The optimal policy for that objective is not greedy but Boltzmann: π(a) ∝ exp(Q(a)/α). The lab shows what that does to two nearly tied actions, worth 1.0 and 0.9: at α = 0.05 they split 88 / 12 instead of winner-take-all, larger α spreads the policy further, and α → 0 recovers the greedy policy. A policy that commits fully to a 1.0-versus-0.9 difference is betting that its own value estimates are right to a tenth; the entropy term keeps that bet hedged until the evidence separates them.",
+        "α is the exchange rate between reward and randomness, and the cost is real: on the continuous task in the SAC lab, α = 0.2 gives up 0.10 of expected reward. What it buys is exploration that is part of the objective rather than bolted on, and robustness — policies that keep alternatives alive degrade more gracefully when the environment shifts. SAC is the practical algorithm built on this objective, with α tuned automatically to hit a target entropy.",
     ),
     steps = listOf(
         StepCard(1, "Augment the Objective", "Add α·H(π) to the return: value both reward and unpredictability.", 0xFF818CF8),
@@ -53,6 +84,7 @@ internal val maxEntropyRlContent = TopicContent(
         "It yields soft value functions and a Boltzmann-form optimal policy.",
         "The temperature α trades exploration against pure reward.",
         "SAC and soft Q-learning are its practical instantiations.",
+        "In the lab two actions worth 1.0 and 0.9 split 88 / 12 at α = 0.05 instead of 100 / 0 under greedy RL.",
     ),
     crossLinks = listOf(
         CrossLink("sac", "SAC"),

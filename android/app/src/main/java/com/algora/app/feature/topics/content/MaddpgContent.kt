@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,9 +15,34 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val maddpgContent = TopicContent(
     topicId = "maddpg",
+    figure = Figure(
+        caption = "The page's lab: two agents each choosing a real number, rewarded by " +
+            "r = 1.6·a₁a₂ + a₁ + a₂ − a₁² − a₂² − 0.5, so each one's best action depends on the " +
+            "other's; the optimum is 1.10 at (1, 1). With independent critics, each agent learns a " +
+            "value for its own action with the partner hidden in the noise, from a replay buffer " +
+            "full of the partner's old behaviour — at update 10 its gradient is 0.84 where the " +
+            "truth is 0.60. A centralised critic sees both actions, so its gradient is right. " +
+            "Averaged over 30 runs with exploration noise σ = 0.1, the centralised critics reach " +
+            "the optimum and earn 1.10 within 15 updates; the independent ones are still 1.02 away " +
+            "and earn −0.08. At run time both versions act on their own observations only.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0.84", "1.02", "−0.08"),
+                listOf("0.60", "0.00", "1.10"),
+            ),
+            rowHeaders = listOf("independent", "centralised"),
+            colHeaders = listOf("∂Q/∂a₁ (true 0.60)", "distance to optimum", "reward"),
+            marks = listOf(
+                FigureCell(0, 0, FigureTone.Warn),
+                FigureCell(0, 2, FigureTone.Warn),
+                FigureCell(1, 2, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
-        "MADDPG (Multi-Agent DDPG) extends DDPG to mixed cooperative-competitive settings using centralized critics that see all agents but decentralized actors that see only local observations.",
-        "Giving each critic access to every agent's actions during training makes the environment stationary from its perspective, taming the instability that plagues independent learners.",
+        "MADDPG extends DDPG to several agents with one idea: centralised training, decentralised execution. Each agent keeps its own actor, which at run time sees only its own observation. But during training each agent's critic is given every agent's observation and action, so the value it learns does not change underneath it when the other agents change their behaviour.",
+        "The lab shows why that matters on a continuous two-agent task: each agent picks a real number, and the reward r = 1.6·a₁a₂ + a₁ + a₂ − a₁² − a₂² − 0.5 couples them through the cross term, so each agent's best action depends on the other's; the optimum is 1.10 at (1, 1). An independent critic for agent 1 learns Q₁(a₁) with its partner hidden in the noise, from a replay buffer full of the partner's old, different behaviour — at update 10 its gradient ∂Q/∂a₁ is 0.84 where the true one is 0.60. A centralised critic that sees both actions gets 0.60 exactly.",
+        "The consequence shows up in the result. Averaged over 30 runs with exploration noise σ = 0.1, the centralised critics walk straight to (1, 1) and earn the maximum 1.10 after 15 updates; independent critics are still 1.02 away from the optimum and earn −0.08. Non-stationarity — every agent's environment includes other learning agents — is the central problem of multi-agent RL, and giving the critic the joint action is MADDPG's way around it without sacrificing decentralised execution.",
     ),
     steps = listOf(
         StepCard(1, "Decentralized Actors", "Each agent's policy uses only its own observation.", 0xFF818CF8),
@@ -54,6 +83,7 @@ internal val maddpgContent = TopicContent(
         "Conditioning critics on all actions restores a stationary learning target.",
         "It handles cooperative, competitive, and mixed settings with continuous actions.",
         "Critics are training-only; execution needs just the local actors.",
+        "In the lab after 15 updates, centralised critics reach the optimum reward 1.10; independent critics are still 1.02 away and earn −0.08.",
     ),
     crossLinks = listOf(
         CrossLink("ddpg", "DDPG"),

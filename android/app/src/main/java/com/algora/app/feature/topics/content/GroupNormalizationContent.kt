@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,33 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val groupNormalizationContent = TopicContent(
     topicId = "group_normalization",
+    figure = Figure(
+        caption = "The page's lab normalises one sample — 8 channels × 6 positions — and the only " +
+            "thing that changes between settings is how many channels share a mean and variance. " +
+            "G = 1 puts all 48 values in one group, which is exactly LayerNorm: one μ and σ (0.34 " +
+            "and 2.19 in the lab) for every channel, so the quiet channels c0–c3 are squeezed " +
+            "towards zero by the loud ones. G = 8 gives every channel its own statistics, which is " +
+            "InstanceNorm. Everything in between is GroupNorm, and the usual default is 32 groups. " +
+            "None of these rows ever looks at another sample, which is the point: detection and " +
+            "segmentation train on one or two images per GPU, where BatchNorm's batch statistics " +
+            "are noise, and GroupNorm behaves the same at any batch size.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("8", "48", "LayerNorm"),
+                listOf("4", "24", "GroupNorm"),
+                listOf("2", "12", "GroupNorm"),
+                listOf("1", "6", "InstanceNorm"),
+            ),
+            rowHeaders = listOf("G = 1", "G = 2", "G = 4", "G = 8"),
+            colHeaders = listOf("channels/group", "values/group", "equals"),
+            marks = listOf(
+                FigureCell(0, 2, FigureTone.Primary),
+                FigureCell(1, 2, FigureTone.Accent),
+                FigureCell(2, 2, FigureTone.Accent),
+                FigureCell(3, 2, FigureTone.Primary),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Group Normalization splits a layer's channels into G groups and normalizes each group's activations jointly — mean and variance computed over every channel in the group and every spatial position, for one example, independent of the batch axis entirely. That description makes it sound like a new idea sitting between two others, and checked directly, it is exactly that rather than approximately: setting G equal to 1 (every channel in a single group) reproduces LayerNorm's output to 10⁻¹² on the same input, and setting G equal to the channel count (one channel per group) reproduces InstanceNorm's output to the same tolerance. GroupNorm is not a heuristic compromise between two named techniques — it is one formula whose group size is a parameter, and the two familiar techniques are its two endpoints.",
         "The property GroupNorm inherits from that design is the one that matters in practice: because every group's statistic comes from one example's own channels, it cannot depend on batch size or batch composition at all — recomputing the same sample's normalized output is bit-identical regardless of what any notion of \"batch\" around it looks like, the same batch-independence LayerNorm has. BatchNorm has no such guarantee; its statistic is a mean and variance over however many examples happen to share the mini-batch, and that estimate gets noisier as the batch shrinks — the standard error of a batch mean scales as 1/√B, so a batch of 4 estimates its statistic four times noisier than a batch of 64.",

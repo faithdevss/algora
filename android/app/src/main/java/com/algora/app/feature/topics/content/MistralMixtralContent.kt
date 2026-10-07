@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,26 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val mistralMixtralContent = TopicContent(
     topicId = "mistral_mixtral",
+    figure = Figure(
+        caption = "Mixtral 8x7B's two parameter counts, against a dense Mistral 7B. Every block " +
+            "holds eight feed-forward experts and a router sends each token, at each layer, to " +
+            "just two, so a token touches 12.9B of the 46.7B parameters — 27.6%, a 72% saving in " +
+            "FLOPs against a dense model of the full size. That is the bar the \"runs like a 13B\" " +
+            "description is about. The tall bar is the one it leaves out: because the route is " +
+            "chosen per token, any expert may be needed next, so all 46.7B must be resident — " +
+            "about 6.7× the memory of the dense 7B. MoE buys quality per FLOP and pays in bytes. " +
+            "The router also has to be kept honest during training: left alone, a slightly " +
+            "favoured expert gets more gradient and more traffic until the others go dead, which " +
+            "is what the auxiliary load-balancing loss (1.0 at perfect balance) is there to stop.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("Mixtral, resident", 1f, FigureTone.Warn),
+                FigureBar("Mixtral, per token", 0.276f, FigureTone.Accent),
+                FigureBar("Mistral 7B, dense", 0.156f, FigureTone.Muted),
+            ),
+            yLabel = "parameters, 0 to 46.7B",
+        ),
+    ),
     whatIsIt = listOf(
         "Mistral 7B's contribution was engineering discipline rather than a new idea: grouped-query attention to shrink the KV cache, sliding-window attention to bound the cost of long inputs, and an aggressively over-trained 7B that outperformed models twice its size. Mixtral's contribution is structural — replace each block's feed-forward network with eight of them and route every token to just two.",
         "The routing is per token *and* per layer. A small linear router scores all eight experts, the top two are kept, their softmax weights mix the two outputs, and the next token in the same sentence routes somewhere else entirely. Left alone this collapses: a slightly favoured expert receives more gradient, improves, is favoured more, and the rest go dead. An auxiliary load-balancing loss — experts × Σ (fraction of tokens routed) × (mean gate probability), 1.0 at perfect balance and 1.13 on the lab's short strip — is added to the training objective specifically to break that feedback loop.",

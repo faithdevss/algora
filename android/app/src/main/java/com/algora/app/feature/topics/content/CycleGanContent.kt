@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,28 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val cycleGanContent = TopicContent(
     topicId = "cyclegan",
+    figure = Figure(
+        caption = "The page's lab counted out: six unpaired items in each domain, and how many " +
+            "one-to-one mappings G : A → B each loss leaves standing. The adversarial loss only " +
+            "checks that G's outputs look like domain B, and every bijection sends A onto exactly " +
+            "the set B — so all 6! = 720 mappings score zero, and one of them is right. Cycle " +
+            "consistency, the term usually credited with fixing this, adds an inverse F and " +
+            "requires F(G(a)) = a — but every bijection has an inverse, so all 720 survive that " +
+            "too. What actually narrows the search is a bias towards small changes: allow each " +
+            "item to move at most two positions and 73 candidates remain, at most one and 13 do. " +
+            "In real CycleGANs that bias comes from convolutional generators that prefer to keep " +
+            "local structure, which is why the method works far better than its loss alone can " +
+            "justify.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("zero adversarial", 1f, FigureTone.Warn),
+                FigureBar("+ cycle loss", 1f, FigureTone.Warn),
+                FigureBar("move ≤ 2", 0.101f, FigureTone.Primary),
+                FigureBar("move ≤ 1", 0.018f, FigureTone.Accent),
+            ),
+            yLabel = "mappings left, 0 to 720",
+        ),
+    ),
     whatIsIt = listOf(
         "CycleGAN translates between two image domains — horses and zebras, photographs and Monets — without a single matched pair. That is the achievement, and the reason it is hard is a counting problem. An adversarial loss can only see distributions: it rewards the generator for producing outputs that look like domain B, and says nothing whatsoever about which input produced which output. Model both domains as six items and the arithmetic is finishable by hand. Every one of the 720 bijections from A to B produces exactly the right output distribution, so all 720 drive the adversarial loss to zero, and exactly one of them is the translation you wanted.",
         "The cycle-consistency loss is universally presented as the fix for this, and it is not. Requiring F(G(a)) = a forces F to be the inverse of G — and every bijection has an inverse. Enumerate it: of the 720 mappings that satisfy the adversarial loss, the number that also satisfy cycle consistency is 720. Not most of them, all of them. The cycle term removes exactly zero candidates. What it rules out are the non-bijective mappings — the many-to-one collapses where every horse becomes the same zebra — and those were already ruled out at the level of distributions. Cycle consistency prevents mode collapse. It does not select the semantically correct map, and after both losses are at zero the odds are still one in 720.",

@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureLayer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,29 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val vitContent = TopicContent(
     topicId = "vit",
+    figure = Figure(
+        caption = "The whole image-specific part of a Vision Transformer is the top three blocks. " +
+            "A 224×224 image is cut into a 14×14 grid of 16×16 patches; each patch's 768 raw " +
+            "values pass through one shared linear map (590,592 parameters, identical to a " +
+            "16×16 convolution at stride 16); a learned class token is prepended and 151,296 " +
+            "learned position parameters are added. From there it is the text encoder, unchanged: " +
+            "197 tokens, every one attending to all 197 — 38,809 pairs per layer — so opposite " +
+            "corners of the image can interact in the first layer, which no 3×3 convolution can " +
+            "do. The class token's final state is the only thing the classifier reads. What is " +
+            "missing from the stack is the point: no locality, no translation equivariance, no " +
+            "pooling — the priors a convnet is born with, which ViT has to learn from enough data " +
+            "to beat one.",
+        shape = FigureShape.LayerStack(
+            layers = listOf(
+                FigureLayer("image", "224 × 224 × 3", FigureTone.Muted),
+                FigureLayer("patches", "196 × (16·16·3 = 768)", FigureTone.Primary),
+                FigureLayer("linear embed", "768 → 768, shared", FigureTone.Primary),
+                FigureLayer("+ [CLS], + position", "197 × 768", FigureTone.Primary),
+                FigureLayer("encoder × 12", "197² attention pairs", FigureTone.Accent),
+                FigureLayer("[CLS] → head", "768 → classes", FigureTone.Muted),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A Vision Transformer does not convolve at all. It cuts a 224×224 image into 16×16 patches — a 14×14 grid, 196 of them — flattens each patch to a 768-vector with one shared linear layer, prepends a learned class token, adds position embeddings, and hands the resulting 197-token sequence to a standard transformer encoder. The paper's title is the whole claim: an image is worth 16×16 words.",
         "The image-specific machinery is almost nothing. Patch embedding is a single linear map from 16·16·3 = 768 raw values to 768 dimensions — 590,592 parameters — and position embeddings add 151,296 more, learned rather than sinusoidal because there was no advantage to hand-designing them. Everything after that is the same encoder used for text. What changes is the inductive bias: a convolution hard-codes locality and translation equivariance, while self-attention hard-codes nothing and compares all 197² = 38,809 token pairs in every layer, so it can relate opposite corners of the image in layer one.",

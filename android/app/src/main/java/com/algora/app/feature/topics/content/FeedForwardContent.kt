@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,25 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val feedForwardContent = TopicContent(
     topicId = "feed_forward",
+    figure = Figure(
+        caption = "One BERT-base block at d = 768, priced by its weight matrices. Attention's four " +
+            "projections — Q, K, V and the output — are 4d² = 2,359,296 parameters. The " +
+            "feed-forward network's two matrices, 768 → 3,072 and back, are 2 × 4d² = 4,718,592: " +
+            "twice as many, two thirds of the block, in the sublayer the architecture is not named " +
+            "after. FLOPs per token follow the same 2:1 split (9.4M against 4.7M), so until the " +
+            "sequence is long enough for attention's N² term to matter, the FFN is where the time " +
+            "goes too. The third bar is LLaMA's SwiGLU, which adds a gate matrix and pays for it by " +
+            "shrinking the hidden width from 4d to 8/3·d — three 768 × 2,048 matrices are exactly " +
+            "4,718,592 again. The bars only look the same because that was the design constraint.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("attention", 0.5f, FigureTone.Muted),
+                FigureBar("FFN (4d)", 1f, FigureTone.Accent),
+                FigureBar("SwiGLU (8/3·d)", 1f, FigureTone.Primary),
+            ),
+            yLabel = "parameters, 0 to 4.7M",
+        ),
+    ),
     whatIsIt = listOf(
         "Every transformer block is attention followed by a position-wise feed-forward network: two linear layers with a non-linearity between them, applied to each token independently. Attention moves information *between* positions; the FFN is the only place each position is transformed on its own. It expands d_model to 4·d_model and projects back — 768 → 3072 → 768 in BERT-base.",
         "The parameter arithmetic is the part that surprises people. Attention's four projections (Q, K, V and output) are 4d² = 2,359,296 at d = 768. The FFN's two matrices are 2 × 4d² = 4,718,592 — twice as many. **Two thirds of a transformer block is the feed-forward network** (66.7%), not the attention the architecture is named after. Per-token FLOPs follow: 9,437,184 for the FFN against 4,718,592 for attention's projections, so at short sequence lengths the FFN dominates compute as well as parameters, and attention's quadratic term only overtakes it once the sequence is long. That is why quantisation, pruning and mixture-of-experts all target the FFN first.",

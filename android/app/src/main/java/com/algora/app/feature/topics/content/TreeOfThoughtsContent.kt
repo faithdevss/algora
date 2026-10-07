@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,34 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val treeOfThoughtsContent = TopicContent(
     topicId = "tree_of_thoughts",
+    figure = Figure(
+        caption = "The page's lab: Game of 24 with 4, 9, 10 and 13, searched with a cheap " +
+            "one-operation lookahead as the evaluator. There are 36 possible first moves, and the " +
+            "evaluator ranks the best solvable one eighth — none of its top five can reach 24 at " +
+            "all. A chain of thought is beam width 1: it commits to the evaluator's favourite " +
+            "(4 + 9 = 13) and dead-ends, though (10 − 4) × (13 − 9) = 24 was one sibling away. " +
+            "Width 5 still throws the answer away. Width 8 is the first that keeps it, and nothing " +
+            "about the evaluator changed. The alternative is a better evaluator: one more operation " +
+            "of lookahead lets width 1 solve it, but costs 702 evaluator calls against 180 for the " +
+            "cheap one at width 8. Width substitutes for evaluator quality, and you pay for one or " +
+            "the other.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("cheap", "✗", "—"),
+                listOf("cheap", "✗", "—"),
+                listOf("cheap", "✓", "180"),
+                listOf("deeper", "✓", "702"),
+            ),
+            rowHeaders = listOf("width 1", "width 5", "width 8", "width 1"),
+            colHeaders = listOf("evaluator", "solves 24", "evaluator calls"),
+            marks = listOf(
+                FigureCell(0, 1, FigureTone.Warn),
+                FigureCell(1, 1, FigureTone.Warn),
+                FigureCell(2, 1, FigureTone.Accent),
+                FigureCell(3, 1, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A chain of thought is a search with beam width 1. It picks the next step that looks best and commits, and it has no way back — nothing in the trace records that alternatives existed. Tree of Thoughts keeps them: generate several candidate next steps, score each partial state, keep the best few, and expand from there. That is beam search, and the only genuinely new part is that the generator and the evaluator are both the language model.",
         "The scoring step is where it lives or dies. The paper prompts the model to judge a partial state as sure, likely or impossible; the lab here stands that in with a cheap one-operation lookahead, and then does the thing that matters — measures how good it is. On Game of 24 with the numbers 4, 9, 10, 13, that evaluator ranks the best genuinely-solvable first move eighth out of 36, and none of its top five can reach 24 at all. Beam width 1 fails. Width 5 fails. Width 8 is the first that succeeds, and nothing about the evaluator changed — the search simply stopped trusting it enough to throw the answer away.",

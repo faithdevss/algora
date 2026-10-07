@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,11 +15,37 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val fineTuningFullContent = TopicContent(
     topicId = "fine_tuning_full",
+    figure = Figure(
+        caption = "The page's lab after 300 epochs of full-batch gradient descent, all three " +
+            "regimes trained on the same 16 points and scored on the same 60 unseen ones. The task " +
+            "is whether a point lies inside a circle, and the pretrained body's six tanh units " +
+            "already describe distance from the centre. Training from scratch fits 94% of its " +
+            "training points and only 55% of new ones — 25 weights learning features from 16 " +
+            "examples is memorisation. A new head on the frozen body has 7 weights to fit and " +
+            "reaches 95% on unseen points. Full fine-tuning starts from the same good features but " +
+            "is free to move all 25 weights, and with this little data it moves them towards the " +
+            "16 points it can see: 100% on those, 82% on the rest. More examples are what tip the " +
+            "balance back towards unfreezing; with 16, the body is worth more left alone.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("25", "94%", "55%"),
+                listOf("7", "100%", "95%"),
+                listOf("25", "100%", "82%"),
+            ),
+            rowHeaders = listOf("from scratch", "head only", "full fine-tune"),
+            colHeaders = listOf("trainable", "train acc.", "test acc."),
+            marks = listOf(
+                FigureCell(0, 2, FigureTone.Warn),
+                FigureCell(1, 2, FigureTone.Accent),
+                FigureCell(2, 1, FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Full fine-tuning unfreezes every weight and continues training on the downstream task. It is the strongest form of transfer and the most expensive one, and the choice between it and simply training a new head on frozen features is a question about your dataset size, not about your ambition.",
-        "The lab trains all three regimes for real on the same data: from scratch, head-only on a frozen pretrained body, and full fine-tuning. Pretraining is multi-task — one body, six heads — and that detail turned out to be load-bearing. The first version of this lab pretrained on a single scalar output, which only needs one direction of the representation; the \"reusable feature extractor\" it was supposed to produce collapsed, and feature extraction could never fit anything. Six heads force a full-rank representation, which is what makes frozen features worth having.",
-        "The result is the textbook curve, measured. At 8 examples the frozen body wins 0.171 to 0.288. The crossover is at **32 examples**, and past it full fine-tuning pulls away: 0.0008 against 0.0121 at 256, fifteen times better. The frozen curve flattens because a linear read-out of someone else's features has a ceiling — and training from scratch reaching that same ceiling at 256 examples (0.0119) is a usable signal that the features, not the data, had become the constraint.",
-        "What the downstream number never shows is the bill. Score the six pretraining tasks again after the body has moved and their loss goes from 0.0002 to 0.0595 — **253× worse**. That is catastrophic forgetting, it is invisible from every metric anyone watches during fine-tuning, and it is why the general capabilities of a fine-tuned model have to be re-evaluated rather than assumed.",
+        "The lab trains all three regimes for real on the same small problem: is a point inside a circle? There are 16 training points and 60 held-out ones. The network is a body of six tanh units (18 weights) and a sigmoid head (7 weights). The pretrained body comes from a related task, and its six units already respond to distance from the centre — the feature this task needs. Each regime then runs 300 epochs of full-batch gradient descent at a learning rate of 0.5.",
+        "With 16 examples, the frozen body wins outright. Training from scratch reaches 94% on its training points and only **55%** on unseen ones: 25 weights have to invent their features from 16 points, and they memorise instead. A new head on the frozen body fits just 7 weights and scores **95%**. Full fine-tuning starts from the same good features and ends at 100% on the training set but **82%** on unseen points — every weight was free to move, and with so little data it moved towards the 16 points it could see. That is the small-data trap: more capacity to adapt is also more capacity to overfit.",
+        "The trade reverses as data grows: a linear read-out of someone else's features has a ceiling, and once there are enough examples to adapt the body without memorising, unfreezing pays. Moving the body has a second cost the downstream score never shows. Whatever else the pretrained weights were good at drifts as they move, which is catastrophic forgetting — why a fine-tuned model's general abilities have to be re-measured rather than assumed.",
     ),
     steps = listOf(
         StepCard(1, "Start From The Checkpoint", "Pretrained weights are the initialisation. Random init throws away everything the corpus paid for.", 0xFFEF4444),
@@ -27,9 +57,9 @@ internal val fineTuningFullContent = TopicContent(
     ),
     formulas = listOf(
         FormulaEntry("Objective", "min over all θ of L_down(θ), from θ = θ_pretrained", "Nothing constrains θ to stay near where it started."),
-        FormulaEntry("Regime crossover", "32 examples", "Below it the frozen body wins; above it, full fine-tuning."),
-        FormulaEntry("Frozen ceiling", "plateaus at ≈0.0121", "A linear read-out of fixed features cannot do better; more data does not lower it."),
-        FormulaEntry("Forgetting", "0.0002 → 0.0595 upstream", "253× worse, with no downstream symptom."),
+        FormulaEntry("Trainable weights", "25 full · 7 head only", "Body 2 → 6 tanh (18) plus head 6 → 1 sigmoid (7)."),
+        FormulaEntry("Test accuracy, 16 examples", "scratch 55% · head 95% · full 82%", "After 300 epochs, on 60 unseen points."),
+        FormulaEntry("Overfitting gap", "full: 100% train vs 82% test", "Freedom to move every weight, and too little data to move them well."),
         FormulaEntry("Optimizer state", "16 bytes per trainable parameter", "fp16 weight + fp16 grad + fp32 master + 2 fp32 moments."),
         FormulaEntry("7B training state", "104.3 GB full vs 13.3 GB at 20M trainable", "The gap PEFT exists to close."),
     ),
@@ -82,12 +112,12 @@ internal val fineTuningFullContent = TopicContent(
                 # Downstream loss falls the whole time. That is not the question.
                 # The question is what happened to everything the model could already do.
 
-                before = evaluate_upstream(model)          # 0.0002
-                model = full_finetune(model, downstream, n=256)
-                after  = evaluate_upstream(model)          # 0.0595
+                before = evaluate_upstream(model)
+                model = full_finetune(model, downstream)
+                after  = evaluate_upstream(model)
 
-                print(after / before)                      # 253x worse
-                print(evaluate_downstream(model))          # 0.0008  <- looks great
+                print(after / before)                      # > 1: upstream loss went up
+                print(evaluate_downstream(model))          # improved  <- looks great
 
                 # Two cheap mitigations, both of which trade some downstream gain:
                 #   1. Freeze the lower half. Most forgetting happens in the layers
@@ -104,14 +134,14 @@ internal val fineTuningFullContent = TopicContent(
     applications = listOf(
         ApplicationCard("flame", 0xFFEF4444, "Domain Adaptation", "Legal, medical or code corpora where the vocabulary itself has shifted."),
         ApplicationCard("target", 0xFF10B981, "Task Specialisation", "One task, enough labels, and no need for the model to stay general."),
-        ApplicationCard("help", 0xFFF59E0B, "Small-Data Traps", "Under ~32 examples here, a frozen body beats fine-tuning outright."),
+        ApplicationCard("help", 0xFFF59E0B, "Small-Data Traps", "With 16 examples here, a frozen body beats fine-tuning outright, 95% to 82%."),
         ApplicationCard("check", 0xFF3B82F6, "Regression Testing", "Re-run the general benchmarks. Forgetting has no downstream symptom."),
     ),
     takeaways = listOf(
-        "The crossover is measured, not philosophical: frozen features win at 8 examples, full fine-tuning wins from 32.",
-        "A frozen body has a ceiling (0.0121 here) that more data never lifts — when training from scratch catches it, unfreeze.",
-        "Full fine-tuning made the six pretraining tasks 253× worse while every downstream number improved.",
-        "Multi-task pretraining is what makes frozen features reusable; a single-output pretrain collapses the representation.",
+        "Dataset size decides the regime: with 16 examples the frozen body scores 95% on unseen points, full fine-tuning 82%, scratch 55%.",
+        "Full fine-tuning's 100% training accuracy against 82% test is overfitting — it had every weight free and too little data.",
+        "A frozen body has a ceiling more data never lifts; once there is enough data to adapt it without memorising, unfreeze.",
+        "Moving the body costs upstream capability (catastrophic forgetting) that no downstream number shows — re-test the general benchmarks.",
         "Mixed-precision Adam costs 16 bytes per trainable parameter — 104 GB of state for a 7B model, before activations.",
     ),
     crossLinks = listOf(

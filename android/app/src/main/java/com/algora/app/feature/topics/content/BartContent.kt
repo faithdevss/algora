@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,31 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val bartContent = TopicContent(
     topicId = "bart",
+    figure = Figure(
+        caption = "BART's pretraining is denoising: corrupt a document, then make an " +
+            "encoder-decoder regenerate the original in full. The page's lab walks the " +
+            "corruptions on one short document, and each asks the model for something different. " +
+            "Token masking is BERT's: the gap is marked, only its contents are missing. Deletion " +
+            "removes the marker too, so the model must also find where the hole is. Text " +
+            "infilling replaces a whole span — length drawn from Poisson(3) — with a single " +
+            "[MASK], so the model must work out how many tokens are missing; it was BART's best " +
+            "single objective. Sentence permutation, alone, helped little, and the final recipe " +
+            "combined it with infilling. Because a decoder regenerates the text, one 400M-parameter " +
+            "model fine-tunes for classification and generation alike.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("the [MASK] sat on the mat", "what"),
+                listOf("the sat on the mat", "where + what"),
+                listOf("the [MASK] the mat", "how many + what"),
+                listOf("it purred loudly. the cat sat…", "the order"),
+            ),
+            rowHeaders = listOf("masking", "deletion", "infilling", "permutation"),
+            colHeaders = listOf("corrupted input", "model must recover"),
+            marks = listOf(
+                FigureCell(2, 1, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "BART is the obvious architecture nobody had shipped: a complete encoder-decoder transformer, pretrained by corrupting text arbitrarily and asking it to reconstruct the original. BERT's encoder can fill blanks but cannot generate; GPT's decoder can generate but only sees leftward context. BART has both stacks, so a single pretrained model fine-tunes for classification *and* generation without any architectural surgery — and pays about 18% more parameters than BERT-large (≈400M vs 340M) for the extra decoder (about 10% more than an equivalently sized BERT).",
         "The corruption is where the design work is, and the five noise functions are not variations on one idea. Token masking replaces individual tokens with [MASK] — BERT's objective. Token deletion removes them with no placeholder, so the *position* of what is missing becomes part of the prediction. Text infilling replaces a whole span with one [MASK], which can stand for zero, one or many tokens, so the model must predict how much is missing as well as what; it is the strongest single objective in the paper's ablation. Sentence permutation and document rotation lose no tokens at all — they destroy order and hide where the document begins, moving the problem up to document level.",

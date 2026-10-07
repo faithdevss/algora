@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,9 +15,36 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val fasterRcnnContent = TopicContent(
     topicId = "faster_rcnn",
+    figure = Figure(
+        caption = "The nine anchors the Region Proposal Network places at every feature-map " +
+            "position: three areas × three aspect ratios, each box's width and height in input " +
+            "pixels. Every row keeps its area — 128², 256² or 512² — while the columns trade " +
+            "width for height, so 181 × 91 and 91 × 181 cover the same ground as 128 × 128 in " +
+            "different shapes. Nothing is regressed out of nothing: each anchor is scored for " +
+            "objectness and nudged by an offset relative to its own size, which keeps the targets " +
+            "scale-free. In the lab's 20 × 20 map they repeat 400 times, for 3,600 anchors, of which " +
+            "only 3 count as positives for its object; on the paper's 40 × 60 map it is 21,600 " +
+            "anchors — the network's entire hypothesis space, fixed before it sees an image — and " +
+            "NMS cuts the survivors to 300 at test time. Proposals now cost about 10 ms, against " +
+            "selective search's 2,000.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("181 × 91", "128 × 128", "91 × 181"),
+                listOf("362 × 181", "256 × 256", "181 × 362"),
+                listOf("724 × 362", "512 × 512", "362 × 724"),
+            ),
+            rowHeaders = listOf("128²", "256²", "512²"),
+            colHeaders = listOf("wide 2:1", "square", "tall 1:2"),
+            marks = listOf(
+                FigureCell(0, 1, FigureTone.Accent),
+                FigureCell(1, 1, FigureTone.Accent),
+                FigureCell(2, 1, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Fast R-CNN left a CPU algorithm in the middle of a GPU pipeline, and it took roughly seven times longer than the network it fed. Faster R-CNN's move is to make the proposals a network too: a Region Proposal Network slides a small convolution over the *same* feature map the detector already computed, so proposals cost about 10 milliseconds instead of two seconds. Everything in the detector is now learned, and everything shares one backbone.",
-        "Anchors are the idea that made that possible. Rather than regressing boxes out of nothing, the RPN places a fixed set of reference boxes — three scales × three aspect ratios — at every feature-map position, scores each for objectness, and regresses an offset from the ones that fit. On a 40×60 feature map that is 21,600 anchors, which is the network's entire hypothesis space laid out in advance. NMS reduces the survivors to 2,000 proposals at training time and 300 at test time.",
+        "Anchors are the idea that made that possible. Rather than regressing boxes out of nothing, the RPN places a fixed set of reference boxes — three scales × three aspect ratios — at every feature-map position, scores each for objectness, and regresses an offset from the ones that fit. On a 40×60 feature map that is 21,600 anchors, which is the network's entire hypothesis space laid out in advance. The lab's smaller example, a 320×320 image on a 20×20 map, has 3,600 anchors — and only 3 of them overlap its object at IoU ≥ 0.7, which is why training samples 256 anchors per image rather than drowning the RPN in background. NMS reduces the survivors to 2,000 proposals at training time and 300 at test time.",
         "The result is the canonical two-stage detector: propose, then classify and refine, at 73.2% mAP on VOC 2007 and about 0.2 seconds per image with VGG-16 — 5 frames per second, and 17 with a smaller backbone. The remaining cost is structural: every proposal still gets its own pass through the head, so work scales with the number of regions. That is exactly what the one-stage detectors set out to remove, and the anchor idea introduced here is what they took with them.",
     ),
     steps = listOf(

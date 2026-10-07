@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,11 +15,37 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val mmluContent = TopicContent(
     topicId = "mmlu",
+    figure = Figure(
+        caption = "The page's lab: four models' MMLU accuracies with the two things the single " +
+            "number leaves out. The chance-corrected column subtracts the 0.25 a model gets by " +
+            "guessing among four options and rescales: model D's 0.310 is only 8% of the way from " +
+            "guessing to perfect. The error-bar columns are ±2 binomial standard errors. On all " +
+            "14,042 questions they are ±0.008, so A's 1.4-point lead over B is 2.57 standard " +
+            "errors of the difference — real. Score the same models on 1,000 questions and the bars " +
+            "widen to ±0.029; the same gap is 0.69 standard errors, a coin flip. On a 100-question " +
+            "subject they are ±0.09, wider than everything separating A, B and C. The benchmark " +
+            "separates tiers; on subsets it cannot rank neighbours.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0.712", "0.616", "± 0.008", "± 0.029"),
+                listOf("0.698", "0.597", "± 0.008", "± 0.029"),
+                listOf("0.655", "0.540", "± 0.008", "± 0.030"),
+                listOf("0.310", "0.080", "± 0.008", "± 0.029"),
+            ),
+            rowHeaders = listOf("model A", "model B", "model C", "model D"),
+            colHeaders = listOf("accuracy", "over chance", "n = 14,042", "n = 1,000"),
+            marks = listOf(
+                FigureCell(3, 1, FigureTone.Warn),
+                FigureCell(0, 2, FigureTone.Accent),
+                FigureCell(0, 3, FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "MMLU is 14,042 four-way multiple-choice questions across 57 subjects, from abstract algebra to professional law, and it is quoted everywhere as a single accuracy. The first thing that number needs is its **floor**: with four options, a model that has learned nothing scores 0.25. A reported 0.310 is therefore not \"31% of the way there\" — it is 0.080 of the way from guessing to perfect.",
-        "**The second thing it needs is its error bar, and this is where most leaderboard claims fail.** 14,042 questions at 0.702 accuracy carry a binomial standard error of 0.0039 — about four tenths of a point. So the gap between a model reporting 0.702 and one reporting 0.694 is **1.46 standard errors: not a difference, a coin flip.** A model at 0.658 is 7.91 SE back, which is real. The benchmark separates tiers; it does not rank neighbours.",
-        "**Subject-level claims are far worse.** The error scales with 1/√n and the subjects are small: a 100-question subject has standard error 0.0458, twelve times the full benchmark's. Run that across a real subject table and **10 of 45 pairs are within two standard errors of each other** — their ordering reverses on resampling. A fifth of a per-subject bar chart's orderings are noise.",
-        "**Then two things no error bar catches.** Subject sizes range from 100 to 1,534 questions here, so weighting every *question* equally and every *subject* equally give different numbers — micro 0.6084, macro 0.6140. That 0.56-point spread is 70% of the gap the leaderboard uses to rank its top two models, and almost nobody states which they used. And contamination: if a fifth of the test set appeared in pretraining, a reported 0.700 implies a true ability of 0.625. Contamination moves the score by more than every honest gap on the board, and it is invisible from the score alone.",
+        "**The second thing it needs is its error bar, and this is where most leaderboard claims fail.** At p ≈ 0.7, 14,042 questions carry a binomial standard error of 0.0039 — two standard errors is ±0.8 points. The lab compares a model at 0.712 with one at 0.698: the 1.4-point gap is 2.57 standard errors of the difference, so on the full benchmark it is real. Score the same two models on 1,000 questions and the error bar is ±2.9 points and the gap is 0.69 standard errors — a coin flip. On 100 questions it is ±9. **The benchmark separates tiers; on a subset it does not even rank neighbours.**",
+        "**Subject-level claims are far worse.** The error scales with 1/√n and the subjects are small: a 100-question subject has standard error 0.0458, twelve times the full benchmark's. Most per-subject bar charts are comparing numbers whose error bars overlap, and their ordering reverses on resampling.",
+        "**Then two things no error bar catches.** Subject sizes range from 100 to 1,534 questions here, so weighting every *question* equally and every *subject* equally give different numbers from identical predictions, and almost nobody states which they used. And contamination: if a fifth of the test set appeared in pretraining, a reported 0.700 implies a true ability of 0.625. Contamination moves the score by more than every honest gap on the board, and it is invisible from the score alone.",
     ),
     steps = listOf(
         StepCard(1, "Subtract The Chance Floor", "0.25 with four options. Rescale before interpreting any score.", 0xFF0EA5E9),
@@ -29,8 +59,8 @@ internal val mmluContent = TopicContent(
         FormulaEntry("Chance floor", "1 / 4 = 0.25", "0.310 reported is 0.080 chance-corrected."),
         FormulaEntry("Chance correction", "(acc − 0.25) / 0.75", "What a multiple-choice score actually means."),
         FormulaEntry("Standard error", "√(p(1−p)/n)", "0.0039 at 14,042 · 0.0458 at 100."),
-        FormulaEntry("Separation", "|a − b| / √(SEa² + SEb²)", "0.702 vs 0.694 = 1.46 SE. Not a difference."),
-        FormulaEntry("Micro vs macro", "0.6084 vs 0.6140", "Same predictions, 70% of the top-two gap."),
+        FormulaEntry("Separation", "|a − b| / √(SEa² + SEb²)", "0.712 vs 0.698: 2.57 SE at n = 14,042, 0.69 SE at n = 1,000."),
+        FormulaEntry("Micro vs macro", "per-question vs per-subject weighting", "Same predictions, different number — state which."),
         FormulaEntry("Contamination", "reported = ability·(1−c) + c", "Reported 0.700 at c = 0.20 ⇒ ability 0.625."),
     ),
     notationKey = listOf(
@@ -60,7 +90,7 @@ internal val mmluContent = TopicContent(
                 print(separation(0.702, 0.658, 14_042))   # 7.91 SE -> real
                 print(separation(0.702, 0.694, 100))      # 0.12 SE -> nothing
 
-                # 10 of 45 subject pairs in the lab's table sit inside 2 SE.
+                # On a real subject table, many pairs sit inside 2 SE of each other.
                 # Their ordering is resampling noise, drawn as a bar chart.
             """.trimIndent(),
         ),
@@ -71,7 +101,7 @@ internal val mmluContent = TopicContent(
                 # 1. Averaging. Subject sizes run 100 - 1,534 questions.
                 micro = sum(a * n for a, n in subjects) / sum(n for _, n in subjects)
                 macro = sum(a for a, _ in subjects) / len(subjects)
-                print(micro, macro)            # 0.6084  0.6140
+                print(micro, macro)            # different numbers, same predictions
 
                 # The 0.56-point spread is 70% of the 0.8-point gap between the
                 # top two models. Nobody states which average they used.
@@ -97,9 +127,9 @@ internal val mmluContent = TopicContent(
     ),
     takeaways = listOf(
         "MMLU's chance floor is 0.25, so scores must be chance-corrected before they mean anything — 0.310 reported is 0.080 of the way from guessing to perfect.",
-        "At 14,042 questions the standard error is 0.0039, making 0.702 against 0.694 a 1.46-SE gap: the leaderboard's top two are reporting noise.",
-        "Subject-level claims are 12× noisier still — 10 of 45 subject pairs in the lab's table are not distinguishable at 2 SE.",
-        "Micro and macro averaging differ by 0.56 points on identical predictions, which is 70% of the gap used to rank the top two models.",
+        "At 14,042 questions the standard error is 0.0039, so the lab's 0.712 vs 0.698 is a real 2.57-SE gap — and a coin flip (0.69 SE) on 1,000 questions.",
+        "Subject-level claims are 12× noisier still: a 100-question subject has a standard error of 0.0458.",
+        "Micro and macro averaging give different numbers on identical predictions — say which one you report.",
         "Contamination is the largest and least visible term: a reported 0.700 implies a true 0.625 if a fifth of the benchmark leaked into pretraining.",
     ),
     crossLinks = listOf(

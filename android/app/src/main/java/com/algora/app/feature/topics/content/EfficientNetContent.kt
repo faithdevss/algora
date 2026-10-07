@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,55 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val efficientNetContent = TopicContent(
     topicId = "efficientnet",
+    figure = Figure(
+        caption = "Compound scaling: depth, width and input resolution grown together by one knob φ, " +
+            "with the per-step factors α = 1.2, β = 1.1 and γ = 1.15 found once on the B0 baseline. " +
+            "The lab's φ = 3 marks the point it walks through — depth ×1.73, width ×1.33, " +
+            "resolution ×1.52 — and the factors were chosen so α·β²·γ² ≈ 2, because width and " +
+            "resolution each cost compute in proportion to their square: every step of φ roughly " +
+            "doubles FLOPs, so φ = 3 costs 7.1× the FLOPs of B0. The lab's counterfactual is the " +
+            "point of the method: spend the same 7.1× on depth alone and the network is seven times " +
+            "deeper but no wider and no sharper, and accuracy per FLOP flattens. Balanced growth " +
+            "is what let the family run from B0 to B7 without retuning each dimension by hand.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "depth, 1.2^φ",
+                    listOf(
+                        FigurePoint(0.000f, 0.333f), FigurePoint(0.167f, 0.400f), FigurePoint(0.333f, 0.480f),
+                        FigurePoint(0.500f, 0.576f), FigurePoint(0.667f, 0.691f), FigurePoint(0.833f, 0.829f),
+                        FigurePoint(1.000f, 0.995f),
+                    ),
+                    tone = FigureTone.Accent,
+                ),
+                FigureSeries(
+                    "resolution, 1.15^φ",
+                    listOf(
+                        FigurePoint(0.000f, 0.333f), FigurePoint(0.167f, 0.383f), FigurePoint(0.333f, 0.441f),
+                        FigurePoint(0.500f, 0.507f), FigurePoint(0.667f, 0.583f), FigurePoint(0.833f, 0.670f),
+                        FigurePoint(1.000f, 0.771f),
+                    ),
+                    tone = FigureTone.Primary,
+                ),
+                FigureSeries(
+                    "width, 1.1^φ",
+                    listOf(
+                        FigurePoint(0.000f, 0.333f), FigurePoint(0.167f, 0.367f), FigurePoint(0.333f, 0.403f),
+                        FigurePoint(0.500f, 0.444f), FigurePoint(0.667f, 0.488f), FigurePoint(0.833f, 0.537f),
+                        FigurePoint(1.000f, 0.591f),
+                    ),
+                    tone = FigureTone.Muted,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.5f, 0.576f, "×1.73"),
+                FigurePoint(0.5f, 0.507f, "×1.52", FigureTone.Primary),
+                FigurePoint(0.5f, 0.444f, "×1.33", FigureTone.Muted),
+            ),
+            xLabel = "φ, 0 → 6 (B0 at 0)",
+            yLabel = "multiplier over B0, 0 to 3",
+        ),
+    ),
     whatIsIt = listOf(
         "There are exactly three ways to make a convolutional network bigger: more layers (depth), more channels per layer (width), or larger input images (resolution). Every architecture before EfficientNet scaled one of them by hand — ResNet-50 to ResNet-152 is depth, WideResNet is width — and each axis saturates on its own. Accuracy flattens while the FLOPs keep climbing, because a deeper network on small images runs out of detail to see and a wider one on few layers runs out of abstraction to build.",
         "Compound scaling ties all three to a single exponent: depth = 1.2^φ, width = 1.1^φ, resolution = 1.15^φ. The constants come from a small grid search under the constraint α·β²·γ² ≈ 2 — the squares are there because compute scales linearly with depth but quadratically with both width and resolution — which makes each unit of φ approximately a doubling of FLOPs (α·β²·γ² = 1.92). At φ = 6 that is depth ×2.99, width ×1.77 and resolution ×2.31, and the simulation plots all three growing together, with depth growing fastest and resolution taking the largest share of the added compute (γ² = 1.32 per step). That is why the family's input grows from 224² to 600² while its layer count barely triples.",

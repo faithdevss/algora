@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,34 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val gcnContent = TopicContent(
     topicId = "gcn",
+    figure = Figure(
+        caption = "The page's lab: two triangles joined by one bridge edge (2 — 3), triangle A " +
+            "carrying about +2 and triangle B about −2, and one GCN layer — every node replaced by " +
+            "a degree-weighted average of itself and its neighbours, with weights 1/√(dᵢdⱼ). Nodes " +
+            "inside a triangle barely move: node 0's neighbours all agree with it, 1.96 → 1.88. " +
+            "The two bridge nodes move a lot, because each has one neighbour from the other side: " +
+            "node 2 is pulled from 1.80 to 1.10, node 3 from −2.09 to −1.22. The gap between the " +
+            "triangles' means shrinks from 3.98 to 3.31 in one layer. That is message passing " +
+            "working as intended — and, repeated, the same averaging is oversmoothing: stack " +
+            "enough layers and every node drifts towards the same value, and the two communities " +
+            "the features started with can no longer be told apart.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("1.96", "1.88"),
+                listOf("2.11", "1.88"),
+                listOf("1.80", "1.10"),
+                listOf("−2.09", "−1.22"),
+                listOf("−1.95", "−1.93"),
+                listOf("−2.02", "−1.93"),
+            ),
+            rowHeaders = listOf("0 · A", "1 · A", "2 · bridge", "3 · bridge", "4 · B", "5 · B"),
+            colHeaders = listOf("before", "after 1 layer"),
+            marks = listOf(
+                FigureCell(2, 1, FigureTone.Warn),
+                FigureCell(3, 1, FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A Graph Convolutional Network layer replaces a normal layer's fixed input pattern with a graph: every node updates its features by averaging its neighbors' features, weighted by degree, then applying a shared weight matrix. That averaging step — multiplying the feature matrix by a degree-normalized adjacency matrix — is the entire mechanism, and stacking layers means running it repeatedly. Repeated averaging is graph Laplacian smoothing, and its long-run behavior is exact linear algebra rather than a vague warning: on a connected graph, the normalized adjacency matrix has one eigenvalue equal to 1, with an eigenvector proportional to each node's square-root degree, and every other eigenvalue has magnitude strictly less than 1.",
         "That single fact predicts the entire depth curve, measured here on a graph of two triangles joined by one bridge edge: with distinct initial features per triangle, one layer already blurs the split (a between-triangle-to-within-triangle distance ratio of 10.7 drops to 6.9), and by roughly 50 layers the ratio has collapsed to 0.82, converging to exactly 2/3 by around 100 layers and staying there through 400. Not 1 — two-thirds. The reason is in the eigenvector: every component that once distinguished the triangles decays away, and what survives is proportional to the square root of each node's degree, not to which triangle it sits in.",

@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,9 +15,30 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val nerContent = TopicContent(
     topicId = "ner",
+    figure = Figure(
+        caption = "The page's lab sentence, tagged for named entities. Each token gets one label: " +
+            "B- begins an entity, I- continues it, O is outside — so a three-token company is " +
+            "B-ORG I-ORG I-ORG and a one-token city is a lone B-LOC, and recovering the entities is " +
+            "just joining each B- with the I-s after it. With three entity types the labeller " +
+            "chooses among 2 × 3 + 1 = 7 tags at every position. The B- tag earns its place on " +
+            "adjacent entities: three cities in a row tagged only I-LOC would decode as one entity. " +
+            "A CRF layer on top scores whole tag sequences and forbids impossible ones, such as an " +
+            "I-ORG straight after an O — an entity that continues without ever starting.",
+        shape = FigureShape.Strip(
+            cells = listOf("Ada", "Lovelace", "joined", "Analytical", "Engine", "Ltd", "in", "London"),
+            bands = listOf(
+                FigureBand(0, 1, "PER", FigureTone.Accent),
+                FigureBand(3, 5, "ORG", FigureTone.Primary),
+                FigureBand(7, 7, "LOC", FigureTone.Accent),
+            ),
+            aux = listOf("B-PER", "I-PER", "O", "B-ORG", "I-ORG", "I-ORG", "O", "B-LOC"),
+            auxLabel = "BIO",
+        ),
+    ),
     whatIsIt = listOf(
-        "Named entity recognition labels the spans of a sentence that refer to real-world things — people, organizations, locations, dates, amounts — and says which type each one is.",
-        "It is framed as per-token tagging using the BIO scheme: B- starts an entity, I- continues it, O is outside any entity. That turns a span problem into a sequence-labelling problem, which a CRF, a BiLSTM or a transformer encoder can all learn.",
+        "Named entity recognition finds the names in text — people, organisations, places — and labels their type. Entities can span several tokens, so the standard trick is to turn span-finding into one label per token: B- begins an entity, I- continues it, and O is outside any entity. A sequence labeller then predicts one tag per position, and the spans are read back by joining each B- with the I- tags that follow it.",
+        "The lab tags \"Ada Lovelace joined Analytical Engine Ltd in London\": B-PER I-PER for the person, B-ORG I-ORG I-ORG for the three-token company, B-LOC for the city, O elsewhere — with three entity types, the label set is 2 × 3 + O = 7 tags. The B- tag is not decoration: in \"…flights Paris London Rome…\", three adjacent places tagged only I-LOC would decode as one entity; with B-LOC on each they decode as three.",
+        "Per-token predictions can also produce impossible sequences, such as O followed by I-ORG — an entity that continues without starting. A CRF layer scores whole tag sequences and gives such transitions a score of −∞, so the decoder never outputs them; this is why BiLSTM-CRF was the standard NER architecture before transformers, and why transformer taggers still often add a CRF on top. The same BIO encoding serves chunking and slot filling.",
     ),
     steps = listOf(
         StepCard(1, "Tokenize and Align", "Split into tokens and keep a mapping back to character offsets in the original text.", 0xFF3B82F6),
@@ -104,6 +129,7 @@ internal val nerContent = TopicContent(
         "A CRF layer matters because it enforces globally legal tag sequences, not just locally likely ones.",
         "Evaluate on exact-span F1 — per-token accuracy flatters a model that clips boundaries.",
         "Subword tokenizers need careful alignment: label the first subword and mask the rest.",
+        "In the lab three adjacent places tagged only I-LOC decode as one entity; tagging each B-LOC recovers all three.",
     ),
     crossLinks = listOf(
         CrossLink("tokenization", "Tokenization"),

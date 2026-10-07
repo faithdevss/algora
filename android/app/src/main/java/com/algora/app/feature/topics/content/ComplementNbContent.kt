@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,30 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val complementNbContent = TopicContent(
     topicId = "complement_nb",
+    figure = Figure(
+        caption = "The page's lab: a sports test document, \"goal great\", against a training set " +
+            "with 2 sports documents (6 tokens) and 8 politics documents (32 tokens). Multinomial NB " +
+            "scores each class with its own counts plus its prior, and the higher score wins. Sports " +
+            "rests on 6 tokens, has never seen \"great\" (smoothed to 1/12) and carries a 0.2 prior, " +
+            "so it gets −5.19 against politics' −4.61, and politics wrongly wins. Complement NB " +
+            "scores each class with the counts from outside it, and the lowest score wins: the " +
+            "document fits the rest worst. Sports, scored with politics' 32 tokens, gets −4.38; " +
+            "politics, scored with sports' 6, gets −3.58. Sports is lower, so the right answer " +
+            "wins, and each estimate now rests on the large pool outside a class.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("2 · 6", "8 · 32"),
+                listOf("−5.19", "−4.61"),
+                listOf("−4.38", "−3.58"),
+            ),
+            rowHeaders = listOf("docs · tokens", "multinomial, max", "complement, min"),
+            colHeaders = listOf("sports", "politics"),
+            marks = listOf(
+                FigureCell(1, 1, FigureTone.Warn),
+                FigureCell(2, 0, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Complement naive Bayes fixes a specific failure of multinomial NB on imbalanced data. Instead of estimating a class's parameters from that class's own documents, it estimates them from every *other* class's documents — the class's complement — and takes their log, because a term common outside a class is evidence against it (Rennie et al. keep the sign as log θ̃ and take the minimum; scikit-learn stores −log θ̃ and takes the maximum, which is the same rule).",
         "Imbalance hurts multinomial NB twice, and both need fixing. The prior directly favours the majority. Less obviously, so does the likelihood: a rare class has few tokens, so its per-term estimates are noisy and its smoothing constant α|V| dominates a small denominator, systematically flattening its distribution toward uniform. Estimating from the complement means every class's parameters come from a similarly large pool, so the noise is comparable across classes. A second step — L1-normalizing the weights per class — corrects the weight-magnitude bias that dependent features cause under the independence assumption (Rennie et al.).",

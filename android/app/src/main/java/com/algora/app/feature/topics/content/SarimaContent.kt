@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,9 +15,29 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val sarimaContent = TopicContent(
     topicId = "sarima",
+    figure = Figure(
+        caption = "The page's lab: the same four years of monthly data, the same held-out fifth " +
+            "year, scored three ways. A plain autoregression with one lag forecasts at 9.26 — it " +
+            "cannot reach December from November, so the season fades out of every forecast — " +
+            "and more lags up to four do no better (9.73, 9.95, 9.84). The seasonal-naive " +
+            "benchmark, which simply repeats last year, gets 6.74. Subtract last year first " +
+            "(∇₁₂yₜ = yₜ − yₜ₋₁₂) and a single AR term on what remains forecasts at 2.28 with three " +
+            "parameters — the seasonal difference removed the annual pattern outright, and the " +
+            "AR term only has to model the leftover. The cost is the first year of history: of 48 " +
+            "training months, 36 rows remain to fit on.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("AR(1)", 0.926f, FigureTone.Warn),
+                FigureBar("AR(4)", 0.984f, FigureTone.Warn),
+                FigureBar("seasonal naive", 0.674f, FigureTone.Muted),
+                FigureBar("∇₁₂ + AR(1)", 0.228f, FigureTone.Accent),
+            ),
+            yLabel = "forecast RMSE, 0 to 10",
+        ),
+    ),
     whatIsIt = listOf(
         "ARIMA has no way to say \"December resembles last December\". It can only reach twelve months back by carrying twelve lags, spending a parameter on each of the eleven months in between that it does not care about. SARIMA adds a second, seasonal copy of the same machinery operating at lag m — a seasonal difference, seasonal AR terms and seasonal MA terms — so the annual structure is expressed directly rather than reconstructed one month at a time.",
-        "The single most important piece is the seasonal difference, ∇ₘyₜ = yₜ − yₜ₋ₘ. It compares each period with the same period a year earlier, which removes a stable seasonal pattern outright and, as a side effect, removes any linear trend along with it. In the simulation this is one toggle, and both numbers it moves are on screen: the lag-12 autocorrelation drops from 0.33 to −0.10, and the forecast error against the held-out year falls with it. That one subtraction is most of what SARIMA is.",
+        "The single most important piece is the seasonal difference, ∇ₘyₜ = yₜ − yₜ₋ₘ. It compares each period with the same period a year earlier, which removes a stable seasonal pattern outright and, as a side effect, removes any linear trend along with it. In the simulation this is one toggle, and both numbers it moves are on screen: without the seasonal difference the best plain AR model forecasts the held-out year at 9.26 against the seasonal-naive 6.74; with it, a single AR term gets 2.28 from three parameters. That one subtraction is most of what SARIMA is.",
         "The costs are real and worth stating. The seasonal difference throws away m observations, which on monthly data is a whole year of a history that is usually short to begin with — with 48 training points, taking 12 leaves 36. The notation (p,d,q)(P,D,Q)ₘ has seven things to choose. And the standard advice is worth repeating: D ≤ 1 and d + D ≤ 2, because seasonal and ordinary differencing both remove trend and doing both twice manufactures noise. Auto-ARIMA searches this space by AICc and is what most people should use, but knowing which knob does what is the difference between reading its output and trusting it blindly.",
     ),
     steps = listOf(

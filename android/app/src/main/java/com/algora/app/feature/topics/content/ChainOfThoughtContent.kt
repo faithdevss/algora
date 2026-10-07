@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,44 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val chainOfThoughtContent = TopicContent(
     topicId = "chain_of_thought",
+    figure = Figure(
+        caption = "The page's arithmetic for when \"think step by step\" stops paying. If every " +
+            "step of a chain must be right and each is right with probability 0.92, the chain " +
+            "succeeds with 0.92ⁿ — the solid curve. The dashed line is the 0.55 the model gets by " +
+            "answering directly. Up to seven steps the chain is ahead (0.558 at n = 7); at eight " +
+            "it falls to 0.513 and the decomposition has made the model worse than the guess it " +
+            "replaced, and by twelve it is at 0.368. Nothing inside the chain notices: a wrong " +
+            "intermediate result becomes an input the later steps attend to. Sampling several " +
+            "chains and voting moves this curve only if the wrong answers disagree with each " +
+            "other — at nine samples the page measures 0.40 → 0.590 when errors scatter over four " +
+            "values, and 0.40 → 0.267 when they all land on the same one; the lab's own example, " +
+            "p = 0.6 with scattered errors, reaches 0.92 at nine votes.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "direct answer, 0.55",
+                    listOf(FigurePoint(0f, 0.55f), FigurePoint(1f, 0.55f)),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "chain, 0.92ⁿ",
+                    listOf(
+                        FigurePoint(0f, 0.92f), FigurePoint(0.091f, 0.846f), FigurePoint(0.182f, 0.779f),
+                        FigurePoint(0.273f, 0.716f), FigurePoint(0.364f, 0.659f), FigurePoint(0.455f, 0.606f),
+                        FigurePoint(0.545f, 0.558f), FigurePoint(0.636f, 0.513f), FigurePoint(0.727f, 0.472f),
+                        FigurePoint(0.818f, 0.434f), FigurePoint(0.909f, 0.4f), FigurePoint(1f, 0.368f),
+                    ),
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.545f, 0.558f, "n = 7, 0.558"),
+                FigurePoint(0.636f, 0.513f, "n = 8, 0.513", FigureTone.Warn),
+            ),
+            xLabel = "steps in the chain, 1 → 12",
+            yLabel = "P(whole chain right)",
+        ),
+    ),
     whatIsIt = listOf(
         "Chain of thought asks the model to write out intermediate steps before committing to an answer. The empirical result is real and large on multi-step problems, and the mechanism is not mysterious: a transformer does a fixed amount of computation per token, so a problem needing more computation than one forward pass allows can only be solved by spending more tokens. Writing the steps is how the model buys that computation, and how each step's result becomes an input the later steps can attend to.",
         "It is a trade, not a free win. If a decomposed step is right with probability p and every step has to be right, the chain succeeds with probability pⁿ — which falls off a cliff. At the lab's numbers, a 92%-per-step chain beats a 55% direct answer up to seven steps and is worse than the guess it replaced by eight. \"Let's think step by step\" is good advice for problems short enough that pⁿ stays above the one-shot rate, and quietly bad advice past that. Nothing in the chain checks the earlier steps.",

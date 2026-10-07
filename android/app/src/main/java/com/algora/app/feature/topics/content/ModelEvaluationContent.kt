@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,9 +15,34 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val modelEvaluationContent = TopicContent(
     topicId = "model_evaluation",
+    figure = Figure(
+        caption = "The page's lab at its default threshold, t = 0.72, as a confusion matrix of 18 " +
+            "cases. Every case the model flags is truly positive — 3 flagged, 0 false alarms — so " +
+            "precision is 1.00. But 6 of the 9 real positives fall below the threshold and are " +
+            "missed, so recall is 0.33. F1, the harmonic mean of the two, is 0.50, and accuracy is " +
+            "12 of 18, 0.67. Whether this is a good operating point is not in the matrix: it is the " +
+            "right trade for a spam filter, where a false alarm throws away real mail, and a " +
+            "terrible one for disease screening, where the six misses are the expensive cells. " +
+            "Lowering the threshold moves cases from the missed cell to the caught one, and starts " +
+            "filling the false-alarm cell.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("3 caught", "6 missed"),
+                listOf("0 false alarms", "9 correct"),
+            ),
+            rowHeaders = listOf("actually positive", "actually negative"),
+            colHeaders = listOf("flagged", "not flagged"),
+            marks = listOf(
+                FigureCell(0, 0, FigureTone.Accent),
+                FigureCell(0, 1, FigureTone.Warn),
+                FigureCell(1, 1, FigureTone.Primary),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
-        "Model evaluation is the discipline of measuring a classifier honestly: on data it has never seen, with a metric that matches what the mistakes actually cost.",
-        "Accuracy hides the interesting cases — a detector for a condition affecting 1% of people is 99% accurate while never detecting anything. Precision, recall, F1 and ROC-AUC each expose a different face of the confusion matrix, and the decision threshold that produces that matrix is itself a choice.",
+        "Model evaluation is choosing the number that measures what you actually care about. A classifier that outputs scores becomes a set of decisions only once a threshold is chosen, and every threshold trades one kind of error for another: raise it and the model flags fewer cases, so the ones it flags are more often right but more true cases are missed.",
+        "The lab's default threshold makes the trade concrete. At t = 0.72 every case the model flags is truly positive — precision 1.00 — but 6 of the 9 positives are missed, so recall is 0.33. F1, the harmonic mean of the two, is 0.50, and plain accuracy is 0.67. Whether that is a good operating point depends entirely on the costs: it suits a spam filter, where a false positive throws away real mail, and would be disastrous for disease screening, where a missed case is the expensive error.",
+        "So evaluation starts from the cost of each mistake, not from a favourite metric. Accuracy hides imbalance; precision and recall each tell half the story; F1 weights them equally, which is a choice; ROC and AUC summarise the whole range of thresholds without choosing one. And whatever the metric, it has to be measured on data the model never trained or tuned on — a held-out test set or cross-validation — or it measures memory rather than performance.",
     ),
     steps = listOf(
         StepCard(1, "Hold Out Honestly", "Split train / validation / test, and split before any preprocessing is fitted.", 0xFF6366F1),
@@ -90,6 +119,7 @@ internal val modelEvaluationContent = TopicContent(
         "Precision and recall trade off through the threshold, which is a product decision, not a modelling one.",
         "ROC-AUC is threshold-free but optimistic under heavy imbalance; prefer the precision-recall curve there.",
         "Fit scalers and encoders inside each fold — fitting them on all data leaks the test set.",
+        "In the lab at threshold 0.72: precision 1.00, recall 0.33, F1 0.50, accuracy 0.67 — good for spam, bad for screening.",
     ),
     crossLinks = listOf(
         CrossLink("bias_variance", "Bias-Variance Tradeoff"),

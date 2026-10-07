@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,9 +16,54 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val diffusionModelsContent = TopicContent(
     topicId = "diffusion_models",
+    figure = Figure(
+        caption = "The forward process of the page's lab: T = 1,000 steps with β rising linearly from " +
+            "0.0001 to 0.02, and how much of the original data and how much noise make up a sample " +
+            "at each step, xₜ = √ᾱ·x₀ + √(1 − ᾱ)·ε. For the first hundred steps the signal barely " +
+            "fades — 0.95 at t = 100, and the ring of 24 points is still plain to see. Signal and " +
+            "noise cross near t = 250 (0.72 against 0.69); by t = 500 the signal is 0.28 and the ring " +
+            "is gone; at t = 1,000 it is 0.01 and the samples are indistinguishable from pure noise. " +
+            "None of this is learned — it is a fixed formula, and any step is one jump from the data. " +
+            "What the network learns is to predict the ε at a random step, and generation runs the " +
+            "curves backwards, from noise to a sample.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "signal √ᾱ",
+                    listOf(
+                        FigurePoint(0.000f, 1.000f), FigurePoint(0.050f, 0.985f), FigurePoint(0.100f, 0.947f),
+                        FigurePoint(0.150f, 0.888f), FigurePoint(0.200f, 0.812f), FigurePoint(0.250f, 0.724f),
+                        FigurePoint(0.300f, 0.630f), FigurePoint(0.400f, 0.442f), FigurePoint(0.500f, 0.280f),
+                        FigurePoint(0.600f, 0.161f), FigurePoint(0.700f, 0.083f), FigurePoint(0.800f, 0.039f),
+                        FigurePoint(1.000f, 0.006f),
+                    ),
+                    tone = FigureTone.Accent,
+                ),
+                FigureSeries(
+                    "noise √(1 − ᾱ)",
+                    listOf(
+                        FigurePoint(0.000f, 0.000f), FigurePoint(0.050f, 0.170f), FigurePoint(0.100f, 0.321f),
+                        FigurePoint(0.150f, 0.460f), FigurePoint(0.200f, 0.584f), FigurePoint(0.250f, 0.690f),
+                        FigurePoint(0.300f, 0.777f), FigurePoint(0.400f, 0.897f), FigurePoint(0.500f, 0.960f),
+                        FigurePoint(0.600f, 0.987f), FigurePoint(0.700f, 0.997f), FigurePoint(0.800f, 0.999f),
+                        FigurePoint(1.000f, 1.000f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.1f, 0.947f, "t 100: 0.95"),
+                FigurePoint(0.25f, 0.724f, "cross ≈ t 250", FigureTone.Muted),
+                FigurePoint(0.5f, 0.280f, "t 500: 0.28"),
+            ),
+            xLabel = "step t, 0 → 1,000",
+            yLabel = "share of the sample",
+        ),
+    ),
     whatIsIt = listOf(
-        "A diffusion model learns to generate data by reversing a corruption process: noise is added to real samples in small steps until nothing remains, and a network is trained to undo one step at a time.",
-        "Training is deceptively simple — take an image, pick a random timestep, add the corresponding amount of Gaussian noise, and ask the network to predict the noise it added. Sampling then starts from pure noise and walks the learned reverse process back to a clean image. Unlike a GAN there is no adversary, so training is stable.",
+        "A diffusion model learns to generate data by learning to undo noise. A fixed forward process gradually adds Gaussian noise to the data over T steps until nothing but noise is left; a network is trained to predict the noise that was added, and generation runs the process in reverse, starting from pure noise and removing a little at each step until a sample emerges.",
+        "The lab shows the forward process on 24 points arranged on a ring, with T = 1,000 and β rising linearly from 0.0001 to 0.02. Any step can be reached in one jump, xₜ = √ᾱ·x₀ + √(1 − ᾱ)·ε. At t = 100, ᾱ is still 0.90 — signal 0.95, noise 0.32 — and the ring is clearly visible. At t = 250 signal and noise are about equal (0.72 against 0.69); by t = 500 the signal is down to 0.28 and the ring is gone; at t = 1,000 the samples are indistinguishable from N(0, I). No learning happens in any of this — it is a fixed formula.",
+        "Training is equally simple: pick a random t, noise a data point in one jump, and teach the network to guess the ε that was added, with a plain squared-error loss. All the network ever learns is the shape of the data manifold, one noise level at a time. Sampling then needs many denoising steps — DDPM uses all 1,000, DDIM 50 or fewer — and doing those steps in a compressed latent space rather than on pixels is what made Stable Diffusion practical.",
     ),
     steps = listOf(
         StepCard(1, "Define the Forward Noising", "A fixed schedule β₁…β_T adds a little Gaussian noise per step; no learning is involved.", 0xFF8B5CF6),
@@ -86,6 +136,7 @@ internal val diffusionModelsContent = TopicContent(
         "Predicting the added noise reduces the whole objective to an MSE regression.",
         "Sampling is expensive because it is iterative — DDIM and distillation cut the step count.",
         "Training is far more stable than a GAN's: no discriminator, no mode collapse.",
+        "In the lab the signal fraction √ᾱ is 0.95 at t = 100, 0.72 at t = 250, 0.28 at t = 500 and 0.01 at t = 1,000 — a fixed schedule, no learning.",
     ),
     crossLinks = listOf(
         CrossLink("gans", "GANs"),

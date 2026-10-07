@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,9 +15,35 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val vdnContent = TopicContent(
     topicId = "vdn",
+    figure = Figure(
+        caption = "The page's lab: three team payoffs, each fitted by VDN's assumption that the team " +
+            "value is a sum of the agents' own utilities, Q_tot = Q₁(a₁) + Q₂(a₂). An additive " +
+            "game — every cell a row value plus a column value — is matched exactly, and each " +
+            "agent's local argmax plays the true optimum. A product game cannot be written as a " +
+            "sum; the best additive fit misses by a mean squared error of 0.444, but the ranking " +
+            "survives and VDN still plays the optimum. A penalty game, where one action pays 8 only " +
+            "if the partner plays its half and loses 12 otherwise, is the case a sum cannot " +
+            "handle: the fit error is 50.6 and the local choices miss the optimum. QMIX relaxes " +
+            "the sum to any monotone mix, which fixes the product game but not the penalty game.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0.000", "✓"),
+                listOf("0.444", "✓"),
+                listOf("50.6", "✗"),
+            ),
+            rowHeaders = listOf("additive", "product", "penalty"),
+            colHeaders = listOf("fit error (MSE)", "plays optimum"),
+            marks = listOf(
+                FigureCell(0, 1, FigureTone.Accent),
+                FigureCell(1, 1, FigureTone.Accent),
+                FigureCell(2, 1, FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
-        "Value Decomposition Networks (VDN) train cooperative agents by assuming the team's joint value is simply the sum of each agent's individual value.",
-        "It's the first clean answer to centralized-training/decentralized-execution: agents learn together from a shared team reward, then act independently on their own value functions.",
+        "VDN — Value Decomposition Networks — is the simplest way to train a cooperative team with one shared reward. Each agent keeps its own utility table or network Qᵢ(aᵢ), and the team value is modelled as their sum, Q_tot = Q₁ + Q₂. One team reward trains the sum end to end; at run time each agent simply takes its own argmax with no communication, and because the sum is maximised by maximising each term, those local choices are the team's best joint action.",
+        "The lab tests how far a sum can go on three team payoffs. On an additive game — every cell a row value plus a column value — VDN's fit is exact, its utilities come out as Q₁ = 2.5, 0.5, −1.5 and the local argmaxes play the true optimum, 5 at (A0, B0). On a product game the best additive fit misses by a mean squared error of 0.444, but the ranking survives and VDN still plays the optimum, 9. On a penalty game — where one action is great only if the partner plays its half — the fit error is 50.6 and the local choices miss the optimum.",
+        "That is the limit of additivity: a sum cannot represent payoffs where the value of one agent's action depends on what the other does. QMIX relaxes the sum to any monotone mixing, which captures the product game, and methods such as QTRAN and QPLEX go further for the non-monotone cases.",
     ),
     steps = listOf(
         StepCard(1, "Per-Agent Q-Values", "Each agent produces an individual Q(oᵢ, aᵢ) from its local observation.", 0xFF818CF8),
@@ -54,6 +84,7 @@ internal val vdnContent = TopicContent(
         "It enables centralized training with decentralized execution.",
         "The additive form can't capture non-linear agent interactions.",
         "QMIX generalizes it to a richer, monotonic mixing function.",
+        "In the lab a sum fits an additive payoff exactly, misses a product game by MSE 0.444 (still picking the optimum), and misses a penalty game by 50.6.",
     ),
     crossLinks = listOf(
         CrossLink("iql", "Independent Q-Learning"),

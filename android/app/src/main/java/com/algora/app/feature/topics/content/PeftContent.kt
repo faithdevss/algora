@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,31 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val peftContent = TopicContent(
     topicId = "peft",
+    figure = Figure(
+        caption = "Training memory for BERT-base at batch 32 and sequence 128, as the page " +
+            "prices it, for full fine-tuning against LoRA at rank 8 on the query and value " +
+            "projections. The trainable share drops 369×, to 0.271%, and the weights-plus-" +
+            "optimizer column follows it — 1.6 GB to 0.2 GB, because Adam's state is charged per " +
+            "trainable parameter. The activations column does not move at all: the backward pass " +
+            "still has to flow through every frozen layer to reach the adapters beneath, so it " +
+            "keeps the same 1.5 GB of forward-pass state either way. That floor is why the total " +
+            "falls only 1.8×. The last column is where PEFT's saving is as large as advertised: " +
+            "the artefact you ship per task is 208 MB as a full copy and 0.6 MB as an adapter that " +
+            "merges back into the base weights at no extra latency.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("100%", "1.6 GB", "1.5 GB", "3.2 GB", "208 MB"),
+                listOf("0.271%", "0.2 GB", "1.5 GB", "1.8 GB", "0.6 MB"),
+            ),
+            rowHeaders = listOf("full", "LoRA r=8"),
+            colHeaders = listOf("trains", "w + optim", "activ.", "total", "per task"),
+            marks = listOf(
+                FigureCell(0, 2, FigureTone.Warn),
+                FigureCell(1, 2, FigureTone.Warn),
+                FigureCell(1, 4, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "PEFT is the family of methods that adapt a pretrained model by training a small number of new or selected parameters and freezing everything else. BitFit trains only biases; LoRA trains low-rank factors beside the attention projections; adapters insert small bottleneck blocks; prefix tuning learns key/value vectors prepended to every layer; IA³ learns one multiplier per channel. The lab counts all six exactly over BERT-base's configuration — 12 layers, width 768, 108.9M parameters — rather than quoting the papers.",
         "The headline every PEFT paper leads with is the trainable share, and those numbers are real: IA³ trains **0.051%** of the model, LoRA at rank 8 on the query and value projections trains **0.271%**, adapters at bottleneck 64 train 2.19%. Optimizer state follows that headline exactly, because it is charged per trainable parameter: 1.6 GB for full fine-tuning against 0.2 GB for LoRA.",

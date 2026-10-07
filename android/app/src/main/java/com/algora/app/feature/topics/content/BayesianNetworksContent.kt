@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,35 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val bayesianNetworksContent = TopicContent(
     topicId = "bayesian_networks",
+    figure = Figure(
+        caption = "The sprinkler network the page reasons about, with the textbook tables: " +
+            "P(cloudy) = 0.5; the sprinkler runs with probability 0.1 if cloudy and 0.5 if not; " +
+            "rain falls with 0.8 and 0.2; wet grass is 0.99 with both, 0.9 with either, 0 with " +
+            "neither. Four binary variables need 15 numbers as a full joint table and 9 here — " +
+            "every missing arrow is an independence claim paid for in parameters saved. Wet grass " +
+            "is a collider, and observing it couples its two parents. Alone, wet grass raises " +
+            "P(rain) from 0.500 to 0.708. Learn the sprinkler was on and it falls to 0.320 — the " +
+            "sprinkler explains the water away — and learn it was off and rain becomes certain, " +
+            "1.000, because nothing else wets the grass. Sprinkler and rain were only linked " +
+            "through the cloud before; the observation below them created a second link — the " +
+            "warning-toned line, which is a dependence induced by evidence, not an arrow of the " +
+            "network.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("cloudy", 0.50f, 0.10f, FigureTone.Muted),
+                FigureGraphNode("sprinkler", 0.15f, 0.50f, FigureTone.Primary),
+                FigureGraphNode("rain", 0.85f, 0.50f, FigureTone.Primary),
+                FigureGraphNode("wet", 0.50f, 0.90f, FigureTone.Accent),
+            ),
+            edges = listOf(
+                FigureEdge(0, 1, directed = true),
+                FigureEdge(0, 2, directed = true),
+                FigureEdge(1, 3, directed = true),
+                FigureEdge(2, 3, directed = true),
+                FigureEdge(1, 2, "explaining away", tone = FigureTone.Warn),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "A Bayesian network is a directed acyclic graph over random variables, where each node carries P(node | its parents). Naive Bayes assumes every feature independent given the class; a Bayesian network instead states exactly which dependencies exist and lets the rest be independent.",
         "The graph's real content is its missing edges. With n binary variables a full joint table needs 2ⁿ − 1 numbers; the network needs only Σ 2^(parents of i), which for a sparse graph is dramatically smaller. Every absent arrow is a conditional-independence claim — a substantive assertion about the world that is written down, inspectable and testable, rather than buried in an implicit assumption.",

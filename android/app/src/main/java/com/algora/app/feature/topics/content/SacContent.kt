@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,53 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val sacContent = TopicContent(
     topicId = "sac",
+    figure = Figure(
+        caption = "Why the tanh correction is not optional. SAC samples u from a Gaussian — here " +
+            "N(0, 1) — and squashes it with a = tanh(u) to stay inside the action bounds. Read the " +
+            "Gaussian's density at atanh(a) and you get the dashed curve, which is what forgetting " +
+            "the −Σ log(1 − tanh²u) term computes: it integrates to 0.606, not 1, so it is not a " +
+            "distribution at all, and it says the edges of the range are almost never visited. The " +
+            "true density of the squashed action is the solid curve — 0.399 at the centre but " +
+            "rising to 0.766 at |a| ≈ 0.96, because tanh crushes everything past |u| = 2 into a thin " +
+            "band at the bounds. The missing term is worth 0.749 nats per action dimension at this " +
+            "width, all of it inside the entropy bonus the temperature α is trying to tune — so the " +
+            "omission does not crash anything, it just quietly steers the policy against a number " +
+            "that is wrong.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "without correction",
+                    listOf(
+                        FigurePoint(0.0025f, 0.006f), FigurePoint(0.01f, 0.036f), FigurePoint(0.02f, 0.075f),
+                        FigurePoint(0.05f, 0.169f), FigurePoint(0.1f, 0.273f), FigurePoint(0.2f, 0.392f),
+                        FigurePoint(0.3f, 0.456f), FigurePoint(0.4f, 0.489f), FigurePoint(0.5f, 0.499f),
+                        FigurePoint(0.6f, 0.489f), FigurePoint(0.7f, 0.456f), FigurePoint(0.8f, 0.392f),
+                        FigurePoint(0.9f, 0.273f), FigurePoint(0.95f, 0.169f), FigurePoint(0.98f, 0.075f),
+                        FigurePoint(0.99f, 0.036f), FigurePoint(0.9975f, 0.006f),
+                    ),
+                    tone = FigureTone.Warn,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "tanh-squashed density",
+                    listOf(
+                        FigurePoint(0.0025f, 0.565f), FigurePoint(0.01f, 0.899f), FigurePoint(0.02f, 0.958f),
+                        FigurePoint(0.05f, 0.888f), FigurePoint(0.1f, 0.758f), FigurePoint(0.2f, 0.613f),
+                        FigurePoint(0.3f, 0.543f), FigurePoint(0.4f, 0.509f), FigurePoint(0.5f, 0.499f),
+                        FigurePoint(0.6f, 0.509f), FigurePoint(0.7f, 0.543f), FigurePoint(0.8f, 0.613f),
+                        FigurePoint(0.9f, 0.758f), FigurePoint(0.95f, 0.888f), FigurePoint(0.98f, 0.958f),
+                        FigurePoint(0.99f, 0.899f), FigurePoint(0.9975f, 0.565f),
+                    ),
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.5f, 0.499f, "0.399 at a = 0", FigureTone.Muted),
+                FigurePoint(0.98f, 0.958f, "0.766"),
+            ),
+            xLabel = "action a = tanh(u), −1 to +1",
+            yLabel = "density",
+        ),
+    ),
     whatIsIt = listOf(
         "Soft Actor-Critic (SAC) is an off-policy actor-critic that maximizes reward plus policy entropy, so the agent stays exploratory and robust rather than collapsing to a single deterministic action.",
         "The entropy bonus is baked into the objective, and a learnable temperature automatically balances exploration against exploitation.",

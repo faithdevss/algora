@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,9 +15,33 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val icmContent = TopicContent(
     topicId = "icm",
+    figure = Figure(
+        caption = "The page's lab: a maze with a \"noisy TV\" — a cell that shows a random channel " +
+            "0–9 on every visit — and two ways of measuring curiosity, each over 30 runs. A forward " +
+            "model that predicts raw observations can never predict the TV, so its error and its " +
+            "bonus stay at 0.90 while every other cell grows boring: the agent spends 20% of all " +
+            "steps staring at it, and only 1 run of 30 ever reaches the goal. ICM measures the " +
+            "error in a learned feature space instead, where the features come from an inverse " +
+            "model trained to tell which action was taken — and the TV's channel is not something " +
+            "any action controls, so it drops out. TV time falls to 3.0%. The trap is gone, though " +
+            "novelty spreads slowly through this maze and 4 of 30 runs reach the goal.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("20%", "3.0%"),
+                listOf("1 / 30", "4 / 30"),
+            ),
+            rowHeaders = listOf("steps on the TV", "runs reaching G"),
+            colHeaders = listOf("predict pixels", "ICM features"),
+            marks = listOf(
+                FigureCell(0, 0, FigureTone.Warn),
+                FigureCell(0, 1, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
-        "The Intrinsic Curiosity Module (ICM) rewards an agent for prediction error in a learned feature space — the agent is curious about outcomes it can't yet predict.",
-        "Its clever trick is to learn features that only capture things the agent's actions can affect, so it ignores unpredictable-but-irrelevant noise (the 'noisy TV problem').",
+        "The Intrinsic Curiosity Module pays an agent for being surprised. A forward model predicts the next state from the current state and action, and the size of its prediction error is added to the reward: wherever the model is wrong, the agent is curious and goes there, and once it has learned a region the bonus fades. That turns exploration of a reward-less maze into a task with a dense signal.",
+        "Predicting raw observations has a known trap, and the lab builds it: a \"noisy TV\" cell that shows a random channel 0–9 on every visit. Normal cells become predictable after a few visits — the error falls from 1.00 towards zero — but the TV's next frame is pure chance, so its error stays at 0.90 forever and so does its bonus. A pixel-level forward model gets hooked: in one run it spends 24% of all steps on that single cell, and across 30 runs only 1 ever reaches the goal.",
+        "ICM's fix is to predict in a learned feature space instead. An inverse model is trained to predict which action was taken between two states, and the features it needs are only those the agent's actions can affect — the TV's random channel is not one of them. Measured in those features, TV time drops from 20% to 3.0%. The trap is gone, though per-action novelty spreads slowly through this maze, and 4 of 30 runs reach the goal — the gap RND and count bonuses close.",
     ),
     steps = listOf(
         StepCard(1, "Encode States", "A learned encoder maps observations to features φ(s).", 0xFF818CF8),
@@ -54,6 +82,7 @@ internal val icmContent = TopicContent(
         "An inverse model keeps features focused on action-controllable dynamics.",
         "This design is robust to the noisy-TV distraction from noise the agent cannot influence; a noisy TV the agent controls can still fool it.",
         "It's a leading prediction-error form of intrinsic motivation.",
+        "In the lab a pixel-prediction bonus spends 20% of steps on a noisy TV; ICM's learned features cut that to 3.0%.",
     ),
     crossLinks = listOf(
         CrossLink("intrinsic_motivation", "Intrinsic Motivation"),

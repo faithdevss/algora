@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,11 +16,47 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val mambaContent = TopicContent(
     topicId = "mamba",
+    figure = Figure(
+        caption = "The page's lab: one signal token, then seven fillers worth 0.1 each, through a " +
+            "one-channel state — and how much of the signal is still in the state after each " +
+            "filler. A time-invariant SSM with Ā = 0.6 forgets on a timer: 1.000, 0.600, 0.360, " +
+            "0.216 … down to 0.6⁷ = 0.028, while the fillers it cannot refuse keep the state near " +
+            "0.27, so the signal is about 10% of what is left. A slower decay would keep the signal " +
+            "longer and every filler too; no fixed Ā does one without the other. Mamba computes Ā " +
+            "and B̄ from each token: on the signal the gate opens (Ā = 0, B̄ = 1), on every filler " +
+            "it closes (Ā = 1, B̄ = 0), and the signal is still 100% of the state at the end. That " +
+            "input dependence is also what breaks the single-convolution form, which is why Mamba " +
+            "trains with a parallel scan instead.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "selective (Mamba)",
+                    listOf(FigurePoint(0f, 1f), FigurePoint(1f, 1f)),
+                    tone = FigureTone.Accent,
+                ),
+                FigureSeries(
+                    "fixed Ā = 0.6",
+                    listOf(
+                        FigurePoint(0.000f, 1.000f), FigurePoint(0.143f, 0.600f), FigurePoint(0.286f, 0.360f),
+                        FigurePoint(0.429f, 0.216f), FigurePoint(0.571f, 0.130f), FigurePoint(0.714f, 0.078f),
+                        FigurePoint(0.857f, 0.047f), FigurePoint(1.000f, 0.028f),
+                    ),
+                    tone = FigureTone.Warn,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(1f, 0.028f, "0.028", FigureTone.Warn),
+                FigurePoint(1f, 1f, "100%"),
+            ),
+            xLabel = "fillers after the signal, 0 → 7",
+            yLabel = "signal still in the state",
+        ),
+    ),
     whatIsIt = listOf(
         "Mamba makes a state space model's parameters depend on the token. In an LTI system Ā, B̄ and C are the same at every position, so the model decides what to remember before it has seen anything. Mamba computes Δ, B and C from the current input, which means the recurrence can choose to write a token into the state or to hold the state unchanged and ignore it.",
-        "The lab runs the selective-copying task the paper is built around, on three one-channel systems that differ only in that. One token worth remembering arrives first, then filler tokens carrying a non-zero value, then a read-out. The measurement is the *signal contribution* — the difference the signal token makes to the answer — because the raw recovered value flatters the decaying arm badly: at 100 fillers it reports 0.700 against a target of 1.0, which reads like a 30% error and is in fact the filler steady state with no trace of the signal in it at all.",
-        "Measured that way the two time-invariant arms fail in opposite directions, and neither failure is fixable by tuning. A fixed decay of 0.90 can forget the fillers, which is what you want — but it forgets on a timer, so the signal's contribution collapses from 3.0e-2 to **8.0e-7 over 100 fillers**, a factor of 37,000. No decay at all (a = 1.00) forgets nothing, including every filler: the state reaches 71.0, of which the signal is a fixed 0.300 and the rest is noise the system had no way to refuse. The selective arm holds **0.9817 at every distance**, because holding costs it nothing.",
-        "Selectivity is not free: it costs the convolution. An LTI system is one fixed kernel, which is why SSMs can train in parallel through an FFT; a selective one has a different kernel at every position, and the best single fixed kernel fitted to this system's own outputs still leaves a residual of 0.721. That is why Mamba needs a hardware-aware parallel scan instead — the scan survives input-dependence, the convolution does not. What it buys at inference is a state that does not grow: 128 KB per layer whatever the length, against a transformer layer's KV cache 65,536× larger at 1M tokens.",
+        "The lab runs the selective-copying task the paper is built around, in its smallest form: one signal token worth remembering, then seven filler tokens carrying a value of 0.1 each, through a one-channel state. The question is whether the state still holds the signal at the end.",
+        "A time-invariant SSM cannot do it, and no tuning fixes that. With a fixed decay of Ā = 0.6 every token fades on the same timer, signal and filler alike: the signal's contribution falls 1.000, 0.600, 0.360 … down to 0.6⁷ = 0.028, while the state settles near 0.27, made almost entirely of filler — the signal is about 10% of what is left. A decay slow enough to keep the signal would keep every filler too. The selective version computes Ā and B̄ from each token: on the signal the gate opens fully (Ā = 0 clears the old state, B̄ = 1 writes the token), and on each filler it closes (Ā = 1, B̄ = 0), so the state passes through untouched and the signal is still 100% of it seven tokens later.",
+        "Selectivity is not free: it costs the convolution. An LTI system is one fixed kernel, which is why SSMs can train in parallel through an FFT; a selective one has a different kernel at every position,. That is why Mamba needs a hardware-aware parallel scan instead — the scan survives input-dependence, the convolution does not. What it buys at inference is a state that does not grow: 128 KB per layer whatever the length, against a transformer layer's KV cache 65,536× larger at 1M tokens.",
     ),
     steps = listOf(
         StepCard(1, "Project Δ From The Token", "Δ = softplus(W_Δ·x). A large Δ writes; Δ ≈ 0 holds the state.", 0xFF06B6D4),
@@ -29,9 +70,9 @@ internal val mambaContent = TopicContent(
         FormulaEntry("Selective recurrence", "hₜ = Āₜ·hₜ₋₁ + B̄ₜ·xₜ, with Āₜ = exp(−Δ(xₜ))", "Every matrix now carries a t."),
         FormulaEntry("Hold", "Δ = 0 → ā = 1, b̄ = 0", "The state passes through untouched and nothing is written."),
         FormulaEntry("Write", "Δ large → ā ≈ 0, b̄ ≈ 1", "The state is replaced by the current token."),
-        FormulaEntry("Decaying LTI", "3.0e-2 → 8.0e-7 over 100 fillers", "A 37,000× collapse in signal contribution."),
-        FormulaEntry("Lossless LTI", "signal 0.300 inside a state of 71.0", "Remembers everything, including what it should ignore."),
-        FormulaEntry("Selective", "0.9817 at every distance", "The residual is the gate's own softness, not decay."),
+        FormulaEntry("Decaying LTI", "0.6⁷ = 0.028", "The signal's contribution after seven fillers at Ā = 0.6."),
+        FormulaEntry("What is left", "state ≈ 0.27, signal ≈ 10%", "A fixed decay forgets signal and filler on the same timer."),
+        FormulaEntry("Selective", "signal 100% after 7 fillers", "Ā = 0, B̄ = 1 on the signal; Ā = 1, B̄ = 0 on each filler."),
     ),
     notationKey = listOf(
         NotationEntry("Δ", "the per-token step size — the selection gate, and Mamba's whole idea"),
@@ -78,7 +119,7 @@ internal val mambaContent = TopicContent(
                 # Cost: the convolution. An LTI system IS one kernel; a selective one
                 # has a different kernel per position. Fit the best single fixed kernel
                 # to the selective system's own outputs and it cannot reproduce them:
-                residual = 0.721
+                residual = fit_fixed_kernel(selective_outputs)   # stays well above zero
 
                 # So training uses a parallel scan fused into one CUDA kernel. The
                 # expanded state (16x the model width) is materialised in SRAM only and
@@ -101,9 +142,8 @@ internal val mambaContent = TopicContent(
     ),
     takeaways = listOf(
         "Score the signal's contribution against a filler-only control — the raw recovered value hides the decaying arm's failure entirely.",
-        "A fixed decay forgets on a timer: the signal's contribution collapsed 37,000× over 100 filler tokens.",
-        "No decay forgets nothing, including the filler — the signal was 0.300 of a state that had reached 71.0.",
-        "Only an input-dependent Δ does both, holding 0.9817 at every distance because holding costs it nothing.",
+        "A fixed decay forgets the signal and the fillers on the same timer: 0.6⁷ = 0.028 of the signal survives seven fillers.",
+        "Only input-dependent Ā and B̄ do both: the gate writes the signal and then closes on every filler, keeping it intact.",
         "Selectivity costs the convolution — a time-varying kernel has no fixed K — which is why Mamba needs a fused parallel scan.",
     ),
     crossLinks = listOf(

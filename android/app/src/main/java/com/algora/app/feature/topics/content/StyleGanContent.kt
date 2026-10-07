@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,25 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val styleGanContent = TopicContent(
     topicId = "stylegan",
+    figure = Figure(
+        caption = "The mapping network's argument, measured in the page's lab. A toy generator's " +
+            "data is missing one combination of attributes, so a fixed uniform prior Z has to be " +
+            "warped to fit it, and the warping is what entangles attributes: walk a straight line " +
+            "in Z and the output changes unevenly along it. Interpolating between the same " +
+            "endpoints, the mean squared path length through Z is 2.469; through the intermediate " +
+            "space W, which an 8-layer MLP learns to shape like the data itself, it is 0.305 — " +
+            "8.1× shorter over 40,000 paths. A shorter path means attributes change smoothly and " +
+            "independently, which is the disentanglement StyleGAN reports. W then feeds every " +
+            "synthesis layer through AdaIN, and truncation pulls w towards the average w̄ " +
+            "(ψ = 0.7 in the lab) to trade variety for quality.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("path via Z", 1f, FigureTone.Warn),
+                FigureBar("path via W", 0.124f, FigureTone.Accent),
+            ),
+            yLabel = "mean squared path length, 0 to 2.469",
+        ),
+    ),
     whatIsIt = listOf(
         "StyleGAN rebuilt the generator around a question earlier GANs never asked: where does the latent code enter? In DCGAN it enters once, at the front, and everything downstream is a consequence of that single vector. StyleGAN feeds it in everywhere instead. The synthesis network starts from a learned constant — the noise vector is not its input at all — and the latent is injected at every resolution through adaptive instance normalization. A 1024×1024 model has nine resolutions from 4×4 up, two AdaIN operations at each, and so eighteen separate style inputs. Because they are separate, they can be driven by different latents: that is style mixing, and it is why coarse, middle and fine attributes can be taken from different faces.",
         "AdaIN itself is blunter than it looks, and it is worth stating as an equality rather than an approximation. It normalizes the content feature to zero mean and unit variance per channel, then scales and shifts by the style's mean and standard deviation. Run it on a content vector with mean 1.333 and standard deviation 3.436 and a style with mean 0.233 and standard deviation 0.0986, and the output's statistics are 0.233 and 0.0986 — the style's, to the last digit floating point carries. Not close to. The content's own per-channel statistics are destroyed and replaced, exactly, every time. What survives is the *pattern* within the channel — which positions are relatively high and low — and that is the entire division of labour the architecture rests on.",

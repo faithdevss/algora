@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBand
+import com.algora.app.core.data.model.FigurePointer
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,33 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val flashAttentionContent = TopicContent(
     topicId = "flash_attention",
+    figure = Figure(
+        caption = "One query's eight scores, streamed through in four key blocks of two, which is " +
+            "all the online softmax ever holds. After each block the kernel keeps a running max m " +
+            "and a running denominator ℓ. Block 1 sets m = 2 and ℓ = 1.368. Block 2 contains a 3, " +
+            "so before adding its terms the old ℓ is multiplied by e^(2−3) — the rescale marked " +
+            "under it — giving 1.585. Block 3 raises nothing and simply adds, to 1.869. Block 4 " +
+            "brings a 4, rescales again by e^(3−4), and lands on 1.737 — exactly Σ e^(s−4) over all " +
+            "eight scores computed in one pass, to four decimals. No row of scores was ever stored, " +
+            "which at N = 65,536 over 32 heads is the 256 GiB the page says is never allocated; and " +
+            "subtracting m is what keeps every exponent at or below zero, so the sum cannot " +
+            "overflow however large the scores get.",
+        shape = FigureShape.Strip(
+            cells = listOf("1.0", "2.0", "0.5", "3.0", "1.5", "0.2", "4.0", "1.0"),
+            bands = listOf(
+                FigureBand(0, 1, "m = 2", FigureTone.Muted),
+                FigureBand(2, 3, "m = 3", FigureTone.Primary),
+                FigureBand(4, 5, "m = 3", FigureTone.Muted),
+                FigureBand(6, 7, "m = 4", FigureTone.Accent),
+            ),
+            pointers = listOf(
+                FigurePointer(3, "rescale"),
+                FigurePointer(6, "rescale"),
+            ),
+            aux = listOf("", "1.368", "", "1.585", "", "1.869", "", "1.737"),
+            auxLabel = "running ℓ",
+        ),
+    ),
     whatIsIt = listOf(
         "Flash Attention computes exactly the same function as standard attention and never builds the N×N score matrix. It tiles the keys and values, streams them through on-chip memory, and carries three running numbers per query block — a maximum, a denominator and an output — rescaling the accumulator whenever a new block raises the maximum. The lab runs both algorithms on the same 512 scores: they differ by 3e-16, which is floating-point noise. This is not an approximation, and the block size changes nothing about the answer.",
         "The running maximum is not an optimisation, it is what makes the sum finite. Without it every term is exp(score), which overflows a float64 above 709.78 (and far sooner in the precisions kernels actually use: ≈88.7 in fp32/bf16, ≈11.1 in fp16). A peak score of 500 survives in float64; 710 returns NaN.",

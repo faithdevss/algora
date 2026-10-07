@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureCell
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,9 +15,32 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val naiveBayesContent = TopicContent(
     topicId = "naive_bayes",
+    figure = Figure(
+        caption = "The page's lab deciding one query point by Gaussian naive Bayes. Each class gets a " +
+            "bell curve per feature, fitted to that class's values alone, and each curve is read " +
+            "at the query. Along x the two classes are level, 0.11 each; along y, class 0's curve " +
+            "is far higher, 0.23 against 0.03. The \"naive\" step multiplies those numbers as if x " +
+            "and y were independent: with equal priors, class 0 scores 0.5 × 0.11 × 0.23 = 0.013 " +
+            "and class 1 scores 0.001, which normalises to a 0.90 probability of class 0. The model " +
+            "never looks at x and y together — its ovals are always axis-aligned — and it still " +
+            "classifies well, because only the ranking of the scores has to be right.",
+        shape = FigureShape.Grid(
+            rows = listOf(
+                listOf("0.5", "0.11", "0.23", "0.013"),
+                listOf("0.5", "0.11", "0.03", "0.001"),
+            ),
+            rowHeaders = listOf("class 0", "class 1"),
+            colHeaders = listOf("prior", "p(x | c)", "p(y | c)", "product"),
+            marks = listOf(
+                FigureCell(0, 2, FigureTone.Accent),
+                FigureCell(0, 3, FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
-        "Naive Bayes is a probabilistic classifier that applies Bayes' theorem while naively assuming every feature is independent given the class.",
-        "That assumption is usually false, yet the model is fast, needs little data, and works remarkably well — especially for text.",
+        "Naive Bayes classifies by Bayes' rule with one simplifying assumption: given the class, every feature is independent of every other. P(class | features) ∝ P(class) · Πᵢ P(featureᵢ | class), so each feature's likelihood can be estimated on its own, from counts or from a fitted distribution, and the class with the largest product wins.",
+        "The lab shows the Gaussian version deciding where a query point belongs. It fits one bell curve per class per feature and reads each at the query: along x the two classes' curves give 0.11 and 0.11, along y 0.23 for class 0 and 0.03 for class 1. With equal priors of 0.5, class 0 scores 0.5 × 0.11 × 0.23 = 0.013 and class 1 scores 0.001; normalised, that is a 0.90 probability of class 0. The dashed ovals stay axis-aligned, because the model never looks at x and y jointly — that is the \"naive\" part.",
+        "The independence assumption is almost always false, and naive Bayes works anyway, because classification only needs the right class to have the largest score, not calibrated probabilities. It trains in one pass, handles thousands of features, and needs little data, which is why it remains a strong baseline for text. Its variants differ only in the per-feature distribution: Gaussian for continuous features, multinomial for counts, Bernoulli for presence and absence.",
     ),
     steps = listOf(
         StepCard(1, "Estimate Priors", "From training counts, compute P(class) for each class.", 0xFF818CF8),
@@ -56,6 +83,7 @@ internal val naiveBayesContent = TopicContent(
         "The independence assumption is unrealistic but keeps it fast and data-efficient.",
         "Laplace smoothing avoids zero probabilities for unseen feature values.",
         "It's a top choice for text where features are numerous — it works well despite strongly dependent features.",
+        "In the lab the query scores 0.5 × 0.11 × 0.23 = 0.013 for class 0 against 0.001 for class 1 — a 0.90 probability once normalised.",
     ),
     crossLinks = listOf(
         CrossLink("bow_tfidf", "Bag-of-Words / TF-IDF"),

@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,44 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val tdLearningContent = TopicContent(
     topicId = "td_learning",
+    figure = Figure(
+        caption = "The page's lab: TD(0) learning the \"up, then right\" policy on the slippery 4×4 " +
+            "grid (a move slips sideways 20% of the time), scored as the largest error against the " +
+            "exact Vπ after 1, 5, 20, 100 and 500 episodes, at the lab's three step sizes. For the " +
+            "first 20 episodes all three sit at 0.856 — the worst state is one this policy rarely " +
+            "reaches, and a bootstrapped value cannot move until visits carry value back to it. " +
+            "After that the step size decides the race: α = 0.05 is at 0.693 after 500 episodes, " +
+            "α = 0.1 at 0.661, and α = 0.5 at 0.363, learning fastest because each update absorbs " +
+            "half the surprise — at the cost of values that keep jittering around the answer. The " +
+            "dashed line is Monte Carlo on the same policy and slip, averaging whole returns: it " +
+            "tracks the middle setting and ends at 0.686.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "Monte Carlo",
+                    listOf(FigurePoint(0.000f, 0.856f), FigurePoint(0.259f, 0.856f), FigurePoint(0.482f, 0.856f), FigurePoint(0.741f, 0.707f), FigurePoint(1.000f, 0.686f)),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "TD, α = 0.05",
+                    listOf(FigurePoint(0.000f, 0.878f), FigurePoint(0.259f, 0.856f), FigurePoint(0.482f, 0.856f), FigurePoint(0.741f, 0.806f), FigurePoint(1.000f, 0.693f)),
+                    tone = FigureTone.Primary,
+                ),
+                FigureSeries(
+                    "TD, α = 0.5",
+                    listOf(FigurePoint(0.000f, 0.856f), FigurePoint(0.259f, 0.856f), FigurePoint(0.482f, 0.856f), FigurePoint(0.741f, 0.707f), FigurePoint(1.000f, 0.363f)),
+                    tone = FigureTone.Accent,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(1f, 0.363f, "α 0.5: 0.363"),
+                FigurePoint(1f, 0.693f, "α 0.05: 0.693", FigureTone.Primary),
+            ),
+            xLabel = "episodes, log scale (1 → 500)",
+            yLabel = "largest error vs exact Vπ",
+        ),
+    ),
     whatIsIt = listOf(
         "Temporal difference learning is the idea that made model-free RL practical: update a value estimate using another value estimate. After a single transition, TD(0) moves V(s) toward r + γV(s′) — one real reward plus a guess about everything after it — instead of waiting to observe the whole return.",
         "It takes the useful half of each neighbour. Like Monte Carlo, it learns from raw experience with no model. Like dynamic programming, it bootstraps, so it can update after every step rather than every episode. That means it works on continuing tasks that never terminate, learns online, and cuts variance dramatically — the target contains one random reward instead of a hundred.",

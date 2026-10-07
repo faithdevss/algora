@@ -145,7 +145,7 @@ private func gloveFrames() -> [NbFrame] {
         frame([.caption("cosine similarity to \"king\" · 4-d vectors w + w̃"), .bars(sims.map { NbBar(label: $0.0, value: f2($0.1), frac: max($0.1, 0), ink: $0.0 == "queen" ? .green : .sky) }, labelWidth: 64)],
               [nbLegend(.green, "Same contexts as king")],
               "\"king\" and \"queen\" {share every context}.",
-              "Both appear between \"the\" and \"rules\", so their rows of X are nearly identical and their vectors end up close: cosine \(f2(cosA(run.w[k], run.w[q])))."),
+              "Their rows of X are identical, yet the cosine is only \(f2(cosA(run.w[k], run.w[q]))): each row gives 2 targets for 4 dimensions plus a bias, so many different vectors fit exactly. A real corpus supplies thousands of shared contexts, and those pull such words together."),
         frame([.caption("why log counts"), table(["ratio", "meaning"], [1.2, 1], [
             NbRow(cells: [nbCell("P(ice|solid) / P(steam|solid)"), nbCell("8.9 — large", .green)]),
             NbRow(cells: [nbCell("P(ice|gas) / P(steam|gas)"), nbCell("0.085 — small", .red)]),

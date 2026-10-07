@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,9 +15,29 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val a2cContent = TopicContent(
     topicId = "a2c",
+    figure = Figure(
+        caption = "The page's lab: the spread of A2C's gradient estimate as more parallel actors " +
+            "contribute rollouts to each update. One actor: 0.298. Eight: 0.112, close to the 0.105 " +
+            "that the √n law predicts for independent samples. Sixteen: 0.080. Halving the noise " +
+            "costs four times the actors, so the returns diminish exactly as fast as the compute " +
+            "grows. What the bars cannot show is the other benefit: actors in different parts of " +
+            "the environment make each batch decorrelated by construction, which is what an " +
+            "off-policy learner gets from a replay buffer and an on-policy one cannot use. A2C runs " +
+            "the actors synchronously and batches them into one forward pass, which is why it " +
+            "replaced the asynchronous A3C on GPUs.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("1 actor", 1f, FigureTone.Warn),
+                FigureBar("8 actors", 0.376f, FigureTone.Primary),
+                FigureBar("16 actors", 0.268f, FigureTone.Accent),
+            ),
+            yLabel = "gradient sd, 0 to 0.298",
+        ),
+    ),
     whatIsIt = listOf(
-        "A2C (Advantage Actor-Critic) is the synchronous form of actor-critic that runs many parallel environments, collects a batch of experience, and updates the shared network once per batch.",
-        "It's the deterministic, easier-to-tune cousin of A3C — same advantage-based updates, but with synchronized workers instead of asynchronous ones.",
+        "A2C — advantage actor-critic — runs several copies of the environment in parallel, collects a short rollout from each, and computes one synchronous update from all of them together. The actor is trained on the advantage the critic estimates, the critic on the TD error, exactly as in plain actor-critic; what A2C adds is the batch of parallel actors.",
+        "The lab measures what that batch buys. One actor's gradient estimate has a standard deviation of 0.298 across repeated rollouts. Averaging 8 independent rollouts cuts it to 0.112 — close to the 0.105 that the √n law predicts for independent samples. Doubling again to 16 actors reaches 0.080: each halving of the noise costs four times the compute, so the returns diminish exactly as fast as the theory says.",
+        "The second benefit does not show up in that number. Parallel actors are in different parts of the environment at any moment, so a batch is decorrelated by construction — the same problem a replay buffer solves for off-policy learners, solved here without storing anything. That is what lets an on-policy method train a neural network stably, and A2C, being synchronous, batches all actors into one forward pass, which is why it displaced the asynchronous A3C on GPUs.",
     ),
     steps = listOf(
         StepCard(1, "Parallel Rollouts", "Several environment copies step in parallel with the shared policy.", 0xFF818CF8),
@@ -54,6 +78,7 @@ internal val a2cContent = TopicContent(
         "Batched synchronous updates make it simpler and more GPU-friendly than A3C.",
         "An entropy bonus in the loss sustains exploration.",
         "It's a clean stepping stone from actor-critic to PPO.",
+        "In the lab gradient noise falls 0.298 → 0.112 → 0.080 with 1, 8 and 16 actors — the √n law, and diminishing returns.",
     ),
     crossLinks = listOf(
         CrossLink("actor_critic", "Actor-Critic"),

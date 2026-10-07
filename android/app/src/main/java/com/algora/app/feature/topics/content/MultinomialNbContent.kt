@@ -17,22 +17,23 @@ internal val multinomialNbContent = TopicContent(
     topicId = "multinomial_nb",
     figure = Figure(
         caption = "The lab's whole training procedure, which is the first two columns: five " +
-            "documents, 18 tokens, six vocabulary terms, counted per class. Five of the twelve " +
+            "documents, 26 tokens, six vocabulary terms, counted per class. Five of the twelve " +
             "count cells are zero, and unsmoothed every one of them is fatal — the score is a " +
             "product, so a single zero takes the class to −∞ regardless of the other evidence. " +
-            "α = 1 turns them into 1/17 and 1/13 instead, which is the last two columns. Scoring " +
-            "\"goal goal great\" from those numbers alone: −4.405 for sports against −7.513 for " +
-            "politics, a log gap of 3.107, odds of 22.4 to 1, posterior 0.957. Almost all of it " +
-            "is \"goal\", worth a likelihood ratio of 3.82 per occurrence; \"great\" is worth 1.02, " +
-            "which is nothing. Counting, then dividing, is the whole model.",
+            "α = 1 turns them into 1/21 and 1/17 instead, which is the last two columns. Scoring " +
+            "\"goal goal great\" from those numbers and the 3:2 prior: −4.451 for sports against " +
+            "−8.030 for politics, a log gap of 3.578, odds of 35.8 to 1, posterior 0.973. " +
+            "Almost all of it is \"goal\", worth a likelihood ratio of 4.86 per occurrence; " +
+            "\"great\" is worth 1.01, which is nothing. Counting, then dividing, is the " +
+            "whole model.",
         shape = FigureShape.Grid(
             rows = listOf(
-                listOf("4", "0", "0.294", "0.077"),
-                listOf("3", "0", "0.235", "0.077"),
-                listOf("1", "0", "0.118", "0.077"),
-                listOf("0", "3", "0.059", "0.308"),
-                listOf("0", "2", "0.059", "0.231"),
-                listOf("3", "2", "0.235", "0.231"),
+                listOf("5", "0", "0.286", "0.059"),
+                listOf("4", "0", "0.238", "0.059"),
+                listOf("2", "0", "0.143", "0.059"),
+                listOf("0", "5", "0.048", "0.353"),
+                listOf("0", "3", "0.048", "0.235"),
+                listOf("4", "3", "0.238", "0.235"),
             ),
             rowHeaders = listOf("goal", "match", "team", "vote", "policy", "great"),
             colHeaders = listOf("n sp", "n pol", "P | sp", "P | pol"),

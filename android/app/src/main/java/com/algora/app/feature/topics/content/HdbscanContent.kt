@@ -16,24 +16,25 @@ import com.algora.app.core.data.model.TopicContent
 internal val hdbscanContent = TopicContent(
     topicId = "hdbscan",
     figure = Figure(
-        caption = "Persistence, on the same 36 points OPTICS orders — computed from the minimum " +
-            "spanning tree over mutual reachability, whose edge weights are exactly the ε values " +
-            "at which things join. The axis is ε × 1000. The tight cluster is fully connected at " +
-            "ε = 0.038 and the loose one not until 0.113; both stop being separate clusters at " +
-            "0.410, where the single edge between them closes. So in ε the two lifetimes look " +
-            "comparable, 0.372 against 0.297 — and that is why HDBSCAN measures on λ = 1/ε " +
-            "instead, where they are 23.8 and 6.4 and the tight cluster is the more persistent " +
-            "one by 3.7×. Neither stray is ever a cluster: the first attaches at 0.294 and the " +
-            "second not until 0.591, and a single point joining is a point falling out rather " +
-            "than a split, which is exactly what min_cluster_size prunes away.",
+        caption = "Persistence, on the same 22 points the OPTICS lab orders, at the HDBSCAN lab's " +
+            "starting minPts = 4 — computed from the minimum spanning tree over mutual " +
+            "reachability, whose edge weights are exactly the ε values at which things join. The " +
+            "axis is ε × 1000. The tight cluster is fully connected at ε = 0.394 and the loose one " +
+            "not until 1.120; both stop being separate clusters at 2.368, where the edge between " +
+            "them closes. So in ε the two lifetimes look comparable, 1.974 against 1.248 — and " +
+            "that is why HDBSCAN measures on λ = 1/ε instead, where they are 2.12 and 0.47 and " +
+            "the tight cluster is the more persistent one by 4.5×. None of the four strays is " +
+            "ever a cluster: they attach one at a time, at 1.755, 1.835, 2.110 and 2.441, and a " +
+            "single point joining is a point falling out rather than a split, which is exactly " +
+            "what min_cluster_size prunes away.",
         shape = FigureShape.Timeline(
             spans = listOf(
-                FigureSpan(38, 410, "tight cluster · λ-span 23.8"),
-                FigureSpan(112, 410, "loose cluster · λ-span 6.4", FigureTone.Accent),
-                FigureSpan(410, 600, "one merged blob", FigureTone.Warn),
+                FigureSpan(394, 2368, "tight cluster · λ-span 2.12"),
+                FigureSpan(1120, 2368, "loose cluster · λ-span 0.47", FigureTone.Accent),
+                FigureSpan(2368, 2600, "merged", FigureTone.Warn),
             ),
-            axisMax = 600,
-            marker = 294,
+            axisMax = 2600,
+            marker = 1755,
             markerLabel = "first stray attaches",
         ),
     ),

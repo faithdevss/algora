@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,47 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val dynamicProgrammingContent = TopicContent(
     topicId = "dynamic_programming",
+    figure = Figure(
+        caption = "The page's lab, run both ways on its 4×4 grid with the model in hand: how many of " +
+            "the 13 non-terminal states hold their final value after each sweep. A synchronous " +
+            "sweep computes every new value from the previous sweep's table, so value spreads " +
+            "exactly one step per sweep — 1, 3, 5, 9, 12, then all 13 at sweep 6 — and the largest " +
+            "change falls 1.000, 0.900, 0.810, 0.729 before reaching zero; it needs 7 sweeps to see " +
+            "a change below 0.0001. An in-place sweep overwrites as it goes, so a state visited " +
+            "after its neighbour already reads the neighbour's new value: 6 states are final after " +
+            "one sweep, 9 after two, all 13 after three, and it confirms convergence in 4 sweeps. " +
+            "Same fixed point either way — sweep order changes the speed, never the answer. Each " +
+            "sweep is |S|·|A| backups over every successor, which is the cost the curse of " +
+            "dimensionality multiplies.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "synchronous",
+                    listOf(
+                        FigurePoint(0f, 0f), FigurePoint(0.143f, 0.077f), FigurePoint(0.286f, 0.231f),
+                        FigurePoint(0.429f, 0.385f), FigurePoint(0.571f, 0.692f), FigurePoint(0.714f, 0.923f),
+                        FigurePoint(0.857f, 1f), FigurePoint(1f, 1f),
+                    ),
+                    tone = FigureTone.Muted,
+                    dashed = true,
+                ),
+                FigureSeries(
+                    "in-place",
+                    listOf(
+                        FigurePoint(0f, 0f), FigurePoint(0.143f, 0.462f), FigurePoint(0.286f, 0.692f),
+                        FigurePoint(0.429f, 1f), FigurePoint(1f, 1f),
+                    ),
+                    tone = FigureTone.Accent,
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.429f, 1f, "in-place: 3"),
+                FigurePoint(0.857f, 1f, "synchronous: 6", FigureTone.Muted),
+            ),
+            xLabel = "sweep, 0 → 7",
+            yLabel = "states at final value, 0 to 13",
+        ),
+    ),
     whatIsIt = listOf(
         "Dynamic programming solves an MDP exactly by sweeping the whole state space, using the transition and reward functions directly. It is the same DP you already know from coin change or longest common subsequence — overlapping subproblems, optimal substructure, results reused instead of recomputed — with a state's value playing the role of the memo table entry.",
         "The distinguishing precondition is the model. DP queries P(s′|s,a) and R(s,a) as functions you can call, so it never runs an episode and never touches the environment. In RL vocabulary this makes it planning rather than learning. Everything after it in this section — Monte Carlo, TD, Q-learning, DQN — exists to recover DP's answers when those functions are unavailable, which in practice is nearly always.",

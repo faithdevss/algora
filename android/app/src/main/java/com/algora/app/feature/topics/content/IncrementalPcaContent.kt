@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigurePoint
+import com.algora.app.core.data.model.FigureSeries
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,32 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val incrementalPcaContent = TopicContent(
     topicId = "incremental_pca",
+    figure = Figure(
+        caption = "The page's lab: 18 rows of two columns arrive 4 at a time, and the line is how " +
+            "far the running first principal component sits from the one batch PCA finds on all " +
+            "18. After the first batch it is 2.5° off, then 3.1° after 8 rows (an early estimate " +
+            "can get worse before it settles), 1.3° after 12, 0.4° after 16 and 0.0° after all " +
+            "18. Between batches the method keeps only the count, the mean and the summed " +
+            "products, 6 numbers in all, against 36 for the whole matrix. Those sums are exact, " +
+            "so the streamed answer is batch PCA's answer, not an approximation of it.",
+        shape = FigureShape.Plot(
+            series = listOf(
+                FigureSeries(
+                    "running PC1 error",
+                    listOf(
+                        FigurePoint(0.222f, 0.806f), FigurePoint(0.444f, 1f), FigurePoint(0.667f, 0.419f),
+                        FigurePoint(0.889f, 0.129f), FigurePoint(1f, 0f),
+                    ),
+                ),
+            ),
+            markers = listOf(
+                FigurePoint(0.444f, 1f, "3.1°", FigureTone.Warn),
+                FigurePoint(1f, 0f, "0.0°"),
+            ),
+            xLabel = "rows seen, 4 → 18",
+            yLabel = "angle off batch PC1, 0 to 3.1°",
+        ),
+    ),
     whatIsIt = listOf(
         "Ordinary PCA asks for the whole data matrix at once: it forms the covariance from every row, then eigendecomposes it. On a dataset that fits in memory this is not worth a second thought. On ten million rows, or on a stream that has no end, it is the reason the job does not run — and the fix is not a faster machine but a different arrangement of the same arithmetic.",
         "Incremental PCA processes the data in batches and keeps only a fixed-size summary between them. The simplest form is exact: a running count, a running mean and a d×d matrix of summed products are enough to reconstruct the covariance of everything seen so far, and none of them grow with the number of rows. Memory becomes O(d²) regardless of n, and the components after the final batch are the components batch PCA would have produced — not an approximation of them.",

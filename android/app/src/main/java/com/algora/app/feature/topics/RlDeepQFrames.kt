@@ -472,7 +472,7 @@ private fun rainbowLab(): RbLab {
             Triple("Double", "overestimation", "peak Q(A,left) ${f(d[0].peak, 3)} → ${f(d[1].peak, 3)}"),
             Triple("Replay", "wasted samples", "error @200 steps ${f(chainErr(rbRepRun(0).getValue(200)), 2)} → ${f(chainErr(rbRepRun(16).getValue(200)), 2)}"),
             Triple("Dueling", "relearning V per action", "V learned from every action"),
-            Triple("Noisy", "dithering exploration", "goal reached ${pct(n.eg.ok)} → ${pct(n.nz.ok)}"),
+            Triple("Noisy", "dithering exploration", "steps to goal ${f(n.eg.mean, 1)} → ${f(n.nz.mean, 1)}"),
             Triple("C51", "averaging away risk", "full return distribution"),
             Triple("Multi-step", "slow reward propagation", "n-step targets"),
         )

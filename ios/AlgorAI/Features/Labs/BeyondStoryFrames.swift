@@ -484,7 +484,7 @@ private func meteorStory() -> LsLab {
             fr(head, [F("F = 10PR / (R + 9P) =", f(r.f, 4), .lilac)],
                ("Recall weighted 9× over precision.", "Missing content is punished more than extra words.")),
             fr(head, [F("chunks =", "\(r.ch)"), F("penalty = 0.5 · (\(r.ch)/\(r.m))³ =", f(r.pen, 4), .yellow)],
-               ("\(r.ch) chunk\(r.ch > 1 ? "s" : ""): contiguous runs in matching order.", k == 1 ? "Every word present, order destroyed: 8 chunks, heavy penalty." : "Fewer chunks means better word order.")),
+               ("\(r.ch) chunk\(r.ch > 1 ? "s" : ""): contiguous runs in matching order.", k == 1 ? "Every word present, order broken: \(r.ch) chunks for \(r.m) matches, heavy penalty." : "Fewer chunks means better word order.")),
             fr(head + [.bars([lsRow("BLEU", f(b, 4), b, .slate), lsRow("METEOR", f(r.score, 4), r.score, .blue, .strong)])],
                [F("METEOR = F · (1 − penalty) =", f(r.score, 4), .blue)],
                (k == 0 ? "BLEU 0, METEOR \(f(r.score, 2)) on a fair paraphrase." : k == 1 ? "Shuffled words: METEOR’s penalty bites." : "An exact copy scores near 1 on both.",

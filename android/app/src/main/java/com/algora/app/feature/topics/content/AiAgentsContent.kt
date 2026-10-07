@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,28 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val aiAgentsContent = TopicContent(
     topicId = "ai_agents",
+    figure = Figure(
+        caption = "The page's lab trajectory, priced. An agent is a stateless model called in a " +
+            "loop, so every request resends the whole transcript so far: the system prompt and " +
+            "three tool schemas (266 tokens before any work), then each thought, tool call and " +
+            "observation as it accumulates — including step 4's real failure, a unit the tool " +
+            "rejected and the model retried. The four requests carry 314, 471, 559 and 626 tokens. " +
+            "The final transcript is 700 tokens, but the bill is the sum of every request, 1,970: " +
+            "2.8× what the conversation looks like it cost, and the multiple keeps growing with " +
+            "every extra turn, because each new step is paid for again on every step after it. " +
+            "Caching the shared prefix and batching independent tool calls are the two levers.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("request 1", 0.159f, FigureTone.Muted),
+                FigureBar("request 2", 0.239f, FigureTone.Muted),
+                FigureBar("request 3", 0.284f, FigureTone.Muted),
+                FigureBar("request 4", 0.318f, FigureTone.Muted),
+                FigureBar("billed, Σ", 1f, FigureTone.Warn),
+                FigureBar("final transcript", 0.355f, FigureTone.Accent),
+            ),
+            yLabel = "tokens, 0 to 1,970",
+        ),
+    ),
     whatIsIt = listOf(
         "An agent is a loop with three parts: a model that emits a tool call, a runtime that executes it, and a transcript that carries the result back. The tools are declared as typed schemas — a name, a description, and a JSON Schema for the arguments — and the model chooses among them. The description is not documentation: it is the only thing the model has when deciding whether this tool applies, so it should say *when* to call the tool, not just what the tool does.",
         "The cost model is where intuition fails. The API is stateless, so every model turn resends the entire transcript. Context grows linearly in the number of steps; the bill is the sum of every request, which grows quadratically. On the lab's real eight-entry trajectory the final context is 700 tokens and the amount actually billed is 1,970 — **2.81×** — and the multiple gets worse the longer the agent runs. That is also why a failed tool call is expensive out of proportion to its error message: dropping the failed unit call and its retry takes the bill from 1,970 to 1,323, so those two entries cost **647 tokens, a 49% overhead**, because everything after them is resent with them attached.",

@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +15,31 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val alexNetContent = TopicContent(
     topicId = "alexnet",
+    figure = Figure(
+        caption = "AlexNet's 62,378,344 parameters, layer by layer, on one scale. The five " +
+            "convolutions are the barely visible bars on the left — 3,747,200 between them, 6.0% " +
+            "of the network, with conv4's 1.33M the largest. fc6 alone is 4,096 × (9,216 + 1) = " +
+            "37,752,832, 60.5% of everything, because it is the one layer that connects every " +
+            "position of the final 6×6×256 feature map to every hidden unit; fc7 and fc8 bring " +
+            "the dense head to 94.0%. Compute runs exactly the other way — about 95% of the 1.14 " +
+            "billion multiply-accumulates per image are in those small convolutional bars, since " +
+            "each weight is reused at every spatial position. That split is what the next five " +
+            "years attacked: VGG spent more on the extractor, and GoogLeNet replaced fc6 with " +
+            "global average pooling and deleted the tallest bar outright.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("c1", 0.001f, FigureTone.Muted),
+                FigureBar("c2", 0.016f, FigureTone.Muted),
+                FigureBar("c3", 0.023f, FigureTone.Muted),
+                FigureBar("c4", 0.035f, FigureTone.Muted),
+                FigureBar("c5", 0.023f, FigureTone.Muted),
+                FigureBar("fc6", 1f, FigureTone.Warn),
+                FigureBar("fc7", 0.445f, FigureTone.Primary),
+                FigureBar("fc8", 0.109f, FigureTone.Primary),
+            ),
+            yLabel = "parameters, 0 to 37.8M",
+        ),
+    ),
     whatIsIt = listOf(
         "AlexNet won ImageNet 2012 with 15.3% top-5 error against the runner-up's 26.2% — a margin of nearly eleven points in a competition where a point was a good year — and restarted the entire field. Structurally it is LeNet made deep and wide: five convolutions, three max pools, three fully connected layers, on 227×227 colour input. Nothing in the layout was new. What was new was the training recipe and the hardware to run it.",
         "Four choices did the work. ReLU instead of tanh, which the paper reports trained roughly six times faster to the same error and made the depth trainable at all. Dropout at p = 0.5 on the two large dense layers, without which the model memorised the training set. Aggressive data augmentation — random crops, flips and PCA-based colour jitter — which multiplied the effective dataset. And two GTX 580 GPUs with the network split across them, because 62 million parameters did not fit in 3 GB.",
