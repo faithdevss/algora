@@ -3,9 +3,11 @@
 ## Scope
 
 A native SwiftUI app in `ios/`, bundle id `com.saimum.algorai`, iPhone, iOS 17+. It ports every
-Android feature **except ads and payments**: no AdMob, no StoreKit, no paywall. With no way to buy
-premium, **every topic is open on iOS**. `Topic.isPremium` is still exported, so gating can come back
-if payments are added later.
+Android feature **except ads**: no AdMob. Payments are in (Phase 18): StoreKit 2 with the same two
+plans as Android — `algora_premium_monthly` (auto-renewing, no trial) and `algora_premium_lifetime`
+(non-consumable). `Topic.isPremium` is exported from Android's `AccessTiers`, so the free/paid split
+is identical. With no ads there is no ad-unlock tier: the 30 topics Android opens with a rewarded ad
+stay locked on iOS until Premium.
 
 Android stays the source of truth for content. `android/app/src/test/.../export/IosContentExportTest.kt`
 serializes the Kotlin content objects to JSON in `ios/AlgorAI/Resources/Content/`:
@@ -48,4 +50,4 @@ Design fidelity rules from `ROADMAP.md` apply unchanged: iOS matches the Android
 | I5 | Simulation labs: all 34 `SimulationType` widgets + Simulations catalog, in batches (DS basics → algorithms → ML → DL/NLP → RL) | In progress: 30 of 33 labs wired in `SimulationHost.swift` |
 | I6 | Settings, daily/study reminders (`UNUserNotificationCenter`), review prompt (`SKStoreReviewController`), share | Done |
 
-Out of scope: `core/ads`, `core/billing`, `feature/premium`, rewarded streak freezes, interstitials.
+Out of scope: `core/ads`, rewarded streak freezes, interstitials.

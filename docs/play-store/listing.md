@@ -21,7 +21,7 @@ misrepresentation Play can act on.
 | Category | Education |
 | Tags | Computer science, Programming, Interview prep, Machine learning |
 | Content rating | Everyone (no user content, no communication features) |
-| Price | Free, with one lifetime in-app purchase |
+| Price | Free, with a monthly subscription ($9.99) or a one-time lifetime purchase; regional prices vary |
 | Contact | `hafsasultana0106@gmail.com` |
 | Privacy policy | *(host `docs/privacy-policy.md` somewhere public; fill in URL before submitting)* |
 
@@ -71,7 +71,7 @@ The pitch in `core/share/AppShare.kt` is this same sentence; change both togethe
 
 ## Full description
 
-Max 4000 characters. Current: 3579.
+Max 4000 characters. Current: 3638.
 
 The first lines are what Play shows before "More", so they name both halves: learn DSA and AI by
 interactive labs, then prepare for coding and ML interviews. The learning tracks come first because the course
@@ -99,7 +99,7 @@ Plain-language intro, a step-by-step walkthrough, the maths written out, complet
 
 PREPARE FOR INTERVIEWS
 • 54 timed quizzes with 453 questions, under a real countdown clock
-• Beginner rounds, free: arrays, hash maps, Big-O, stacks and queues, recursion, search, plus coding rounds on arrays, linked lists and trees
+• Beginner rounds: arrays, hash maps, Big-O, stacks and queues, recursion, search, plus coding rounds on arrays, linked lists and trees
 • Advanced rounds: graphs, dynamic programming, advanced data structures, and hard classics such as trapping rain water
 • Scenario, picture and story rounds: real product problems, diagrams and narrated cases (a startup lunch rush, a 3 a.m. outage), solved step by step
 • AI interview rounds: NLP, LLM and GenAI engineering, computer vision, recommender systems, and AI in healthcare, finance and retail
@@ -117,24 +117,19 @@ WORKS ANYWHERE
 Everything is bundled in the app. No account, no sign-in, no server: study on a commute or with data switched off. Progress stays on your device. Light and dark themes, bookmarks, and optional study reminders you can switch off in Settings.
 
 PREMIUM
-AlgorAI is free to start, with 60 lessons and 35 quiz sets open, including every beginner interview round. Premium is a single lifetime purchase, not a subscription, that unlocks every remaining topic, lab and advanced interview round and removes ads. A rewarded ad opens most locked lessons for 6 hours; interview practice needs Premium.
+AlgorAI is free to start: a dozen intro lessons are always open, and a rewarded ad opens a further selection of lessons for 6 hours. Premium unlocks every lesson, lab, quiz and interview round and removes ads. Choose a monthly subscription, charged to your Google Play account and renewing monthly until cancelled (manage or cancel any time in Play Store subscriptions), or pay once for lifetime access.
 ```
 
 ---
 
 ## What's new (release notes)
 
-Max 500 characters. Current: 414.
+Max 500 characters. Current: 329.
 
 ```
-New: learn mode, weak spots and AI interview rounds.
+New: Premium plans. Choose a monthly subscription or pay once for lifetime access to every lesson, lab, quiz and interview round. A dozen intro lessons stay free, and a rewarded ad opens a selection of others for 6 hours.
 
-• Learn mode: check each answer and read why, no timer
-• Weak spots: see the patterns you miss most and drill them in one tap
-• Every missed question comes back as a flashcard
-• AI rounds: NLP, LLMs, computer vision, recommenders, industries
-• Picture and story rounds, and 10 free beginner rounds
-• 54 timed quizzes, 453 questions, each with a worked solution
+Also: learn mode, weak-spot drills, AI interview rounds, and every missed question returns as a flashcard.
 ```
 
 ---
@@ -159,7 +154,18 @@ the text fields below, where they are re-derived from the registries before each
 
 ---
 
-## Screenshots
+## Generated store assets
+
+Rendered by `build/build.py` (headless Chrome) from the layouts in `AlgorAI Store Assets.html`, using
+the raw captures in `screenshots/`. Re-run `python3 -I build/build.py` after editing the captions or
+swapping a capture.
+
+- `store-screenshots/01…08-*.png` — 1080×1920 phone set, upload in order. Raw captures are 1080×2400
+  (20:9), which Play rejects (long side may not exceed 2× the short side), hence the framed 9:16 versions.
+- `graphics/feature-graphic-1024x500.png` — cover, no alpha. `graphics/icon-512.png` is unchanged: it
+  matches the installed launcher icon.
+
+## Screenshots (older capture plan)
 
 Captured on a Pixel 7 emulator (1080×2400, 9:19.5), dark theme, with the status bar in demo mode so
 the clock reads 9:41 and no notification icons leak in. All content is real app state, not mockups:
@@ -234,9 +240,10 @@ Open items that are not copy problems but will block or damage the release:
   quiz-exit interstitial in Phase 14). Note the build does **not** fail on a fallback: every Gradle
   configuration run *logs* "AdMob: using Google test ids for release builds", and a release built
   with that line still in the log ships test ads and earns nothing. Read the log before uploading.
-  Still outstanding: the Play Console in-app product must exist with id `algora_premium_lifetime`
-  (`core/billing/PremiumBilling.kt`) before the paywall can complete a real purchase — that's a Play
-  Console entry, not a code change.
+  Still outstanding: the Play Console subscription `algora_premium_monthly` (no trial, grace period on) and the
+  in-app product `algora_premium_lifetime` must exist before the paywall can complete a real purchase — see
+  `docs/plan/phase-18-subscription-model.md`. Billing code only handles the lifetime product
+  until that phase is built.
 - **Data safety form.** The app itself collects nothing — progress lives in local DataStore, there
   is no account and no network call of our own. The ads SDK does collect data, so the form must
   declare whatever AdMob's current disclosure requires once the real ids are in. The interstitial

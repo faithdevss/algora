@@ -3,6 +3,11 @@
 Status: Done (fakes wired; real Play Console / AdMob ids still to be swapped in)
 Depends on: Phases 0–7 (gates existing content, adds one new screen)
 
+> **Pricing superseded.** The lifetime $9.99 price below is replaced by a $9.99/month subscription
+> plus a repriced lifetime option, with a 2% free / 5% ad-unlock / 93% paid split. See
+> `phase-18-subscription-model.md`. The gate, entitlement store and ad-unlock mechanics here still
+> apply; the product, price, "to go live" steps and "Why $9.99" section do not.
+
 ## Goal
 
 Turn the cosmetic `Topic.isPremium` flag (143 topics across the 8 category files) into a real gate,

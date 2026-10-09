@@ -1,6 +1,6 @@
 .DS_Store
 .codegraph/
-
+.claude
 # --- Android (android/) ---
 *.iml
 .gradle/
@@ -26,3 +26,4 @@ xcuserdata/
 DerivedData/
 *.xcuserstate
 /ios/build/
+docs/
