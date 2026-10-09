@@ -18,9 +18,11 @@ class FakePremiumBilling(
     private val scope: CoroutineScope,
 ) : PremiumBilling {
 
-    // Matches the launch price of the real managed product, so the debug paywall reads the same as
-    // the shipped one. The release build never uses this — Play returns the localized price.
-    override val price = MutableStateFlow<String?>("$9.99").asStateFlow()
+    // Matches the launch prices of the real products, so the debug paywall reads the same as the
+    // shipped one. The release build never uses this — Play returns the localized prices.
+    override val prices = MutableStateFlow(
+        mapOf(PremiumPlan.Monthly to "$9.99", PremiumPlan.Lifetime to "$59.99"),
+    ).asStateFlow()
     override val status = MutableStateFlow(BillingStatus.Ready).asStateFlow()
 
     private val _events = MutableSharedFlow<BillingEvent>(extraBufferCapacity = 8)
@@ -30,7 +32,7 @@ class FakePremiumBilling(
         scope.launch { _events.emit(BillingEvent.Restored(entitlements.isPremium.first())) }
     }
 
-    override fun launchPurchase(activity: Activity) {
+    override fun launchPurchase(activity: Activity, plan: PremiumPlan) {
         scope.launch {
             delay(600) // stands in for the Play purchase sheet
             entitlements.setPremium(true)

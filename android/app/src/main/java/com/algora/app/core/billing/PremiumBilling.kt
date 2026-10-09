@@ -4,8 +4,14 @@ import android.app.Activity
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
-// Google Play product id for the one-time lifetime unlock (non-consumable INAPP product).
-const val PREMIUM_PRODUCT_ID = "algora_premium_lifetime"
+// The two ways to hold Premium. Either grants the same entitlement; Monthly lapses when the
+// subscription does, Lifetime never does (it is also what pre-subscription buyers own).
+enum class PremiumPlan(val productId: String) {
+    // Auto-renewing SUBS product. No free trial or introductory offer: the product is content.
+    Monthly("algora_premium_monthly"),
+    // Non-consumable INAPP product.
+    Lifetime("algora_premium_lifetime"),
+}
 
 enum class BillingStatus {
     Connecting,
@@ -29,13 +35,14 @@ sealed interface BillingEvent {
 // Entitlement itself is never exposed here — every implementation writes the result into
 // EntitlementRepository, which the UI observes. This interface only drives the store interaction.
 interface PremiumBilling {
-    val price: StateFlow<String?>
+    // Localized store price per plan; a plan is absent until the store has returned it.
+    val prices: StateFlow<Map<PremiumPlan, String>>
     val status: StateFlow<BillingStatus>
     val events: SharedFlow<BillingEvent>
 
-    // Re-asks Play what this account owns. Doubles as "restore purchase" and as the refund/
+    // Re-asks Play what this account owns — an active subscription or the lifetime purchase. Doubles as "restore purchase" and as the refund/
     // account-switch check that runs on every app start.
     fun refresh()
 
-    fun launchPurchase(activity: Activity)
+    fun launchPurchase(activity: Activity, plan: PremiumPlan)
 }

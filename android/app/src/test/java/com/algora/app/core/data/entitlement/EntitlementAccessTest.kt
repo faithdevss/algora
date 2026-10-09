@@ -36,28 +36,28 @@ class EntitlementAccessTest {
     fun premiumTopicIsLockedByDefault() {
         assertEquals(
             TopicAccess.Locked,
-            accessOf(isPremiumTopic = true, premiumOwned = false, unlocks = emptyMap(), topicId = "growth_curve_chart", now = now),
+            accessOf(isPremiumTopic = true, premiumOwned = false, unlocks = emptyMap(), topicId = "hash_table", now = now),
         )
     }
 
     @Test
     fun adUnlockIsLiveBeforeExpiryAndDeadAfter() {
         val expiry = now + AD_UNLOCK_DURATION_MS
-        val unlocks = mapOf("growth_curve_chart" to expiry)
+        val unlocks = mapOf("hash_table" to expiry)
 
         assertEquals(
             TopicAccess.AdUnlocked(expiry),
-            accessOf(true, premiumOwned = false, unlocks = unlocks, topicId = "growth_curve_chart", now = now + 5 * hour),
+            accessOf(true, premiumOwned = false, unlocks = unlocks, topicId = "hash_table", now = now + 5 * hour),
         )
         assertEquals(
             TopicAccess.Locked,
-            accessOf(true, premiumOwned = false, unlocks = unlocks, topicId = "growth_curve_chart", now = now + 7 * hour),
+            accessOf(true, premiumOwned = false, unlocks = unlocks, topicId = "hash_table", now = now + 7 * hour),
         )
     }
 
     @Test
     fun adUnlockDoesNotLeakToOtherTopics() {
-        val unlocks = mapOf("growth_curve_chart" to now + hour)
+        val unlocks = mapOf("hash_table" to now + hour)
 
         assertEquals(
             TopicAccess.Locked,
@@ -69,7 +69,7 @@ class EntitlementAccessTest {
     fun ownedPremiumBeatsEverything() {
         assertEquals(
             TopicAccess.Owned,
-            accessOf(true, premiumOwned = true, unlocks = emptyMap(), topicId = "growth_curve_chart", now = now),
+            accessOf(true, premiumOwned = true, unlocks = emptyMap(), topicId = "hash_table", now = now),
         )
     }
 
@@ -77,15 +77,15 @@ class EntitlementAccessTest {
     fun grantAdUnlock_makesTopicReadableFor6h() = runTest {
         val repository = newRepository()
 
-        repository.grantAdUnlock("growth_curve_chart")
+        repository.grantAdUnlock("hash_table")
 
         val unlocks = repository.adUnlocks.first()
-        val expiry = unlocks.getValue("growth_curve_chart")
+        val expiry = unlocks.getValue("hash_table")
         val remaining = expiry - System.currentTimeMillis()
         assertTrue("expected ~6h left, got ${remaining}ms", remaining > 5 * hour && remaining <= AD_UNLOCK_DURATION_MS)
         assertEquals(
             TopicAccess.AdUnlocked(expiry),
-            repository.accessFor("growth_curve_chart", isPremiumTopic = true).first(),
+            repository.accessFor("hash_table", isPremiumTopic = true).first(),
         )
     }
 
@@ -104,11 +104,11 @@ class EntitlementAccessTest {
     fun regrantingSameTopicKeepsOneEntry() = runTest {
         val repository = newRepository()
 
-        repository.grantAdUnlock("growth_curve_chart")
-        repository.grantAdUnlock("growth_curve_chart")
-        repository.grantAdUnlock("best_case")
+        repository.grantAdUnlock("hash_table")
+        repository.grantAdUnlock("hash_table")
+        repository.grantAdUnlock("heap")
 
-        assertEquals(setOf("growth_curve_chart", "best_case"), repository.adUnlocks.first().keys)
+        assertEquals(setOf("hash_table", "heap"), repository.adUnlocks.first().keys)
     }
 
     @Test
@@ -116,10 +116,10 @@ class EntitlementAccessTest {
         val repository = newRepository()
 
         repository.setPremium(true)
-        assertEquals(TopicAccess.Owned, repository.accessFor("growth_curve_chart", isPremiumTopic = true).first())
+        assertEquals(TopicAccess.Owned, repository.accessFor("hash_table", isPremiumTopic = true).first())
 
         // Refund / account switch path: Play says "not owned", the cache must follow.
         repository.setPremium(false)
-        assertEquals(TopicAccess.Locked, repository.accessFor("growth_curve_chart", isPremiumTopic = true).first())
+        assertEquals(TopicAccess.Locked, repository.accessFor("hash_table", isPremiumTopic = true).first())
     }
 }

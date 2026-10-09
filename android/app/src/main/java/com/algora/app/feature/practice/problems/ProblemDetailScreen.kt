@@ -95,7 +95,6 @@ fun ProblemDetailScreen(
                 description = pattern.blurb,
                 iconName = "",
                 accentColor = pattern.accentColor,
-                isPremium = true,
             )
         }
         Column(modifier = modifier.fillMaxSize()) {

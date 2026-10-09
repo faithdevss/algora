@@ -54,7 +54,6 @@ class AnalyticsEventTest {
             description = "",
             iconName = "chip",
             accentColor = 0L,
-            isPremium = true,
         )
         val recorder = RecordingAnalytics()
 

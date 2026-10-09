@@ -2,6 +2,7 @@ package com.algora.app.export
 
 import com.algora.app.core.data.CategoryRegistry
 import com.algora.app.core.data.PrerequisiteGraph
+import com.algora.app.core.data.model.Topic
 import com.algora.app.feature.algorithms.AlgorithmsTopics
 import com.algora.app.feature.analysis.AnalysisTopics
 import com.algora.app.feature.datastructures.DataStructuresTopics
@@ -136,6 +137,11 @@ class IosContentExportTest {
             if (!first) sb.append(',')
             first = false
             encodeString(field.name, sb); sb.append(':'); encode(v, sb)
+        }
+        // Derived from AccessTiers rather than stored, so the field scan above cannot see it.
+        if (value is Topic) {
+            if (!first) sb.append(',')
+            sb.append("\"isPremium\":").append(value.isPremium)
         }
         sb.append('}')
     }

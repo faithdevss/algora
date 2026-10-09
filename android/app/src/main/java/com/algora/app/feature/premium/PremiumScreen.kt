@@ -49,6 +49,7 @@ import com.algora.app.core.analytics.rememberAnalytics
 import com.algora.app.core.billing.BillingEvent
 import com.algora.app.core.billing.BillingProvider
 import com.algora.app.core.billing.BillingStatus
+import com.algora.app.core.billing.PremiumPlan
 import com.algora.app.core.data.entitlement.EntitlementRepository
 import com.algora.app.core.data.entitlement.entitlementDataStore
 import com.algora.app.core.ui.components.ScreenHeader
@@ -58,15 +59,15 @@ import com.algora.app.core.ui.theme.SimColors
 import com.algora.app.core.ui.theme.SpaceGrotesk
 
 // Ported from docs/design/Algora.dc.html's isPremium block (radii, gradients, paddings and the
-// planCard() selected-state treatment are the mock's). Copy differs where the product does: this is
-// a one-time lifetime unlock, not the mock's monthly/yearly trial.
+// planCard() selected-state treatment are the mock's). Copy differs where the product does: the two
+// plans are a monthly subscription and a one-time lifetime unlock, and there is no free trial.
 private val PremiumFeatures = listOf(
     "Unlock every topic & category",
     "All interactive labs & simulators",
     "Multi-language code snippets",
     "Spaced-repetition review mode",
     "Offline access to all content",
-    "Ad-free, forever",
+    "No ads",
 )
 
 @Composable
@@ -77,7 +78,8 @@ fun PremiumScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val billing = remember { BillingProvider.get(context) }
 
     val owned by entitlements.isPremium.collectAsState(initial = false)
-    val price by billing.price.collectAsState()
+    val prices by billing.prices.collectAsState()
+    var selected by remember { mutableStateOf(PremiumPlan.Monthly) }
     val status by billing.status.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     // "Nothing to restore" is only worth saying when the user asked to restore — the same query also
@@ -132,29 +134,38 @@ fun PremiumScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
-                LifetimePlanCard(price = price, owned = owned)
+                PlanCards(prices = prices, selected = selected, onSelect = { selected = it }, owned = owned)
 
                 Spacer(modifier = Modifier.height(18.dp))
                 when {
                     owned -> OwnedButton()
                     status == BillingStatus.Unavailable -> UnavailableNote()
                     else -> PurchaseButton(
-                        price = price,
+                        plan = selected,
+                        price = prices[selected],
                         enabled = activity != null && status != BillingStatus.PurchasePending,
-                        onClick = { activity?.let { billing.launchPurchase(it) } },
+                        onClick = { activity?.let { billing.launchPurchase(it, selected) } },
                     )
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
+                // Play requires the renewal terms next to the price.
+                Text(
+                    if (selected == PremiumPlan.Monthly) {
+                        "Renews monthly until you cancel in Google Play subscriptions."
+                    } else {
+                        "One-time purchase. No subscription."
+                    },
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(6.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center,
                 ) {
-                    Text(
-                        "One-time purchase · ",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                     Text(
                         "Restore purchase",
                         fontSize = 12.sp,
@@ -243,21 +254,58 @@ private fun FeatureRow(text: String) {
     }
 }
 
-// The mock shows two plan cards (monthly/yearly); a lifetime-only product means one card, always in
-// planCard()'s selected state — 2dp accent border plus the accent-tinted shadow.
+// The mock's two plan cards: the selected one gets planCard()'s 2dp accent border.
 @Composable
-private fun LifetimePlanCard(price: String?, owned: Boolean) {
-    Box(modifier = Modifier.fillMaxWidth()) {
+private fun PlanCards(
+    prices: Map<PremiumPlan, String>,
+    selected: PremiumPlan,
+    onSelect: (PremiumPlan) -> Unit,
+    owned: Boolean,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        PlanCard(
+            title = "Monthly",
+            price = prices[PremiumPlan.Monthly],
+            note = "per month · cancel any time",
+            selected = selected == PremiumPlan.Monthly && !owned,
+            badge = null,
+            onClick = { onSelect(PremiumPlan.Monthly) },
+            modifier = Modifier.weight(1f),
+        )
+        PlanCard(
+            title = "Lifetime",
+            price = prices[PremiumPlan.Lifetime],
+            note = "one-time · yours forever",
+            selected = selected == PremiumPlan.Lifetime && !owned,
+            badge = "PAY ONCE",
+            onClick = { onSelect(PremiumPlan.Lifetime) },
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun PlanCard(
+    title: String,
+    price: String?,
+    note: String,
+    selected: Boolean,
+    badge: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val border = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+    Box(modifier = modifier.clickable(onClick = onClick)) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 9.dp)
                 .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
-                .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp))
+                .border(if (selected) 2.dp else 1.dp, border, RoundedCornerShape(16.dp))
                 .padding(horizontal = 12.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("Lifetime", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(title, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(
                 price ?: "—",
                 fontFamily = SpaceGrotesk,
@@ -265,28 +313,31 @@ private fun LifetimePlanCard(price: String?, owned: Boolean) {
                 fontSize = 22.sp,
             )
             Text(
-                if (owned) "purchased" else "one-time · yours forever",
+                note,
                 fontSize = 11.sp,
+                textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        // Mock's green pill badge (line 334), repurposed for the single plan.
-        Text(
-            "BEST VALUE",
-            color = Color.White,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(end = 12.dp)
-                .background(SimColors.Green, RoundedCornerShape(99.dp))
-                .padding(horizontal = 8.dp, vertical = 3.dp),
-        )
+        if (badge != null) {
+            // Mock's green pill badge (line 334).
+            Text(
+                badge,
+                color = Color.White,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(end = 10.dp)
+                    .background(SimColors.Green, RoundedCornerShape(99.dp))
+                    .padding(horizontal = 8.dp, vertical = 3.dp),
+            )
+        }
     }
 }
 
 @Composable
-private fun PurchaseButton(price: String?, enabled: Boolean, onClick: () -> Unit) {
+private fun PurchaseButton(plan: PremiumPlan, price: String?, enabled: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -296,7 +347,11 @@ private fun PurchaseButton(price: String?, enabled: Boolean, onClick: () -> Unit
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            if (price != null) "Unlock Premium · $price" else "Unlock Premium",
+            when {
+                price == null -> "Unlock Premium"
+                plan == PremiumPlan.Monthly -> "Subscribe · $price / month"
+                else -> "Unlock for life · $price"
+            },
             color = Color.White,
             fontFamily = SpaceGrotesk,
             fontWeight = FontWeight.Bold,

@@ -188,11 +188,9 @@ fun LockedTopicBody(
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             if (adUnlockable) {
-                "Premium removes ads and unlocks every locked topic, lab and analysis tool — one payment, forever."
-            } else if (topic.id in PaidOnly.flagshipLessonIds) {
-                "This lesson is part of Premium — one payment, forever, with no ads."
+                "Premium removes ads and unlocks every topic, lab, quiz and interview round. Subscribe monthly or pay once."
             } else {
-                "Interview practice is part of Premium — one payment, forever, with no ads."
+                "This lesson is part of Premium — subscribe monthly or pay once, with no ads."
             },
             fontSize = 12.5.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
