@@ -1,10 +1,11 @@
 import SwiftUI
 
 // Port of feature/home/HomeScreen.kt: gradient topbar with the DSA/AI switch, a rotating Featured
-// Lab, Jump Back In, the 2×2 Quick Access grid and bookmarks. The premium upsell is left out —
-// iOS has no payments, so everything is already open.
+// Lab, Jump Back In, the 2×2 Quick Access grid and bookmarks, and the Go Premium button until
+// Premium is owned.
 struct HomeScreen: View {
     @Environment(AppStore.self) private var store
+    @Environment(PremiumStore.self) private var premium
     @Environment(AppSession.self) private var session
     @Environment(Router.self) private var router
     @Environment(\.palette) private var palette
@@ -16,6 +17,17 @@ struct HomeScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 topbar
+                if !premium.isPremium {
+                    Button { router.push(.premium) } label: {
+                        Text("Unlock Premium")
+                            .font(AppFont.grotesk(15, .bold)).foregroundStyle(.white)
+                            .frame(maxWidth: .infinity).padding(.vertical, 14)
+                            .background(LinearGradient(colors: Gradients.premiumCta, startPoint: .leading, endPoint: .trailing),
+                                        in: RoundedRectangle(cornerRadius: 14))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 14)
+                }
                 if let featured = pickFeatured() {
                     FeaturedLabCard(mode: session.mode, topic: featured) { router.push(.topic(featured.id)) }
                         .padding(.top, 14)

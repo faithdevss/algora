@@ -3,12 +3,13 @@ import SwiftUI
 // Port of feature/practice/daily/DailyDrillScreen.kt: recall, solve one problem, a short drill.
 struct DailyDrillScreen: View {
     @Environment(AppStore.self) private var store
+    @Environment(PremiumStore.self) private var premium
     @Environment(Router.self) private var router
     @Environment(\.palette) private var palette
     @State private var runningQuiz = false
 
     var body: some View {
-        let status = store.drillStatus()
+        let status = store.drillStatus(premium: premium.isPremium)
         if runningQuiz && !status.questions.isEmpty {
             // Straight into the timed run: its recorded attempt marks the step done.
             QuizScreen(quizId: dailyDrillQuizId, quiz: DailyDrill.quiz(status.questions),

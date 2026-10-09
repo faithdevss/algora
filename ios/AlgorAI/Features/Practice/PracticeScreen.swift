@@ -81,10 +81,11 @@ struct GradientTile: View {
 private struct DailyDrillBanner: View {
     let action: () -> Void
     @Environment(AppStore.self) private var store
+    @Environment(PremiumStore.self) private var premium
     @Environment(\.palette) private var palette
 
     var body: some View {
-        let status = store.drillStatus()
+        let status = store.drillStatus(premium: premium.isPremium)
         let accent = status.allDone ? SimColors.green : Color(hex: 0x6366F1)
         Button(action: action) {
             HStack(spacing: 13) {

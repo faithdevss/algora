@@ -64,6 +64,7 @@ enum Route: Hashable {
     case problem(String)
     case review
     case settings
+    case premium
 }
 
 enum AppTab: Hashable { case learning, simulations, practice, progress }

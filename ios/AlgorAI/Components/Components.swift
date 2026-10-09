@@ -96,6 +96,8 @@ struct TopicRow: View {
     let title: String
     let isCompleted: Bool
     var difficulty: Difficulty?
+    /// A premium topic the learner cannot open yet: the chevron becomes a lock.
+    var isLocked = false
     let action: () -> Void
     @Environment(\.palette) private var palette
 
@@ -119,9 +121,9 @@ struct TopicRow: View {
                 if let difficulty {
                     DifficultyBadge(difficulty: difficulty).padding(.trailing, 8)
                 }
-                Image(systemName: "chevron.right")
+                Image(systemName: isLocked ? "lock.fill" : "chevron.right")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(palette.muted)
+                    .foregroundStyle(isLocked ? Color(hex: 0xF97316) : palette.muted)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 13)

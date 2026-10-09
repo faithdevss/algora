@@ -1,6 +1,6 @@
 # AlgorAI iOS — simulation port status
 
-Native SwiftUI port of the Android app (`com.saimum.algorai`). Everything except ads and payments is
+Native SwiftUI port of the Android app (`com.saimum.algorai`). Everything except ads is
 ported (see `docs/plan/ios-port.md`); the only open phase is **I5, simulation labs**.
 
 Each topic's `SimulationType` is routed through `AlgorAI/Features/Labs/SimulationHost.swift`. A type

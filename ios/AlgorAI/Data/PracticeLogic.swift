@@ -165,14 +165,17 @@ struct DrillStatus {
 extension AppStore {
     /// Builds (or restores) today's drill. The problem pick is persisted so solving it does not
     /// reroll the step; questions are deterministic in the day.
-    func drillStatus(today: Int64 = todayEpochDay()) -> DrillStatus {
+    /// Without Premium the drill draws only from what the learner can open, as Android's does.
+    func drillStatus(today: Int64 = todayEpochDay(), premium: Bool) -> DrillStatus {
         let content = ContentStore.shared
-        let questions = DailyDrill.pickQuestions(day: today, quizzes: content.quizzes, attempts: quizAttempts)
+        let quizzes = premium ? content.quizzes : content.quizzes.filter { !(content.topic($0.topicId)?.isPremium ?? false) }
+        let problems = premium ? content.problems : content.problems.filter { !(content.pattern($0.patternId)?.isPremium ?? false) }
+        let questions = DailyDrill.pickQuestions(day: today, quizzes: quizzes, attempts: quizAttempts)
         let problem: PracticeProblem?
         if drillDay == today, let id = drillProblemId {
             problem = content.problem(id)
         } else {
-            problem = DailyDrill.pickProblem(day: today, problems: content.problems, solved: solvedProblemIds)
+            problem = DailyDrill.pickProblem(day: today, problems: problems, solved: solvedProblemIds)
             if let problem {
                 // Deferred: this runs during view evaluation, which must not mutate observed state.
                 Task { @MainActor in self.setDrillProblem(day: today, problemId: problem.id) }

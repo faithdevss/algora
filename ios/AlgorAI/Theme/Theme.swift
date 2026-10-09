@@ -114,6 +114,9 @@ enum Gradients {
     static let orange = [Color(hex: 0xFDBA74), Color(hex: 0xEA580C)]
     static let featuredDsa = [Color(hex: 0x7C3AED), Color(hex: 0x4338CA)]
     static let featuredAi = [Color(hex: 0x4F46E5), Color(hex: 0x0EA5E9)]
+    /// The paywall's CTA and hero, from the mock's isPremium block.
+    static let premiumCta = [Color(hex: 0x4F46E5), Color(hex: 0x7C3AED)]
+    static let premiumHero = [Color(hex: 0x4F46E5), Color(hex: 0x7C3AED), Color(hex: 0xC026D3)]
 }
 
 /// The resolved colour scheme (Material roles on Android), injected through the environment.

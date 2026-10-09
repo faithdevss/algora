@@ -4,6 +4,8 @@ import SwiftUI
 // cross-promo card is Android-only (it links to a Play listing).
 struct SettingsScreen: View {
     @Environment(AppStore.self) private var store
+    @Environment(PremiumStore.self) private var premium
+    @Environment(Router.self) private var router
     @Environment(\.palette) private var palette
     @Environment(\.dismiss) private var dismiss
 
@@ -12,6 +14,17 @@ struct SettingsScreen: View {
         ScrollView {
             VStack(spacing: 0) {
                 header
+                SettingsCard(title: "Premium", subtitle: premium.isPremium ? "Every topic and lab is unlocked" : "Monthly subscription or one-time lifetime") {
+                    Button { router.push(.premium) } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "rosette").foregroundStyle(palette.primary)
+                            Text(premium.isPremium ? "Manage Premium" : "Go Premium").font(AppFont.sans(14, .semibold)).foregroundStyle(palette.onSurface)
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(palette.muted)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
                 SettingsCard(title: "Theme", subtitle: "How AlgorAI follows light and dark") {
                     HStack(spacing: 4) {
                         ForEach(ThemeMode.allCases, id: \.self) { mode in

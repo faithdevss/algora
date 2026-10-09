@@ -6,6 +6,7 @@ struct AlgorAIApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var store = AppStore()
     @State private var session = AppSession()
+    @State private var premium = PremiumStore()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -13,6 +14,8 @@ struct AlgorAIApp: App {
             RootView()
                 .environment(store)
                 .environment(session)
+                .environment(premium)
+                .task { premium.start() }
                 .onChange(of: scenePhase, initial: true) { _, phase in
                     guard phase == .active else { return }
                     store.recordActivityToday()

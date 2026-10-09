@@ -1,0 +1,45 @@
+{
+  "identifier" : "A1B2C3D4",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "59.99",
+      "familyShareable" : false,
+      "internalID" : "6760000001",
+      "localizations" : [
+        { "description" : "Every topic, lab and quiz, forever, with no ads.", "displayName" : "AlgorAI Premium Lifetime", "locale" : "en_US" }
+      ],
+      "productID" : "algora_premium_lifetime",
+      "referenceName" : "Premium Lifetime",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {},
+  "subscriptionGroups" : [
+    {
+      "id" : "21000001",
+      "localizations" : [],
+      "name" : "AlgorAI Premium",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "9.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6760000002",
+          "introductoryOffer" : null,
+          "localizations" : [
+            { "description" : "Every topic, lab and quiz, with no ads. Renews monthly.", "displayName" : "AlgorAI Premium Monthly", "locale" : "en_US" }
+          ],
+          "productID" : "algora_premium_monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Premium Monthly",
+          "subscriptionGroupID" : "21000001",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : { "major" : 3, "minor" : 0 }
+}

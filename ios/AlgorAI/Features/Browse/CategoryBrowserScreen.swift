@@ -5,6 +5,7 @@ import SwiftUI
 struct CategoryBrowserScreen: View {
     let kind: BrowserKind
     @Environment(AppStore.self) private var store
+    @Environment(PremiumStore.self) private var premium
     @Environment(Router.self) private var router
     @Environment(\.palette) private var palette
     @State private var query = ""
@@ -54,7 +55,7 @@ struct CategoryBrowserScreen: View {
                                 .padding(.top, 18)
                                 .padding(.bottom, 12)
                             ForEach(rows) { topic in
-                                TopicRow(title: topic.name, isCompleted: store.completedTopicIds.contains(topic.id), difficulty: topic.difficulty) {
+                                TopicRow(title: topic.name, isCompleted: store.completedTopicIds.contains(topic.id), difficulty: topic.difficulty, isLocked: topic.isPremium && !premium.isPremium) {
                                     router.push(.topic(topic.id))
                                 }
                                 .padding(.vertical, 4)
