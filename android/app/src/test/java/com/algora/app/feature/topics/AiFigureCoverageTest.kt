@@ -132,6 +132,8 @@ class AiFigureCoverageTest {
         // R5 — the twelve Phase 16 skipped.
         "deepfakes", "complement_nb", "categorical_nb", "k_modes", "birch", "affinity_propagation",
         "incremental_pca", "meteor", "kan", "neural_odes", "capsule_networks", "selu",
+        // Phase 12 cuts added back on request: two duplicates and the roster page.
+        "word_embeddings", "rnn_lstm", "llms",
     )
 
     @Test
@@ -149,6 +151,6 @@ class AiFigureCoverageTest {
     @Test
     fun `the pilot is the size the phase was scoped against`() {
         // Keeps the batch table in docs/plan/phase-12-ai-figures.md verifiable rather than folklore.
-        assertEquals(309, pilotFigures.size)
+        assertEquals(312, pilotFigures.size)
     }
 }

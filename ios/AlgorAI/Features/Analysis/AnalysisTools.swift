@@ -498,11 +498,14 @@ private struct BenchmarkTool: View {
             }
             .padding(.top, 14)
             if let data = results {
-                ChartWell { MiniBarChart(bars: data.map { ChartBar(label: "\($0.n)", value: $0.micros, color: SimColors.green) }) }
+                if variant == .benchmark {
+                    BenchmarkDashboard(data: data)
+                } else {
+                    ChartWell { MiniBarChart(bars: data.map { ChartBar(label: "\($0.n)", value: $0.micros, color: SimColors.green) }) }
+                }
                 switch variant {
                 case .benchmark:
-                    header("n", "measured")
-                    rows(data.map { ("\($0.n)", "\(fmt($0.micros)) µs") })
+                    EmptyView()
                 case .realVsPredicted:
                     header("n", "measured  ·  predicted")
                     rows(data.map { p in
@@ -539,6 +542,82 @@ private struct BenchmarkTool: View {
         VStack(spacing: 6) {
             ForEach(items.indices, id: \.self) { ToolTableRow(left: items[$0].0, right: items[$0].1) }
         }
+    }
+}
+
+/// Slope of ln(time) against ln(n), least squares: the empirical exponent k in time ≈ c·n^k.
+private func fittedExponent(_ data: [BenchPoint]) -> Double {
+    let xs = data.map { log(Double($0.n)) }
+    let ys = data.map { log(max($0.micros, 1e-3)) }
+    let mx = xs.reduce(0, +) / Double(xs.count)
+    let my = ys.reduce(0, +) / Double(ys.count)
+    let num = zip(xs, ys).reduce(0) { $0 + ($1.0 - mx) * ($1.1 - my) }
+    let den = xs.reduce(0) { $0 + ($1 - mx) * ($1 - mx) }
+    return num / den
+}
+
+private func formatTime(_ micros: Double) -> String {
+    micros >= 1000 ? String(format: "%.2f ms", micros / 1000) : String(format: "%.1f µs", micros)
+}
+
+/// Stat tiles plus one row per run, each with a proportional bar and its growth over the last size.
+private struct BenchmarkDashboard: View {
+    let data: [BenchPoint]
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        let last = data[data.count - 1]
+        let k = fittedExponent(data)
+        let perDoubling = (1..<data.count).map { data[$0].micros / data[$0 - 1].micros }.reduce(0, +) / Double(data.count - 1)
+        let quadratic = (1.6...2.4).contains(k)
+        let peak = data.map(\.micros).max() ?? 1
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                tile("Slowest run", formatTime(last.micros), "n = \(last.n)", SimColors.green)
+                tile("Per doubling", String(format: "%.1f×", perDoubling), "quadratic ≈ 4×", SimColors.blue)
+                tile("Fitted growth", String(format: "n^%.2f", k), quadratic ? "matches O(n²)" : "noisy — run again",
+                     quadratic ? SimColors.green : SimColors.amber)
+            }
+            .padding(.top, 16)
+            HStack {
+                Text("Runs").font(.titleMedium).frame(maxWidth: .infinity, alignment: .leading)
+                Text("time  ·  ×prev").font(.titleMedium)
+            }
+            .padding(.top, 16).padding(.bottom, 8)
+            VStack(spacing: 10) {
+                ForEach(data.indices, id: \.self) { i in
+                    let p = data[i]
+                    VStack(spacing: 5) {
+                        HStack {
+                            Text("n = \(p.n)").font(.bodyMedium).frame(maxWidth: .infinity, alignment: .leading)
+                            Text(formatTime(p.micros)).font(AppFont.sans(14, .semibold)).foregroundStyle(palette.muted)
+                            Text(i == 0 ? "—" : String(format: "%.1f×", p.micros / data[i - 1].micros))
+                                .font(AppFont.sans(12)).foregroundStyle(palette.muted)
+                                .frame(width: 48, alignment: .trailing)
+                        }
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(palette.outlineVariant.opacity(0.4))
+                                Capsule().fill(SimColors.green)
+                                    .frame(width: geo.size.width * min(max(p.micros / peak, 0.02), 1))
+                            }
+                        }
+                        .frame(height: 6)
+                    }
+                }
+            }
+        }
+    }
+
+    private func tile(_ label: String, _ value: String, _ note: String, _ tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label).font(AppFont.sans(11)).foregroundStyle(palette.muted).lineLimit(1)
+            Text(value).font(AppFont.sans(16, .bold)).foregroundStyle(tint).lineLimit(1).minimumScaleFactor(0.7).padding(.top, 2)
+            Text(note).font(AppFont.sans(11)).foregroundStyle(palette.muted)
+        }
+        .padding(.horizontal, 10).padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 14))
     }
 }
 

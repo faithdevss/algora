@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,9 +20,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.algora.app.core.ui.theme.SimColors
 import com.algora.app.feature.analysis.tools.common.AnalysisToolCard
@@ -31,6 +35,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
+import kotlin.math.ln
 
 enum class BenchVariant(val intro: String) {
     BENCHMARK(
@@ -104,17 +109,21 @@ fun BenchmarkTool(variant: BenchVariant) {
             return@AnalysisToolCard
         }
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
-                .padding(6.dp),
-        ) {
-            MiniBarChart(bars = data.map { Bar(it.n.toString(), it.micros, SimColors.Green) })
+        if (variant == BenchVariant.BENCHMARK) {
+            BenchmarkDashboard(data)
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
+                    .padding(6.dp),
+            ) {
+                MiniBarChart(bars = data.map { Bar(it.n.toString(), it.micros, SimColors.Green) })
+            }
         }
 
         when (variant) {
-            BenchVariant.BENCHMARK -> MeasuredTable(data)
+            BenchVariant.BENCHMARK -> Unit
             BenchVariant.REAL_VS_PREDICTED -> PredictedTable(data)
             BenchVariant.SCALING -> ScalingTable(data)
         }
@@ -128,13 +137,89 @@ fun BenchmarkTool(variant: BenchVariant) {
     }
 }
 
+// Slope of ln(time) against ln(n), least squares: the empirical exponent k in time ≈ c·n^k.
+private fun fittedExponent(data: List<BenchPoint>): Double {
+    val xs = data.map { ln(it.n.toDouble()) }
+    val ys = data.map { ln(it.micros.coerceAtLeast(1e-3)) }
+    val mx = xs.average()
+    val my = ys.average()
+    return xs.indices.sumOf { (xs[it] - mx) * (ys[it] - my) } / xs.sumOf { (it - mx) * (it - mx) }
+}
+
+private fun formatTime(micros: Double): String =
+    if (micros >= 1000) String.format(Locale.US, "%.2f ms", micros / 1000) else String.format(Locale.US, "%.1f µs", micros)
+
 @Composable
-private fun MeasuredTable(data: List<BenchPoint>) {
-    TableHeader("n", "measured")
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        data.forEach { p ->
-            TableRow(p.n.toString(), "${format(p.micros)} µs")
+private fun BenchmarkDashboard(data: List<BenchPoint>) {
+    val last = data.last()
+    val k = fittedExponent(data)
+    val perDoubling = (1 until data.size).map { data[it].micros / data[it - 1].micros }.average()
+    val quadratic = k in 1.6..2.4
+
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        StatTile("Slowest run", formatTime(last.micros), "n = ${last.n}", SimColors.Green, Modifier.weight(1f))
+        StatTile("Per doubling", "${format(perDoubling)}×", "quadratic ≈ 4×", SimColors.Blue, Modifier.weight(1f))
+        StatTile(
+            "Fitted growth", "n^${String.format(Locale.US, "%.2f", k)}",
+            if (quadratic) "matches O(n²)" else "noisy — run again",
+            if (quadratic) SimColors.Green else SimColors.Amber, Modifier.weight(1f),
+        )
+    }
+
+    TableHeader("Runs", "time  ·  ×prev")
+    val peak = data.maxOf { it.micros }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        data.forEachIndexed { i, p ->
+            Column {
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("n = ${p.n}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                    Text(
+                        formatTime(p.micros), style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        if (i == 0) "—" else "${format(p.micros / data[i - 1].micros)}×",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.End,
+                        modifier = Modifier.width(48.dp),
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .padding(top = 5.dp)
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(3.dp)),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth((p.micros / peak).toFloat().coerceIn(0.02f, 1f))
+                            .height(6.dp)
+                            .background(SimColors.Green, RoundedCornerShape(3.dp)),
+                    )
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun StatTile(label: String, value: String, note: String, tint: Color, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .background(tint.copy(alpha = 0.12f), RoundedCornerShape(14.dp))
+            .padding(horizontal = 10.dp, vertical = 12.dp),
+    ) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+        Text(
+            value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
+            color = tint, maxLines = 1, modifier = Modifier.padding(top = 4.dp),
+        )
+        Text(note, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
     }
 }
 

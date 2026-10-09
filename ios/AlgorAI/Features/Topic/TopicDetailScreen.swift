@@ -65,31 +65,6 @@ struct DetailHeader: View {
     }
 }
 
-/// "Mark as complete" checkbox row.
-struct CompleteToggle: View {
-    let topicId: String
-    @Environment(AppStore.self) private var store
-    @Environment(\.palette) private var palette
-
-    var body: some View {
-        let done = store.completedTopicIds.contains(topicId)
-        Button {
-            if done { store.markIncomplete(topicId) } else { store.markCompleted(topicId) }
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: done ? "checkmark.square.fill" : "square")
-                    .font(.system(size: 22))
-                    .foregroundStyle(done ? palette.primary : palette.muted)
-                Text("Mark as complete").font(.bodyLarge)
-                Spacer()
-            }
-            .padding(16)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-}
-
 private struct TopicScrollOffsetKey: PreferenceKey {
     static let defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
@@ -515,12 +490,9 @@ private struct AnalysisToolPage: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            DetailHeader(title: topic.name, topicId: topic.id)
+            TopicNavBar(topic: topic, showTitle: true)
             ScrollView {
-                VStack(spacing: 0) {
-                    AnalysisToolRegistry.view(for: topic.id)
-                    CompleteToggle(topicId: topic.id).padding(.horizontal, -16).padding(.top, 8)
-                }
+                AnalysisToolRegistry.view(for: topic.id)
                 .padding(16)
             }
         }

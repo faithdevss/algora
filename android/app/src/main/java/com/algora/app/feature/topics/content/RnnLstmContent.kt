@@ -3,6 +3,10 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureBar
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,9 +15,31 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val rnnLstmContent = TopicContent(
     topicId = "rnn_lstm",
+    figure = Figure(
+        caption = "How much the final state h5 depends on each earlier state, |∂h5/∂hₜ| averaged over " +
+            "the four units, after the lab's RNN, h = tanh(x + 0.6·h), reads \"the movie was not good\". " +
+            "Each step back multiplies the path by 0.6 · (1 − h²), which is at most 0.6. The state " +
+            "after \"not\" still reaches h5 at 0.514, but \"was\" is down to 0.241, \"movie\" to 0.131 " +
+            "and \"the\" to 0.069. A gradient that should teach the model about early words mostly " +
+            "never arrives. An LSTM's cell state is updated by addition and scaled only by its forget " +
+            "gate: at 0.95 it keeps 0.36 of a signal after 20 steps, where 0.6 per step keeps almost " +
+            "none.",
+        shape = FigureShape.Plot(
+            bars = listOf(
+                FigureBar("the", 0.069f, FigureTone.Warn),
+                FigureBar("movie", 0.131f),
+                FigureBar("was", 0.241f),
+                FigureBar("not", 0.514f),
+                FigureBar("good", 1f, FigureTone.Accent),
+            ),
+            xLabel = "h1 → h5",
+            yLabel = "|∂h5/∂hₜ|, 0 to 1",
+        ),
+    ),
     whatIsIt = listOf(
         "In NLP, recurrent networks and their gated LSTM/GRU variants process text token by token, carrying a hidden state that accumulates sentence context.",
         "For years they were the backbone of language modeling and sequence-to-sequence tasks — until attention and Transformers displaced them.",
+        "The lab reads \"the movie was not good\" with four units and h = tanh(x + 0.6·h). After \"not\" the negation unit sits at −0.72; \"good\" pushes it up by 0.5 and it lands at 0.07, so the state holds the interaction, and reading the words in reverse leaves a different final state. The same 0.6 is the problem: the gradient reaching h5 from earlier states falls to 0.514, 0.241, 0.131 and finally 0.069 for \"the\". An LSTM's cell is scaled only by its forget gate, and at 0.95 it still keeps 0.36 of a signal after 20 steps.",
     ),
     steps = listOf(
         StepCard(1, "Embed Tokens", "Turn each token into a vector via an embedding layer.", 0xFF818CF8),

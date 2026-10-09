@@ -3,6 +3,11 @@ package com.algora.app.feature.topics.content
 import com.algora.app.core.data.model.ApplicationCard
 import com.algora.app.core.data.model.CodeBlock
 import com.algora.app.core.data.model.CrossLink
+import com.algora.app.core.data.model.Figure
+import com.algora.app.core.data.model.FigureEdge
+import com.algora.app.core.data.model.FigureGraphNode
+import com.algora.app.core.data.model.FigureShape
+import com.algora.app.core.data.model.FigureTone
 import com.algora.app.core.data.model.FormulaEntry
 import com.algora.app.core.data.model.NotationEntry
 import com.algora.app.core.data.model.SimulationType
@@ -11,6 +16,34 @@ import com.algora.app.core.data.model.TopicContent
 
 internal val llmsContent = TopicContent(
     topicId = "llms",
+    figure = Figure(
+        caption = "One model, many inputs, many tasks. Whatever comes in is turned into tokens first: " +
+            "text through a tokenizer, an image through a vision encoder that cuts it into patches, " +
+            "speech through an audio encoder. The model sees one sequence and does one thing with " +
+            "it — predict the next token. Answering a question, summarising a document and writing " +
+            "code are not separate heads or separate models; they are the same next-token loop, " +
+            "steered by the prompt. Text-only models such as GPT-2 in the code example have just " +
+            "the top input; multimodal assistants add the encoders for the other two.",
+        shape = FigureShape.Graph(
+            nodes = listOf(
+                FigureGraphNode("text", 0.06f, 0.12f),
+                FigureGraphNode("image", 0.06f, 0.50f),
+                FigureGraphNode("voice", 0.06f, 0.88f),
+                FigureGraphNode("LLM", 0.50f, 0.50f, FigureTone.Primary),
+                FigureGraphNode("answer", 0.94f, 0.12f, FigureTone.Accent),
+                FigureGraphNode("summary", 0.94f, 0.50f, FigureTone.Accent),
+                FigureGraphNode("code", 0.94f, 0.88f, FigureTone.Accent),
+            ),
+            edges = listOf(
+                FigureEdge(0, 3, directed = true),
+                FigureEdge(1, 3, "tokens", directed = true),
+                FigureEdge(2, 3, directed = true),
+                FigureEdge(3, 4, directed = true, tone = FigureTone.Accent),
+                FigureEdge(3, 5, "next token", directed = true, tone = FigureTone.Accent),
+                FigureEdge(3, 6, directed = true, tone = FigureTone.Accent),
+            ),
+        ),
+    ),
     whatIsIt = listOf(
         "Large language models (LLMs) are Transformer networks with billions of parameters, trained on vast text to predict the next token — and from that simple objective emerge translation, reasoning, and coding abilities.",
         "They are pretrained on raw text, then aligned to follow instructions and human preferences, yielding assistants like GPT and Claude.",

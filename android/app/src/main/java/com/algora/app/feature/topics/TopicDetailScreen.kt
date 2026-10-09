@@ -293,7 +293,16 @@ private fun TopicDetailContent(
     val toolContent = AnalysisToolRegistry.get(topicId)
     if (toolContent != null) {
         Column(modifier = Modifier.fillMaxSize()) {
-            DetailHeader(title = topic.name, onBack = onBack, isBookmarked = isBookmarked, onToggleBookmark = onToggleBookmark)
+            TopicNavBar(
+                title = topic.name,
+                showTitle = true,
+                back = backTitle,
+                onBack = onBack,
+                isBookmarked = isBookmarked,
+                onToggleBookmark = onToggleBookmark,
+                isCompleted = isCompleted,
+                onToggleCompleted = { if (isCompleted) scope.launch { repository.markIncomplete(topicId) } else markCompleted() },
+            )
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -301,22 +310,6 @@ private fun TopicDetailContent(
                     .padding(16.dp),
             ) {
                 toolContent()
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Checkbox(
-                        checked = isCompleted,
-                        onCheckedChange = { checked ->
-                            if (checked) {
-                                markCompleted()
-                            } else {
-                                scope.launch { repository.markIncomplete(topicId) }
-                            }
-                        },
-                    )
-                    Text("Mark as complete", style = MaterialTheme.typography.bodyLarge)
-                }
             }
         }
         return
