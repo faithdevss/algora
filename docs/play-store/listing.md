@@ -22,7 +22,7 @@ misrepresentation Play can act on.
 | Tags | Computer science, Programming, Interview prep, Machine learning |
 | Content rating | Everyone (no user content, no communication features) |
 | Price | Free, with a monthly subscription ($9.99) or a one-time lifetime purchase; regional prices vary |
-| Contact | `hafsasultana0106@gmail.com` |
+| Contact | Saimum Islam (FaithDevs), `faithdevsinfo@gmail.com` |
 | Privacy policy | *(host `docs/privacy-policy.md` somewhere public; fill in URL before submitting)* |
 
 **The title names both halves of the app.** It is the most heavily weighted search field, so it
@@ -160,7 +160,7 @@ Rendered by `build/build.py` (headless Chrome) in the app's default Ink theme, u
 `screenshots/`. The same script writes `Assets.html`, a preview of every asset. Re-run
 `python3 -I build/build.py` after editing the captions or swapping a capture.
 
-- `store-screenshots/01…12-*.png` — 1080×1920 phone set: 01–08 dark captures on Ink canvases, 09–12
+- `store-screenshots/01…14-*.png` — 1080×1920 phone set: 01–08 dark captures on Ink canvases, 09–14
   light captures (Sky light mode) on white. Play shows at most 8, so upload the 8 you want, in order. Raw captures are 1080×2400
   (20:9), which Play rejects (long side may not exceed 2× the short side), hence the framed 9:16 versions.
 - `graphics/feature-graphic-1024x500.png` — cover, no alpha. `graphics/icon-512.png` is the Ink
@@ -260,14 +260,15 @@ Open items that are not copy problems but will block or damage the release:
   only notification the app ever posts is the lapsed-learner nudge, at most one a week, with an
   opt-out switch in Settings and no notification at all until the user grants the runtime permission
   on Android 13+.
-- **In-app review is offered once per install**, at the first of three moments: 15% of the active
-  track complete or 5 different active days (checked on the Progress screen), or a timed quiz
-  finished at 80% or more (on its results screen).
+- **In-app review is offered once per install**, at the first happy moment: finishing the topic that
+  reaches 10 or 25 completed, opening the app on a 3-day streak, finishing the daily drill, a timed
+  quiz finished at 80% or more (on its results screen), or 15% of the active track / 5 active days
+  (checked on the Progress screen).
   Play policy forbids incentivising, filtering or repeatedly prompting for ratings — none of which
   the implementation does, and the code must stay that way (`core/playreview/AppReviewPrompt.kt`).
 - **Privacy policy URL is still the one open blocker for this submission.** `docs/privacy-policy.md`
   exists but isn't hosted anywhere public — Play Console will not accept a listing without a live
-  URL in that field. Support email is set (`hafsasultana0106@gmail.com`, see Store presence above).
+  URL in that field. Support email is set (`faithdevsinfo@gmail.com`, see Store presence above).
 - **Version numbers are derived, not typed.** `versionCode` is the commit count on the branch being
   built; `versionName` is `major.minor.patch`, where minor and patch count commits since
   `versionLineStart` (`app/build.gradle.kts`). The 2.x line starts at commit 199 = `2.0.0`. Nothing to

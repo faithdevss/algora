@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 
 /// The fixed four-destination bar (Learning · Simulations · Practice · Progress) from the mock's
 /// navDefs, identical in both modes. Each tab owns a NavigationStack; the in-app ScreenHeader
@@ -7,6 +8,7 @@ struct RootView: View {
     @Environment(AppStore.self) private var store
     @Environment(AppSession.self) private var session
     @Environment(\.colorScheme) private var systemScheme
+    @Environment(\.requestReview) private var requestReview
     @State private var router = Router()
 
     private var palette: Palette {
@@ -38,6 +40,18 @@ struct RootView: View {
         .environment(\.palette, palette)
         .environment(router)
         .preferredColorScheme(store.themeMode == .system ? nil : (palette.dark ? .dark : .light))
+        // Happy moments watched here so every route counts: the finish that reaches a milestone,
+        // and a launch that records a 3-day streak (after a beat, so the sheet lands on the app).
+        .onChange(of: store.completedTopicIds.count) { before, after in
+            if ReviewPrompt.reachedMilestone(before: before, after: after) {
+                ReviewPrompt.maybeAskNow(store: store, requestReview: requestReview)
+            }
+        }
+        .task(id: store.streak) {
+            guard store.streak >= ReviewPrompt.streakDays else { return }
+            try? await Task.sleep(for: .seconds(2))
+            ReviewPrompt.maybeAskNow(store: store, requestReview: requestReview)
+        }
         .onAppear {
             // A reminder tap lands on the work itself, over the Practice tab's root.
             AppDelegate.onRoute = { route in openReminder(route) }

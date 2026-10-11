@@ -44,7 +44,10 @@ import com.algora.app.core.analytics.streakDay
 import com.algora.app.core.billing.BillingProvider
 import com.algora.app.core.data.entitlement.EntitlementRepository
 import com.algora.app.core.data.entitlement.entitlementDataStore
+import com.algora.app.core.data.progress.ProgressRepository
+import com.algora.app.core.data.progress.progressDataStore
 import com.algora.app.core.data.settings.SettingsRepository
+import com.algora.app.core.playreview.AppReviewPrompt
 import com.algora.app.core.data.settings.AppTheme
 import com.algora.app.core.data.settings.ThemeMode
 import com.algora.app.core.data.settings.settingsDataStore
@@ -67,7 +70,10 @@ import com.algora.app.core.nav.SimulationSectionRoute
 import com.algora.app.core.nav.SimulationsRoute
 import com.algora.app.core.ui.components.resolveIcon
 import com.algora.app.core.ui.theme.AlgoraTheme
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 
 class MainActivity : ComponentActivity() {
 
@@ -92,7 +98,27 @@ class MainActivity : ComponentActivity() {
             val analytics = rememberAnalytics()
             LaunchedEffect(Unit) {
                 settings.recordActivityToday()
-                analytics.streakDay(settings.streak.first())
+                val streak = settings.streak.first()
+                analytics.streakDay(streak)
+                // Coming back for a third day in a row is a happy moment; give the screen a beat to
+                // draw first so the rating sheet lands on the app, not on a blank launch.
+                if (AppReviewPrompt.isStreakMoment(streak)) {
+                    delay(2_000)
+                    AppReviewPrompt.maybeAskNow(this@MainActivity, settings)
+                }
+            }
+            // Watching the completed set here, rather than at each of the places a topic can be
+            // finished, means every route counts. The first value is the stored baseline, not a finish.
+            val progress = remember { ProgressRepository(context.progressDataStore) }
+            LaunchedEffect(Unit) {
+                var before: Int? = null
+                progress.completedTopicIds.map { it.size }.distinctUntilChanged().collect { after ->
+                    val prev = before
+                    before = after
+                    if (prev != null && AppReviewPrompt.reachedMilestone(prev, after)) {
+                        AppReviewPrompt.maybeAskNow(this@MainActivity, settings)
+                    }
+                }
             }
             // Stamped once, on the first launch of an install: the quiz-exit interstitial's grace
             // period needs a real install date, and the trimmed ACTIVE_DAYS window cannot give one.

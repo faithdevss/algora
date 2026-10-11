@@ -29,6 +29,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.activity.compose.LocalActivity
+import androidx.compose.ui.platform.LocalContext
+import com.algora.app.core.data.settings.SettingsRepository
+import com.algora.app.core.data.settings.settingsDataStore
+import com.algora.app.core.playreview.AppReviewPrompt
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,6 +69,9 @@ fun DailyDrillScreen(
 
     val analytics = rememberAnalytics()
     LaunchedEffect(status.day) { analytics.drillOpened() }
+    val activity = LocalActivity.current
+    val context = LocalContext.current
+    val settings = remember { SettingsRepository(context.settingsDataStore) }
 
     // Completion is derived state, so it is true again on every later visit that day. Only the
     // not-done → done transition is a finish; opening an already-finished drill sets the baseline
@@ -71,8 +79,13 @@ fun DailyDrillScreen(
     var wasDone by remember { mutableStateOf<Boolean?>(null) }
     LaunchedEffect(status.ready, status.allDone) {
         if (!status.ready) return@LaunchedEffect
-        if (wasDone == false && status.allDone) analytics.drillCompleted()
+        val justFinished = wasDone == false && status.allDone
         wasDone = status.allDone
+        if (justFinished) {
+            analytics.drillCompleted()
+            // A finished drill is a happy moment: the whole day's practice just got ticked off.
+            activity?.let { AppReviewPrompt.maybeAskNow(it, settings) }
+        }
     }
 
     // The question step runs the sampled set inline as a real quiz — same timer, same results

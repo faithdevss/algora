@@ -9,6 +9,7 @@ import com.google.android.play.core.ktx.requestReview
 import com.google.android.play.core.review.ReviewManager
 import com.google.android.play.core.review.ReviewManagerFactory
 import com.google.android.play.core.review.testing.FakeReviewManager
+import kotlinx.coroutines.flow.first
 
 /**
  * Play In-App Review, asked once a learner has actually invested in the app.
@@ -22,7 +23,9 @@ import com.google.android.play.core.review.testing.FakeReviewManager
  * Progress alone turned out to be a high bar — 15% of a track is ~21 DSA or ~54 AI topics, beyond
  * what the free tier opens — so two more moments qualify, each one where the learner has just seen
  * the app work for them: coming back on [ACTIVE_DAYS_THRESHOLD] different days, and finishing a timed
- * quiz with [QUIZ_SCORE_THRESHOLD_PERCENT]% or more. Whichever comes first asks; all share one
+ * quiz with [QUIZ_SCORE_THRESHOLD_PERCENT]% or more. Three more happy moments ask right as they
+ * happen: finishing the topic that reaches a milestone ([MILESTONE_TOPICS]), opening the app on a
+ * [STREAK_DAYS]-day streak, and finishing the daily drill. Whichever comes first asks; all share one
  * "already asked" record, so it is still once per install.
  */
 object AppReviewPrompt {
@@ -37,6 +40,15 @@ object AppReviewPrompt {
     const val QUIZ_SCORE_THRESHOLD_PERCENT = 80
 
     /**
+     * Completed-topic counts that are milestones (Progress screen's Explorer and Momentum rungs).
+     * First Steps (1) is left out: one finished topic is too early for an opinion worth asking for.
+     */
+    val MILESTONE_TOPICS = setOf(10, 25)
+
+    /** A streak this long, recorded on opening the app, is a moment to ask. */
+    const val STREAK_DAYS = 3
+
+    /**
      * Pure gates, kept separate from the Play call so the policy is testable.
      * `promptedDay` is null until the flow has been launched once.
      */
@@ -46,6 +58,12 @@ object AppReviewPrompt {
 
     fun shouldAskAfterQuiz(scorePercent: Int, promptedDay: Long?): Boolean =
         promptedDay == null && scorePercent >= QUIZ_SCORE_THRESHOLD_PERCENT
+
+    /** True when the completed count just went from [before] to [after] across a milestone. */
+    fun reachedMilestone(before: Int, after: Int): Boolean =
+        after > before && MILESTONE_TOPICS.any { it in (before + 1)..after }
+
+    fun isStreakMoment(streak: Int): Boolean = streak >= STREAK_DAYS
 
     // Debug builds get Play's FakeReviewManager, matching how core/billing and core/ads swap in
     // fakes: the real flow needs a Play-installed build and would fail on every dev device.
@@ -78,6 +96,15 @@ object AppReviewPrompt {
         promptedDay: Long?,
     ) {
         if (!shouldAskAfterQuiz(scorePercent, promptedDay)) return
+        launch(activity, settings)
+    }
+
+    /**
+     * For a happy moment the caller has already recognised (milestone, streak, finished drill): asks
+     * if this install has never been asked, reading the record itself.
+     */
+    suspend fun maybeAskNow(activity: Activity, settings: SettingsRepository) {
+        if (settings.reviewPromptedDay.first() != 0L) return
         launch(activity, settings)
     }
 

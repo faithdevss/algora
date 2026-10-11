@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 
 // Port of feature/practice/daily/DailyDrillScreen.kt: recall, solve one problem, a short drill.
 struct DailyDrillScreen: View {
@@ -7,9 +8,20 @@ struct DailyDrillScreen: View {
     @Environment(Router.self) private var router
     @Environment(\.palette) private var palette
     @State private var runningQuiz = false
+    @Environment(\.requestReview) private var requestReview
 
     var body: some View {
         let status = store.drillStatus(premium: premium.isPremium)
+        Group { content(status) }
+            // Finishing the day's drill is a happy moment. Only the not-done → done change asks, so
+            // reopening a finished drill does not.
+            .onChange(of: status.allDone) { wasDone, isDone in
+                if !wasDone && isDone { ReviewPrompt.maybeAskNow(store: store, requestReview: requestReview) }
+            }
+    }
+
+    @ViewBuilder
+    private func content(_ status: DrillStatus) -> some View {
         if runningQuiz && !status.questions.isEmpty {
             // Straight into the timed run: its recorded attempt marks the step done.
             QuizScreen(quizId: dailyDrillQuizId, quiz: DailyDrill.quiz(status.questions),

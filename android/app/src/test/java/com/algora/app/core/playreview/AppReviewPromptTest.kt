@@ -44,4 +44,20 @@ class AppReviewPromptTest {
         assertTrue(AppReviewPrompt.shouldAskAfterQuiz(scorePercent = AppReviewPrompt.QUIZ_SCORE_THRESHOLD_PERCENT, promptedDay = null))
         assertFalse(AppReviewPrompt.shouldAskAfterQuiz(scorePercent = 100, promptedDay = 20_000L))
     }
+
+    @Test
+    fun `a milestone counts only on the finish that crosses it`() {
+        assertTrue(AppReviewPrompt.reachedMilestone(before = 9, after = 10))
+        assertTrue(AppReviewPrompt.reachedMilestone(before = 24, after = 25))
+        assertFalse(AppReviewPrompt.reachedMilestone(before = 10, after = 11))
+        assertFalse(AppReviewPrompt.reachedMilestone(before = 0, after = 1))
+        // Un-completing a topic is not a milestone.
+        assertFalse(AppReviewPrompt.reachedMilestone(before = 10, after = 9))
+    }
+
+    @Test
+    fun `a three day streak is a moment, shorter is not`() {
+        assertFalse(AppReviewPrompt.isStreakMoment(2))
+        assertTrue(AppReviewPrompt.isStreakMoment(AppReviewPrompt.STREAK_DAYS))
+    }
 }

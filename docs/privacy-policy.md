@@ -3,7 +3,7 @@
 *Effective October 11, 2026*
 
 AlgorAI ("the app") is a data structures, algorithms, and AI/ML learning app for Android and
-iOS, published by Saimum Islam. This policy explains what data the app touches and why. If a category of data
+iOS, published by Saimum Islam (FaithDevs). This policy explains what data the app touches and why. If a category of data
 isn't listed below, the app does not collect it.
 
 ## No account, no server
@@ -115,4 +115,4 @@ the same address.
 
 ## Contact
 
-Questions about this policy: hafsasultana0106@gmail.com
+Questions about this policy: Saimum Islam (FaithDevs), faithdevsinfo@gmail.com
