@@ -43,21 +43,12 @@ struct SettingsScreen: View {
                     .padding(4)
                     .background(palette.background, in: RoundedRectangle(cornerRadius: 14))
                 }
-                SettingsCard(title: "Accent color", subtitle: "Tints buttons, progress and highlights") {
-                    HStack(spacing: 10) {
-                        swatch(fill: [AppMode.dsa.accent.color, AppMode.ai.accent.color], ring: palette.primary, selected: store.accent == nil) {
-                            store.accent = nil
-                        }
-                        ForEach(AccentColor.allCases) { option in
-                            swatch(fill: [option.color, option.gradientEnd], ring: option.color, selected: store.accent == option) {
-                                store.accent = option
-                            }
+                SettingsCard(title: "App theme", subtitle: "Colours and app icon, together") {
+                    VStack(spacing: 4) {
+                        ForEach(AppTheme.allCases) { option in
+                            themeRow(option)
                         }
                     }
-                    Text(store.accent?.label ?? "Auto — indigo in DSA mode, pink in AI mode")
-                        .font(AppFont.sans(13, .semibold)).foregroundStyle(palette.onSurface)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.top, 12)
                 }
                 SettingsCard(title: "Study reminders", subtitle: "One nudge after a week away — never more than one a week") {
                     toggleRow(on: $store.studyRemindersEnabled,
@@ -87,6 +78,19 @@ struct SettingsScreen: View {
                             HStack(spacing: 12) {
                                 Image(systemName: "square.and.arrow.up").foregroundStyle(palette.primary)
                                 Text("Share the app").font(AppFont.sans(14, .semibold)).foregroundStyle(palette.onSurface)
+                                Spacer()
+                            }
+                        }
+                    }
+                }
+                // A button must open the write-review page; Apple keeps requestReview for the
+                // moments ReviewPrompt picks, and it may show nothing when the user asked to rate.
+                if let url = AppLinks.writeReview {
+                    SettingsCard(title: "Rate AlgorAI", subtitle: "Tell others what you think on the App Store") {
+                        Link(destination: url) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "star.fill").foregroundStyle(palette.primary)
+                                Text("Rate the app").font(AppFont.sans(14, .semibold)).foregroundStyle(palette.onSurface)
                                 Spacer()
                             }
                         }
@@ -135,7 +139,9 @@ struct SettingsScreen: View {
             Spacer()
         }
         .padding(18)
-        .background(LinearGradient(colors: [palette.primary, palette.tertiary], startPoint: .topLeading, endPoint: .bottomTrailing),
+        // Dark on the left, light on the right, whichever of primary/accent is darker.
+        .background(LinearGradient(colors: [palette.primary, palette.tertiary].sorted { $0.luminance < $1.luminance },
+                                   startPoint: .topLeading, endPoint: .bottomTrailing),
                     in: RoundedRectangle(cornerRadius: 22))
         .padding(.top, 12)
     }
@@ -150,16 +156,51 @@ struct SettingsScreen: View {
         .tint(palette.primary)
     }
 
-    private func swatch(fill: [Color], ring: Color, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Circle()
-                .fill(LinearGradient(colors: fill, startPoint: .topLeading, endPoint: .bottomTrailing))
-                .overlay { if selected { Image(systemName: "checkmark").font(.system(size: 15, weight: .bold)).foregroundStyle(.white) } }
-                .padding(4)
-                .overlay(Circle().stroke(selected ? (palette.dark ? Color.white : ring) : .clear, lineWidth: 2))
-                .aspectRatio(1, contentMode: .fit)
+    private func themeRow(_ option: AppTheme) -> some View {
+        let selected = store.appTheme == option
+        return Button { store.selectTheme(option) } label: {
+            HStack(spacing: 14) {
+                ThemeIconTile(theme: option).frame(width: 46, height: 46)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(option.label).font(AppFont.sans(15, .semibold)).foregroundStyle(palette.onSurface)
+                    Text(option.preferredMode == .light ? "Light" : "Dark").font(AppFont.sans(12)).foregroundStyle(palette.muted)
+                }
+                Spacer()
+                if selected {
+                    Image(systemName: "checkmark").font(.system(size: 16, weight: .bold)).foregroundStyle(palette.primary)
+                }
+            }
+            .padding(.vertical, 6).padding(.horizontal, 4)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(selected ? "\(option.label), selected" : option.label)
+    }
+}
+
+/// The launcher tile drawn from the theme's own icon colours, so the preview is the icon that will be installed.
+private struct ThemeIconTile: View {
+    let theme: AppTheme
+
+    var body: some View {
+        GeometryReader { geo in
+            let u = min(geo.size.width, geo.size.height) / 100
+            ZStack {
+                LinearGradient(colors: theme.iconBackground, startPoint: .topLeading, endPoint: .bottomTrailing)
+                Path { p in
+                    p.move(to: CGPoint(x: 50 * u, y: 22 * u)); p.addLine(to: CGPoint(x: 34.8 * u, y: 55 * u)); p.addLine(to: CGPoint(x: 24 * u, y: 78 * u))
+                    p.move(to: CGPoint(x: 50 * u, y: 22 * u)); p.addLine(to: CGPoint(x: 65.2 * u, y: 55 * u)); p.addLine(to: CGPoint(x: 76 * u, y: 78 * u))
+                    p.move(to: CGPoint(x: 34.8 * u, y: 55 * u)); p.addLine(to: CGPoint(x: 65.2 * u, y: 55 * u))
+                }
+                .stroke(theme.iconGlyph, style: StrokeStyle(lineWidth: 5.5 * u, lineCap: .round, lineJoin: .round))
+                ForEach([(34.8, 55.0, 7.0), (65.2, 55.0, 7.0), (24.0, 78.0, 7.0), (76.0, 78.0, 7.0), (50.0, 22.0, 8.0)], id: \.0) { node in
+                    Circle().fill(theme.iconGlyph).frame(width: node.2 * 2 * u, height: node.2 * 2 * u)
+                        .position(x: node.0 * u, y: node.1 * u)
+                }
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 46 * 0.2237))
+        .overlay(RoundedRectangle(cornerRadius: 46 * 0.2237).stroke(.white.opacity(0.06), lineWidth: 1))
     }
 }
 
@@ -186,5 +227,19 @@ private struct SettingsCard<Content: View>: View {
 /// hidden until it is filled in.
 enum AppLinks {
     static let appStore: URL? = nil
+    static var writeReview: URL? {
+        guard let appStore, var c = URLComponents(url: appStore, resolvingAgainstBaseURL: false) else { return nil }
+        c.queryItems = [URLQueryItem(name: "action", value: "write-review")]
+        return c.url
+    }
     static let pitch = "Learn DSA and AI with interactive labs, then practise coding and ML interviews."
+}
+
+private extension Color {
+    /// Rec. 709 luma of the resolved sRGB colour; enough to tell the darker of two colours apart.
+    var luminance: Double {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0
+        UIColor(self).getRed(&r, green: &g, blue: &b, alpha: nil)
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    }
 }

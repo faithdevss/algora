@@ -34,7 +34,19 @@ class InterstitialCounterTest {
         repository.recordInterstitialShown(noonToday)
         repository.recordInterstitialShown(noonToday + 300_000L)
 
-        assertEquals(2, repository.interstitialsShownToday(today).first())
+        assertEquals(2, repository.adsShownToday(today).first())
+    }
+
+    @Test
+    fun rewarded_and_interstitial_ads_share_one_daily_count() = runTest {
+        val repository = newRepository()
+
+        repository.recordAdShown(noonToday)
+        repository.recordInterstitialShown(noonToday + 300_000L)
+
+        assertEquals(2, repository.adsShownToday(today).first())
+        // A rewarded ad is not an interstitial, so it must not start the interstitial spacing clock.
+        assertEquals(noonToday + 300_000L, repository.interstitialLastShownAtMs.first())
     }
 
     @Test
@@ -43,8 +55,8 @@ class InterstitialCounterTest {
 
         repository.recordInterstitialShown(noonToday)
 
-        assertEquals(1, repository.interstitialsShownToday(today).first())
-        assertEquals(0, repository.interstitialsShownToday(today + 1).first())
+        assertEquals(1, repository.adsShownToday(today).first())
+        assertEquals(0, repository.adsShownToday(today + 1).first())
     }
 
     @Test

@@ -69,10 +69,7 @@ object Gradients {
     val PremiumCta = listOf(Color(0xFF4F46E5), Color(0xFF7C3AED))
     val PremiumHero = listOf(Color(0xFF4F46E5), Color(0xFF7C3AED), Color(0xFFC026D3))
 
-    // The mock's per-mode topbar ramps now live on `AccentColor.topbarStart/topbarEnd` — the header
-    // follows the accent in effect, which on the default Auto setting is the mode's own accent.
-    val FeaturedDsa = listOf(Color(0xFF7C3AED), Color(0xFF4338CA))
-    val FeaturedAi = listOf(Color(0xFF4F46E5), Color(0xFF0EA5E9))
+    // The Home header and Featured Lab ramps live on `AppTheme`, so they follow the chosen theme.
 }
 
 // Light neutrals

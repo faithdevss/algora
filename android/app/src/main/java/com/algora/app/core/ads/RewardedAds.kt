@@ -30,6 +30,7 @@ interface RewardedAds {
 
     fun preload(context: Context)
 
-    // onReward fires only when the user actually earns the reward (watched far enough).
-    fun show(activity: Activity, onReward: () -> Unit, onFailed: (String) -> Unit)
+    // onImpression fires once the ad is on screen (it counts against DAILY_AD_CAP whether or not it
+    // is watched through); onReward fires only when the user actually earns the reward.
+    fun show(activity: Activity, onImpression: () -> Unit, onReward: () -> Unit, onFailed: (String) -> Unit)
 }

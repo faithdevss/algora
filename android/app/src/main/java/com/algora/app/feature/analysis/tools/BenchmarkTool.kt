@@ -1,6 +1,14 @@
 package com.algora.app.feature.analysis.tools
 
 import androidx.compose.foundation.background
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.clip
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,11 +18,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -83,57 +90,72 @@ fun BenchmarkTool(variant: BenchVariant) {
     var results by remember { mutableStateOf<List<BenchPoint>?>(null) }
     var running by remember { mutableStateOf(false) }
 
-    AnalysisToolCard(intro = variant.intro) {
-        Button(
-            onClick = {
-                if (running) return@Button
-                running = true
-                scope.launch {
-                    val measured = withContext(Dispatchers.Default) { runBenchmark() }
-                    results = measured
-                    running = false
-                }
-            },
-            colors = ButtonDefaults.buttonColors(containerColor = SimColors.Green, contentColor = Color.White),
-            modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
-        ) { Text(if (running) "Running…" else "▸ Run benchmark") }
+    fun run() {
+        if (running) return
+        running = true
+        scope.launch {
+            results = withContext(Dispatchers.Default) { runBenchmark() }
+            running = false
+        }
+    }
 
+    // Time once on open so the dashboard is filled the moment it's viewed; the button re-measures.
+    LaunchedEffect(Unit) { run() }
+
+    AnalysisToolCard(intro = variant.intro) {
         val data = results
         if (data == null) {
             Text(
-                "Tap run to time real insertion sorts at n = ${benchSizes.first()}…${benchSizes.last()}.",
+                "Timing real insertion sorts at n = ${benchSizes.first()}…${benchSizes.last()}…",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 14.dp),
             )
-            return@AnalysisToolCard
-        }
-
-        if (variant == BenchVariant.BENCHMARK) {
-            BenchmarkDashboard(data)
         } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
-                    .padding(6.dp),
-            ) {
-                MiniBarChart(bars = data.map { Bar(it.n.toString(), it.micros, SimColors.Green) })
+            if (variant == BenchVariant.BENCHMARK) {
+                BenchmarkDashboard(data)
+            } else {
+                Box(
+                    modifier = Modifier
+                        .padding(top = 14.dp)
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
+                        .padding(6.dp),
+                ) {
+                    MiniBarChart(bars = data.map { Bar(it.n.toString(), it.micros, SimColors.Green) })
+                }
             }
+
+            when (variant) {
+                BenchVariant.BENCHMARK -> Unit
+                BenchVariant.REAL_VS_PREDICTED -> PredictedTable(data)
+                BenchVariant.SCALING -> ScalingTable(data)
+            }
+
+            Text(
+                "Timing is measured on this device and varies run to run — the trend is the signal.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 12.dp),
+            )
         }
 
-        when (variant) {
-            BenchVariant.BENCHMARK -> Unit
-            BenchVariant.REAL_VS_PREDICTED -> PredictedTable(data)
-            BenchVariant.SCALING -> ScalingTable(data)
+        // Same shape as the analysis board's dock button (AnDockBar): primary fill, play icon, 14dp radius.
+        Row(
+            modifier = Modifier
+                .padding(top = 14.dp)
+                .fillMaxWidth()
+                .height(50.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = if (running) 0.6f else 1f))
+                .clickable(enabled = !running) { run() },
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(if (running) "Running…" else "Run benchmark", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
         }
-
-        Text(
-            "Timing is measured on this device and varies run to run — the trend is the signal.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 12.dp),
-        )
     }
 }
 

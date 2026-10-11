@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Five-node "A" graph mark from docs/Icon and Themes (standalone).html (Sky colours).
+  The mark is drawn in the doc's 100-unit tile; the group maps that tile onto the 72dp visible
+  area of the 108dp adaptive canvas, which keeps the glyph inside the centre safe zone.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <group
+        android:pivotX="50"
+        android:pivotY="50"
+        android:scaleX="0.667"
+        android:scaleY="0.667">
+    <path
+        android:pathData="M50,22 L34.8,55 L24,78 M50,22 L65.2,55 L76,78 M34.8,55 H65.2"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="5.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M27.799999999999997,55 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0z"
+        android:fillColor="#FFFFFFFF" />
+    <path
+        android:pathData="M58.2,55 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0z"
+        android:fillColor="#FFFFFFFF" />
+    <path
+        android:pathData="M17,78 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0z"
+        android:fillColor="#FFFFFFFF" />
+    <path
+        android:pathData="M69,78 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0z"
+        android:fillColor="#FFFFFFFF" />
+    <path
+        android:pathData="M42,22 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0z"
+        android:fillColor="#FFFFFFFF" />
+    </group>
+</vector>

@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -12,47 +13,39 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import com.algora.app.core.data.settings.AccentColor
+import com.algora.app.core.data.settings.AppTheme
 
-private val accentSpec = tween<Color>(durationMillis = 320)
+private val themeSpec = tween<Color>(durationMillis = 320)
 
-private fun lightColors(accent: Color, accent2: Color) = lightColorScheme(
-    primary = accent,
-    onPrimary = LightSurface,
-    secondary = Blue,
-    onSecondary = LightSurface,
-    tertiary = accent2,
-    onTertiary = LightSurface,
-    background = LightBackground,
-    onBackground = Color(0xFF161A22),
-    surface = LightSurface,
-    onSurface = Color(0xFF161A22),
-    onSurfaceVariant = LightMutedText,
-    outline = LightBorder,
-    outlineVariant = LightBorderSubtle,
-)
-
-/**
- * The deeper accents (indigo, violet, pink) sink into the dark surfaces as text and icons, so the dark
- * scheme's `primary` is the accent eased toward white. Gradients and swatches keep the raw accent.
- */
-private fun onDarkAccent(accent: Color) = lerp(accent, Color.White, 0.25f)
-
-private fun darkColors(accent: Color, accent2: Color) = darkColorScheme(
-    primary = onDarkAccent(accent),
-    onPrimary = DarkBackground,
-    secondary = Blue,
-    onSecondary = DarkBackground,
-    tertiary = accent2,
-    onTertiary = DarkBackground,
-    background = DarkBackground,
-    onBackground = LightSurface,
-    surface = DarkSurface,
-    onSurface = LightSurface,
-    onSurfaceVariant = DarkMutedText,
-    outline = DarkBorder,
-    outlineVariant = DarkBorder,
-)
+private fun colorScheme(
+    background: Color,
+    surface: Color,
+    primary: Color,
+    accent: Color,
+    text: Color,
+    muted: Color,
+    onPrimary: Color,
+    dark: Boolean,
+): ColorScheme {
+    // Hairlines are the surface nudged toward the text colour, so each theme's borders stay tinted
+    // to its own surfaces instead of a fixed grey.
+    val base = if (dark) darkColorScheme() else lightColorScheme()
+    return base.copy(
+        primary = primary,
+        onPrimary = onPrimary,
+        secondary = Blue,
+        onSecondary = onPrimary,
+        tertiary = accent,
+        onTertiary = onPrimary,
+        background = background,
+        onBackground = text,
+        surface = surface,
+        onSurface = text,
+        onSurfaceVariant = muted,
+        outline = lerp(surface, text, if (dark) 0.10f else 0.08f),
+        outlineVariant = lerp(surface, text, if (dark) 0.10f else 0.05f),
+    )
+}
 
 val LocalCategoryAccents = staticCompositionLocalOf { CategoryAccents.all }
 
@@ -62,31 +55,34 @@ val LocalCategoryAccents = staticCompositionLocalOf { CategoryAccents.all }
  */
 val LocalDarkTheme = staticCompositionLocalOf { false }
 
-/**
- * The accent in effect, for surfaces that need the raw pair rather than the M3 roles. Already
- * resolved: on the Auto setting this is the active mode's accent, not the user's stored choice.
- */
-val LocalAccent = staticCompositionLocalOf { AccentColor.DEFAULT }
+/** The theme in effect, for surfaces that need more than the M3 roles (the Home header ramp). */
+val LocalAppTheme = staticCompositionLocalOf { AppTheme.DEFAULT }
 
 @Composable
 fun AlgoraTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    accent: AccentColor = AccentColor.DEFAULT,
+    theme: AppTheme = AppTheme.DEFAULT,
     content: @Composable () -> Unit,
 ) {
-    // Animated so flipping DSA ↔ AI (or picking a swatch) slides the whole shell to the new accent
-    // instead of snapping it a frame after the header gradient has already crossfaded.
-    val accentColor by animateColorAsState(Color(accent.argb), accentSpec, label = "accent")
-    val accent2 by animateColorAsState(Color(accent.gradientEnd), accentSpec, label = "accent2")
-    val colorScheme = if (darkTheme) darkColors(accentColor, accent2) else lightColors(accentColor, accent2)
+    // Every role is animated so picking a theme slides the whole shell across instead of snapping
+    // it a frame after the header gradient has already crossfaded.
+    val target = if (darkTheme) theme.dark else theme.light
+    val background by animateColorAsState(Color(target.background), themeSpec, label = "background")
+    val surface by animateColorAsState(Color(target.surface), themeSpec, label = "surface")
+    val primary by animateColorAsState(Color(target.primary), themeSpec, label = "primary")
+    val accent by animateColorAsState(Color(target.accent), themeSpec, label = "accent")
+    val text by animateColorAsState(Color(target.text), themeSpec, label = "text")
+    val muted by animateColorAsState(Color(target.muted), themeSpec, label = "muted")
+    val onPrimary by animateColorAsState(Color(target.onPrimary), themeSpec, label = "onPrimary")
+    val scheme = colorScheme(background, surface, primary, accent, text, muted, onPrimary, darkTheme)
 
     CompositionLocalProvider(
         LocalCategoryAccents provides CategoryAccents.all,
         LocalDarkTheme provides darkTheme,
-        LocalAccent provides accent,
+        LocalAppTheme provides theme,
     ) {
         MaterialTheme(
-            colorScheme = colorScheme,
+            colorScheme = scheme,
             typography = AlgoraTypography,
             content = content,
         )

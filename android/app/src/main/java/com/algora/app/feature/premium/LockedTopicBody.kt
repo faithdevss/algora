@@ -41,6 +41,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.algora.app.core.ads.AdsProvider
+import com.algora.app.core.ads.DAILY_AD_CAP_REACHED
+import com.algora.app.core.ads.recordRewardedImpression
+import com.algora.app.core.ads.rememberDailyAdCapReached
 import com.algora.app.core.ui.components.AdUnlockableLockIcon
 import com.algora.app.core.ui.components.LockAmber
 import com.algora.app.core.data.entitlement.EntitlementRepository
@@ -72,8 +75,9 @@ fun LockedTopicBody(
     val overlay by ads.overlay.collectAsState()
     var error by remember { mutableStateOf<String?>(null) }
     var awaitingAd by remember { mutableStateOf(false) }
+    val capReached = rememberDailyAdCapReached()
 
-    LaunchedEffect(adUnlockable) { if (adUnlockable) ads.preload(context) }
+    LaunchedEffect(adUnlockable, capReached) { if (adUnlockable && !capReached) ads.preload(context) }
 
     Column(
         modifier = modifier
@@ -136,12 +140,13 @@ fun LockedTopicBody(
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(15.dp))
                     .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(15.dp))
-                    .clickable(enabled = activity != null && !awaitingAd) {
+                    .clickable(enabled = activity != null && !awaitingAd && !capReached) {
                         error = null
                         val host = activity ?: return@clickable
                         awaitingAd = true
                         ads.show(
                             activity = host,
+                            onImpression = { recordRewardedImpression(context) },
                             onReward = {
                                 awaitingAd = false
                                 scope.launch { entitlements.grantAdUnlock(topic.id) }
@@ -163,14 +168,15 @@ fun LockedTopicBody(
                 }
                 Spacer(modifier = Modifier.size(10.dp))
                 Text(
-                    "Watch ad · 6h access",
+                    if (capReached) DAILY_AD_CAP_REACHED else "Watch ad · 6h access",
                     fontFamily = SpaceGrotesk,
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
+                    color = if (capReached) MaterialTheme.colorScheme.onSurfaceVariant else Color.Unspecified,
                 )
             }
 
-            if (!adReady && !awaitingAd) {
+            if (!adReady && !awaitingAd && !capReached) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     "Loading an ad…",

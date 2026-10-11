@@ -3,15 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>AlgorAI — Watch algorithms think</title>
-<meta name="description" content="60+ step-through simulations of data structures, graph search, dynamic programming and neural networks. Walk into your DSA or AI interview knowing exactly what the code does.">
-<meta name="theme-color" content="#0b0d12">
+<title>AlgorAI — Learn DSA and AI with interactive labs, then ace the interview</title>
+<meta name="description" content="Learn data structures, algorithms and AI through 504 interactive labs, then practise coding and ML interviews. Works offline, no account. Android and iPhone.">
+<meta name="theme-color" content="#0c0e13">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%2312151c'/%3E%3Cpath d='M50 22 34.8 55 24 78M50 22 65.2 55 76 78M34.8 55h30.4' fill='none' stroke='%23b3abff' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cg fill='%23b3abff'%3E%3Ccircle cx='34.8' cy='55' r='8'/%3E%3Ccircle cx='65.2' cy='55' r='8'/%3E%3Ccircle cx='24' cy='78' r='8'/%3E%3Ccircle cx='76' cy='78' r='8'/%3E%3Ccircle cx='50' cy='22' r='9'/%3E%3C/g%3E%3C/svg%3E">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="AlgorAI">
+<meta property="og:title" content="AlgorAI — Learn DSA and AI with interactive labs">
+<meta property="og:description" content="504 step-through labs for data structures, algorithms, machine learning and LLMs, plus timed quizzes and coding problems for interview prep.">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">[{"@context": "https://schema.org", "@type": "MobileApplication", "name": "AlgorAI: DSA, AI & Interviews", "alternateName": "AlgorAI", "description": "Learn data structures, algorithms and AI through 504 interactive labs, then practise coding and machine learning interviews.", "operatingSystem": "Android, iOS", "applicationCategory": "EducationalApplication", "inLanguage": "en", "author": {"@type": "Person", "name": "Saimum Islam"}, "downloadUrl": "https://play.google.com/store/apps/details?id=com.algora.app"}, {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "What is AlgorAI?", "acceptedAnswer": {"@type": "Answer", "text": "AlgorAI is a learning app for data structures, algorithms and artificial intelligence. Every one of its 504 topics comes with an interactive lab you can play, pause and step through, plus interview practice: timed quizzes, coding problems and pattern guides. It runs on Android and iPhone."}}, {"@type": "Question", "name": "Is AlgorAI free?", "acceptedAnswer": {"@type": "Answer", "text": "AlgorAI is free to download, and a dozen intro lessons are always open. On Android, watching a rewarded ad opens a further selection of lessons for 6 hours. Premium unlocks every lesson, lab, quiz and interview round."}}, {"@type": "Question", "name": "Does AlgorAI work offline?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. All lessons, labs, quizzes and flashcards are bundled in the app, so you can study on a commute or with data switched off. There is no account, no sign-in and no server; your progress stays on your device."}}, {"@type": "Question", "name": "What programming languages does AlgorAI use?", "acceptedAnswer": {"@type": "Answer", "text": "Topic lessons show code in Kotlin, Python, Java and JavaScript. The 102 coding problems each come with progressive hints, a walk-through and a full Kotlin solution."}}, {"@type": "Question", "name": "Can AlgorAI help me prepare for coding interviews?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. It has 54 timed quizzes with 453 questions, 102 coding problems grouped by pattern, 57 coding pattern guides, AI and machine learning interview rounds, system design primers and 20 behavioural questions with STAR guidance. Every answer explains the solution, its complexity and why the tempting wrong answer fails."}}, {"@type": "Question", "name": "What AI and machine learning topics does AlgorAI cover?", "acceptedAnswer": {"@type": "Answer", "text": "Machine learning (regression, classification, clustering, trees and ensembles, model evaluation), deep learning (backpropagation, CNNs, RNNs, transformers, diffusion models), NLP and LLMs (tokenisation, embeddings, attention, RAG, fine-tuning, agents) and reinforcement learning (bandits, Q-learning, policy gradients, DQN, PPO)."}}]}]</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#0b0d12; --bg2:#10131a; --card:#141822; --line:#1f2431; --line2:#2a3040;
+  --bg:#0c0e13; --bg2:#10131a; --card:#171a22; --line:#1f2431; --line2:#2a3040;
   --tx:#f2f3f7; --tx2:#b4b9c6; --tx3:#8a91a1;
   --brand:#6d5dfc; --brand2:#9b4dff; --brandL:#a79fff;
   --green:#22c07a; --amber:#f5a524; --orange:#ff8a3d; --yellow:#f5c542;
@@ -36,7 +43,7 @@ h2{font-size:clamp(32px,4.6vw,52px);line-height:1.04;letter-spacing:-.02em;font-
 header{position:sticky;top:0;z-index:50;background:rgba(11,13,18,.78);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
 .nav{display:flex;align-items:center;justify-content:space-between;height:68px;gap:16px}
 .logo{display:flex;align-items:center;gap:10px;font:700 20px var(--head)}
-.logo i{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--brand2));display:grid;place-items:center}
+.logo i{width:34px;height:34px;border-radius:10px;background:linear-gradient(145deg,#1c202b,#0c0e13);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);display:grid;place-items:center}
 .links{display:flex;align-items:center;gap:6px}
 .links a{padding:8px 14px;border-radius:10px;font-size:15px;font-weight:500;color:var(--tx2);transition:.15s}
 .links a:hover{color:#fff;background:var(--card)}
@@ -147,6 +154,17 @@ h1 em{font-style:normal;background:linear-gradient(100deg,#fff 10%,var(--brandL)
 .topic .n{font:600 13px var(--mono);color:var(--c)}
 .topic h3{font-size:24px;letter-spacing:-.01em}
 .topic p{font-size:16px;color:var(--tx2)}
+.topics.four{grid-template-columns:repeat(4,1fr)}
+.topic b.k{font:700 34px var(--head);letter-spacing:-.02em;color:var(--c)}
+
+/* faq */
+.faq{display:flex;flex-direction:column;gap:12px;max-width:860px}
+.faq details{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:0 22px}
+.faq summary{cursor:pointer;list-style:none;padding:20px 0;font:600 18px var(--head);display:flex;justify-content:space-between;gap:16px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";color:var(--brandL);font:500 22px var(--mono);line-height:1}
+.faq details[open] summary::after{content:"−"}
+.faq p{padding:0 0 20px;color:var(--tx2);font-size:16px;text-wrap:pretty}
 
 /* features */
 .feats{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(20px,3vw,40px)}
@@ -187,7 +205,7 @@ footer{border-top:1px solid var(--line);padding:32px 0;font-size:14px;color:var(
   .hero-in{grid-template-columns:1fr;text-align:left}
   .phone-col{order:2}
   .demo-grid{grid-template-columns:1fr}
-  .steps,.topics{grid-template-columns:repeat(2,1fr)}
+  .steps,.topics,.topics.four{grid-template-columns:repeat(2,1fr)}
   .feats{grid-template-columns:repeat(2,1fr)}
   .feats .feat:last-child{grid-column:1/-1}
   .feats .feat:last-child .feat-card{aspect-ratio:auto;min-height:260px}
@@ -202,7 +220,7 @@ footer{border-top:1px solid var(--line);padding:32px 0;font-size:14px;color:var(
 }
 /* phone */
 @media (max-width:640px){
-  .steps,.topics,.feats{grid-template-columns:1fr}
+  .steps,.topics,.topics.four,.feats{grid-template-columns:1fr}
   .feats .feat:last-child{grid-column:auto}
   .feat-card{aspect-ratio:auto;min-height:260px}
   .stores .store{flex:1 1 100%}
@@ -218,12 +236,12 @@ footer{border-top:1px solid var(--line);padding:32px 0;font-size:14px;color:var(
 
 <header>
   <div class="wrap nav">
-    <a href="#top" class="logo" aria-label="AlgorAI home"><i><svg width="20" height="20" viewBox="0 0 38 38" fill="none"><circle cx="8" cy="10" r="4" fill="#fff"/><circle cx="8" cy="28" r="4" fill="#fff"/><circle cx="20" cy="19" r="4" fill="#fff"/><circle cx="32" cy="19" r="4" fill="#fff"/><path d="M11 12l6 5M11 26l6-5M24 19h4" stroke="#fff" stroke-width="2"/></svg></i>AlgorAI</a>
+    <a href="#top" class="logo" aria-label="AlgorAI home"><i><svg width="26" height="26" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 22 34.8 55 24 78M50 22 65.2 55 76 78M34.8 55h30.4" fill="none" stroke="#b3abff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><g fill="#b3abff"><circle cx="34.8" cy="55" r="8"/><circle cx="65.2" cy="55" r="8"/><circle cx="24" cy="78" r="8"/><circle cx="76" cy="78" r="8"/><circle cx="50" cy="22" r="9"/></g></svg></i>AlgorAI</a>
     <button class="menu" id="menu" aria-label="Menu" aria-expanded="false" aria-controls="links"><span></span></button>
     <nav class="links" id="links">
-      <a href="#how">How it works</a>
-      <a href="#demo">Try it</a>
       <a href="#topics">Topics</a>
+      <a href="#interview">Interview prep</a>
+      <a href="#faq">FAQ</a>
       <a href="#download" class="btn btn-p">Get the app</a>
     </nav>
   </div>
@@ -233,18 +251,18 @@ footer{border-top:1px solid var(--line);padding:32px 0;font-size:14px;color:var(
 <section class="hero">
   <div class="wrap hero-in">
     <div class="hero-copy">
-      <span class="pill"><b></b>60+ STEP-THROUGH SIMULATIONS</span>
+      <span class="pill"><b></b>504 INTERACTIVE LABS · DSA + AI</span>
       <h1>Watch algorithms <em>think.</em></h1>
-      <p class="lead">Step through data structures, graph search, dynamic programming and neural networks one move at a time — and walk into your DSA or AI interview knowing exactly what the code does.</p>
+      <p class="lead">AlgorAI teaches data structures, algorithms and AI with interactive labs you step through one move at a time, then gets you ready for coding and machine learning interviews. Fully offline, no account needed.</p>
       <div class="stores">
         <a class="store" href="#download"><svg viewBox="0 0 24 24" fill="#fff"><path d="M16.400 12.700c0-2.500 2-3.700 2.100-3.800-1.200-1.700-3-1.900-3.600-2-1.500-.2-3 .9-3.800.9s-2-.9-3.300-.9c-1.700 0-3.300 1-4.200 2.500-1.800 3.100-.5 7.700 1.300 10.200.9 1.200 1.900 2.600 3.200 2.500 1.300-.1 1.800-.8 3.300-.8s2 .8 3.300.8c1.400 0 2.300-1.200 3.100-2.500 1-1.400 1.400-2.800 1.400-2.900-.1 0-2.800-1.100-2.800-4zM14 5.200c.7-.9 1.200-2 1.100-3.200-1 0-2.300.7-3 1.600-.7.800-1.200 2-1.100 3.100 1.100.1 2.300-.6 3-1.500z"/></svg><span><small>Download on the</small><strong>App Store</strong></span></a>
-        <a class="store" href="#download"><svg viewBox="0 0 24 24"><path d="M3.600 2.300 13.300 12 3.600 21.700a1.600 1.600 0 0 1-.4-1.100V3.400c0-.4.100-.8.400-1.100z" fill="#2fd0ff"/><path d="m16.800 8.500-3.500 3.500 3.500 3.500 4-2.300c1.100-.6 1.100-1.600 0-2.200z" fill="#ffc83d"/><path d="M13.300 12 3.600 2.300c.4-.4 1-.4 1.700-.1l11.500 6.300z" fill="#3ddc84"/><path d="m13.300 12 3.500 3.500-11.500 6.300c-.7.300-1.300.3-1.700-.1z" fill="#ff4d5a"/></svg><span><small>Get it on</small><strong>Google Play</strong></span></a>
+        <a class="store" href="https://play.google.com/store/apps/details?id=com.algora.app" rel="noopener"><svg viewBox="0 0 24 24"><path d="M3.600 2.300 13.300 12 3.600 21.700a1.600 1.600 0 0 1-.4-1.100V3.400c0-.4.100-.8.400-1.100z" fill="#2fd0ff"/><path d="m16.800 8.500-3.500 3.500 3.500 3.500 4-2.300c1.100-.6 1.100-1.600 0-2.200z" fill="#ffc83d"/><path d="M13.300 12 3.600 2.300c.4-.4 1-.4 1.700-.1l11.500 6.300z" fill="#3ddc84"/><path d="m13.300 12 3.500 3.500-11.500 6.300c-.7.300-1.300.3-1.700-.1z" fill="#ff4d5a"/></svg><span><small>Get it on</small><strong>Google Play</strong></span></a>
       </div>
       <span class="hint">↳ The phone is live — press play, scrub or step through it.</span>
       <div class="stats">
-        <div><b>60+</b><span>simulations</span></div>
-        <div><b>6</b><span>topic areas</span></div>
-        <div><b>1 step</b><span>at a time</span></div>
+        <div><b>504</b><span>interactive labs</span></div>
+        <div><b>54</b><span>timed quizzes</span></div>
+        <div><b>2,414</b><span>flashcards</span></div>
       </div>
     </div>
 
@@ -320,14 +338,35 @@ footer{border-top:1px solid var(--line);padding:32px 0;font-size:14px;color:var(
     <div class="sec-head">
       <span class="eyebrow">What you'll learn</span>
       <h2>From arrays to attention.</h2>
+      <p>Two tracks, DSA and AI, with 504 topics. Every topic has the same shape: a plain-language intro, a step-by-step walkthrough, the maths written out, complete code, an interactive lab, real-world uses and key takeaways.</p>
+    </div>
+    <div class="topics four">
+      <div class="topic" style="--c:#22c07a"><span class="n">01</span><h3>Data structures</h3><p>Arrays, strings, linked lists, stacks, queues, hash tables, trees, heaps, tries, graphs and disjoint sets.</p></div>
+      <div class="topic" style="--c:#22c07a"><span class="n">02</span><h3>Algorithms</h3><p>Sorting, searching, recursion, dynamic programming, greedy, backtracking, shortest paths and string matching.</p></div>
+      <div class="topic" style="--c:#f5a524"><span class="n">03</span><h3>Complexity analysis</h3><p>Big-O, amortised analysis, recurrences and space/time trade-offs, counted live.</p></div>
+      <div class="topic" style="--c:#f5a524"><span class="n">04</span><h3>Coding patterns</h3><p>57 pattern guides: sliding window, two pointers, merge intervals, monotonic stack, union-find.</p></div>
+      <div class="topic" style="--c:#8f84ff"><span class="n">05</span><h3>Machine learning</h3><p>Regression, classification, clustering, trees and ensembles, and model evaluation.</p></div>
+      <div class="topic" style="--c:#8f84ff"><span class="n">06</span><h3>Deep learning</h3><p>Backpropagation, CNNs, RNNs, transformers and diffusion models.</p></div>
+      <div class="topic" style="--c:#8f84ff"><span class="n">07</span><h3>NLP and LLMs</h3><p>Tokenisation, embeddings, attention, RAG, fine-tuning and agents.</p></div>
+      <div class="topic" style="--c:#8f84ff"><span class="n">08</span><h3>Reinforcement learning</h3><p>Bandits, Q-learning, policy gradients, DQN and PPO.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="interview">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Interview prep</span>
+      <h2>Practise the round, not just the topic.</h2>
+      <p>For students, self-learners, campus placements and software engineer, data scientist or ML engineer interviews. Every answer explains the solution, its complexity and why the tempting wrong answer fails.</p>
     </div>
     <div class="topics">
-      <div class="topic" style="--c:#22c07a"><span class="n">01</span><h3>Linear structures</h3><p>Linked lists, stacks and queues, step by step.</p></div>
-      <div class="topic" style="--c:#22c07a"><span class="n">02</span><h3>Trees &amp; heaps</h3><p>BSTs, heaps and traversals, animated.</p></div>
-      <div class="topic" style="--c:#22c07a"><span class="n">03</span><h3>Graphs</h3><p>BFS, DFS, Dijkstra, topological sort.</p></div>
-      <div class="topic" style="--c:#f5a524"><span class="n">04</span><h3>Dynamic programming</h3><p>Watch the table fill, cell by cell.</p></div>
-      <div class="topic" style="--c:#8f84ff"><span class="n">05</span><h3>Neural networks</h3><p>Forward passes, gradients and attention, visualized.</p></div>
-      <div class="topic" style="--c:#8f84ff"><span class="n">06</span><h3>LLMs</h3><p>Transformers, RAG and prompting.</p></div>
+      <div class="topic" style="--c:#8f84ff"><b class="k">54</b><h3>Timed quizzes</h3><p>453 questions under a real countdown clock, from beginner rounds to hard classics like trapping rain water.</p></div>
+      <div class="topic" style="--c:#22c07a"><b class="k">102</b><h3>Coding problems</h3><p>Grouped by pattern, with progressive hints, a walk-through and a full Kotlin solution.</p></div>
+      <div class="topic" style="--c:#f5a524"><b class="k">57</b><h3>Pattern guides</h3><p>Sliding window, two pointers, backtracking and more, each with its own lab.</p></div>
+      <div class="topic" style="--c:#8f84ff"><b class="k">AI</b><h3>AI interview rounds</h3><p>NLP, LLM and GenAI engineering, computer vision, recommender systems, and AI in healthcare, finance and retail.</p></div>
+      <div class="topic" style="--c:#22c07a"><b class="k">20</b><h3>Behavioural questions</h3><p>With STAR guidance, plus system design and ML system design primers.</p></div>
+      <div class="topic" style="--c:#f5a524"><b class="k">2,414</b><h3>Flashcards</h3><p>Every missed question comes back on an SM-2 schedule, and a weak-spot drill targets the patterns you miss most.</p></div>
     </div>
   </div>
 </section>
@@ -373,6 +412,23 @@ footer{border-top:1px solid var(--line);padding:32px 0;font-size:14px;color:var(
   </div>
 </section>
 
+<section class="sec" id="faq">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">FAQ</span>
+      <h2>Questions, answered.</h2>
+    </div>
+    <div class="faq">
+      <details><summary>What is AlgorAI?</summary><p>AlgorAI is a learning app for data structures, algorithms and artificial intelligence. Every one of its 504 topics comes with an interactive lab you can play, pause and step through, plus interview practice: timed quizzes, coding problems and pattern guides. It runs on Android and iPhone.</p></details>
+      <details><summary>Is AlgorAI free?</summary><p>AlgorAI is free to download, and a dozen intro lessons are always open. On Android, watching a rewarded ad opens a further selection of lessons for 6 hours. Premium unlocks every lesson, lab, quiz and interview round.</p></details>
+      <details><summary>Does AlgorAI work offline?</summary><p>Yes. All lessons, labs, quizzes and flashcards are bundled in the app, so you can study on a commute or with data switched off. There is no account, no sign-in and no server; your progress stays on your device.</p></details>
+      <details><summary>What programming languages does AlgorAI use?</summary><p>Topic lessons show code in Kotlin, Python, Java and JavaScript. The 102 coding problems each come with progressive hints, a walk-through and a full Kotlin solution.</p></details>
+      <details><summary>Can AlgorAI help me prepare for coding interviews?</summary><p>Yes. It has 54 timed quizzes with 453 questions, 102 coding problems grouped by pattern, 57 coding pattern guides, AI and machine learning interview rounds, system design primers and 20 behavioural questions with STAR guidance. Every answer explains the solution, its complexity and why the tempting wrong answer fails.</p></details>
+      <details><summary>What AI and machine learning topics does AlgorAI cover?</summary><p>Machine learning (regression, classification, clustering, trees and ensembles, model evaluation), deep learning (backpropagation, CNNs, RNNs, transformers, diffusion models), NLP and LLMs (tokenisation, embeddings, attention, RAG, fine-tuning, agents) and reinforcement learning (bandits, Q-learning, policy gradients, DQN, PPO).</p></details>
+    </div>
+  </div>
+</section>
+
 <section class="cta" id="download">
   <div class="wrap">
     <div class="cta-in">
@@ -380,7 +436,7 @@ footer{border-top:1px solid var(--line);padding:32px 0;font-size:14px;color:var(
       <p>Available on iPhone and Android.</p>
       <div class="stores">
         <a class="store" href="#"><svg viewBox="0 0 24 24" fill="#fff"><path d="M16.400 12.700c0-2.500 2-3.700 2.100-3.800-1.200-1.700-3-1.900-3.600-2-1.500-.2-3 .9-3.800.9s-2-.9-3.300-.9c-1.700 0-3.300 1-4.200 2.500-1.800 3.100-.5 7.700 1.300 10.200.9 1.200 1.900 2.600 3.200 2.500 1.300-.1 1.800-.8 3.300-.8s2 .8 3.300.8c1.400 0 2.300-1.200 3.100-2.500 1-1.400 1.400-2.800 1.400-2.900-.1 0-2.800-1.100-2.800-4zM14 5.200c.7-.9 1.200-2 1.100-3.200-1 0-2.300.7-3 1.600-.7.800-1.200 2-1.100 3.100 1.100.1 2.300-.6 3-1.500z"/></svg><span><small>Download on the</small><strong>App Store</strong></span></a>
-        <a class="store" href="#"><svg viewBox="0 0 24 24"><path d="M3.600 2.300 13.300 12 3.600 21.700a1.600 1.600 0 0 1-.4-1.100V3.400c0-.4.100-.8.400-1.100z" fill="#2fd0ff"/><path d="m16.800 8.500-3.500 3.500 3.500 3.500 4-2.300c1.100-.6 1.100-1.600 0-2.200z" fill="#ffc83d"/><path d="M13.300 12 3.600 2.300c.4-.4 1-.4 1.700-.1l11.500 6.300z" fill="#3ddc84"/><path d="m13.300 12 3.500 3.500-11.500 6.300c-.7.300-1.300.3-1.700-.1z" fill="#ff4d5a"/></svg><span><small>Get it on</small><strong>Google Play</strong></span></a>
+        <a class="store" href="https://play.google.com/store/apps/details?id=com.algora.app" rel="noopener"><svg viewBox="0 0 24 24"><path d="M3.600 2.300 13.300 12 3.600 21.700a1.600 1.600 0 0 1-.4-1.100V3.400c0-.4.100-.8.400-1.100z" fill="#2fd0ff"/><path d="m16.800 8.500-3.500 3.500 3.500 3.500 4-2.300c1.100-.6 1.100-1.600 0-2.200z" fill="#ffc83d"/><path d="M13.300 12 3.600 2.300c.4-.4 1-.4 1.700-.1l11.500 6.300z" fill="#3ddc84"/><path d="m13.300 12 3.500 3.500-11.500 6.300c-.7.300-1.300.3-1.700-.1z" fill="#ff4d5a"/></svg><span><small>Get it on</small><strong>Google Play</strong></span></a>
       </div>
     </div>
   </div>
@@ -389,8 +445,8 @@ footer{border-top:1px solid var(--line);padding:32px 0;font-size:14px;color:var(
 
 <footer>
   <div class="wrap foot">
-    <span>© 2026 AlgorAI</span>
-    <nav><a href="#">Privacy</a><a href="#">Terms</a><a href="#">Contact</a></nav>
+    <span>© 2026 AlgorAI · Updated October 2026</span>
+    <nav><a href="privacy.html">Privacy</a><a href="mailto:hafsasultana0106@gmail.com">Contact</a></nav>
   </div>
 </footer>
 

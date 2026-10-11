@@ -16,6 +16,7 @@ data class InterstitialState(
     /** Lifetime count of *completed full* quiz runs. Missed-only retries are not runs. */
     val quizzesFinished: Int = 0,
     val daysSinceInstall: Long = 0L,
+    /** Ads of any kind already shown today, rewarded included: they share [DAILY_AD_CAP]. */
     val shownToday: Int = 0,
     /** 0 when an interstitial has never been shown. */
     val lastShownAtMs: Long = 0L,
@@ -28,7 +29,11 @@ const val INTERSTITIAL_FREE_QUIZZES = 2
 /** A day-0 user has not decided the app is worth anything yet; ads before that buy an uninstall. */
 const val INTERSTITIAL_MIN_INSTALL_DAYS = 1L
 
-const val INTERSTITIAL_DAILY_CAP = 4
+/**
+ * Ads a free user can see in one day, across every surface: rewarded videos and quiz-exit
+ * interstitials together. Once it is spent, nothing shows until tomorrow.
+ */
+const val DAILY_AD_CAP = 2
 
 const val INTERSTITIAL_MIN_GAP_MS = 2L * 60 * 1000
 
@@ -46,7 +51,7 @@ fun shouldShowInterstitial(state: InterstitialState, nowMs: Long): Boolean = whe
     // stacked on one exit reads as broken, and a poisoned review ask costs more than one impression.
     state.reviewPromptedToday -> false
 
-    state.shownToday >= INTERSTITIAL_DAILY_CAP -> false
+    state.shownToday >= DAILY_AD_CAP -> false
 
     // Stops a back-to-back quiz session from becoming an ad session. A negative difference means the
     // device clock moved backwards, which would otherwise suppress ads until it caught up — treat

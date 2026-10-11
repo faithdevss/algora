@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import com.algora.app.BuildConfig
 
 /**
@@ -35,6 +36,25 @@ object AppShare {
             context.startActivity(chooser)
         } catch (_: ActivityNotFoundException) {
             // No handler — nothing useful to do.
+        }
+    }
+
+    /**
+     * "Rate AlgorAI" in Settings opens the Play listing, not the In-App Review flow: Play's policy
+     * forbids triggering that flow from a button (see core/playreview/AppReviewPrompt.kt). The
+     * market:// link lands in the Play Store app; without one, the web listing does.
+     */
+    fun rate(context: Context) {
+        val market = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${BuildConfig.APPLICATION_ID}"))
+        val web = Intent(Intent.ACTION_VIEW, Uri.parse(playStoreUrl))
+        for (intent in listOf(market, web)) {
+            if (context !is Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            try {
+                context.startActivity(intent)
+                return
+            } catch (_: ActivityNotFoundException) {
+                // Try the next one.
+            }
         }
     }
 }

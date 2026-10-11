@@ -56,7 +56,7 @@ import com.algora.app.core.nav.Screen
 import com.algora.app.core.nav.SettingsRoute
 import com.algora.app.core.ui.components.resolveIcon
 import com.algora.app.core.ui.theme.Gradients
-import com.algora.app.core.ui.theme.LocalAccent
+import com.algora.app.core.ui.theme.LocalAppTheme
 import com.algora.app.core.ui.theme.ScreenGutter
 import com.algora.app.core.ui.theme.SpaceGrotesk
 import com.algora.app.feature.algorithms.AlgorithmsTopics
@@ -112,11 +112,8 @@ fun HomeScreen(
     val featured = remember(mode, completedIds, isPremium, adUnlocks) {
         pickFeatured(mode, completedIds, isPremium, adUnlocks)
     }
-    // Driven by the accent in effect rather than by `mode` directly. On the default Auto setting the
-    // accent already tracks the mode, so this still renders the mock's TopbarDsa/TopbarAi ramps —
-    // but a user who picked an accent now gets a header in it instead of a fixed indigo.
-    val activeAccent = LocalAccent.current
-    val topbar = listOf(Color(activeAccent.topbarStart), Color(activeAccent.topbarEnd))
+    val activeTheme = LocalAppTheme.current
+    val topbar = listOf(Color(activeTheme.headerStart), Color(activeTheme.headerEnd))
 
     Column(
         modifier = Modifier
@@ -191,7 +188,7 @@ fun HomeScreen(
 
         // Featured lab
         if (featured != null) {
-            FeaturedLabCard(mode = mode, featured = featured, onClick = { onTopicClick(featured.topicId) })
+            FeaturedLabCard(featured = featured, onClick = { onTopicClick(featured.topicId) })
         }
 
         val continueTopic = lastOpened?.let { TopicRegistry.find(it) }
@@ -411,16 +408,14 @@ private val aiCards = listOf(
 )
 
 @Composable
-private fun FeaturedLabCard(mode: AppMode, featured: Featured, onClick: () -> Unit) {
+private fun FeaturedLabCard(featured: Featured, onClick: () -> Unit) {
+    val theme = LocalAppTheme.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 14.dp)
             .background(
-                Brush.linearGradient(
-                    if (mode == AppMode.DSA) Gradients.FeaturedDsa
-                    else Gradients.FeaturedAi,
-                ),
+                Brush.linearGradient(listOf(Color(theme.featuredStart), Color(theme.featuredEnd))),
                 RoundedCornerShape(22.dp),
             )
             .clickable(onClick = onClick)

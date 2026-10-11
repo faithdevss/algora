@@ -488,20 +488,12 @@ private struct BenchmarkTool: View {
 
     var body: some View {
         AnalysisToolCard(intro: variant.intro) {
-            ToolRunButton(label: running ? "Running…" : "▸ Run benchmark") {
-                guard !running else { return }
-                running = true
-                Task {
-                    results = await runBenchmark()
-                    running = false
-                }
-            }
-            .padding(.top, 14)
             if let data = results {
                 if variant == .benchmark {
                     BenchmarkDashboard(data: data)
                 } else {
                     ChartWell { MiniBarChart(bars: data.map { ChartBar(label: "\($0.n)", value: $0.micros, color: SimColors.green) }) }
+                        .padding(.top, 14)
                 }
                 switch variant {
                 case .benchmark:
@@ -522,9 +514,33 @@ private struct BenchmarkTool: View {
                 Text("Timing is measured on this device and varies run to run — the trend is the signal.")
                     .font(AppFont.sans(12)).foregroundStyle(palette.muted).padding(.top, 12)
             } else {
-                Text("Tap run to time real insertion sorts at n = \(benchSizes.first!)…\(benchSizes.last!).")
+                Text("Timing real insertion sorts at n = \(benchSizes.first!)…\(benchSizes.last!)…")
                     .font(.bodyMedium).foregroundStyle(palette.muted).padding(.top, 14)
             }
+            // Same shape as the analysis board's dock button: primary fill, play icon, 14pt radius.
+            Button { run() } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "play.fill").font(.system(size: 14))
+                    Text(running ? "Running…" : "Run benchmark").font(AppFont.sans(17, .semibold))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity, minHeight: 50)
+                .background(palette.primary.opacity(running ? 0.6 : 1), in: RoundedRectangle(cornerRadius: 14))
+            }
+            .buttonStyle(.plain)
+            .disabled(running)
+            .padding(.top, 14)
+        }
+        // Time once on open so the dashboard is filled the moment it's viewed; the button re-measures.
+        .task { if results == nil { run() } }
+    }
+
+    private func run() {
+        guard !running else { return }
+        running = true
+        Task {
+            results = await runBenchmark()
+            running = false
         }
     }
 

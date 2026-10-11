@@ -7,9 +7,11 @@ plugins {
     id("com.google.firebase.crashlytics")
 }
 
-// Release line. Bump by hand only when the release is genuinely a new line; minor and patch come
-// from git so nobody has to remember to bump anything per build.
-val versionMajor = 1
+// Release line. Bump by hand only when the release is genuinely a new line, and set
+// versionLineStart to the commit count the line starts at, so it opens at <major>.0.0. Minor and
+// patch come from git so nobody has to remember to bump anything per build.
+val versionMajor = 2
+val versionLineStart = 199
 
 // Commit count on the current branch — monotonic, so every build off a later commit gets a higher
 // version code, which is exactly what Play requires. Falls back to 1 when there is no git history
@@ -21,10 +23,12 @@ val gitCommitCount: Int = runCatching {
     }.standardOutput.asText.get().trim().toInt()
 }.getOrDefault(1)
 
-// Every 100 commits rolls into the minor number, so the patch number never runs past 99 and the
-// version reads like a normal semver string: 127 commits -> 1.1.27.
-val versionMinor = gitCommitCount / 100
-val versionPatch = gitCommitCount % 100
+// Commits since the line started; every 100 roll into the minor number, so the patch number never
+// runs past 99 and the version reads like a normal semver string: 127 commits in -> 2.1.27. The
+// version code stays the raw commit count, so it keeps rising across lines.
+val lineCommits = (gitCommitCount - versionLineStart).coerceAtLeast(0)
+val versionMinor = lineCommits / 100
+val versionPatch = lineCommits % 100
 
 // --- AdMob ids -------------------------------------------------------------------------------
 // Google's public test ids. Debug always uses these, and release falls back to them when no real
@@ -170,6 +174,7 @@ dependencies {
 
     implementation("androidx.core:core-ktx:1.19.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
+    implementation("androidx.lifecycle:lifecycle-process:2.11.0")
     implementation("androidx.activity:activity-compose:1.13.0")
 
     implementation("androidx.compose.ui:ui")
@@ -187,6 +192,10 @@ dependencies {
 
     // Play In-App Review — the rating prompt shown once a learner is genuinely invested.
     implementation("com.google.android.play:review-ktx:2.0.2")
+
+    // Not used directly: play-services-basement (pulled in by billing, ads, review and Firebase) drags
+    // in fragment 1.1.0, which Play Console flags as outdated. Pinning it here resolves the graph up.
+    implementation("androidx.fragment:fragment:1.9.1")
 
     // Deferred work for the lapsed-learner reminder notification (core/notify).
     implementation("androidx.work:work-runtime-ktx:2.10.1")

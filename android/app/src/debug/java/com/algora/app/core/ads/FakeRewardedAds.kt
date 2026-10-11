@@ -22,8 +22,9 @@ class FakeRewardedAds(private val scope: CoroutineScope) : RewardedAds {
 
     override fun preload(context: Context) = Unit
 
-    override fun show(activity: Activity, onReward: () -> Unit, onFailed: (String) -> Unit) {
+    override fun show(activity: Activity, onImpression: () -> Unit, onReward: () -> Unit, onFailed: (String) -> Unit) {
         if (_overlay.value != null) return
+        onImpression()
         scope.launch {
             for (remaining in FAKE_AD_SECONDS downTo 1) {
                 _overlay.value = "Test ad — reward in ${remaining}s"

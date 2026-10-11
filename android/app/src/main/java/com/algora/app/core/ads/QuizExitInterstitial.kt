@@ -60,7 +60,7 @@ fun rememberQuizExitInterstitial(enabled: Boolean): QuizExitInterstitial {
         val fromSettings = combine(
             settings.quizzesFinished,
             settings.firstOpenDay,
-            settings.interstitialsShownToday(today),
+            settings.adsShownToday(today),
             settings.interstitialLastShownAtMs,
             settings.reviewPromptedDay,
         ) { finished, firstOpen, shownToday, lastShownAtMs, reviewDay ->
@@ -124,4 +124,4 @@ fun rememberQuizExitInterstitial(enabled: Boolean): QuizExitInterstitial {
 // The ad callback fires after the caller has navigated away, so the composition that started it is
 // already gone. A rememberCoroutineScope() write would be cancelled with it and the impression would
 // never be charged against the daily cap — hence an app-lifetime scope for this one write.
-private val AdWriteScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+internal val AdWriteScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)

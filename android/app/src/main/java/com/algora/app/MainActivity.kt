@@ -45,6 +45,7 @@ import com.algora.app.core.billing.BillingProvider
 import com.algora.app.core.data.entitlement.EntitlementRepository
 import com.algora.app.core.data.entitlement.entitlementDataStore
 import com.algora.app.core.data.settings.SettingsRepository
+import com.algora.app.core.data.settings.AppTheme
 import com.algora.app.core.data.settings.ThemeMode
 import com.algora.app.core.data.settings.settingsDataStore
 import com.algora.app.core.nav.AppMode
@@ -66,7 +67,6 @@ import com.algora.app.core.nav.SimulationSectionRoute
 import com.algora.app.core.nav.SimulationsRoute
 import com.algora.app.core.ui.components.resolveIcon
 import com.algora.app.core.ui.theme.AlgoraTheme
-import com.algora.app.core.ui.theme.accent
 import kotlinx.coroutines.flow.first
 
 class MainActivity : ComponentActivity() {
@@ -84,9 +84,7 @@ class MainActivity : ComponentActivity() {
             val context = LocalContext.current
             val settings = remember { SettingsRepository(context.settingsDataStore) }
             val themeMode by settings.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
-            // null accent = the "Auto" setting, resolved against the live mode below. Mode is
-            // hoisted this high precisely so the theme — not just the Home header — can see it.
-            val accentChoice by settings.accent.collectAsState(initial = null)
+            val appTheme by settings.appTheme.collectAsState(initial = AppTheme.DEFAULT)
             var mode by rememberSaveable { mutableStateOf(AppMode.DSA) }
             // Logged straight after the write, so the value is the streak this open just earned
             // rather than yesterday's. One event per launch; Firebase's own session handling makes
@@ -161,7 +159,7 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
-            AlgoraTheme(darkTheme = dark, accent = accentChoice ?: mode.accent) {
+            AlgoraTheme(darkTheme = dark, theme = appTheme) {
                 AlgoraApp(
                     mode = mode,
                     onModeChange = { mode = it },

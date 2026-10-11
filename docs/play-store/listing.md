@@ -156,14 +156,15 @@ the text fields below, where they are re-derived from the registries before each
 
 ## Generated store assets
 
-Rendered by `build/build.py` (headless Chrome) from the layouts in `AlgorAI Store Assets.html`, using
-the raw captures in `screenshots/`. Re-run `python3 -I build/build.py` after editing the captions or
-swapping a capture.
+Rendered by `build/build.py` (headless Chrome) in the app's default Ink theme, using the raw captures in
+`screenshots/`. The same script writes `Assets.html`, a preview of every asset. Re-run
+`python3 -I build/build.py` after editing the captions or swapping a capture.
 
-- `store-screenshots/01…08-*.png` — 1080×1920 phone set, upload in order. Raw captures are 1080×2400
+- `store-screenshots/01…12-*.png` — 1080×1920 phone set: 01–08 dark captures on Ink canvases, 09–12
+  light captures (Sky light mode) on white. Play shows at most 8, so upload the 8 you want, in order. Raw captures are 1080×2400
   (20:9), which Play rejects (long side may not exceed 2× the short side), hence the framed 9:16 versions.
-- `graphics/feature-graphic-1024x500.png` — cover, no alpha. `graphics/icon-512.png` is unchanged: it
-  matches the installed launcher icon.
+- `graphics/feature-graphic-1024x500.png` — cover, no alpha. `graphics/icon-512.png` is the Ink
+  launcher tile.
 
 ## Screenshots (older capture plan)
 
@@ -244,9 +245,11 @@ Open items that are not copy problems but will block or damage the release:
   in-app product `algora_premium_lifetime` must exist before the paywall can complete a real purchase — see
   `docs/plan/phase-18-subscription-model.md`. Billing code only handles the lifetime product
   until that phase is built.
-- **Data safety form.** The app itself collects nothing — progress lives in local DataStore, there
-  is no account and no network call of our own. The ads SDK does collect data, so the form must
-  declare whatever AdMob's current disclosure requires once the real ids are in. The interstitial
+- **Data safety form.** Progress lives in local DataStore and there is no account or server of our
+  own, but release builds do collect data through SDKs, and the form must declare it: Firebase
+  Analytics (app interactions, device or other IDs, approximate location), Firebase Crashlytics
+  (crash logs, diagnostics), and AdMob (device or other IDs, advertising ID). All collected, none
+  shared for our own purposes, none required to identify the user. Match `docs/privacy-policy.md`. The interstitial
   adds no new *category* of collection — it is the same SDK and the same identifiers as the rewarded
   unit — but it does change what the listing and the privacy policy must say, because it is the one
   ad the user does not opt into (`docs/privacy-policy.md` is already updated). Neither the study
@@ -266,7 +269,7 @@ Open items that are not copy problems but will block or damage the release:
   exists but isn't hosted anywhere public — Play Console will not accept a listing without a live
   URL in that field. Support email is set (`hafsasultana0106@gmail.com`, see Store presence above).
 - **Version numbers are derived, not typed.** `versionCode` is the commit count on the branch being
-  built and `versionName` is `major.minor.<commit count>` (`app/build.gradle.kts`) — currently 141 /
-  `1.1.41`. Nothing to bump per build; raise `versionMajor` / `versionMinor` only when the release
-  is a genuinely new line. Build from a git checkout with full history, or the fallback pins the
+  built; `versionName` is `major.minor.patch`, where minor and patch count commits since
+  `versionLineStart` (`app/build.gradle.kts`). The 2.x line starts at commit 199 = `2.0.0`. Nothing to
+  bump per build; for a new line, raise `versionMajor` and set `versionLineStart` to that commit's count. Build from a git checkout with full history, or the fallback pins the
   code to 1 and Play will reject the second upload.

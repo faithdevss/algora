@@ -475,10 +475,10 @@ let anBenchSizes = [250, 500, 1000, 2000, 4000]
 private func fT(_ us: Double) -> String { us >= 1000 ? fxd(us / 1000, us >= 10000 ? 1 : 2) + " ms" : fxd(us, us < 10 ? 2 : 1) + " µs" }
 
 private func benchWaiting(_ title: String, _ dock: AnDock) -> AnFrame {
-    frame(title, [L("Timing sorts on this device…")], [F("n =", "250 → 4,000")], ("Benchmark running.", "Each size is timed three times; the median is kept."), dock)
+    frame(title, [L("Timing sorts on this device…")], [F("n =", "250 → 4,000")], ("Benchmark running.", "Each size is timed five times; the median is kept."), dock)
 }
 
-/// Times insertion sort, bubble sort and the built-in sort at five sizes; the median of three, in µs per sort.
+/// Times insertion sort, bubble sort and the built-in sort at five sizes; the median of five, in µs per sort.
 func runAnBench() -> AnBench {
     func ins(_ a: inout [Double]) {
         if a.count < 2 { return }
@@ -500,19 +500,30 @@ func runAnBench() -> AnBench {
     ]
     var out: AnBench = [:]
     for (name, fn, cost) in algs {
-        for _ in 0..<3 { var w = (0..<600).map { _ in Double.random(in: 0..<1) }; fn(&w) }
-        out[name] = anBenchSizes.map { n in
-            let base = (0..<n).map { _ in Double.random(in: 0..<1) }
-            let m = max(1, Int(Rb.round(1.5e6 / cost(Double(n)))))
-            var ts: [Double] = []
-            for _ in 0..<3 {
-                var cp = Array(repeating: base, count: m)
+        // Warm caches and the branch predictor for a fixed wall-clock budget before the first timed
+        // run, so the small sizes aren't timed cold.
+        let warmUntil = DispatchTime.now().uptimeNanoseconds + 200_000_000
+        var warm = 0
+        while warm < 5 || DispatchTime.now().uptimeNanoseconds < warmUntil {
+            var w = (0..<1000).map { _ in Double.random(in: 0..<1) }; fn(&w); warm += 1
+        }
+        let bases = anBenchSizes.map { n in (0..<n).map { _ in Double.random(in: 0..<1) } }
+        let reps = anBenchSizes.map { n in max(1, Int(Rb.round(1e7 / cost(Double(n))))) }
+        // Each round takes one sample of every size, so a slow spell (a background burst, a core
+        // migration) costs each size at most one sample and the median drops it.
+        var ts = Array(repeating: [Double](), count: bases.count)
+        for _ in 0..<5 {
+            for i in bases.indices {
+                let m = reps[i]
+                // map, not Array(repeating:): those share one buffer, and the copy-on-write would
+                // land inside the timed loop.
+                var cp = (0..<m).map { _ in bases[i].map { $0 } }
                 let t0 = DispatchTime.now().uptimeNanoseconds
                 for q in 0..<m { fn(&cp[q]) }
-                ts.append(Double(DispatchTime.now().uptimeNanoseconds - t0) / 1000 / Double(m))
+                ts[i].append(Double(DispatchTime.now().uptimeNanoseconds - t0) / 1000 / Double(m))
             }
-            return ts.sorted()[1]
         }
+        out[name] = ts.map { $0.sorted()[2] }
     }
     return out
 }
@@ -525,18 +536,20 @@ private func realVsPredicted() -> AnLab {
                           btn: AnBtn(label: "Run benchmark", bench: true))
         guard let t = bench?[["ins", "bub"][s.opt]] else { return benchWaiting("Real vs Predicted Runtime", dock) }
         let ns = anBenchSizes.map(Double.init)
-        let c = t.indices.reduce(0.0) { $0 + t[$1] * ns[$1] * ns[$1] } / ns.reduce(0.0) { $0 + pow($1, 4) }
+        // c is fit to the n ≥ 1,000 points the verdict checks, as the geometric mean of t / n², so no
+        // single point (least squares lets n = 4,000 set it alone) or noisy small n drags the curve.
+        let c = exp((2..<t.count).reduce(0.0) { $0 + log(t[$1] / (ns[$1] * ns[$1])) } / Double(t.count - 2))
         let p = ns.map { c * $0 * $0 }
         let dv = t.indices.map { (t[$0] - p[$0]) / p[$0] }
         let mdev = dv.dropFirst(2).map(abs).max()!
         return frame("Real vs Predicted Runtime", [
-            L("\(s.opt == 1 ? "bubble" : "insertion") sort on random input · median of 3"),
+            L("\(s.opt == 1 ? "bubble" : "insertion") sort on random input · median of 5"),
             vcols(anBenchSizes.enumerated().map { i, n in VIn(label: "\(n)", v: "", vals: [t[i], p[i]], bg: [G, "transparent"], ring: ["none", "inset 0 0 0 1.5px #9aa0ae"]) },
                   130, gap: 10, bw: 22, axis: "n →"),
             .table(head: ["n", "measured", "c·n²", "Δ"], rows: anBenchSizes.enumerated().map { i, n in
                 AnTRow(a: "\(n)", b: fT(t[i]), c: fT(p[i]), d: (dv[i] >= 0 ? "+" : "−") + fxd(abs(dv[i] * 100), 0) + "%", dc: abs(dv[i]) < 0.25 ? Gl : Y)
             }),
-        ], [F("c fit to all 5 points =", expo(c) + " µs")],
+        ], [F("c fit to n ≥ 1,000 =", expo(c) + " µs")],
             mdev < 0.3 ? ("Measured tracks c·n².", "From n = 1,000 up, every point is within \(Int(Rb.round(mdev * 100)))% of the quadratic fit.")
                 : ("Noisy run — tap Run again.", "Timing varies on this device; small n is dominated by timer and cache effects."),
             dock, [lg(G, "Measured"), lg("transparent", "Predicted c·n²", "inset 0 0 0 1.5px #9aa0ae")])

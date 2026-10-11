@@ -29,7 +29,7 @@ struct HomeScreen: View {
                     .padding(.top, 14)
                 }
                 if let featured = pickFeatured() {
-                    FeaturedLabCard(mode: session.mode, topic: featured) { router.push(.topic(featured.id)) }
+                    FeaturedLabCard(topic: featured) { router.push(.topic(featured.id)) }
                         .padding(.top, 14)
                 }
                 if let id = store.lastOpened, let topic = content.topic(id) {
@@ -97,7 +97,7 @@ struct HomeScreen: View {
         }
         .padding(18)
         .background(
-            LinearGradient(colors: [palette.accent.topbarStart, palette.accent.topbarEnd], startPoint: .topLeading, endPoint: .bottomTrailing),
+            LinearGradient(colors: [palette.theme.headerStart, palette.theme.headerEnd], startPoint: .topLeading, endPoint: .bottomTrailing),
             in: RoundedRectangle(cornerRadius: 22)
         )
         .padding(.top, 12)
@@ -216,7 +216,7 @@ private struct QuickAccessCard: View {
 }
 
 private struct FeaturedLabCard: View {
-    let mode: AppMode
+    @Environment(\.palette) private var palette
     let topic: Topic
     let action: () -> Void
 
@@ -253,7 +253,7 @@ private struct FeaturedLabCard: View {
             }
             .padding(18)
             .background(
-                LinearGradient(colors: mode == .dsa ? Gradients.featuredDsa : Gradients.featuredAi, startPoint: .topLeading, endPoint: .bottomTrailing),
+                LinearGradient(colors: palette.theme.featured, startPoint: .topLeading, endPoint: .bottomTrailing),
                 in: RoundedRectangle(cornerRadius: 22)
             )
         }

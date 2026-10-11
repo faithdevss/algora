@@ -2,6 +2,7 @@ package com.algora.app.core.data.settings
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.edit
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -26,20 +27,19 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         }
     }
 
-    /**
-     * `null` means "Auto" — the accent follows the active app mode (see `AppMode.accent`). That is
-     * also the default for a fresh install, so DSA opens indigo and AI opens pink without the user
-     * choosing anything. An explicit pick is stored by id and overrides the mode in both modes.
-     */
-    val accent: Flow<AccentColor?> = dataStore.data.map { prefs ->
-        when (val id = prefs[SettingsKeys.ACCENT]) {
-            null, AccentColor.AUTO_ID -> null
-            else -> AccentColor.fromId(id)
-        }
-    }
+    /** Palette + launcher icon. A fresh install, and anyone on the old accent swatches or the dropped
+     *  Violet theme, gets Ink. */
+    val appTheme: Flow<AppTheme> = dataStore.data.map { prefs -> AppTheme.fromId(prefs[SettingsKeys.APP_THEME]) }
 
-    suspend fun setAccent(accent: AccentColor?) {
-        dataStore.edit { prefs -> prefs[SettingsKeys.ACCENT] = accent?.id ?: AccentColor.AUTO_ID }
+    /** Picking a theme also moves the mode to the one the doc shows it in; the user can still flip it after. */
+    suspend fun setAppTheme(theme: AppTheme) {
+        dataStore.edit { prefs ->
+            prefs[SettingsKeys.APP_THEME] = theme.id
+            prefs[SettingsKeys.THEME_MODE] = when (theme.preferredMode) {
+                ThemeMode.LIGHT -> "light"
+                else -> "dark"
+            }
+        }
     }
 
     val bookmarks: Flow<Set<String>> =
@@ -273,31 +273,35 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         }
     }
 
-    // Interstitials shown on `today`. Any other stored day means the cap has rolled over, so a stale
-    // count can never be mistaken for today's — the same read-side guard newCardsIntroduced uses.
-    fun interstitialsShownToday(today: Long): Flow<Int> =
+    // Ads of any kind shown on `today`. Any other stored day means the cap has rolled over, so a
+    // stale count can never be mistaken for today's — the same read-side guard newCardsIntroduced uses.
+    fun adsShownToday(today: Long): Flow<Int> =
         dataStore.data.map { prefs ->
-            if (prefs[SettingsKeys.INTERSTITIAL_DAY] == today) prefs[SettingsKeys.INTERSTITIAL_COUNT] ?: 0 else 0
+            if (prefs[SettingsKeys.AD_DAY] == today) prefs[SettingsKeys.AD_COUNT] ?: 0 else 0
         }
 
     /** 0 until an interstitial has been shown; the spacing rule reads it as "never". */
     val interstitialLastShownAtMs: Flow<Long> =
         dataStore.data.map { prefs -> prefs[SettingsKeys.INTERSTITIAL_LAST_MS] ?: 0L }
 
-    // Charged only against an impression that actually happened — a skipped or failed ad must not
-    // spend the day's allowance.
+    // Charged only against an impression that actually happened — a failed ad must not spend the
+    // day's allowance. A rewarded ad closed early still counts: it was seen.
+    suspend fun recordAdShown(nowMs: Long = System.currentTimeMillis()) {
+        dataStore.edit { prefs -> chargeAd(prefs, nowMs) }
+    }
+
     suspend fun recordInterstitialShown(nowMs: Long = System.currentTimeMillis()) {
-        val today = nowMs / 86_400_000L
         dataStore.edit { prefs ->
-            val shownToday = if (prefs[SettingsKeys.INTERSTITIAL_DAY] == today) {
-                prefs[SettingsKeys.INTERSTITIAL_COUNT] ?: 0
-            } else {
-                0
-            }
-            prefs[SettingsKeys.INTERSTITIAL_DAY] = today
-            prefs[SettingsKeys.INTERSTITIAL_COUNT] = shownToday + 1
+            chargeAd(prefs, nowMs)
             prefs[SettingsKeys.INTERSTITIAL_LAST_MS] = nowMs
         }
+    }
+
+    private fun chargeAd(prefs: MutablePreferences, nowMs: Long) {
+        val today = nowMs / 86_400_000L
+        val shownToday = if (prefs[SettingsKeys.AD_DAY] == today) prefs[SettingsKeys.AD_COUNT] ?: 0 else 0
+        prefs[SettingsKeys.AD_DAY] = today
+        prefs[SettingsKeys.AD_COUNT] = shownToday + 1
     }
 
     // Consecutive-day streak: same day → no change, yesterday → +1, a single missed day spends a

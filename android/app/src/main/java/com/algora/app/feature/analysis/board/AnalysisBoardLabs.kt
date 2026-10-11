@@ -4,6 +4,7 @@ import com.algora.app.feature.topics.Rb
 import com.algora.app.feature.topics.lsExp
 import kotlin.math.abs
 import kotlin.math.ceil
+import kotlin.math.exp
 import kotlin.math.floor
 import kotlin.math.ln
 import kotlin.math.log10
@@ -411,7 +412,7 @@ private val NS_BENCH = listOf(250, 500, 1000, 2000, 4000)
 private fun fT(us: Double) = if (us >= 1000) fx(us / 1000, if (us >= 10000) 1 else 2) + " ms" else fx(us, if (us < 10) 2 else 1) + " µs"
 
 private fun benchWaiting(title: String, dock: AnDock) = frame(title, listOf(L("Timing sorts on this device…")), listOf(F("n =", "250 → 4,000")),
-    "Benchmark running." to "Each size is timed three times; the median is kept.", dock)
+    "Benchmark running." to "Each size is timed five times; the median is kept.", dock)
 
 // ── 57g Real vs Predicted ──
 
@@ -419,17 +420,19 @@ private fun realVsPredicted() = AnLab(AnVals(opt = 0), bench = true) { s, bench 
     val dock = AnDock(listOf(AnSeg(listOf("Insertion sort", "Bubble sort"), s.opt) { v, i -> v.copy(opt = i) }), btn = AnBtn("Run benchmark", bench = true))
     val t = bench?.get(listOf("ins", "bub")[s.opt]) ?: return@AnLab benchWaiting("Real vs Predicted Runtime", dock)
     val ns = NS_BENCH.map { it.toDouble() }
-    val c = t.indices.sumOf { t[it] * ns[it] * ns[it] } / ns.sumOf { it.pow(4) }
+    // c is fit to the n ≥ 1,000 points the verdict checks, as the geometric mean of t / n², so no
+    // single point (least squares lets n = 4,000 set it alone) or noisy small n drags the curve.
+    val c = exp((2 until t.size).sumOf { ln(t[it] / (ns[it] * ns[it])) } / (t.size - 2))
     val p = ns.map { c * it * it }
     val dv = t.indices.map { (t[it] - p[it]) / p[it] }
     val mdev = dv.drop(2).maxOf { abs(it) }
     frame("Real vs Predicted Runtime", listOf(
-        L("${if (s.opt == 1) "bubble" else "insertion"} sort on random input · median of 3"),
+        L("${if (s.opt == 1) "bubble" else "insertion"} sort on random input · median of 5"),
         vcols(NS_BENCH.mapIndexed { i, n -> VIn("$n", "", listOf(t[i], p[i]), listOf(G, "transparent"), listOf("none", "inset 0 0 0 1.5px #9aa0ae")) }, 130.0, gap = 10, bw = 22, axis = "n →"),
         AnBlock.Table(listOf("n", "measured", "c·n²", "Δ"), NS_BENCH.mapIndexed { i, n ->
             AnTRow("$n", fT(t[i]), fT(p[i]), (if (dv[i] >= 0) "+" else "−") + fx(abs(dv[i] * 100), 0) + "%", if (abs(dv[i]) < .25) Gl else Y)
         }),
-    ), listOf(F("c fit to all 5 points =", lsExp(c) + " µs")),
+    ), listOf(F("c fit to n ≥ 1,000 =", lsExp(c) + " µs")),
         if (mdev < .3) "Measured tracks c·n²." to "From n = 1,000 up, every point is within ${Rb.round(mdev * 100).toInt()}% of the quadratic fit."
         else "Noisy run — tap Run again." to "Timing varies on this device; small n is dominated by timer and cache effects.",
         dock, listOf(lg(G, "Measured"), lg("transparent", "Predicted c·n²", "inset 0 0 0 1.5px #9aa0ae")),

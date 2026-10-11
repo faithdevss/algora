@@ -15,7 +15,7 @@ struct RootView: View {
         case .light: false
         case .dark: true
         }
-        return Palette(dark: dark, accent: store.accent ?? session.mode.accent)
+        return Palette(dark: dark, theme: store.appTheme)
     }
 
     var body: some View {
@@ -62,6 +62,7 @@ struct RootView: View {
             if let page = args.string(forKey: "openPractice") { router.push(page == "quizzes" ? .quizzes : page == "problems" ? .problems : .browser(.interviewPrep)) }
             if args.string(forKey: "openMode") == "ai" { session.mode = .ai }
             if let theme = args.string(forKey: "openTheme") { store.themeMode = ThemeMode(rawValue: theme) ?? .system }
+            if let theme = args.string(forKey: "openAppTheme").flatMap(AppTheme.init(rawValue:)) { store.selectTheme(theme) }
         }
         #endif
     }

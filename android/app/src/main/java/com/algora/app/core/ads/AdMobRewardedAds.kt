@@ -58,7 +58,7 @@ class AdMobRewardedAds(context: Context, private val scope: CoroutineScope) : Re
         )
     }
 
-    override fun show(activity: Activity, onReward: () -> Unit, onFailed: (String) -> Unit) {
+    override fun show(activity: Activity, onImpression: () -> Unit, onReward: () -> Unit, onFailed: (String) -> Unit) {
         val current = ad
         if (current == null) {
             preload(activity)
@@ -68,6 +68,8 @@ class AdMobRewardedAds(context: Context, private val scope: CoroutineScope) : Re
 
         var earned = false
         current.fullScreenContentCallback = object : FullScreenContentCallback() {
+            override fun onAdShowedFullScreenContent() = onImpression()
+
             override fun onAdDismissedFullScreenContent() {
                 ad = null
                 _isReady.value = false

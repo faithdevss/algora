@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import Observation
 
 /// UTC-day bucketing, the same one Android uses, so streaks and schedules agree about "today".
@@ -84,8 +85,8 @@ final class AppStore {
 
     // Appearance
     var themeMode: ThemeMode { didSet { defaults.set(themeMode.rawValue, forKey: Keys.themeMode) } }
-    /// nil = Auto: the accent follows the active mode.
-    var accent: AccentColor? { didSet { defaults.set(accent?.rawValue ?? "auto", forKey: Keys.accent) } }
+    /// Palette + app icon. A fresh install, and anyone upgrading from the old accent swatches or the dropped Violet theme, gets Ink.
+    private(set) var appTheme: AppTheme { didSet { defaults.set(appTheme.rawValue, forKey: Keys.appTheme) } }
 
     // Reading
     private(set) var bookmarks: Set<String> { didSet { save(bookmarks, Keys.bookmarks) } }
@@ -126,7 +127,7 @@ final class AppStore {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         themeMode = ThemeMode(rawValue: defaults.string(forKey: Keys.themeMode) ?? "") ?? .system
-        accent = AccentColor(rawValue: defaults.string(forKey: Keys.accent) ?? "auto")
+        appTheme = AppTheme(rawValue: defaults.string(forKey: Keys.appTheme) ?? "") ?? .default
         bookmarks = Self.load(defaults, Keys.bookmarks) ?? []
         lastOpened = defaults.string(forKey: Keys.lastOpened)
         completedTopicIds = Self.load(defaults, Keys.completed) ?? []
@@ -157,6 +158,15 @@ final class AppStore {
     }
 
     func setLastOpened(_ topicId: String) { lastOpened = topicId }
+
+    /// Picks a theme: palette, the mode the doc shows it in, and the matching home-screen icon.
+    func selectTheme(_ theme: AppTheme) {
+        appTheme = theme
+        themeMode = theme.preferredMode
+        let name = theme.alternateIconName
+        guard UIApplication.shared.supportsAlternateIcons, UIApplication.shared.alternateIconName != name else { return }
+        UIApplication.shared.setAlternateIconName(name)
+    }
 
     // MARK: Progress
 
@@ -267,7 +277,7 @@ final class AppStore {
 
     private enum Keys {
         static let themeMode = "theme_mode"
-        static let accent = "accent_color"
+        static let appTheme = "app_theme"
         static let bookmarks = "bookmarks"
         static let lastOpened = "last_opened_topic"
         static let completed = "completed_topic_ids"

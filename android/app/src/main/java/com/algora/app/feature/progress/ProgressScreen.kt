@@ -58,6 +58,8 @@ import com.algora.app.core.ads.AdsProvider
 import com.algora.app.core.data.model.Topic
 import com.algora.app.core.data.progress.ProgressRepository
 import com.algora.app.core.data.progress.progressDataStore
+import com.algora.app.core.ads.recordRewardedImpression
+import com.algora.app.core.ads.rememberDailyAdCapReached
 import com.algora.app.core.data.settings.MAX_STREAK_FREEZES
 import com.algora.app.core.data.settings.SettingsRepository
 import com.algora.app.core.data.settings.settingsDataStore
@@ -557,17 +559,19 @@ private fun StreakFreezeRow(settings: SettingsRepository, modifier: Modifier = M
     val adReady by ads.isReady.collectAsState()
     var awaitingAd by remember { mutableStateOf(false) }
     val full = freezes >= MAX_STREAK_FREEZES
+    val capReached = rememberDailyAdCapReached()
 
-    LaunchedEffect(Unit) { ads.preload(context) }
+    LaunchedEffect(capReached) { if (!capReached) ads.preload(context) }
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(enabled = activity != null && !awaitingAd && !full) {
+            .clickable(enabled = activity != null && !awaitingAd && !full && !capReached) {
                 val host = activity ?: return@clickable
                 awaitingAd = true
                 ads.show(
                     activity = host,
+                    onImpression = { recordRewardedImpression(context) },
                     onReward = {
                         awaitingAd = false
                         scope.launch { settings.addStreakFreeze() }
@@ -593,6 +597,7 @@ private fun StreakFreezeRow(settings: SettingsRepository, modifier: Modifier = M
         when {
             awaitingAd -> CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
             full -> Text("Full", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            capReached -> Text("Back tomorrow", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             else -> Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     Icons.Filled.PlayCircle,

@@ -17,7 +17,7 @@ enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
 object SettingsKeys {
     val THEME_MODE = stringPreferencesKey("theme_mode")
-    val ACCENT = stringPreferencesKey("accent_color")
+    val APP_THEME = stringPreferencesKey("app_theme")
     val BOOKMARKS = stringSetPreferencesKey("bookmarks")
     val LAST_OPENED = stringPreferencesKey("last_opened_topic")
     val STREAK_COUNT = intPreferencesKey("streak_count")
@@ -66,10 +66,11 @@ object SettingsKeys {
     // Lifetime count of completed *full* quiz runs. QUIZ_ATTEMPTS cannot stand in: it is trimmed to
     // the newest few per quiz, so it shrinks as the user does more.
     val QUIZZES_FINISHED = intPreferencesKey("quizzes_finished")
-    // Quiz-exit interstitials shown, and on which day — the rolling daily cap, same shape as
-    // NEW_CARDS_DAY/COUNT. LAST_MS is separate because the spacing rule is minutes, not days.
-    val INTERSTITIAL_DAY = longPreferencesKey("interstitial_epoch_day")
-    val INTERSTITIAL_COUNT = intPreferencesKey("interstitial_count")
+    // Ads shown today on any surface (rewarded or quiz-exit interstitial), and on which day — the
+    // rolling DAILY_AD_CAP, same shape as NEW_CARDS_DAY/COUNT.
+    val AD_DAY = longPreferencesKey("ad_epoch_day")
+    val AD_COUNT = intPreferencesKey("ad_count")
+    // Last quiz-exit interstitial, for its spacing rule (minutes, not days).
     val INTERSTITIAL_LAST_MS = longPreferencesKey("interstitial_last_shown_ms")
 }
 

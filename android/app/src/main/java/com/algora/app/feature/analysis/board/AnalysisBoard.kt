@@ -575,7 +575,7 @@ private fun AnDockBar(dock: AnDock, vals: AnVals, onChange: (AnVals) -> Unit, on
 
 private val BENCH_NS = listOf(250, 500, 1000, 2000, 4000)
 
-/** Times insertion sort, bubble sort and the built-in sort at five sizes; the median of three, in µs per sort. */
+/** Times insertion sort, bubble sort and the built-in sort at five sizes; the median of five, in µs per sort. */
 internal fun runAnBench(): AnBench {
     val rnd = java.util.Random()
     fun ins(a: DoubleArray) {
@@ -593,17 +593,31 @@ internal fun runAnBench(): AnBench {
     val f: Map<String, (DoubleArray) -> Unit> = linkedMapOf("ins" to ::ins, "bub" to ::bub, "sys" to { a -> a.sort() })
     val cost: Map<String, (Int) -> Double> = mapOf("ins" to { n -> n * n / 4.0 }, "bub" to { n -> n * n / 2.0 }, "sys" to { n -> n * (Math.log(n.toDouble()) / Math.log(2.0)) * 4 })
     return f.mapValues { (alg, fn) ->
-        repeat(3) { fn(DoubleArray(600) { rnd.nextDouble() }) }
-        BENCH_NS.map { n ->
-            val base = DoubleArray(n) { rnd.nextDouble() }
-            val m = maxOf(1, Math.round(1.5e6 / cost.getValue(alg)(n)).toInt())
-            val ts = (0 until 3).map {
-                val cp = Array(m) { base.copyOf() }
+        // ART interprets a method until the JIT has compiled it in the background, so a short warm-up
+        // leaves the small sizes timed half-interpreted and the curve flatter than n². Keep sorting
+        // for a fixed wall-clock budget so compilation has landed before the first timed run.
+        val warmUntil = System.nanoTime() + 200_000_000
+        var warm = 0
+        while (warm < 5 || System.nanoTime() < warmUntil) { fn(DoubleArray(1000) { rnd.nextDouble() }); warm++ }
+        val bases = BENCH_NS.map { n -> DoubleArray(n) { rnd.nextDouble() } }
+        // Work buffers are allocated once and refilled before each sample: allocating fresh copies
+        // per sample let the concurrent GC run mid-timing, mostly on a re-run's leftover garbage.
+        val work = BENCH_NS.mapIndexed { i, n ->
+            Array(maxOf(1, Math.round(1e7 / cost.getValue(alg)(n)).toInt())) { DoubleArray(n) }
+        }
+        Runtime.getRuntime().gc()
+        // Each round takes one sample of every size, so a slow spell (a background burst, a core
+        // migration) costs each size at most one sample and the median drops it.
+        val rounds = (0 until 5).map {
+            bases.indices.map { i ->
+                val cp = work[i]
+                val m = cp.size
+                for (a in cp) System.arraycopy(bases[i], 0, a, 0, a.size)
                 val t0 = System.nanoTime()
                 for (q in 0 until m) fn(cp[q])
                 (System.nanoTime() - t0) / 1000.0 / m
-            }.sorted()
-            ts[1]
+            }
         }
+        bases.indices.map { i -> rounds.map { it[i] }.sorted()[2] }
     }
 }

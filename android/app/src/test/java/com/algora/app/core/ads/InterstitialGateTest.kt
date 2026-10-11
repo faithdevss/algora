@@ -58,9 +58,9 @@ class InterstitialGateTest {
         // Spacing satisfied, so only the cap can refuse this one.
         val spacedOut = eligible.copy(lastShownAtMs = now - INTERSTITIAL_MIN_GAP_MS * 10)
 
-        assertTrue(shouldShowInterstitial(spacedOut.copy(shownToday = INTERSTITIAL_DAILY_CAP - 1), now))
-        assertFalse(shouldShowInterstitial(spacedOut.copy(shownToday = INTERSTITIAL_DAILY_CAP), now))
-        assertFalse(shouldShowInterstitial(spacedOut.copy(shownToday = INTERSTITIAL_DAILY_CAP + 5), now))
+        assertTrue(shouldShowInterstitial(spacedOut.copy(shownToday = DAILY_AD_CAP - 1), now))
+        assertFalse(shouldShowInterstitial(spacedOut.copy(shownToday = DAILY_AD_CAP), now))
+        assertFalse(shouldShowInterstitial(spacedOut.copy(shownToday = DAILY_AD_CAP + 5), now))
     }
 
     @Test
