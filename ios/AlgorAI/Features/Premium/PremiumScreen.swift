@@ -16,6 +16,7 @@ private let premiumFeatures = [
 struct PremiumScreen: View {
     @Environment(PremiumStore.self) private var premium
     @Environment(\.palette) private var palette
+    @Environment(\.dismiss) private var dismiss
     @State private var selected: PremiumPlan = .monthly
     @State private var showManage = false
     @State private var toast: String?
@@ -43,6 +44,8 @@ struct PremiumScreen: View {
             if premium.products.isEmpty { await premium.loadProducts() }
             await premium.refresh()
         }
+        // Unlocked here: go straight back to what sent the learner, whose gate now opens.
+        .onChange(of: premium.isPremium) { was, now in if !was && now { dismiss() } }
         .onChange(of: premium.message) { _, message in
             guard let message else { return }
             toast = message

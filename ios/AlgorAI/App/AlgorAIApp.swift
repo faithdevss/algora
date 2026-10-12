@@ -20,6 +20,8 @@ struct AlgorAIApp: App {
                     guard phase == .active else { return }
                     store.recordActivityToday()
                     Task { await Reminders.reschedule(store: store) }
+                    // Catches refunds, expiry and purchases made on another device.
+                    Task { await premium.refresh() }
                 }
         }
     }

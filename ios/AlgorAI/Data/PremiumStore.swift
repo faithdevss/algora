@@ -69,18 +69,30 @@ final class PremiumStore {
         }
     }
 
-    /// Re-reads what this Apple ID owns. Also runs silently every time the paywall opens.
-    func refresh() async {
-        var owned = false
-        let now = Date()
-        for await result in Transaction.currentEntitlements {
-            guard case .verified(let transaction) = result,
-                  PremiumPlan(rawValue: transaction.productID) != nil,
-                  transaction.revocationDate == nil,
-                  transaction.expirationDate.map({ $0 > now }) ?? true else { continue }
-            owned = true
+    /// Re-reads what this Apple ID owns. Also runs silently every time the paywall opens and the app
+    /// comes to the foreground.
+    ///
+    /// `currentEntitlements` can lag right after a purchase (seen empty in StoreKit testing), which
+    /// left the content locked until a relaunch. So the transaction just bought and each plan's
+    /// `Transaction.latest` count too, under the same refund and expiry rules.
+    func refresh(including fresh: Transaction? = nil) async {
+        var owned = fresh.map(Self.grants) ?? false
+        for await result in Transaction.currentEntitlements where !owned {
+            if case .verified(let transaction) = result, Self.grants(transaction) { owned = true }
+        }
+        for plan in PremiumPlan.allCases where !owned {
+            if case .verified(let transaction)? = await Transaction.latest(for: plan.rawValue), Self.grants(transaction) {
+                owned = true
+            }
         }
         setOwned(owned)
+    }
+
+    /// One of our plans, not refunded, and for the subscription not past its expiry.
+    private static func grants(_ transaction: Transaction) -> Bool {
+        PremiumPlan(rawValue: transaction.productID) != nil
+            && transaction.revocationDate == nil
+            && (transaction.expirationDate.map { $0 > .now } ?? true)
     }
 
     func purchase(_ plan: PremiumPlan) async {
@@ -98,12 +110,15 @@ final class PremiumStore {
             case .pending:
                 message = "Purchase pending — we'll unlock it once it clears."
             case .userCancelled:
-                break
+                // "Already subscribed" comes back as cancelled, not success: pick it up anyway.
+                await refresh()
             @unknown default:
-                break
+                await refresh()
             }
         } catch {
-            message = error.localizedDescription
+            // Buying something already owned can throw instead of succeeding.
+            await refresh()
+            if !isPremium { message = error.localizedDescription }
         }
     }
 
@@ -120,9 +135,15 @@ final class PremiumStore {
     }
 
     private func handle(_ result: VerificationResult<Transaction>) async {
-        guard case .verified(let transaction) = result else { return }
-        await transaction.finish()
-        await refresh()
+        switch result {
+        case .verified(let transaction):
+            await transaction.finish()
+            await refresh(including: transaction)
+        case .unverified(let transaction, _):
+            // Finish it without granting, so StoreKit stops redelivering it.
+            await transaction.finish()
+            await refresh()
+        }
     }
 
     private func setOwned(_ owned: Bool) {
