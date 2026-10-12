@@ -29,8 +29,8 @@ enum class AppTheme(
         "ink", "Ink", ThemeMode.DARK,
         dark = ThemeColors(0xFF0C0E13, 0xFF171A22, 0xFFB3ABFF, 0xFF8F84FF, 0xFFF2F3F7, 0xFF8A90A0, 0xFF12151C),
         light = ThemeColors.neutralLight(primary = 0xFF5B4DF0, accent = 0xFF8B3FF0),
-        headerStart = 0xFF5B4DF0, headerEnd = 0xFF8B3FF0,
-        featuredStart = 0xFF4C3FD6, featuredEnd = 0xFF231E5C,
+        headerStart = 0xFF9C92FF, headerEnd = 0xFF6A5DF5,
+        featuredStart = 0xFF6A5DF5, featuredEnd = 0xFF3A2DB8,
         icon = ThemeIcon(0xFF1C202B, 0xFF0C0E13, glyph = 0xFFB3ABFF, apex = 0xFFB3ABFF, sheen = 0.06f),
     ),
     PAPER(

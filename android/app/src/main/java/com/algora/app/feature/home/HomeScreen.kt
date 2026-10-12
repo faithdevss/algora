@@ -21,7 +21,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -33,11 +32,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.algora.app.core.data.TopicRegistry
@@ -51,13 +59,13 @@ import com.algora.app.core.nav.AppMode
 import com.algora.app.core.data.entitlement.EntitlementRepository
 import com.algora.app.core.data.entitlement.entitlementDataStore
 import com.algora.app.core.nav.PatternsRoute
-import com.algora.app.core.nav.PremiumRoute
 import com.algora.app.core.nav.Screen
 import com.algora.app.core.nav.SettingsRoute
 import com.algora.app.core.ui.components.resolveIcon
 import com.algora.app.core.ui.theme.Gradients
 import com.algora.app.core.ui.theme.LocalAppTheme
 import com.algora.app.core.ui.theme.ScreenGutter
+import com.algora.app.core.ui.theme.IBMPlexSans
 import com.algora.app.core.ui.theme.SpaceGrotesk
 import com.algora.app.feature.algorithms.AlgorithmsTopics
 import com.algora.app.feature.analysis.AnalysisTopics
@@ -84,7 +92,7 @@ private data class Featured(
     val iconName: String,
 )
 
-// Ported from docs/design/Algora.dc.html's isHome block: gradient topbar with the DSA / AI Simulation
+// Ported from docs/design/Algora.dc.html's isHome block: topbar with the DSA / AI Simulation
 // mode switch, a Featured Lab card, and a 2×2 Quick Access grid that deep-links into the active
 // mode's four category tabs.
 @Composable
@@ -112,8 +120,10 @@ fun HomeScreen(
     val featured = remember(mode, completedIds, isPremium, adUnlocks) {
         pickFeatured(mode, completedIds, isPremium, adUnlocks)
     }
+    // The theme's deep ramp, the one the Featured Lab card used to wear.
     val activeTheme = LocalAppTheme.current
-    val topbar = listOf(Color(activeTheme.headerStart), Color(activeTheme.headerEnd))
+    val topbarInk = Color(activeTheme.featuredEnd)
+    val topbarFill = Brush.linearGradient(listOf(Color(activeTheme.featuredStart), topbarInk))
 
     Column(
         modifier = Modifier
@@ -124,65 +134,69 @@ fun HomeScreen(
         Spacer(modifier = Modifier.height(6.dp))
 
         // Topbar
+        val topbarShape = RoundedCornerShape(24.dp)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 6.dp)
-                .background(Brush.linearGradient(topbar), RoundedCornerShape(22.dp))
+                .clip(topbarShape)
+                .background(topbarFill)
+                .border(1.dp, Color.White.copy(alpha = 0.3f), topbarShape)
                 .padding(18.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Welcome back", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
+                    Text("Welcome back", color = Color.White.copy(alpha = 0.9f), fontSize = 15.sp)
                     Text(
                         "AlgorAI",
                         color = Color.White,
                         fontFamily = SpaceGrotesk,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 22.sp,
+                        fontSize = 28.sp,
                     )
                 }
+                Row(
+                    modifier = Modifier
+                        .glass(RoundedCornerShape(50))
+                        .padding(horizontal = 14.dp, vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Filled.LocalFireDepartment, contentDescription = null, tint = Color(0xFFF6A86B), modifier = Modifier.size(17.dp))
+                    Spacer(modifier = Modifier.size(6.dp))
+                    Text(
+                        "${streak.coerceAtLeast(1)} Day${if (streak > 1) "s" else ""}",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                    )
+                }
+                Spacer(modifier = Modifier.size(10.dp))
                 Box(
                     modifier = Modifier
-                        .size(38.dp)
-                        .background(Color.White.copy(alpha = 0.16f), RoundedCornerShape(12.dp))
+                        .size(40.dp)
+                        .glass(CircleShape)
                         .clickable { onNavigate(SettingsRoute.ROUTE) },
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        Icons.Filled.Settings,
+                        Icons.Outlined.Settings,
                         contentDescription = "Settings",
                         tint = Color.White,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-                Spacer(modifier = Modifier.size(9.dp))
-                Row(
-                    modifier = Modifier
-                        .background(Color.Black.copy(alpha = 0.18f), RoundedCornerShape(12.dp))
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.Filled.LocalFireDepartment, contentDescription = null, tint = Color(0xFFFB923C), modifier = Modifier.size(15.dp))
-                    Spacer(modifier = Modifier.size(5.dp))
-                    Text(
-                        "${streak.coerceAtLeast(1)} Day${if (streak > 1) "s" else ""}",
-                        color = Color.White,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 13.sp,
+                        modifier = Modifier.size(20.dp),
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(18.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.Black.copy(alpha = 0.2f), RoundedCornerShape(14.dp))
+                    .background(Color(0xFF2A1A6E).copy(alpha = 0.22f), RoundedCornerShape(14.dp))
+                    .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(14.dp))
                     .padding(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                ModeTab("DSA", selected = mode == AppMode.DSA, modifier = Modifier.weight(1f)) { onModeChange(AppMode.DSA) }
-                ModeTab("AI", selected = mode == AppMode.AI, modifier = Modifier.weight(1f)) { onModeChange(AppMode.AI) }
+                ModeTab("DSA", ink = topbarInk, selected = mode == AppMode.DSA, modifier = Modifier.weight(1f)) { onModeChange(AppMode.DSA) }
+                ModeTab("AI", ink = topbarInk, selected = mode == AppMode.AI, modifier = Modifier.weight(1f)) { onModeChange(AppMode.AI) }
             }
         }
 
@@ -247,49 +261,6 @@ fun HomeScreen(
             }
         }
 
-        // Premium upsell (mock's isHome openPremium button) — gone once premium is owned.
-        if (!isPremium) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 15.dp)
-                    .background(
-                        Brush.linearGradient(
-                            colorStops = arrayOf(
-                                0f to Gradients.PremiumHero[0],
-                                0.6f to Gradients.PremiumHero[1],
-                                1f to Gradients.PremiumHero[2],
-                            ),
-                        ),
-                        RoundedCornerShape(20.dp),
-                    )
-                    .clickable { onNavigate(PremiumRoute.ROUTE) }
-                    .padding(horizontal = 18.dp, vertical = 17.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(14.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(resolveIcon("crown"), contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
-                }
-                Spacer(modifier = Modifier.size(14.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "Unlock Premium",
-                        color = Color.White,
-                        fontFamily = SpaceGrotesk,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                    )
-                    Text("All topics, labs & offline access", color = Color.White.copy(alpha = 0.82f), fontSize = 12.5.sp)
-                }
-                Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-            }
-        }
-
         // Flashcards and spaced repetition moved to the Practice tab (PracticeScreen) — they are
         // recall drills, not reading, so they belong beside quizzes and the problem bank.
 
@@ -331,21 +302,44 @@ private fun SectionTitle(text: String) {
 }
 
 @Composable
-private fun ModeTab(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun ModeTab(label: String, ink: Color, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Box(
         modifier = modifier
-            .background(if (selected) Color.White else Color.Transparent, RoundedCornerShape(10.dp))
+            .background(if (selected) Color.White else Color.Transparent, RoundedCornerShape(11.dp))
             .clickable(onClick = onClick)
-            .padding(vertical = 9.dp),
+            .padding(vertical = 11.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             label,
-            color = if (selected) Color(0xFF161A22) else Color.White.copy(alpha = 0.85f),
+            color = if (selected) ink else Color.White,
+            fontFamily = IBMPlexSans,
             fontWeight = FontWeight.Bold,
-            fontSize = 13.5.sp,
+            fontSize = 15.sp,
         )
     }
+}
+
+// Frosted chip on the topbar: a faint white fill under a brighter hairline.
+private fun Modifier.glass(shape: Shape): Modifier =
+    clip(shape)
+        .background(Color.White.copy(alpha = 0.2f))
+        .border(1.dp, Color.White.copy(alpha = 0.35f), shape)
+
+// Oversized, low-opacity echo of a card's icon, tilted and bleeding off its bottom-right corner —
+// the motif shared by the Home cards and PracticeCard, so they keep reading as one surface. The
+// caller clips the card, which crops the overhang.
+@Composable
+private fun EchoIcon(iconName: String, size: Dp, modifier: Modifier = Modifier) {
+    Icon(
+        resolveIcon(iconName),
+        contentDescription = null,
+        tint = Color.White.copy(alpha = 0.14f),
+        modifier = modifier
+            .size(size)
+            .offset(x = size * 0.24f, y = size * 0.24f)
+            .rotate(-18f),
+    )
 }
 
 @Composable
@@ -359,16 +353,7 @@ private fun QuickAccessCard(card: QuickCard, modifier: Modifier = Modifier, onCl
     ) {
         // Oversized, low-opacity echo of the card's own icon — mirrors PracticeCard's motif so
         // Home and Practice keep reading as the same surface.
-        Icon(
-            resolveIcon(card.iconName),
-            contentDescription = null,
-            tint = Color.White.copy(alpha = 0.14f),
-            modifier = Modifier
-                .size(108.dp)
-                .align(Alignment.BottomEnd)
-                .offset(x = 26.dp, y = 26.dp)
-                .rotate(-18f),
-        )
+        EchoIcon(card.iconName, size = 108.dp, modifier = Modifier.align(Alignment.BottomEnd))
         Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
             Box(
                 modifier = Modifier
@@ -409,56 +394,65 @@ private val aiCards = listOf(
 
 @Composable
 private fun FeaturedLabCard(featured: Featured, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(22.dp)
+    // The theme's icon ramp: brighter than the deep topbar above it, so the two read apart.
     val theme = LocalAppTheme.current
-    Column(
+    val fill = Brush.linearGradient(listOf(Color(theme.headerStart), Color(theme.headerEnd)))
+    val ink = Color(theme.featuredEnd)
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 14.dp)
-            .background(
-                Brush.linearGradient(listOf(Color(theme.featuredStart), Color(theme.featuredEnd))),
-                RoundedCornerShape(22.dp),
-            )
+            .clip(shape)
+            .background(fill)
+            .border(1.dp, Color.White.copy(alpha = 0.22f), shape)
             .clickable(onClick = onClick)
-            .padding(18.dp),
+            .padding(20.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "FEATURED LAB",
-                    color = Color.White.copy(alpha = 0.75f),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.5.sp,
-                )
-                Text(
-                    featured.name,
-                    color = Color.White,
-                    fontFamily = SpaceGrotesk,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp,
-                    modifier = Modifier.padding(top = 3.dp),
-                )
-                Text(featured.sub, color = Color.White.copy(alpha = 0.82f), fontSize = 13.sp)
-                Row(
-                    modifier = Modifier
-                        .padding(top = 13.dp)
-                        .background(Color.White, RoundedCornerShape(11.dp))
-                        .padding(horizontal = 15.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("Open interactive", color = Color(0xFF161A22), fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = Color(0xFF161A22), modifier = Modifier.size(18.dp))
-                }
-            }
-            Box(
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                "FEATURED LAB",
+                color = Color.White,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 2.sp,
+            )
+            Text(
+                featured.name,
+                color = Color.White,
+                fontFamily = SpaceGrotesk,
+                fontWeight = FontWeight.Bold,
+                fontSize = 24.sp,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+            Text(
+                featured.sub,
+                color = Color.White.copy(alpha = 0.92f),
+                fontSize = 15.sp,
+                lineHeight = 21.sp,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            Row(
                 modifier = Modifier
-                    .size(74.dp)
-                    .background(Color.White.copy(alpha = 0.16f), RoundedCornerShape(20.dp)),
-                contentAlignment = Alignment.Center,
+                    .padding(top = 16.dp)
+                    .background(Color.White, RoundedCornerShape(14.dp))
+                    .padding(start = 20.dp, end = 14.dp, top = 11.dp, bottom = 11.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                // The card's own mark, the same whichever lab it features.
-                FeaturedLabMark(modifier = Modifier.size(36.dp))
+                Text("Open interactive", color = ink, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = ink, modifier = Modifier.size(20.dp))
             }
+        }
+        Spacer(modifier = Modifier.size(12.dp))
+        // Frosted tile holding the card's own mark, the same whichever lab it features.
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .background(Color.White.copy(alpha = 0.18f), RoundedCornerShape(18.dp))
+                .border(1.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(18.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            FeaturedLabMark(modifier = Modifier.size(30.dp))
         }
     }
 }
@@ -497,29 +491,13 @@ private fun pickFeatured(
     return Featured(topic.id, topic.name, topic.tagline, topic.iconName)
 }
 
-/** The Featured Lab card's own mark: a flask with its liquid filled and a spark beside it, on a 24-unit grid. */
+/** The Featured Lab card's own mark: an outlined flask with a liquid line, on a 24-unit grid. */
 @Composable
 private fun FeaturedLabMark(modifier: Modifier = Modifier) {
     androidx.compose.foundation.Canvas(modifier = modifier) {
         val u = size.width / 24f
-        fun p(x: Float, y: Float) = androidx.compose.ui.geometry.Offset(x * u, y * u)
-        val white = Color.White
-        val stroke = androidx.compose.ui.graphics.drawscope.Stroke(
-            width = 1.8f * u,
-            cap = androidx.compose.ui.graphics.StrokeCap.Round,
-            join = androidx.compose.ui.graphics.StrokeJoin.Round,
-        )
-        // Liquid: the lower part of the body.
-        val liquid = androidx.compose.ui.graphics.Path().apply {
-            moveTo(6.2f * u, 15f * u)
-            lineTo(17.8f * u, 15f * u)
-            lineTo(19.4f * u, 18.2f * u)
-            quadraticTo(20.4f * u, 21f * u, 17.7f * u, 21f * u)
-            lineTo(6.3f * u, 21f * u)
-            quadraticTo(3.6f * u, 21f * u, 4.6f * u, 18.2f * u)
-            close()
-        }
-        drawPath(liquid, white.copy(alpha = 0.45f))
+        fun p(x: Float, y: Float) = Offset(x * u, y * u)
+        val stroke = Stroke(width = 1.8f * u, cap = StrokeCap.Round, join = StrokeJoin.Round)
         // Outline: neck, shoulders, rounded base.
         val flask = androidx.compose.ui.graphics.Path().apply {
             moveTo(10f * u, 3f * u)
@@ -531,20 +509,8 @@ private fun FeaturedLabMark(modifier: Modifier = Modifier) {
             lineTo(14f * u, 9f * u)
             lineTo(14f * u, 3f * u)
         }
-        drawPath(flask, white, style = stroke)
-        drawLine(white, p(8.5f, 3f), p(15.5f, 3f), strokeWidth = 1.8f * u, cap = androidx.compose.ui.graphics.StrokeCap.Round)
-        // Bubbles.
-        drawCircle(white, radius = 1f * u, center = p(10.2f, 17.6f))
-        drawCircle(white, radius = 0.7f * u, center = p(13.6f, 18.8f))
-        // Spark: a four-point star up and to the right.
-        val spark = androidx.compose.ui.graphics.Path().apply {
-            moveTo(19.5f * u, 2.5f * u)
-            quadraticTo(19.9f * u, 4.6f * u, 22f * u, 5f * u)
-            quadraticTo(19.9f * u, 5.4f * u, 19.5f * u, 7.5f * u)
-            quadraticTo(19.1f * u, 5.4f * u, 17f * u, 5f * u)
-            quadraticTo(19.1f * u, 4.6f * u, 19.5f * u, 2.5f * u)
-            close()
-        }
-        drawPath(spark, white)
+        drawPath(flask, Color.White, style = stroke)
+        drawLine(Color.White, p(8.5f, 3f), p(15.5f, 3f), strokeWidth = 1.8f * u, cap = StrokeCap.Round)
+        drawLine(Color.White, p(6.6f, 15f), p(17.4f, 15f), strokeWidth = 1.8f * u, cap = StrokeCap.Round)
     }
 }

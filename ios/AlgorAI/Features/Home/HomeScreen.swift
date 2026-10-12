@@ -1,11 +1,9 @@
 import SwiftUI
 
-// Port of feature/home/HomeScreen.kt: gradient topbar with the DSA/AI switch, a rotating Featured
-// Lab, Jump Back In, the 2×2 Quick Access grid and bookmarks, and the Go Premium button until
-// Premium is owned.
+// Port of feature/home/HomeScreen.kt: topbar with the DSA/AI switch, a rotating Featured
+// Lab, Jump Back In, the 2×2 Quick Access grid and bookmarks.
 struct HomeScreen: View {
     @Environment(AppStore.self) private var store
-    @Environment(PremiumStore.self) private var premium
     @Environment(AppSession.self) private var session
     @Environment(Router.self) private var router
     @Environment(\.palette) private var palette
@@ -17,17 +15,6 @@ struct HomeScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 topbar
-                if !premium.isPremium {
-                    Button { router.push(.premium) } label: {
-                        Text("Unlock Premium")
-                            .font(AppFont.grotesk(15, .bold)).foregroundStyle(.white)
-                            .frame(maxWidth: .infinity).padding(.vertical, 14)
-                            .background(LinearGradient(colors: Gradients.premiumCta, startPoint: .leading, endPoint: .trailing),
-                                        in: RoundedRectangle(cornerRadius: 14))
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.top, 14)
-                }
                 if let featured = pickFeatured() {
                     FeaturedLabCard(topic: featured) { router.push(.topic(featured.id)) }
                         .padding(.top, 14)
@@ -63,43 +50,44 @@ struct HomeScreen: View {
     }
 
     private var topbar: some View {
-        VStack(spacing: 16) {
-            HStack(spacing: 9) {
+        VStack(spacing: 18) {
+            HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("Welcome back").font(AppFont.sans(12)).foregroundStyle(.white.opacity(0.7))
-                    Text("AlgorAI").font(AppFont.grotesk(22, .bold)).foregroundStyle(.white)
+                    Text("Welcome back").font(AppFont.sans(15)).foregroundStyle(.white.opacity(0.9))
+                    Text("AlgorAI").font(AppFont.grotesk(28, .bold)).foregroundStyle(.white)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                Button { router.push(.settings) } label: {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 16))
-                        .foregroundStyle(.white)
-                        .frame(width: 38, height: 38)
-                        .background(.white.opacity(0.16), in: RoundedRectangle(cornerRadius: 12))
-                }
-                .accessibilityLabel("Settings")
-                HStack(spacing: 5) {
-                    Image(systemName: "flame.fill").font(.system(size: 13)).foregroundStyle(Color(hex: 0xFB923C))
+                HStack(spacing: 6) {
+                    Image(systemName: "flame.fill").font(.system(size: 15)).foregroundStyle(Color(hex: 0xF6A86B))
                     Text("\(max(store.streak, 1)) Day\(store.streak > 1 ? "s" : "")")
-                        .font(AppFont.sans(13, .semibold))
+                        .font(AppFont.sans(15, .bold))
                         .foregroundStyle(.white)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(.black.opacity(0.18), in: RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 9)
+                .glass(Capsule())
+                Button { router.push(.settings) } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 18))
+                        .foregroundStyle(.white)
+                        .frame(width: 40, height: 40)
+                        .glass(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Settings")
             }
             HStack(spacing: 4) {
                 modeTab("DSA", .dsa)
                 modeTab("AI", .ai)
             }
             .padding(4)
-            .background(.black.opacity(0.2), in: RoundedRectangle(cornerRadius: 14))
+            .background(Color(hex: 0x2A1A6E).opacity(0.22), in: RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.18), lineWidth: 1))
         }
         .padding(18)
-        .background(
-            LinearGradient(colors: [palette.theme.headerStart, palette.theme.headerEnd], startPoint: .topLeading, endPoint: .bottomTrailing),
-            in: RoundedRectangle(cornerRadius: 22)
-        )
+        .background(LinearGradient(colors: palette.theme.featured, startPoint: .topLeading, endPoint: .bottomTrailing))
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .overlay(RoundedRectangle(cornerRadius: 24).stroke(.white.opacity(0.3), lineWidth: 1))
         .padding(.top, 12)
     }
 
@@ -109,11 +97,13 @@ struct HomeScreen: View {
             withAnimation(.easeInOut(duration: 0.32)) { session.mode = mode }
         } label: {
             Text(label)
-                .font(AppFont.sans(13.5, .bold))
-                .foregroundStyle(selected ? Color(hex: 0x161A22) : .white.opacity(0.85))
+                .font(AppFont.sans(15, .bold))
+                .foregroundStyle(selected ? palette.theme.featured[1] : .white)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 9)
-                .background(selected ? Color.white : .clear, in: RoundedRectangle(cornerRadius: 10))
+                .padding(.vertical, 11)
+                .background(selected ? Color.white : .clear, in: RoundedRectangle(cornerRadius: 11))
+                // A clear fill doesn't hit-test, so claim the whole tab for the tap.
+                .contentShape(RoundedRectangle(cornerRadius: 11))
         }
         .buttonStyle(.plain)
     }
@@ -183,6 +173,20 @@ private struct QuickCard {
     ]
 }
 
+/// Oversized, low-opacity echo of a card's icon, tilted and bleeding off its bottom-right corner —
+/// the motif the Home cards share. The caller clips the card, which crops the overhang.
+private struct EchoIcon: View {
+    let name: String
+    let size: CGFloat
+
+    var body: some View {
+        AppIcon(name: name, size: size)
+            .foregroundStyle(.white.opacity(0.14))
+            .rotationEffect(.degrees(-18))
+            .offset(x: size * 0.24, y: size * 0.24)
+    }
+}
+
 private struct QuickAccessCard: View {
     let card: QuickCard
     let action: () -> Void
@@ -190,10 +194,7 @@ private struct QuickAccessCard: View {
     var body: some View {
         Button(action: action) {
             ZStack(alignment: .bottomTrailing) {
-                AppIcon(name: card.icon, size: 108)
-                    .foregroundStyle(.white.opacity(0.14))
-                    .rotationEffect(.degrees(-18))
-                    .offset(x: 26, y: 26)
+                EchoIcon(name: card.icon, size: 108)
                 VStack(alignment: .leading, spacing: 0) {
                     AppIcon(name: card.icon, size: 24)
                         .foregroundStyle(.white)
@@ -215,68 +216,69 @@ private struct QuickAccessCard: View {
     }
 }
 
+private extension View {
+    /// Frosted chip on the topbar: a faint white fill under a brighter hairline.
+    func glass(_ shape: some Shape) -> some View {
+        background(.white.opacity(0.2), in: shape)
+            .overlay(shape.stroke(.white.opacity(0.35), lineWidth: 1))
+    }
+}
+
 private struct FeaturedLabCard: View {
-    @Environment(\.palette) private var palette
     let topic: Topic
     let action: () -> Void
 
+    @Environment(\.palette) private var palette
+
     var body: some View {
         Button(action: action) {
-            HStack {
+            HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 0) {
                     Text("FEATURED LAB")
-                        .font(AppFont.sans(11, .bold)).tracking(1.5)
-                        .foregroundStyle(.white.opacity(0.75))
+                        .font(AppFont.sans(11, .bold)).tracking(2)
+                        .foregroundStyle(.white)
                     Text(topic.name)
-                        .font(AppFont.grotesk(20, .bold)).foregroundStyle(.white)
-                        .padding(.top, 3)
+                        .font(AppFont.grotesk(24, .bold)).foregroundStyle(.white)
+                        .padding(.top, 6)
                         .multilineTextAlignment(.leading)
-                    Text(topic.tagline).font(AppFont.sans(13)).foregroundStyle(.white.opacity(0.82))
+                    Text(topic.tagline).font(AppFont.sans(15)).foregroundStyle(.white.opacity(0.92))
                         .multilineTextAlignment(.leading)
-                    HStack(spacing: 2) {
-                        Text("Open interactive").font(AppFont.sans(13, .bold))
-                        Image(systemName: "chevron.right").font(.system(size: 12, weight: .bold))
+                        .padding(.top, 4)
+                    HStack(spacing: 4) {
+                        Text("Open interactive").font(AppFont.sans(15, .bold))
+                        Image(systemName: "chevron.right").font(.system(size: 13, weight: .bold))
                     }
-                    .foregroundStyle(Color(hex: 0x161A22))
-                    .padding(.horizontal, 15)
-                    .padding(.vertical, 8)
-                    .background(.white, in: RoundedRectangle(cornerRadius: 11))
-                    .padding(.top, 13)
+                    .foregroundStyle(palette.theme.featured[1])
+                    .padding(.leading, 20).padding(.trailing, 16)
+                    .padding(.vertical, 11)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 14))
+                    .padding(.top, 16)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                // The card's own mark, the same whichever lab it features.
+                // Frosted tile holding the card's own mark, the same whichever lab it features.
                 FeaturedLabMark()
-                    .frame(width: 36, height: 36)
-                    .foregroundStyle(.white)
-                    .frame(width: 74, height: 74)
-                    .background(.white.opacity(0.16), in: RoundedRectangle(cornerRadius: 20))
+                    .frame(width: 30, height: 30)
+                    .frame(width: 64, height: 64)
+                    .background(.white.opacity(0.18), in: RoundedRectangle(cornerRadius: 18))
+                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(.white.opacity(0.35), lineWidth: 1))
             }
-            .padding(18)
-            .background(
-                LinearGradient(colors: palette.theme.featured, startPoint: .topLeading, endPoint: .bottomTrailing),
-                in: RoundedRectangle(cornerRadius: 22)
-            )
+            .padding(20)
+            // The theme's icon ramp: brighter than the deep topbar above it, so the two read apart.
+            .background(LinearGradient(colors: [palette.theme.headerStart, palette.theme.headerEnd], startPoint: .topLeading, endPoint: .bottomTrailing))
+            .clipShape(RoundedRectangle(cornerRadius: 22))
+            .overlay(RoundedRectangle(cornerRadius: 22).stroke(.white.opacity(0.22), lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
 }
 
-/// The Featured Lab card's own mark: a flask with its liquid filled and a spark beside it, on a 24-unit grid.
+/// The Featured Lab card's own mark: an outlined flask with a liquid line, on a 24-unit grid.
 private struct FeaturedLabMark: View {
     var body: some View {
         Canvas { ctx, size in
             let u = size.width / 24
             func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: x * u, y: y * u) }
             let style = StrokeStyle(lineWidth: 1.8 * u, lineCap: .round, lineJoin: .round)
-            var liquid = Path()
-            liquid.move(to: p(6.2, 15))
-            liquid.addLine(to: p(17.8, 15))
-            liquid.addLine(to: p(19.4, 18.2))
-            liquid.addQuadCurve(to: p(17.7, 21), control: p(20.4, 21))
-            liquid.addLine(to: p(6.3, 21))
-            liquid.addQuadCurve(to: p(4.6, 18.2), control: p(3.6, 21))
-            liquid.closeSubpath()
-            ctx.fill(liquid, with: .color(.white.opacity(0.45)))
             var flask = Path()
             flask.move(to: p(10, 3))
             flask.addLine(to: p(10, 9))
@@ -288,17 +290,9 @@ private struct FeaturedLabMark: View {
             flask.addLine(to: p(14, 3))
             flask.move(to: p(8.5, 3))
             flask.addLine(to: p(15.5, 3))
+            flask.move(to: p(6.6, 15))
+            flask.addLine(to: p(17.4, 15))
             ctx.stroke(flask, with: .color(.white), style: style)
-            for (c, r) in [(p(10.2, 17.6), 1.0 * u), (p(13.6, 18.8), 0.7 * u)] {
-                ctx.fill(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)), with: .color(.white))
-            }
-            var spark = Path()
-            spark.move(to: p(19.5, 2.5))
-            spark.addQuadCurve(to: p(22, 5), control: p(19.9, 4.6))
-            spark.addQuadCurve(to: p(19.5, 7.5), control: p(19.9, 5.4))
-            spark.addQuadCurve(to: p(17, 5), control: p(19.1, 5.4))
-            spark.addQuadCurve(to: p(19.5, 2.5), control: p(19.1, 4.6))
-            ctx.fill(spark, with: .color(.white))
         }
         .accessibilityHidden(true)
     }

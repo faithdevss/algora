@@ -75,7 +75,7 @@ enum AppTheme: String, CaseIterable, Identifiable {
     /// Home header ramp (white text sits on it): the icon gradient where one reads well.
     var headerStart: Color {
         switch self {
-        case .ink: Color(hex: 0x5B4DF0)
+        case .ink: Color(hex: 0x9C92FF)
         case .paper: Color(hex: 0xD63A3F)
         case .mint: Color(hex: 0x27C486)
         case .ocean: Color(hex: 0x4F94FF)
@@ -85,7 +85,7 @@ enum AppTheme: String, CaseIterable, Identifiable {
 
     var headerEnd: Color {
         switch self {
-        case .ink: Color(hex: 0x8B3FF0)
+        case .ink: Color(hex: 0x6A5DF5)
         case .paper: Color(hex: 0xF08A5D)
         case .mint: Color(hex: 0x0F9C68)
         case .ocean: Color(hex: 0x2563EB)
@@ -97,7 +97,7 @@ enum AppTheme: String, CaseIterable, Identifiable {
     var featured: [Color] {
         switch self {
         case .paper: [Color(hex: 0xD63A3F), Color(hex: 0x8E2328)]
-        case .ink: [Color(hex: 0x4C3FD6), Color(hex: 0x231E5C)]
+        case .ink: [Color(hex: 0x6A5DF5), Color(hex: 0x3A2DB8)]
         case .mint: [Color(hex: 0x0F9C68), Color(hex: 0x065F46)]
         case .ocean: [Color(hex: 0x2563EB), Color(hex: 0x1E3A8A)]
         case .sky: [Color(hex: 0x1497DB), Color(hex: 0x075985)]
