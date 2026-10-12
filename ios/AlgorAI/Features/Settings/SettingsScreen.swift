@@ -1,3 +1,4 @@
+import StoreKit
 import SwiftUI
 
 // Port of feature/settings/SettingsScreen.kt: theme, accent, both reminders and sharing. The
@@ -8,6 +9,8 @@ struct SettingsScreen: View {
     @Environment(Router.self) private var router
     @Environment(\.palette) private var palette
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+    @Environment(\.requestReview) private var requestReview
 
     var body: some View {
         @Bindable var store = store
@@ -83,18 +86,20 @@ struct SettingsScreen: View {
                         }
                     }
                 }
-                // A button must open the write-review page; Apple keeps requestReview for the
-                // moments ReviewPrompt picks, and it may show nothing when the user asked to rate.
-                if let url = AppLinks.writeReview {
-                    SettingsCard(title: "Rate AlgorAI", subtitle: "Tell others what you think on the App Store") {
-                        Link(destination: url) {
-                            HStack(spacing: 12) {
-                                Image(systemName: "star.fill").foregroundStyle(palette.primary)
-                                Text("Rate the app").font(AppFont.sans(14, .semibold)).foregroundStyle(palette.onSurface)
-                                Spacer()
-                            }
+                // The write-review page once the App Store id is filled in. Until then (before the first
+                // release) fall back to Apple's rating sheet, which may show nothing outside TestFlight/dev.
+                SettingsCard(title: "Rate AlgorAI", subtitle: "Tell others what you think on the App Store") {
+                    Button {
+                        if let url = AppLinks.writeReview { openURL(url) } else { requestReview() }
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "star.fill").foregroundStyle(palette.primary)
+                            Text("Rate the app").font(AppFont.sans(14, .semibold)).foregroundStyle(palette.onSurface)
+                            Spacer()
                         }
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
                 }
             }
             .padding(.horizontal, screenGutter)
