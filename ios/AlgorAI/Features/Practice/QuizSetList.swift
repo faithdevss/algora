@@ -117,6 +117,8 @@ struct QuizSetItem: Identifiable {
     let note: String?
     let done: Bool
     let best: (text: String, percent: Int)?
+    /// A premium set the learner can't open yet: amber label and a padlock instead of play.
+    var locked = false
     var id: String { topicId }
 }
 
@@ -132,18 +134,20 @@ func relativeQuizDay(_ day: Int64, _ today: Int64) -> String {
 extension QuizSetItem {
     /// A set from the store's attempts and completions.
     @MainActor
-    static func make(_ topic: Topic, store: AppStore) -> QuizSetItem {
+    static func make(_ topic: Topic, store: AppStore, premium: Bool) -> QuizSetItem {
         let today = todayEpochDay()
+        let locked = topic.isPremium && !premium
         guard let quiz = ContentStore.shared.quiz(topic.id) else {
             return QuizSetItem(topicId: topic.id, title: topic.name, meta: nil, note: topic.tagline,
-                               done: store.completedTopicIds.contains(topic.id), best: nil)
+                               done: store.completedTopicIds.contains(topic.id), best: nil, locked: locked)
         }
         let history = (store.quizAttempts[topic.id] ?? []).ofLength(quiz.questions.count)
         return QuizSetItem(
             topicId: topic.id, title: quiz.title,
             meta: "\(quiz.questions.count) questions · \(quiz.timeLimitSeconds / 60) min", note: nil,
             done: store.completedTopicIds.contains(topic.id) || !history.isEmpty,
-            best: history.first.map { ("Best \(history.bestCorrect)/\(quiz.questions.count) · \(relativeQuizDay($0.day, today))", history.bestPercent) }
+            best: history.first.map { ("Best \(history.bestCorrect)/\(quiz.questions.count) · \(relativeQuizDay($0.day, today))", history.bestPercent) },
+            locked: locked
         )
     }
 }
@@ -160,8 +164,9 @@ struct QuizSetCard: View {
             ForEach(Array(items.enumerated()), id: \.element.id) { i, item in
                 if i > 0 { Divider().overlay(palette.outline).padding(.leading, 64) }
                 QuizSetRow(item: item) {
-                    // A guide (behavioral bank, design primer) opens as a page; a quiz starts right away.
-                    router.push(item.meta == nil ? .topic(item.topicId) : .quizRun(item.topicId, learn: learn))
+                    // A guide (behavioral bank, design primer) or a locked set opens its topic page, which
+                    // carries the guide or the unlock; a quiz starts right away.
+                    router.push(item.meta == nil || item.locked ? .topic(item.topicId) : .quizRun(item.topicId, learn: learn))
                 }
             }
         }
@@ -190,7 +195,9 @@ private struct QuizSetRow: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(item.title).font(AppFont.sans(18, .semibold)).foregroundStyle(palette.onSurface)
                         .multilineTextAlignment(.leading)
-                    if let meta = item.meta {
+                    if item.locked {
+                        Text("Premium" + (item.meta.map { " · \($0)" } ?? "")).font(AppFont.sans(14)).foregroundStyle(lockAmber)
+                    } else if let meta = item.meta {
                         Text(meta).font(AppFont.mono(14)).foregroundStyle(palette.primary)
                     } else if let note = item.note {
                         Text(note).font(AppFont.sans(14)).foregroundStyle(palette.muted).lineLimit(2).multilineTextAlignment(.leading)
@@ -200,9 +207,9 @@ private struct QuizSetRow: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                Image(systemName: item.meta == nil ? "chevron.right" : "play.fill")
-                    .font(.system(size: item.meta == nil ? 15 : 14, weight: .semibold))
-                    .foregroundStyle(palette.primary)
+                Image(systemName: item.locked ? "lock.fill" : item.meta == nil ? "chevron.right" : "play.fill")
+                    .font(.system(size: item.meta == nil || item.locked ? 15 : 14, weight: .semibold))
+                    .foregroundStyle(item.locked ? lockAmber : palette.primary)
                     .frame(width: 48, height: 48)
                     .background(palette.primary.opacity(0.18), in: Circle())
             }
@@ -212,7 +219,7 @@ private struct QuizSetRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(item.meta == nil ? "Open \(item.title)" : "Start \(item.title)")
+        .accessibilityLabel(item.locked ? "\(item.title), premium" : item.meta == nil ? "Open \(item.title)" : "Start \(item.title)")
     }
 }
 

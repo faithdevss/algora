@@ -188,25 +188,28 @@ private struct LabRow: View {
     let accent: Color
     let action: () -> Void
     @Environment(\.palette) private var palette
+    @Environment(PremiumStore.self) private var premium
 
     var body: some View {
+        let isLocked = entry.topic.isPremium && !premium.isPremium
         Button(action: action) {
             HStack(spacing: 14) {
                 Text(String(format: "%02d", number)).font(AppFont.mono(14, .semibold)).foregroundStyle(accent).frame(width: 30, alignment: .leading)
                 Text(entry.topic.name).font(AppFont.sans(17)).foregroundStyle(palette.onSurface).lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Image(systemName: "play.fill")
-                    .font(.system(size: 12))
-                    .foregroundStyle(accent)
+                Image(systemName: isLocked ? "lock.fill" : "play.fill")
+                    .font(.system(size: isLocked ? 15 : 12))
+                    .foregroundStyle(isLocked ? lockAmber : accent)
                     .frame(width: 40, height: 40)
                     .background(accent.opacity(0.2), in: Circle())
             }
             .padding(.leading, 26)
             .padding(.trailing, 16)
             .padding(.vertical, 10)
+            .opacity(isLocked ? 0.72 : 1)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Run \(entry.topic.name)")
+        .accessibilityLabel(isLocked ? "\(entry.topic.name), premium" : "Run \(entry.topic.name)")
     }
 }

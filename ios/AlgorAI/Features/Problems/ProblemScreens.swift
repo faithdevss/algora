@@ -29,6 +29,7 @@ struct ProblemFilters {
 /// top — and a card per pattern with a two-letter tile and its own progress bar, opening in place.
 struct ProblemListScreen: View {
     @Environment(AppStore.self) private var store
+    @Environment(PremiumStore.self) private var premium
     @Environment(Router.self) private var router
     @Environment(\.palette) private var palette
     @State private var filters = ProblemFilters()
@@ -63,10 +64,12 @@ struct ProblemListScreen: View {
                         Text("No problems match these filters.").font(.bodyMedium).foregroundStyle(palette.muted).padding(.top, 24)
                     }
                     ForEach(groups, id: \.0.id) { pattern, problems in
-                        // A narrowed bank shows its hits directly.
-                        let open = filters.isActive || expanded.contains(pattern.id)
-                        PatternCard(pattern: pattern, problems: problems, solved: solved, isOpen: open) {
-                            if expanded.contains(pattern.id) { expanded.remove(pattern.id) } else { expanded.insert(pattern.id) }
+                        // A narrowed bank shows its hits directly; a locked group never opens, it goes to Premium.
+                        let locked = pattern.isPremium && !premium.isPremium
+                        let open = !locked && (filters.isActive || expanded.contains(pattern.id))
+                        PatternCard(pattern: pattern, problems: problems, solved: solved, isOpen: open, isLocked: locked) {
+                            if locked { router.push(.premium) }
+                            else if expanded.contains(pattern.id) { expanded.remove(pattern.id) } else { expanded.insert(pattern.id) }
                         } onProblem: { router.push(.problem($0)) }
                         .padding(.top, 12)
                     }
@@ -185,6 +188,7 @@ private struct PatternCard: View {
     let problems: [PracticeProblem]
     let solved: Set<String>
     let isOpen: Bool
+    var isLocked = false
     let onToggle: () -> Void
     let onProblem: (String) -> Void
     @Environment(\.palette) private var palette
@@ -208,15 +212,15 @@ private struct PatternCard: View {
                         }
                         ProgressTrack(fraction: problems.isEmpty ? 0 : Double(done) / Double(problems.count), color: accent, height: 4)
                     }
-                    Image(systemName: isOpen ? "chevron.up" : "chevron.down")
+                    Image(systemName: isLocked ? "lock.fill" : isOpen ? "chevron.up" : "chevron.down")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(palette.muted)
+                        .foregroundStyle(isLocked ? lockAmber : palette.muted)
                 }
                 .padding(16)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("\(pattern.name), \(done) of \(problems.count) solved")
+            .accessibilityLabel(isLocked ? "\(pattern.name), premium" : "\(pattern.name), \(done) of \(problems.count) solved")
             if isOpen {
                 Rectangle().fill(palette.outline).frame(height: 1)
                 Text(pattern.blurb).font(.bodyMedium).foregroundStyle(palette.muted)

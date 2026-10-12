@@ -5,6 +5,7 @@ import SwiftUI
 // not quizzes (behavioral bank, design primer) sit in the same cards and open as pages.
 struct InterviewPrepScreen: View {
     @Environment(AppStore.self) private var store
+    @Environment(PremiumStore.self) private var premium
     @Environment(\.palette) private var palette
     @AppStorage(quizLearnModeKey) private var learn = false
 
@@ -51,7 +52,7 @@ struct InterviewPrepScreen: View {
                     }
                     .padding(.top, 20)
                         .padding(.bottom, 12)
-                    QuizSetCard(items: rows.map { QuizSetItem.make($0, store: store) }, learn: learn)
+                    QuizSetCard(items: rows.map { QuizSetItem.make($0, store: store, premium: premium.isPremium) }, learn: learn)
                 }
             }
             .padding(.horizontal, screenGutter)

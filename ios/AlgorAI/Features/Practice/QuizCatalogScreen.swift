@@ -8,6 +8,7 @@ func scoreColor(_ percent: Int) -> Color {
 
 struct QuizCatalogScreen: View {
     @Environment(AppStore.self) private var store
+    @Environment(PremiumStore.self) private var premium
     @Environment(Router.self) private var router
     @Environment(\.palette) private var palette
     @AppStorage(quizLearnModeKey) private var learn = false
@@ -16,7 +17,7 @@ struct QuizCatalogScreen: View {
         let content = ContentStore.shared
         let results = WeakSpots.effectiveResults(store.questionResults, attempts: store.quizAttempts)
         let weakest = WeakSpots.weakest(WeakSpots.tagStats(results))
-        let items = content.quizzes.compactMap { topicId, _ in content.topic(topicId).map { QuizSetItem.make($0, store: store) } }
+        let items = content.quizzes.compactMap { topicId, _ in content.topic(topicId).map { QuizSetItem.make($0, store: store, premium: premium.isPremium) } }
         VStack(spacing: 0) {
         CompactNavBar(title: "Quizzes")
         ScrollView {

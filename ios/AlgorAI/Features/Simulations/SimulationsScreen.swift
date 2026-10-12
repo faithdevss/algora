@@ -198,9 +198,12 @@ private struct SimRow: View {
     let entry: SimEntry
     let action: () -> Void
     @Environment(\.palette) private var palette
+    @Environment(PremiumStore.self) private var premium
 
     var body: some View {
         let accent = Color(argb: entry.topic.accentColor)
+        // A premium lab the learner can't open yet says so up front: amber label and a padlock.
+        let isLocked = entry.topic.isPremium && !premium.isPremium
         Button(action: action) {
             HStack(spacing: 13) {
                 AppIcon(name: entry.topic.iconName, size: 22)
@@ -209,23 +212,37 @@ private struct SimRow: View {
                     .background(accent.opacity(0.14), in: RoundedRectangle(cornerRadius: 13))
                 VStack(alignment: .leading, spacing: 1) {
                     Text(entry.topic.name).font(AppFont.grotesk(15.5, .bold)).multilineTextAlignment(.leading)
-                    Text(entry.label).font(AppFont.sans(12.5)).foregroundStyle(palette.muted)
+                    Text(isLocked ? "Premium · \(entry.label)" : entry.label)
+                        .font(AppFont.sans(12.5))
+                        .foregroundStyle(isLocked ? lockAmber : palette.muted)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                Image(systemName: "play.fill")
-                    .font(.system(size: 14))
-                    .foregroundStyle(.white)
-                    .frame(width: 34, height: 34)
-                    .background(accent, in: RoundedRectangle(cornerRadius: 11))
+                if isLocked {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(lockAmber)
+                        .frame(width: 34, height: 34)
+                        .background(lockAmber.opacity(0.16), in: RoundedRectangle(cornerRadius: 11))
+                } else {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.white)
+                        .frame(width: 34, height: 34)
+                        .background(accent, in: RoundedRectangle(cornerRadius: 11))
+                }
             }
             .padding(14)
             .card(radius: 16)
+            .opacity(isLocked ? 0.72 : 1)
         }
         .buttonStyle(.plain)
         .padding(.leading, 16)
         .padding(.vertical, 4)
     }
 }
+
+/// Padlock amber, the same as TopicRow's lock.
+let lockAmber = Color(hex: 0xF97316)
 
 /// The lab on its own: stage and narration scroll, the transport is pinned in thumb reach, and the
 /// lab's intro plus the full write-up sit behind (i). The tab bar hides inside a lab.

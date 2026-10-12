@@ -38,8 +38,25 @@ struct Topic: Codable, Identifiable, Hashable {
     let description: String
     let iconName: String
     let accentColor: Int64
-    let isPremium: Bool
+    /// The exported flag, from Android's AccessTiers (its free tier).
+    private let catalogPremium: Bool
     let difficulty: Difficulty?
+
+    /// iOS has no rewarded ads, so it frees some of Android's ad-unlock tier outright: the catalog's
+    /// free topics plus these make 20 free lessons, each with its lab.
+    static let iosFreeIds: Set<String> = [
+        // DSA
+        "singly_linked_list", "queue", "hash_table", "merge_sort",
+        // AI
+        "logistic_regression", "attention", "mlp", "sigmoid",
+    ]
+
+    var isPremium: Bool { catalogPremium && !Self.iosFreeIds.contains(id) }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, categoryId, tagline, description, iconName, accentColor, difficulty
+        case catalogPremium = "isPremium"
+    }
 }
 
 struct TopicContent: Codable {
